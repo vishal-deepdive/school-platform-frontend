@@ -85,6 +85,8 @@ export interface ForgotPasswordRequest {
   email: string
 }
 
+export type ResendOtpRequest = ForgotPasswordRequest
+
 export interface ResetPasswordRequest {
   email: string
   otp: string
