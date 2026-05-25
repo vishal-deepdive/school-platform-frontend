@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,6 +20,7 @@ export function VerifyOtpPage() {
     register,
     handleSubmit,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<VerifyOtpFormData>({
     resolver: zodResolver(verifyOtpSchema),
@@ -51,6 +52,26 @@ export function VerifyOtpPage() {
       }
     } catch (err) {
       toast.error(getErrorMessage(err))
+    }
+  }
+
+  const [isResending, setIsResending] = useState(false)
+
+  const onResend = async () => {
+    const email = getValues('email')
+    if (!email) {
+      toast.error('Please enter your email to resend OTP.')
+      return
+    }
+
+    try {
+      setIsResending(true)
+      await authApi.resendOtp({ email })
+      toast.success('A new OTP has been sent to your email.')
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    } finally {
+      setIsResending(false)
     }
   }
 
@@ -96,6 +117,19 @@ export function VerifyOtpPage() {
         <Button type="submit" loading={isSubmitting} icon={<ShieldCheck className="h-4 w-4" />}>
           Verify OTP
         </Button>
+
+        {purpose === 'verify_email' && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={onResend}
+              disabled={isResending || isSubmitting}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+            >
+              {isResending ? 'Resending...' : "Didn't receive a code? Resend"}
+            </button>
+          </div>
+        )}
 
         <p className="text-center text-sm text-gray-500">
           <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
