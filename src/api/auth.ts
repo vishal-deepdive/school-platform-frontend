@@ -12,6 +12,7 @@ import type {
   VerifyOtpRequest,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ResendOtpRequest,
   GoogleAuthUrlResponse,
 } from '@/types/auth'
 
@@ -41,6 +42,9 @@ export const authApi = {
 
   resetPassword: (data: ResetPasswordRequest) =>
     apiClient.post<MessageResponse>(`${BASE}/reset-password`, data).then((r) => r.data),
+
+  resendOtp: (data: ResendOtpRequest) =>
+    apiClient.post<MessageResponse>(`${BASE}/resend-otp`, data).then((r) => r.data),
 
   refresh: (refresh_token: string) =>
     apiClient.post<TokenResponse>(`${BASE}/refresh`, { refresh_token }).then((r) => r.data),
