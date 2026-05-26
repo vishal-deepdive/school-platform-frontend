@@ -146,7 +146,7 @@ export function LoginPage() {
             fill="#EA4335"
           />
         </svg>
-        Google
+        Continue with Google
       </AuthButton>
     </div>
   )
