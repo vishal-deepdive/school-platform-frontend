@@ -23,6 +23,7 @@ import { SurveyDashboardPage } from '@/pages/survey/SurveyDashboardPage'
 import { SurveySearchPage } from '@/pages/survey/SurveySearchPage'
 import { SurveyDataPage } from '@/pages/survey/SurveyDataPage'
 import { AuthCallbackPage } from '@/pages/auth/AuthCallbackPage'
+import { GoogleCompleteProfilePage } from '@/pages/auth/GoogleCompleteProfilePage'
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/auth/callback', element: <AuthCallbackPage /> },
+      { path: '/complete-profile', element: <GoogleCompleteProfilePage /> },
     ],
   },
   {
