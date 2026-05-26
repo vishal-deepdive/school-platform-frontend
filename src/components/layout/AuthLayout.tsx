@@ -64,11 +64,10 @@ export function AuthLayout() {
 
       {/* Form Side (Right Side) */}
       <div className="flex flex-col p-6 md:p-12 bg-background relative h-full overflow-y-auto overflow-x-hidden scrollbar-thin">
-        <div className="w-full max-w-md mx-auto relative flex flex-col my-auto py-8">
+        <div className="w-full max-w-md mx-auto relative flex flex-col my-auto py-8 gap-5 items-center">
             {/* Mobile Branding */}
-            <div className="flex items-center gap-3 mb-8 md:hidden justify-center shrink-0">
-              <img src={logoImg} alt="DeepDive Logo" className="h-10 w-auto object-contain drop-shadow-md" />
-              <span className="text-2xl font-bold text-foreground tracking-tight">DeepDive</span>
+            <div className="w-fit flex items-center md:hidden justify-center z-20 bg-white backdrop-blur-md px-4 py-1.5 rounded-full border border-border/50 shadow-sm">
+              <img src={logoImg} alt="DeepDive Logo" className="h-10 w-auto object-contain" />
             </div>
             
             <div className="shrink-0 w-full">
