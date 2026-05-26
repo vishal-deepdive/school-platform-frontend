@@ -17,6 +17,27 @@ import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
+import { motion, AnimatePresence } from 'framer-motion'
+
+// Animation variants
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 15 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+}
+
+const tabVariants = {
+  hidden: { opacity: 0, x: -20 },
+  enter: { opacity: 1, x: 0, transition: { duration: 0.3 } },
+  exit: { opacity: 0, x: 20, transition: { duration: 0.2 } }
+}
 
 const tabs = [
   { id: 'student', label: 'Student', icon: GraduationCap },
@@ -58,8 +79,8 @@ export function RegisterPage() {
   }, [tokenParam, roleParam])
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <div className="mb-8 text-center sm:text-left">
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="w-full max-w-md mx-auto">
+      <motion.div variants={itemVariants} className="mb-8 text-center sm:text-left">
         <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Create account</h1>
         <p className="mt-2 text-sm text-gray-500">
           Already have an account?{' '}
@@ -67,10 +88,10 @@ export function RegisterPage() {
             Sign in
           </Link>
         </p>
-      </div>
+      </motion.div>
 
       {/* Tabs Header */}
-      <div className="mb-6 flex gap-1 p-1 bg-gray-100 rounded-xl">
+      <motion.div variants={itemVariants} className="mb-6 flex gap-1 p-1.5 bg-gray-100/80 backdrop-blur-sm rounded-xl border border-gray-200/50">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -79,32 +100,50 @@ export function RegisterPage() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all duration-300 relative ${
                 isActive
-                  ? 'bg-white text-indigo-600 shadow-sm border border-gray-200/50'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50 border border-transparent'
+                  ? 'text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'
               }`}
             >
-              <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-indigo-600' : 'text-gray-400'}`} />
-              <span>{tab.label}</span>
+              {isActive && (
+                <motion.div
+                  layoutId="activeTab"
+                  className="absolute inset-0 bg-white rounded-lg shadow-sm border border-gray-200/50"
+                  initial={false}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <div className="relative flex items-center gap-2 z-10">
+                <Icon className={`h-4.5 w-4.5 transition-colors ${isActive ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <span>{tab.label}</span>
+              </div>
             </button>
           )
         })}
-      </div>
+      </motion.div>
 
       {/* Form Area */}
-      <div className="bg-white p-2 rounded-2xl">
-        {activeTab === 'student' && (
-          <StudentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />
-        )}
-        {activeTab === 'teacher' && (
-          <TeacherRegisterForm defaultToken={tokenParam || ''} navigate={navigate} />
-        )}
-        {activeTab === 'parent' && (
-          <ParentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />
-        )}
-      </div>
-    </div>
+      <motion.div variants={itemVariants} className="bg-white p-2 rounded-2xl relative min-h-[400px]">
+        <AnimatePresence mode="wait">
+          {activeTab === 'student' && (
+            <motion.div key="student" variants={tabVariants} initial="hidden" animate="enter" exit="exit">
+              <StudentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />
+            </motion.div>
+          )}
+          {activeTab === 'teacher' && (
+            <motion.div key="teacher" variants={tabVariants} initial="hidden" animate="enter" exit="exit">
+              <TeacherRegisterForm defaultToken={tokenParam || ''} navigate={navigate} />
+            </motion.div>
+          )}
+          {activeTab === 'parent' && (
+            <motion.div key="parent" variants={tabVariants} initial="hidden" animate="enter" exit="exit">
+              <ParentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -205,7 +244,21 @@ function StudentRegisterForm({ defaultSchoolId, navigate }: FormProps & { defaul
         {...register('confirm_password')}
       />
 
-      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />}>
+      <div className="flex items-start gap-2 mt-2">
+        <input 
+          type="checkbox" 
+          id="terms-student" 
+          className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer transition-colors"
+        />
+        <label htmlFor="terms-student" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+          I accept the{' '}
+          <Link to="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+            Terms & Conditions
+          </Link>
+        </label>
+      </div>
+
+      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />} className="w-full pt-2">
         Create Student Account
       </Button>
     </form>
@@ -296,7 +349,21 @@ function TeacherRegisterForm({ defaultToken, navigate }: FormProps & { defaultTo
         {...register('confirm_password')}
       />
 
-      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />}>
+      <div className="flex items-start gap-2 mt-2">
+        <input 
+          type="checkbox" 
+          id="terms-teacher" 
+          className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer transition-colors"
+        />
+        <label htmlFor="terms-teacher" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+          I accept the{' '}
+          <Link to="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+            Terms & Conditions
+          </Link>
+        </label>
+      </div>
+
+      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />} className="w-full pt-2">
         Create Teacher Account
       </Button>
     </form>
@@ -403,7 +470,21 @@ function ParentRegisterForm({ defaultSchoolId, navigate }: FormProps & { default
         {...register('confirm_password')}
       />
 
-      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />}>
+      <div className="flex items-start gap-2 mt-2">
+        <input 
+          type="checkbox" 
+          id="terms-parent" 
+          className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer transition-colors"
+        />
+        <label htmlFor="terms-parent" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+          I accept the{' '}
+          <Link to="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+            Terms & Conditions
+          </Link>
+        </label>
+      </div>
+
+      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />} className="w-full pt-2">
         Register Parent Account
       </Button>
     </form>

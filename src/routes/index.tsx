@@ -22,6 +22,7 @@ import { RagAuditPage } from '@/pages/rag/RagAuditPage'
 import { SurveyDashboardPage } from '@/pages/survey/SurveyDashboardPage'
 import { SurveySearchPage } from '@/pages/survey/SurveySearchPage'
 import { SurveyDataPage } from '@/pages/survey/SurveyDataPage'
+import { AuthCallbackPage } from '@/pages/auth/AuthCallbackPage'
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +33,7 @@ export const router = createBrowserRouter([
       { path: '/verify-otp', element: <VerifyOtpPage /> },
       { path: '/forgot-password', element: <ForgotPasswordPage /> },
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      { path: '/auth/callback', element: <AuthCallbackPage /> },
     ],
   },
   {

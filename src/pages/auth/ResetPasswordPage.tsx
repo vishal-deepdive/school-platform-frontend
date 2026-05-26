@@ -9,6 +9,7 @@ import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { motion } from 'framer-motion'
 
 export function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -36,38 +37,64 @@ export function ResetPasswordPage() {
     }
   }
 
+  // Stagger animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  }
+
   return (
-    <div>
-      <div className="mb-8">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100">
-          <KeyRound className="h-6 w-6 text-indigo-600" />
+    <motion.div variants={containerVariants} initial="hidden" animate="show">
+      <motion.div variants={itemVariants} className="mb-8 text-center sm:text-left">
+        <div className="mb-6 flex justify-center sm:justify-start">
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100/50 shadow-inner"
+          >
+            <KeyRound className="h-7 w-7 text-indigo-600" />
+          </motion.div>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Set new password</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Set new password</h1>
+        <p className="mt-2 text-sm text-gray-500">
           Create a strong password for your account.
         </p>
-      </div>
+      </motion.div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
-        <Input
-          label="Email"
-          type="email"
-          autoComplete="email"
-          error={errors.email?.message}
-          {...register('email')}
-        />
+        <motion.div variants={itemVariants}>
+          <Input
+            label="Email"
+            type="email"
+            autoComplete="email"
+            error={errors.email?.message}
+            {...register('email')}
+          />
+        </motion.div>
 
-        <Input
-          label="OTP Code"
-          type="text"
-          inputMode="numeric"
-          maxLength={6}
-          placeholder="123456"
-          error={errors.otp?.message}
-          {...register('otp')}
-        />
+        <motion.div variants={itemVariants}>
+          <Input
+            label="OTP Code"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="123456"
+            error={errors.otp?.message}
+            className="font-mono text-center text-lg tracking-widest"
+            {...register('otp')}
+          />
+        </motion.div>
 
-        <div className="relative">
+        <motion.div variants={itemVariants} className="relative">
           <Input
             label="New password"
             type={showPassword ? 'text' : 'password'}
@@ -81,32 +108,36 @@ export function ResetPasswordPage() {
           <button
             type="button"
             onClick={() => setShowPassword((p) => !p)}
-            className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600 transition-colors"
             tabIndex={-1}
           >
             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
           </button>
-        </div>
+        </motion.div>
 
-        <Input
-          label="Confirm new password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="••••••••"
-          error={errors.confirm_password?.message}
-          {...register('confirm_password')}
-        />
+        <motion.div variants={itemVariants}>
+          <Input
+            label="Confirm new password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            error={errors.confirm_password?.message}
+            {...register('confirm_password')}
+          />
+        </motion.div>
 
-        <Button type="submit" loading={isSubmitting} icon={<KeyRound className="h-4 w-4" />}>
-          Reset password
-        </Button>
+        <motion.div variants={itemVariants} className="pt-2">
+          <Button type="submit" loading={isSubmitting} icon={<KeyRound className="h-4 w-4" />} className="w-full mt-2">
+            Reset password
+          </Button>
+        </motion.div>
 
-        <p className="text-center text-sm text-gray-500">
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+        <motion.p variants={itemVariants} className="text-center text-sm text-gray-500 mt-2">
+          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
             Back to sign in
           </Link>
-        </p>
+        </motion.p>
       </form>
-    </div>
+    </motion.div>
   )
 }

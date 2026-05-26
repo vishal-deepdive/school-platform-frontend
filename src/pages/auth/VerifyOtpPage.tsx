@@ -9,6 +9,7 @@ import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { motion } from 'framer-motion'
 
 export function VerifyOtpPage() {
   const navigate = useNavigate()
@@ -77,66 +78,94 @@ export function VerifyOtpPage() {
 
   const purpose = state?.purpose ?? 'verify_email'
 
+  // Stagger animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+  }
+
   return (
-    <div>
-      <div className="mb-8">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100">
-          <ShieldCheck className="h-6 w-6 text-indigo-600" />
+    <motion.div variants={containerVariants} initial="hidden" animate="show">
+      <motion.div variants={itemVariants} className="mb-8 text-center sm:text-left">
+        <div className="mb-6 flex justify-center sm:justify-start">
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 border border-indigo-100/50 shadow-inner"
+          >
+            <ShieldCheck className="h-7 w-7 text-indigo-600" />
+          </motion.div>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">Verify OTP</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Verify OTP</h1>
+        <p className="mt-2 text-sm text-gray-500">
           {purpose === 'verify_email'
             ? 'Enter the 6-digit code sent to your email to verify your account.'
             : 'Enter the 6-digit code sent to your email to reset your password.'}
         </p>
-      </div>
+      </motion.div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
-        <Input
-          label="Email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@school.edu"
-          error={errors.email?.message}
-          {...register('email')}
-        />
+        <motion.div variants={itemVariants}>
+          <Input
+            label="Email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@school.edu"
+            error={errors.email?.message}
+            {...register('email')}
+          />
+        </motion.div>
 
-        <Input
-          label="OTP Code"
-          type="text"
-          inputMode="numeric"
-          maxLength={6}
-          placeholder="123456"
-          error={errors.otp?.message}
-          hint="Check your email inbox (and spam folder)"
-          {...register('otp')}
-        />
+        <motion.div variants={itemVariants}>
+          <Input
+            label="OTP Code"
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="123456"
+            error={errors.otp?.message}
+            hint="Check your email inbox (and spam folder)"
+            className="font-mono text-center text-lg tracking-widest"
+            {...register('otp')}
+          />
+        </motion.div>
 
         <input type="hidden" {...register('purpose')} />
 
-        <Button type="submit" loading={isSubmitting} icon={<ShieldCheck className="h-4 w-4" />}>
-          Verify OTP
-        </Button>
+        <motion.div variants={itemVariants} className="pt-2">
+          <Button type="submit" loading={isSubmitting} icon={<ShieldCheck className="h-4 w-4" />} className="w-full mt-2">
+            Verify OTP
+          </Button>
+        </motion.div>
 
         {purpose === 'verify_email' && (
-          <div className="text-center">
+          <motion.div variants={itemVariants} className="text-center mt-2">
             <button
               type="button"
               onClick={onResend}
               disabled={isResending || isSubmitting}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-500 disabled:opacity-50"
+              className="text-sm font-semibold text-indigo-600 hover:text-indigo-500 disabled:opacity-50 transition-colors"
             >
               {isResending ? 'Resending...' : "Didn't receive a code? Resend"}
             </button>
-          </div>
+          </motion.div>
         )}
 
-        <p className="text-center text-sm text-gray-500">
-          <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+        <motion.p variants={itemVariants} className="text-center text-sm text-gray-500 mt-2">
+          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
             Back to sign in
           </Link>
-        </p>
+        </motion.p>
       </form>
-    </div>
+    </motion.div>
   )
 }

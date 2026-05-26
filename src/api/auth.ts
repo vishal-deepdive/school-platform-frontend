@@ -54,4 +54,7 @@ export const authApi = {
 
   googleLogin: () =>
     apiClient.get<GoogleAuthUrlResponse>(`${BASE}/oauth/google`).then((r) => r.data),
+
+  googleCallback: (code: string, state: string) =>
+    apiClient.get<TokenResponse>(`${BASE}/oauth/google/callback`, { params: { code, state } }).then((r) => r.data),
 }
