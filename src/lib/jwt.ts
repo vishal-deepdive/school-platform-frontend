@@ -5,6 +5,8 @@ export interface DecodedToken {
   role: 'admin' | 'principal' | 'teacher' | 'student' | 'parent' | 'viewer'
   iat: number
   exp: number
+  roll_no?: string | null
+  avatar_url?: string | null
 }
 
 export function decodeJwt(token: string): DecodedToken | null {
