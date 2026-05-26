@@ -36,6 +36,61 @@ export interface GoogleAuthUrlResponse {
   auth_url: string
 }
 
+// ── Google OAuth two-phase responses ─────────────────────────────────────────
+
+export interface GoogleTokensIssuedResponse {
+  status: 'tokens_issued'
+  access_token: string
+  refresh_token: string
+  token_type: 'bearer'
+  expires_in: number
+}
+
+export interface GoogleRegistrationRequiredResponse {
+  status: 'registration_required'
+  google_token: string
+  email: string
+  full_name: string | null
+  avatar_url: string | null
+}
+
+export type GoogleCallbackResponse =
+  | GoogleTokensIssuedResponse
+  | GoogleRegistrationRequiredResponse
+
+// ── Google profile completion ────────────────────────────────────────────────
+
+export interface GoogleCompleteRequest {
+  google_token: string
+  role: 'student' | 'teacher' | 'parent'
+  full_name?: string
+  school_id?: string
+  class_code?: string
+  invite_token?: string
+  student_id?: string
+  relation?: 'father' | 'mother' | 'guardian' | 'other'
+}
+
+export interface GoogleCompletePendingResponse {
+  status: 'pending_approval'
+  message: string
+}
+
+/** Union of what POST /oauth/google/complete can return (201 or 202). */
+export type GoogleCompleteResponse = TokenResponse | GoogleCompletePendingResponse
+
+export interface UserResponse {
+  id: string
+  email: string
+  full_name: string | null
+  role: UserRole
+  school_id: string | null
+  account_status: string
+  is_active: boolean
+  is_email_verified: boolean
+  avatar_url: string | null
+}
+
 export type OtpPurpose = 'verify_email' | 'reset_password'
 
 export interface RegisterRequest {

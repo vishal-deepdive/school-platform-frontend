@@ -14,6 +14,10 @@ import type {
   ResetPasswordRequest,
   ResendOtpRequest,
   GoogleAuthUrlResponse,
+  GoogleCallbackResponse,
+  GoogleCompleteRequest,
+  GoogleCompleteResponse,
+  UserResponse,
 } from '@/types/auth'
 
 const BASE = '/api/v1/auth'
@@ -52,9 +56,29 @@ export const authApi = {
   logout: (refresh_token: string) =>
     apiClient.post<MessageResponse>(`${BASE}/logout`, { refresh_token }).then((r) => r.data),
 
-  googleLogin: () =>
-    apiClient.get<GoogleAuthUrlResponse>(`${BASE}/oauth/google`).then((r) => r.data),
+  /** Fetch the current user's profile (requires Bearer token). */
+  me: () =>
+    apiClient.get<UserResponse>(`${BASE}/me`).then((r) => r.data),
 
+  googleLogin: () =>
+    apiClient.get<GoogleAuthUrlResponse>(`${BASE}/oauth/google`, { params: { t: Date.now() } }).then((r) => r.data),
+
+  /** Phase 1 — may return tokens (existing user) OR a signup token (new user). */
   googleCallback: (code: string, state: string) =>
-    apiClient.get<TokenResponse>(`${BASE}/oauth/google/callback`, { params: { code, state } }).then((r) => r.data),
+    apiClient
+      .get<GoogleCallbackResponse>(`${BASE}/oauth/google/callback`, { params: { code, state } })
+      .then((r) => r.data),
+
+  /**
+   * Phase 2 — completes registration for new Google users.
+   * Returns TokenResponse (201) for student/teacher, or GoogleCompletePendingResponse (202) for parent.
+   */
+  googleCompleteRegistration: (data: GoogleCompleteRequest) =>
+    apiClient
+      .post<GoogleCompleteResponse>(`${BASE}/oauth/google/complete`, data, {
+        // Axios throws on non-2xx by default; 202 is fine — prevent it from being
+        // treated as an error when the parent pending response is returned.
+        validateStatus: (status) => status >= 200 && status < 300,
+      })
+      .then((r) => r.data),
 }

@@ -140,6 +140,33 @@ export const surveySearchSchema = z.object({
   limit: z.number().min(1).max(100).default(10),
 })
 
+// ── Google OAuth profile completion ──────────────────────────────────────────
+
+export const googleCompleteStudentSchema = z.object({
+  full_name: z.string().max(255).optional(),
+  school_id: z.string().uuid('Invalid school ID'),
+  class_code: z.string().min(1, 'Class code is required').max(16),
+})
+
+export const googleCompleteTeacherSchema = z.object({
+  full_name: z.string().max(255).optional(),
+  invite_token: z
+    .string()
+    .length(64, 'Invite token must be exactly 64 characters')
+    .regex(/^[0-9a-f]{64}$/, 'Invite token must be a valid 64-character hex string'),
+})
+
+export const googleCompleteParentSchema = z.object({
+  full_name: z.string().max(255).optional(),
+  school_id: z.string().uuid('Invalid school ID'),
+  student_id: z.string().uuid('Invalid student ID'),
+  relation: z.enum(['father', 'mother', 'guardian', 'other']),
+})
+
+export type GoogleCompleteStudentFormData = z.infer<typeof googleCompleteStudentSchema>
+export type GoogleCompleteTeacherFormData = z.infer<typeof googleCompleteTeacherSchema>
+export type GoogleCompleteParentFormData = z.infer<typeof googleCompleteParentSchema>
+
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type StudentRegisterFormData = z.infer<typeof studentRegisterSchema>
