@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff, UserPlus, GraduationCap, School, Users } from 'lucide-react'
+import { UserPlus, GraduationCap, School, Users, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   studentRegisterSchema,
@@ -14,30 +14,8 @@ import {
 } from '@/lib/validators'
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
+import { AuthInput, AuthPasswordInput, AuthButton } from '@/components/ui/auth-fuse'
 import { Select } from '@/components/ui/Select'
-import { motion, AnimatePresence } from 'framer-motion'
-
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-}
-
-const tabVariants = {
-  hidden: { opacity: 0, x: -20 },
-  enter: { opacity: 1, x: 0, transition: { duration: 0.3 } },
-  exit: { opacity: 0, x: 20, transition: { duration: 0.2 } }
-}
 
 const tabs = [
   { id: 'student', label: 'Student', icon: GraduationCap },
@@ -69,29 +47,23 @@ export function RegisterPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab)
 
-  // Keep tab state synchronized with query params if they change
   useEffect(() => {
     if (tokenParam) {
       setActiveTab('teacher')
     } else if (roleParam === 'teacher' || roleParam === 'parent') {
-      setActiveTab(roleParam)
+      setActiveTab(roleParam as TabType)
     }
   }, [tokenParam, roleParam])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="w-full max-w-md mx-auto">
-      <motion.div variants={itemVariants} className="mb-8 text-center sm:text-left">
-        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Create account</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors">
-            Sign in
-          </Link>
-        </p>
-      </motion.div>
+    <div className="mx-auto grid w-full max-w-[400px] gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col items-center gap-2 text-center mb-4">
+        <h1 className="text-2xl font-bold text-foreground">Create an account</h1>
+        <p className="text-balance text-sm text-muted-foreground">Enter your details below to sign up</p>
+      </div>
 
       {/* Tabs Header */}
-      <motion.div variants={itemVariants} className="mb-6 flex gap-1 p-1.5 bg-gray-100/80 backdrop-blur-sm rounded-xl border border-gray-200/50">
+      <div className="mb-6 flex gap-1 p-1.5 bg-muted rounded-3xl border border-border/50">
         {tabs.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
@@ -100,50 +72,73 @@ export function RegisterPage() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all duration-300 relative ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-lg transition-all duration-300 relative ${
                 isActive
-                  ? 'text-indigo-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50/50'
+                  ? 'text-primary bg-background shadow-sm border border-border/50'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
               }`}
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-white rounded-lg shadow-sm border border-gray-200/50"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
               <div className="relative flex items-center gap-2 z-10">
-                <Icon className={`h-4.5 w-4.5 transition-colors ${isActive ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <Icon className={`h-4.5 w-4.5 transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                 <span>{tab.label}</span>
               </div>
             </button>
           )
         })}
-      </motion.div>
+      </div>
 
       {/* Form Area */}
-      <motion.div variants={itemVariants} className="bg-white p-2 rounded-2xl relative min-h-[400px]">
-        <AnimatePresence mode="wait">
-          {activeTab === 'student' && (
-            <motion.div key="student" variants={tabVariants} initial="hidden" animate="enter" exit="exit">
-              <StudentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />
-            </motion.div>
-          )}
-          {activeTab === 'teacher' && (
-            <motion.div key="teacher" variants={tabVariants} initial="hidden" animate="enter" exit="exit">
-              <TeacherRegisterForm defaultToken={tokenParam || ''} navigate={navigate} />
-            </motion.div>
-          )}
-          {activeTab === 'parent' && (
-            <motion.div key="parent" variants={tabVariants} initial="hidden" animate="enter" exit="exit">
-              <ParentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    </motion.div>
+      <div className="relative px-1">
+        {activeTab === 'student' && <StudentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />}
+        {activeTab === 'teacher' && <TeacherRegisterForm defaultToken={tokenParam || ''} navigate={navigate} />}
+        {activeTab === 'parent' && <ParentRegisterForm defaultSchoolId={schoolParam || ''} navigate={navigate} />}
+      </div>
+
+      <div className="text-center text-sm mt-4">
+        Already have an account?{' '}
+        <Link to="/login" className="pl-1 font-semibold text-primary hover:text-primary/80 transition-colors">
+          Sign in
+        </Link>
+      </div>
+
+      <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border mt-2">
+        <span className="relative z-10 bg-background px-2 text-muted-foreground">Or continue with</span>
+      </div>
+
+      <AuthButton
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={async () => {
+          try {
+            const { auth_url } = await authApi.googleLogin()
+            window.location.href = auth_url
+          } catch (err) {
+            toast.error(getErrorMessage(err))
+          }
+        }}
+      >
+        <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
+          <path
+            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+            fill="#4285F4"
+          />
+          <path
+            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+            fill="#34A853"
+          />
+          <path
+            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+            fill="#FBBC05"
+          />
+          <path
+            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+            fill="#EA4335"
+          />
+        </svg>
+        Google
+      </AuthButton>
+    </div>
   )
 }
 
@@ -155,15 +150,29 @@ interface FormProps {
 }
 
 function StudentRegisterForm({ defaultSchoolId, navigate }: FormProps & { defaultSchoolId: string }) {
-  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
+    watch,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<StudentRegisterFormData>({
     resolver: zodResolver(studentRegisterSchema),
     defaultValues: { school_id: defaultSchoolId },
   })
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const currentSchoolId = watch('school_id') ?? ''
+      sessionStorage.setItem('google_pending_role', 'student')
+      if (currentSchoolId) {
+        sessionStorage.setItem('google_pending_school_id', currentSchoolId)
+      }
+      const { auth_url } = await authApi.googleLogin()
+      window.location.href = auth_url
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    }
+  }
 
   const onSubmit = async (data: StudentRegisterFormData) => {
     try {
@@ -177,69 +186,56 @@ function StudentRegisterForm({ defaultSchoolId, navigate }: FormProps & { defaul
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4.5" noValidate>
-      <Input
-        label="Full name"
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 animate-in fade-in zoom-in-95 duration-300" noValidate>
+      <AuthInput
+        label="Full Name"
         type="text"
         autoComplete="name"
-        placeholder="Aarav Sharma"
+        placeholder="Full name"
         error={errors.full_name?.message}
         {...register('full_name')}
       />
 
-      <Input
+      <AuthInput
         label="Email"
         type="email"
         autoComplete="email"
-        placeholder="aarav.sharma@student.com"
+        placeholder="Email Address"
         error={errors.email?.message}
         {...register('email')}
       />
 
-      <Input
+      <AuthInput
         label="School ID"
         type="text"
-        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        placeholder="School ID (UUID)"
         error={errors.school_id?.message}
         hint="UUID of the school to join"
         {...register('school_id')}
       />
 
-      <Input
+      <AuthInput
         label="Class Code"
         type="text"
-        placeholder="MATH7A-X3K"
+        placeholder="Class Code"
         error={errors.class_code?.message}
         hint="Provided by your class teacher (e.g. MATH7A-X3K)"
         {...register('class_code')}
       />
 
-      <div className="relative">
-        <Input
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          autoComplete="new-password"
-          placeholder="••••••••"
-          error={errors.password?.message}
-          className="pr-10"
-          hint="Min 8 characters, with uppercase, lowercase, digit & special character"
-          {...register('password')}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword((p) => !p)}
-          className="absolute right-3 top-9 text-gray-400 hover:text-gray-600 transition-colors"
-          tabIndex={-1}
-        >
-          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-
-      <Input
-        label="Confirm password"
-        type="password"
+      <AuthPasswordInput
+        label="Password"
         autoComplete="new-password"
-        placeholder="••••••••"
+        placeholder="Password"
+        error={errors.password?.message}
+        hint="Min 8 chars, uppercase, lowercase, digit & special char"
+        {...register('password')}
+      />
+
+      <AuthPasswordInput
+        label="Confirm Password"
+        autoComplete="new-password"
+        placeholder="Confirm password"
         error={errors.confirm_password?.message}
         {...register('confirm_password')}
       />
@@ -248,19 +244,44 @@ function StudentRegisterForm({ defaultSchoolId, navigate }: FormProps & { defaul
         <input 
           type="checkbox" 
           id="terms-student" 
-          className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer transition-colors"
+          className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer transition-colors"
         />
-        <label htmlFor="terms-student" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+        <label htmlFor="terms-student" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
           I accept the{' '}
-          <Link to="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+          <Link to="#" className="font-medium text-primary hover:text-primary/80 transition-colors">
             Terms & Conditions
           </Link>
         </label>
       </div>
 
-      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />} className="w-full pt-2">
+      <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
+        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
         Create Student Account
-      </Button>
+      </AuthButton>
+
+      <div className="relative my-1">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-3 text-muted-foreground font-medium">or</span>
+        </div>
+      </div>
+
+      <AuthButton
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={handleGoogleSignIn}
+      >
+        <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+        </svg>
+        Continue with Google
+      </AuthButton>
     </form>
   )
 }
@@ -269,15 +290,29 @@ function StudentRegisterForm({ defaultSchoolId, navigate }: FormProps & { defaul
    TEACHER REGISTRATION FORM
    ──────────────────────────────────────────────────────────────────────────── */
 function TeacherRegisterForm({ defaultToken, navigate }: FormProps & { defaultToken: string }) {
-  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
+    watch,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<TeacherRegisterFormData>({
     resolver: zodResolver(teacherRegisterSchema),
     defaultValues: { invite_token: defaultToken },
   })
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const currentInviteToken = watch('invite_token') ?? ''
+      sessionStorage.setItem('google_pending_role', 'teacher')
+      if (currentInviteToken) {
+        sessionStorage.setItem('google_pending_invite_token', currentInviteToken)
+      }
+      const { auth_url } = await authApi.googleLogin()
+      window.location.href = auth_url
+    } catch (err) {
+      toast.error(getErrorMessage(err))
+    }
+  }
 
   const onSubmit = async (data: TeacherRegisterFormData) => {
     try {
@@ -291,60 +326,47 @@ function TeacherRegisterForm({ defaultToken, navigate }: FormProps & { defaultTo
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4.5" noValidate>
-      <Input
-        label="Full name"
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 animate-in fade-in zoom-in-95 duration-300" noValidate>
+      <AuthInput
+        label="Full Name"
         type="text"
         autoComplete="name"
-        placeholder="Dr. Priya Patel"
+        placeholder="Full name"
         error={errors.full_name?.message}
         {...register('full_name')}
       />
 
-      <Input
+      <AuthInput
         label="Email"
         type="email"
         autoComplete="email"
-        placeholder="priya.patel@school.edu"
+        placeholder="Email Address"
         error={errors.email?.message}
         {...register('email')}
       />
 
-      <Input
+      <AuthInput
         label="Invite Token"
         type="text"
-        placeholder="64-character hex invite token"
+        placeholder="Invite Token"
         error={errors.invite_token?.message}
         hint="Must be the 64-character hex string from your invite link"
         {...register('invite_token')}
       />
 
-      <div className="relative">
-        <Input
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          autoComplete="new-password"
-          placeholder="••••••••"
-          error={errors.password?.message}
-          className="pr-10"
-          hint="Min 8 characters, with uppercase, lowercase, digit & special character"
-          {...register('password')}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword((p) => !p)}
-          className="absolute right-3 top-9 text-gray-400 hover:text-gray-600 transition-colors"
-          tabIndex={-1}
-        >
-          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-
-      <Input
-        label="Confirm password"
-        type="password"
+      <AuthPasswordInput
+        label="Password"
         autoComplete="new-password"
-        placeholder="••••••••"
+        placeholder="Password"
+        error={errors.password?.message}
+        hint="Min 8 chars, uppercase, lowercase, digit & special char"
+        {...register('password')}
+      />
+
+      <AuthPasswordInput
+        label="Confirm Password"
+        autoComplete="new-password"
+        placeholder="Confirm password"
         error={errors.confirm_password?.message}
         {...register('confirm_password')}
       />
@@ -353,19 +375,44 @@ function TeacherRegisterForm({ defaultToken, navigate }: FormProps & { defaultTo
         <input 
           type="checkbox" 
           id="terms-teacher" 
-          className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer transition-colors"
+          className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer transition-colors"
         />
-        <label htmlFor="terms-teacher" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+        <label htmlFor="terms-teacher" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
           I accept the{' '}
-          <Link to="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+          <Link to="#" className="font-medium text-primary hover:text-primary/80 transition-colors">
             Terms & Conditions
           </Link>
         </label>
       </div>
 
-      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />} className="w-full pt-2">
+      <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
+        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
         Create Teacher Account
-      </Button>
+      </AuthButton>
+
+      <div className="relative my-1">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center text-xs">
+          <span className="bg-background px-3 text-muted-foreground font-medium">or</span>
+        </div>
+      </div>
+
+      <AuthButton
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={handleGoogleSignIn}
+      >
+        <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+        </svg>
+        Continue with Google
+      </AuthButton>
     </form>
   )
 }
@@ -374,7 +421,6 @@ function TeacherRegisterForm({ defaultToken, navigate }: FormProps & { defaultTo
    PARENT REGISTRATION FORM
    ──────────────────────────────────────────────────────────────────────────── */
 function ParentRegisterForm({ defaultSchoolId, navigate }: FormProps & { defaultSchoolId: string }) {
-  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
@@ -396,38 +442,38 @@ function ParentRegisterForm({ defaultSchoolId, navigate }: FormProps & { default
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4.5" noValidate>
-      <Input
-        label="Full name"
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 animate-in fade-in zoom-in-95 duration-300" noValidate>
+      <AuthInput
+        label="Full Name"
         type="text"
         autoComplete="name"
-        placeholder="Rajesh Sharma"
+        placeholder="Full name"
         error={errors.full_name?.message}
         {...register('full_name')}
       />
 
-      <Input
+      <AuthInput
         label="Email"
         type="email"
         autoComplete="email"
-        placeholder="rajesh.sharma@parent.com"
+        placeholder="Email Address"
         error={errors.email?.message}
         {...register('email')}
       />
 
-      <Input
+      <AuthInput
         label="School ID"
         type="text"
-        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        placeholder="School ID (UUID)"
         error={errors.school_id?.message}
         hint="UUID of the school where the student is enrolled"
         {...register('school_id')}
       />
 
-      <Input
+      <AuthInput
         label="Student ID"
         type="text"
-        placeholder="7cb89f12-3456-7890-abcd-ef1234567890"
+        placeholder="Student ID (UUID)"
         error={errors.student_id?.message}
         hint="UUID of the student to link to this account"
         {...register('student_id')}
@@ -440,32 +486,19 @@ function ParentRegisterForm({ defaultSchoolId, navigate }: FormProps & { default
         {...register('relation')}
       />
 
-      <div className="relative">
-        <Input
-          label="Password"
-          type={showPassword ? 'text' : 'password'}
-          autoComplete="new-password"
-          placeholder="••••••••"
-          error={errors.password?.message}
-          className="pr-10"
-          hint="Min 8 characters, with uppercase, lowercase, digit & special character"
-          {...register('password')}
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword((p) => !p)}
-          className="absolute right-3 top-9 text-gray-400 hover:text-gray-600 transition-colors"
-          tabIndex={-1}
-        >
-          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-        </button>
-      </div>
-
-      <Input
-        label="Confirm password"
-        type="password"
+      <AuthPasswordInput
+        label="Password"
         autoComplete="new-password"
-        placeholder="••••••••"
+        placeholder="Password"
+        error={errors.password?.message}
+        hint="Min 8 chars, uppercase, lowercase, digit & special char"
+        {...register('password')}
+      />
+
+      <AuthPasswordInput
+        label="Confirm Password"
+        autoComplete="new-password"
+        placeholder="Confirm password"
         error={errors.confirm_password?.message}
         {...register('confirm_password')}
       />
@@ -474,19 +507,20 @@ function ParentRegisterForm({ defaultSchoolId, navigate }: FormProps & { default
         <input 
           type="checkbox" 
           id="terms-parent" 
-          className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer transition-colors"
+          className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer transition-colors"
         />
-        <label htmlFor="terms-parent" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
+        <label htmlFor="terms-parent" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
           I accept the{' '}
-          <Link to="#" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors">
+          <Link to="#" className="font-medium text-primary hover:text-primary/80 transition-colors">
             Terms & Conditions
           </Link>
         </label>
       </div>
 
-      <Button type="submit" loading={isSubmitting} icon={<UserPlus className="h-4 w-4" />} className="w-full pt-2">
+      <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
+        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
         Register Parent Account
-      </Button>
+      </AuthButton>
     </form>
   )
 }
