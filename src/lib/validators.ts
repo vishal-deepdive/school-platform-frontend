@@ -59,8 +59,30 @@ export const teacherRegisterSchema = z.object({
   full_name: z.string().max(255).optional(),
   invite_token: z
     .string()
-    .length(64, 'Invite token must be exactly 64 characters')
-    .regex(/^[0-9a-f]{64}$/, 'Invite token must be a valid 64-character hex string'),
+    .length(8, 'Invite code must be exactly 8 characters')
+    .regex(/^[A-Za-z2-9]{8}$/, 'Invite code must contain only letters and digits 2–9'),
+}).refine((data) => data.password === data.confirm_password, {
+  message: 'Passwords do not match',
+  path: ['confirm_password'],
+})
+
+/**
+ * Schema for teacher registration via an invite link.
+ * The invite_token is NOT a form field — it comes from the URL and is
+ * injected behind the scenes when submitting to the API.
+ */
+export const teacherInviteFormSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(128)
+    .regex(
+      PASSWORD_REGEX,
+      'Password must contain uppercase, lowercase, number, and special character',
+    ),
+  confirm_password: z.string(),
+  full_name: z.string().max(255).optional(),
 }).refine((data) => data.password === data.confirm_password, {
   message: 'Passwords do not match',
   path: ['confirm_password'],
@@ -152,8 +174,16 @@ export const googleCompleteTeacherSchema = z.object({
   full_name: z.string().max(255).optional(),
   invite_token: z
     .string()
-    .length(64, 'Invite token must be exactly 64 characters')
-    .regex(/^[0-9a-f]{64}$/, 'Invite token must be a valid 64-character hex string'),
+    .length(8, 'Invite code must be exactly 8 characters')
+    .regex(/^[A-Za-z2-9]{8}$/, 'Invite code must contain only letters and digits 2–9'),
+})
+
+/**
+ * Schema for completing Google OAuth registration as a teacher via invite link.
+ * The invite_token comes from sessionStorage — hidden from the form UI.
+ */
+export const googleCompleteTeacherInviteSchema = z.object({
+  full_name: z.string().max(255).optional(),
 })
 
 export const googleCompleteParentSchema = z.object({
@@ -165,12 +195,14 @@ export const googleCompleteParentSchema = z.object({
 
 export type GoogleCompleteStudentFormData = z.infer<typeof googleCompleteStudentSchema>
 export type GoogleCompleteTeacherFormData = z.infer<typeof googleCompleteTeacherSchema>
+export type GoogleCompleteTeacherInviteFormData = z.infer<typeof googleCompleteTeacherInviteSchema>
 export type GoogleCompleteParentFormData = z.infer<typeof googleCompleteParentSchema>
 
 export type LoginFormData = z.infer<typeof loginSchema>
 export type RegisterFormData = z.infer<typeof registerSchema>
 export type StudentRegisterFormData = z.infer<typeof studentRegisterSchema>
 export type TeacherRegisterFormData = z.infer<typeof teacherRegisterSchema>
+export type TeacherInviteFormData = z.infer<typeof teacherInviteFormSchema>
 export type ParentRegisterFormData = z.infer<typeof parentRegisterSchema>
 export type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>
@@ -179,3 +211,233 @@ export type MarkAttendanceFormData = z.infer<typeof markAttendanceSchema>
 export type EnrollFormData = z.infer<typeof enrollSchema>
 export type QAFormData = z.infer<typeof qaSchema>
 export type SurveySearchFormData = z.infer<typeof surveySearchSchema>
+
+// ── School Onboarding Wizard ─────────────────────────────────────────────────
+
+export const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
+] as const
+
+export const SCHOOL_BOARDS = [
+  { value: 'CBSE',      label: 'CBSE – Central Board of Secondary Education' },
+  { value: 'ICSE',      label: 'ICSE / ISC – Indian Certificate of Secondary Education' },
+  { value: 'STATE',     label: 'State Board' },
+  { value: 'IB',        label: 'IB – International Baccalaureate' },
+  { value: 'IGCSE',     label: 'IGCSE – Cambridge International' },
+  { value: 'CAMBRIDGE', label: 'Cambridge (A-Level)' },
+  { value: 'OTHER',     label: 'Other' },
+] as const
+
+export const SCHOOL_TYPES = [
+  { value: 'private',       label: 'Private' },
+  { value: 'government',    label: 'Government' },
+  { value: 'aided',         label: 'Government Aided' },
+  { value: 'international', label: 'International' },
+  { value: 'autonomous',    label: 'Autonomous' },
+] as const
+
+// Internal enum tuple references (keeps schemas DRY)
+const _boardValues = ['CBSE', 'ICSE', 'STATE', 'IB', 'IGCSE', 'CAMBRIDGE', 'OTHER'] as const
+const _typeValues  = ['private', 'government', 'aided', 'international', 'autonomous'] as const
+
+// Per-step schemas — used by trigger() in the wizard
+
+export const onboardingStep1Schema = z.object({
+  school_name: z.string()
+    .min(2, 'School name must be at least 2 characters')
+    .max(255, 'School name is too long'),
+  board: z.enum(_boardValues, {
+    errorMap: () => ({ message: 'Please select a curriculum board' }),
+  }),
+  other_board: z.string().max(100, 'Board name is too long').optional(),
+  school_type: z.enum(_typeValues, {
+    errorMap: () => ({ message: 'Please select a school type' }),
+  }),
+  other_school_type: z.string().max(100, 'School type is too long').optional(),
+  established_year: z.string().optional(),
+}).superRefine((data, ctx) => {
+  if (data.board === 'OTHER' && (!data.other_board || data.other_board.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Please specify your curriculum board',
+      path: ['other_board'],
+    })
+  }
+  // If school type had an 'other' option, we'd validate it similarly. The schema allows autonomous, which might not be OTHER, but if we had OTHER in _typeValues, we would check it here. Let's add the check just in case it is added.
+})
+
+export const onboardingStep2Schema = z.object({
+  email: z.string().email('Invalid school email address'),
+  mobile: z
+    .string()
+    .min(1, 'Mobile number is required')
+    .regex(/^\d{10}$/, 'Mobile must be exactly 10 digits (no spaces or hyphens)'),
+  phone: z.string().max(20, 'Phone number is too long').optional(),
+  address_line_1: z.string()
+    .min(1, 'Street address is required')
+    .max(500),
+  address_line_2: z.string().max(500).optional(),
+  city: z.string().min(1, 'City is required').max(100),
+  state: z.string().min(1, 'Please select a state').max(100),
+  pin_code: z
+    .string()
+    .min(1, 'PIN code is required')
+    .regex(/^\d{6}$/, 'PIN code must be exactly 6 digits'),
+})
+
+export const onboardingStep3Schema = z
+  .object({
+    student_count: z
+      .string()
+      .min(1, 'Student count is required')
+      .refine(
+        (v) => !isNaN(parseInt(v, 10)) && parseInt(v, 10) >= 1,
+        'Must be at least 1 student',
+      )
+      .refine(
+        (v) => parseInt(v, 10) <= 200_000,
+        'Cannot exceed 200,000 students',
+      ),
+    medium_of_instruction: z.string().max(100).optional(),
+    other_medium_of_instruction: z.string().max(100, 'Medium is too long').optional(),
+    classes_from: z.string().optional(),
+    classes_to: z.string().optional(),
+    udise_code: z.string().max(20, 'UDISE code is too long').optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.medium_of_instruction === 'Other' && (!data.other_medium_of_instruction || data.other_medium_of_instruction.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please specify your medium of instruction',
+        path: ['other_medium_of_instruction'],
+      })
+    }
+  })
+  .refine(
+    (data) => {
+      const from = data.classes_from ? parseInt(data.classes_from, 10) : undefined
+      const to   = data.classes_to   ? parseInt(data.classes_to,   10) : undefined
+      if (from !== undefined && to !== undefined && !isNaN(from) && !isNaN(to)) {
+        return from <= to
+      }
+      return true
+    },
+    { message: 'Starting class must be ≤ ending class', path: ['classes_to'] },
+  )
+
+export const onboardingStep5Schema = z
+  .object({
+    principal_name: z
+      .string()
+      .min(2, 'Principal name must be at least 2 characters')
+      .max(255),
+    principal_email: z.string().email('Invalid principal email address'),
+    principal_password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(128)
+      .regex(
+        PASSWORD_REGEX,
+        'Must contain uppercase, lowercase, number, and special character',
+      ),
+    confirm_password: z.string().min(1, 'Please confirm your password'),
+    terms: z
+      .boolean()
+      .refine((v) => v === true, 'You must accept the terms and conditions'),
+  })
+  .refine((d) => d.principal_password === d.confirm_password, {
+    message: 'Passwords do not match',
+    path: ['confirm_password'],
+  })
+
+// Combined flat schema — drives the single useForm instance for the wizard
+export const schoolOnboardingSchema = z
+  .object({
+    // Step 1 – School identity
+    school_name: z.string().min(2, 'School name must be at least 2 characters').max(255),
+    board: z.enum(_boardValues, {
+      errorMap: () => ({ message: 'Please select a curriculum board' }),
+    }),
+    other_board: z.string().max(100).optional(),
+    school_type: z.enum(_typeValues, {
+      errorMap: () => ({ message: 'Please select a school type' }),
+    }),
+    other_school_type: z.string().max(100).optional(),
+    established_year: z.string().optional(),
+    // Step 2 – Contact & address
+    email: z.string().email('Invalid school email address'),
+    mobile: z
+      .string()
+      .min(1, 'Mobile number is required')
+      .regex(/^\d{10}$/, 'Mobile must be exactly 10 digits'),
+    phone: z.string().max(20).optional(),
+    address_line_1: z.string().min(1, 'Street address is required').max(500),
+    address_line_2: z.string().max(500).optional(),
+    city: z.string().min(1, 'City is required').max(100),
+    state: z.string().min(1, 'Please select a state').max(100),
+    pin_code: z.string().regex(/^\d{6}$/, 'PIN code must be exactly 6 digits'),
+    // Step 3 – Academic
+    student_count: z
+      .string()
+      .min(1, 'Student count is required')
+      .refine((v) => !isNaN(parseInt(v, 10)) && parseInt(v, 10) >= 1, 'Must be at least 1 student')
+      .refine((v) => parseInt(v, 10) <= 200_000, 'Cannot exceed 200,000 students'),
+    medium_of_instruction: z.string().max(100).optional(),
+    other_medium_of_instruction: z.string().max(100).optional(),
+    classes_from: z.string().optional(),
+    classes_to: z.string().optional(),
+    udise_code: z.string().max(20).optional(),
+    // Step 5 – Principal account
+    principal_name: z.string().min(2, 'Principal name is required').max(255),
+    principal_email: z.string().email('Invalid principal email address'),
+    principal_password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .max(128)
+      .regex(
+        PASSWORD_REGEX,
+        'Must contain uppercase, lowercase, number, and special character',
+      ),
+    confirm_password: z.string().min(1, 'Please confirm your password'),
+    terms: z.boolean().refine((v) => v === true, 'You must accept the terms and conditions'),
+  })
+  .refine((d) => d.principal_password === d.confirm_password, {
+    message: 'Passwords do not match',
+    path: ['confirm_password'],
+  })
+  .refine(
+    (data) => {
+      const from = data.classes_from ? parseInt(data.classes_from, 10) : undefined
+      const to   = data.classes_to   ? parseInt(data.classes_to,   10) : undefined
+      if (from !== undefined && to !== undefined && !isNaN(from) && !isNaN(to)) {
+        return from <= to
+      }
+      return true
+    },
+    { message: 'Starting class must be ≤ ending class', path: ['classes_to'] },
+  )
+  .superRefine((data, ctx) => {
+    if (data.board === 'OTHER' && (!data.other_board || data.other_board.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please specify your curriculum board',
+        path: ['other_board'],
+      })
+    }
+    if (data.medium_of_instruction === 'Other' && (!data.other_medium_of_instruction || data.other_medium_of_instruction.trim() === '')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please specify your medium of instruction',
+        path: ['other_medium_of_instruction'],
+      })
+    }
+  })
+
+export type SchoolOnboardingFormData = z.infer<typeof schoolOnboardingSchema>
