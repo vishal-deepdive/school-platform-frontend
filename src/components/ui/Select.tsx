@@ -1,36 +1,88 @@
-import { forwardRef } from 'react'
+import React, { forwardRef, useState, useEffect, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import type { SelectOption } from '@/types/common'
+import { ChevronDown } from 'lucide-react'
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   error?: string
   options: SelectOption[]
   placeholder?: string
+  hint?: string
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, options, placeholder, className, id, ...props }, ref) => {
+  ({ label, error, options, placeholder, hint, className, id, ...props }, ref) => {
     const selectId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
+    const [isOpen, setIsOpen] = useState(false)
+    const [displayValue, setDisplayValue] = useState("")
+    const internalRef = useRef<HTMLSelectElement | null>(null)
+    const dropdownRef = useRef<HTMLDivElement | null>(null)
+
+    useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false)
+        }
+      }
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    const setRefs = useCallback(
+      (node: HTMLSelectElement) => {
+        internalRef.current = node
+        if (typeof ref === 'function') {
+          ref(node)
+        } else if (ref) {
+          (ref as React.MutableRefObject<HTMLSelectElement | null>).current = node
+        }
+      },
+      [ref]
+    )
+
+    // Sync display value when the internal select value changes (e.g. via react-hook-form reset)
+    useEffect(() => {
+      const updateDisplay = () => {
+        if (internalRef.current) {
+          const val = internalRef.current.value
+          const opt = options.find((o) => o.value === val)
+          setDisplayValue(opt ? opt.label : "")
+        }
+      }
+      updateDisplay()
+      if (internalRef.current) {
+        internalRef.current.addEventListener('change', updateDisplay)
+        return () => internalRef.current?.removeEventListener('change', updateDisplay)
+      }
+    }, [options])
+
+    const handleSelect = (val: string, label: string) => {
+      setDisplayValue(label)
+      setIsOpen(false)
+      if (internalRef.current) {
+        internalRef.current.value = val
+        const event = new Event('change', { bubbles: true })
+        internalRef.current.dispatchEvent(event)
+        if (props.onChange) {
+          props.onChange(event as any)
+        }
+      }
+    }
+
     return (
-      <div className="flex flex-col gap-1">
+      <div className="grid gap-2 w-full relative" ref={dropdownRef}>
         {label && (
-          <label htmlFor={selectId} className="text-sm font-medium text-gray-700">
+          <label htmlFor={selectId} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
             {label}
           </label>
         )}
+        
+        {/* Hidden native select for form integration */}
         <select
-          ref={ref}
           id={selectId}
-          className={cn(
-            'block w-full rounded-lg border px-3 py-2 text-sm text-gray-900 bg-white',
-            'focus:outline-none focus:ring-2 focus:ring-offset-0',
-            error
-              ? 'border-red-300 focus:border-red-400 focus:ring-red-200'
-              : 'border-gray-300 focus:border-indigo-400 focus:ring-indigo-200',
-            'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
-            className,
-          )}
+          className="hidden"
+          ref={setRefs}
           {...props}
         >
           {placeholder && (
@@ -44,7 +96,46 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             </option>
           ))}
         </select>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+
+        {/* Custom UI */}
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            'flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer',
+            'text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200',
+            'hover:border-primary/50 focus-visible:bg-accent focus-visible:outline-none',
+            isOpen && 'ring-2 ring-primary/20 border-primary',
+            error && 'border-destructive ring-0',
+            className,
+          )}
+        >
+          <span className={cn("truncate", !displayValue && "text-muted-foreground/70")}>
+            {displayValue || placeholder || "Select an option..."}
+          </span>
+          <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform duration-200", isOpen && "rotate-180")} />
+        </div>
+
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <div className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 py-1 max-h-60 overflow-y-auto scrollbar-thin">
+            {options.map((opt) => (
+              <div
+                key={opt.value}
+                className={cn(
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  internalRef.current?.value === opt.value && "bg-primary/10 text-primary font-medium"
+                )}
+                onClick={() => handleSelect(opt.value, opt.label)}
+              >
+                {opt.label}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {hint && !error && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
+        {error && <p className="text-xs text-destructive font-medium mt-0.5">{error}</p>}
       </div>
     )
   },
