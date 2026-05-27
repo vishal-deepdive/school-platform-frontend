@@ -24,6 +24,8 @@ import { SurveySearchPage } from '@/pages/survey/SurveySearchPage'
 import { SurveyDataPage } from '@/pages/survey/SurveyDataPage'
 import { AuthCallbackPage } from '@/pages/auth/AuthCallbackPage'
 import { GoogleCompleteProfilePage } from '@/pages/auth/GoogleCompleteProfilePage'
+import { SchoolOnboardingPage } from '@/pages/onboarding/SchoolOnboardingPage'
+import { ApplicationStatusPage } from '@/pages/onboarding/ApplicationStatusPage'
 
 export const router = createBrowserRouter([
   {
@@ -36,6 +38,9 @@ export const router = createBrowserRouter([
       { path: '/reset-password', element: <ResetPasswordPage /> },
       { path: '/auth/callback', element: <AuthCallbackPage /> },
       { path: '/complete-profile', element: <GoogleCompleteProfilePage /> },
+      // ── School onboarding (public, auth-layout) ──────────────────────────
+      { path: '/onboarding/apply',  element: <SchoolOnboardingPage /> },
+      { path: '/onboarding/status', element: <ApplicationStatusPage /> },
     ],
   },
   {
