@@ -11,9 +11,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ label, error, hint, className, id, ...props }, ref) => {
     const inputId = id ?? label?.toLowerCase().replace(/\s+/g, '-')
     return (
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         {label && (
-          <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
+          <label htmlFor={inputId} className="text-sm font-medium text-foreground">
             {label}
           </label>
         )}
@@ -21,18 +21,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            'block w-full rounded-lg border px-3 py-2 text-sm text-gray-900 placeholder-gray-400',
-            'focus:outline-none focus:ring-2 focus:ring-offset-0',
+            'flex w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground',
+            'transition-colors duration-200',
+            'focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-offset-background',
             error
-              ? 'border-red-300 focus:border-red-400 focus:ring-red-200'
-              : 'border-gray-300 focus:border-indigo-400 focus:ring-indigo-200',
-            'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500',
+              ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
+              : 'border-input focus:border-primary focus:ring-primary/20 hover:border-primary/50',
+            'disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground',
             className,
           )}
           {...props}
         />
-        {error && <p className="text-xs text-red-600">{error}</p>}
-        {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
+        {error && <p className="text-xs font-medium text-destructive mt-0.5">{error}</p>}
+        {hint && !error && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
       </div>
     )
   },

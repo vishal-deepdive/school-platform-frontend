@@ -48,7 +48,7 @@ export function FileUpload({
 
   return (
     <div className="flex flex-col gap-2">
-      {label && <span className="text-sm font-medium text-gray-700">{label}</span>}
+      {label && <span className="text-sm font-medium text-foreground">{label}</span>}
 
       <div
         onClick={() => inputRef.current?.click()}
@@ -56,19 +56,19 @@ export function FileUpload({
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files) }}
         className={cn(
-          'flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-colors',
-          dragOver ? 'border-indigo-400 bg-indigo-50' : 'border-gray-200 bg-gray-50 hover:border-gray-300 hover:bg-gray-100',
-          error && 'border-red-300 bg-red-50',
+          'flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-8 cursor-pointer transition-all duration-200',
+          dragOver ? 'border-primary bg-primary/5' : 'border-border/50 bg-accent/30 hover:border-border hover:bg-accent/50',
+          error && 'border-destructive/50 bg-destructive/5 hover:border-destructive/70',
         )}
       >
-        <Upload className="h-8 w-8 text-gray-400" />
+        <Upload className={cn("h-8 w-8 transition-colors", dragOver ? "text-primary" : "text-muted-foreground")} />
         <div className="text-center">
-          <p className="text-sm font-medium text-gray-700">
-            Drop files here or <span className="text-indigo-600">browse</span>
+          <p className="text-sm font-medium text-foreground">
+            Drop files here or <span className="text-primary hover:underline">browse</span>
           </p>
-          {accept && <p className="text-xs text-gray-400 mt-1">{accept.split(',').join(', ')}</p>}
+          {accept && <p className="text-xs text-muted-foreground mt-1">{accept.split(',').join(', ')}</p>}
           {maxSize && (
-            <p className="text-xs text-gray-400">Max size: {formatFileSize(maxSize)}</p>
+            <p className="text-xs text-muted-foreground">Max size: {formatFileSize(maxSize)}</p>
           )}
         </div>
       </div>
@@ -87,17 +87,17 @@ export function FileUpload({
           {files.map((f, i) => (
             <li
               key={i}
-              className="flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2"
+              className="flex items-center gap-3 rounded-lg border border-border/50 bg-background/50 backdrop-blur-sm px-3 py-2 transition-colors hover:bg-accent/30"
             >
-              <FileIcon className="h-4 w-4 flex-shrink-0 text-indigo-500" />
+              <FileIcon className="h-4 w-4 flex-shrink-0 text-primary" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-700 truncate">{f.name}</p>
-                <p className="text-xs text-gray-400">{formatFileSize(f.size)}</p>
+                <p className="text-sm text-foreground truncate font-medium">{f.name}</p>
+                <p className="text-xs text-muted-foreground">{formatFileSize(f.size)}</p>
               </div>
               <button
                 type="button"
                 onClick={() => remove(i)}
-                className="flex-shrink-0 rounded p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                className="flex-shrink-0 rounded p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -106,8 +106,8 @@ export function FileUpload({
         </ul>
       )}
 
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      {hint && !error && <p className="text-xs text-gray-500">{hint}</p>}
+      {error && <p className="text-xs font-medium text-destructive mt-0.5">{error}</p>}
+      {hint && !error && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
     </div>
   )
 }

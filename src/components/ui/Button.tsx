@@ -14,19 +14,19 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-indigo-600 text-white hover:bg-indigo-700 focus-visible:ring-indigo-500 disabled:bg-indigo-300',
+    'bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/90 hover:shadow-md hover:shadow-primary/25 focus-visible:ring-primary disabled:bg-primary/50',
   secondary:
-    'bg-gray-100 text-gray-700 hover:bg-gray-200 focus-visible:ring-gray-400 disabled:bg-gray-50 disabled:text-gray-400',
+    'bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-secondary disabled:bg-secondary/50 disabled:text-secondary-foreground/50',
   danger:
-    'bg-red-600 text-white hover:bg-red-700 focus-visible:ring-red-500 disabled:bg-red-300',
+    'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 focus-visible:ring-destructive disabled:bg-destructive/50',
   ghost:
-    'bg-transparent text-gray-600 hover:bg-gray-100 focus-visible:ring-gray-400',
+    'bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent',
   outline:
-    'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus-visible:ring-gray-400 disabled:opacity-50',
+    'border border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring disabled:opacity-50',
 }
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'px-3 py-1.5 text-sm gap-1.5',
+  sm: 'px-3 py-1.5 text-xs gap-1.5',
   md: 'px-4 py-2 text-sm gap-2',
   lg: 'px-5 py-2.5 text-base gap-2',
 }
@@ -37,9 +37,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       ref={ref}
       disabled={disabled || loading}
       className={cn(
-        'inline-flex items-center justify-center rounded-lg font-medium transition-colors',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-        'disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+        'active:scale-[0.98]',
+        'disabled:cursor-not-allowed disabled:active:scale-100',
         variantClasses[variant],
         sizeClasses[size],
         className,
