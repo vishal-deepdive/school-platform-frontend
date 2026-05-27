@@ -5,7 +5,7 @@ import { useState, useId, useEffect } from "react";
 import { Slot } from "@radix-ui/react-slot";
 import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ChevronDown } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -200,3 +200,143 @@ export const AuthPasswordInput = React.forwardRef<HTMLInputElement, PasswordInpu
   }
 );
 AuthPasswordInput.displayName = "AuthPasswordInput";
+
+export interface AuthSelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
+  label?: string
+  error?: string
+  hint?: string
+}
+
+export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
+  ({ label, error, hint, children, className, ...props }, ref) => {
+    const id = useId()
+    const [isOpen, setIsOpen] = useState(false)
+    const [displayValue, setDisplayValue] = useState("")
+    const internalRef = React.useRef<HTMLSelectElement | null>(null)
+    const dropdownRef = React.useRef<HTMLDivElement | null>(null)
+
+    React.useEffect(() => {
+      function handleClickOutside(event: MouseEvent) {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false)
+        }
+      }
+      document.addEventListener("mousedown", handleClickOutside)
+      return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    const setRefs = React.useCallback(
+      (node: HTMLSelectElement) => {
+        internalRef.current = node
+        if (typeof ref === 'function') {
+          ref(node)
+        } else if (ref) {
+          (ref as React.MutableRefObject<HTMLSelectElement | null>).current = node
+        }
+      },
+      [ref]
+    )
+
+    const options = React.Children.toArray(children)
+      .map((child) => {
+        if (React.isValidElement(child) && child.type === 'option') {
+          return { value: child.props.value as string, label: child.props.children as string }
+        }
+        return null
+      })
+      .filter(Boolean) as { value: string; label: string }[]
+
+    // Sync display value when the internal select value changes (e.g. via react-hook-form reset)
+    React.useEffect(() => {
+      const updateDisplay = () => {
+        if (internalRef.current) {
+          const val = internalRef.current.value
+          const opt = options.find((o) => o.value === val)
+          setDisplayValue(opt ? opt.label : "")
+        }
+      }
+      updateDisplay()
+      if (internalRef.current) {
+        internalRef.current.addEventListener('change', updateDisplay)
+        return () => internalRef.current?.removeEventListener('change', updateDisplay)
+      }
+    }, [options])
+
+    const handleSelect = (val: string, label: string) => {
+      setDisplayValue(label)
+      setIsOpen(false)
+      if (internalRef.current) {
+        internalRef.current.value = val
+        const event = new Event('change', { bubbles: true })
+        internalRef.current.dispatchEvent(event)
+        if (props.onChange) {
+          props.onChange(event as any)
+        }
+      }
+    }
+
+    return (
+      <div className="grid gap-2 w-full relative" ref={dropdownRef}>
+        {label && (
+          <label
+            htmlFor={id}
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            {label}
+          </label>
+        )}
+        
+        {/* Hidden native select for form integration */}
+        <select
+          id={id}
+          className="hidden"
+          ref={setRefs}
+          {...props}
+        >
+          {children}
+        </select>
+
+        {/* Custom UI - Fixed transparency bug by adding bg-background and proper text colors */}
+        <div
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            'flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer',
+            'text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200',
+            'hover:border-primary/50 focus-visible:bg-accent focus-visible:outline-none',
+            isOpen && 'ring-2 ring-primary/20 border-primary',
+            error && 'border-destructive ring-0',
+            className,
+          )}
+        >
+          <span className={cn("truncate", !displayValue && "text-muted-foreground/70")}>
+            {displayValue || "Select an option..."}
+          </span>
+          <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform duration-200", isOpen && "rotate-180")} />
+        </div>
+
+        {/* Dropdown Menu */}
+        {isOpen && (
+          <div className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 py-1 max-h-60 overflow-y-auto scrollbar-thin">
+            {options.map((opt) => (
+              <div
+                key={opt.value}
+                className={cn(
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors",
+                  "hover:bg-accent hover:text-accent-foreground",
+                  internalRef.current?.value === opt.value && "bg-primary/10 text-primary font-medium"
+                )}
+                onClick={() => handleSelect(opt.value, opt.label)}
+              >
+                {opt.label || "\u00A0"}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {hint && !error && <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>}
+        {error && <p className="text-xs text-destructive font-medium mt-0.5">{error}</p>}
+      </div>
+    )
+  }
+)
+AuthSelect.displayName = "AuthSelect"
