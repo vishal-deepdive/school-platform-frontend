@@ -3,6 +3,7 @@ import { Typewriter } from '@/components/ui/auth-fuse'
 import logoImg from '@/public/logo.png'
 import authImg from '@/public/auth.png'
 import registerImg from '@/public/register.png'
+import onboardingImg from '@/public/school_onboarding.png'
 
 const signInContent = {
     image: {
@@ -26,10 +27,23 @@ const signUpContent = {
     }
 };
 
+const onboardingContent = {
+    image: {
+        src: onboardingImg,
+        alt: "A dynamic and collaborative school environment"
+    },
+    quote: {
+        text: "Join DeepDive. The next-generation platform for school administration and collaborative learning.",
+        author: "DeepDive Team"
+    }
+};
+
 export function AuthLayout() {
   const location = useLocation()
   const isSignIn = location.pathname.includes('login') || location.pathname === '/'
-  const currentContent = isSignIn ? signInContent : signUpContent;
+  const isOnboarding = location.pathname.includes('onboarding')
+  
+  const currentContent = isOnboarding ? onboardingContent : (isSignIn ? signInContent : signUpContent);
 
   return (
     <div className="w-full h-screen md:grid md:grid-cols-2 overflow-hidden">
