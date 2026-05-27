@@ -44,8 +44,9 @@ apiClient.interceptors.response.use(
     if (!axios.isAxiosError(error)) return Promise.reject(error)
 
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+    const isAuthEndpoint = originalRequest.url?.match(/\/auth\/(login|register|verify-otp|forgot-password|reset-password|resend-otp|refresh)/)
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -97,8 +98,17 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
-        localStorage.removeItem('auth-storage')
-        window.location.href = '/login'
+        
+        const isAuthError = axios.isAxiosError(refreshError) && refreshError.response?.status && [401, 403].includes(refreshError.response.status)
+        const isNoToken = refreshError instanceof Error && refreshError.message === 'No refresh token'
+
+        if (isAuthError || isNoToken) {
+          localStorage.removeItem('auth-storage')
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login'
+          }
+        }
+        
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false
@@ -139,8 +149,9 @@ multipartClient.interceptors.response.use(
     if (!axios.isAxiosError(error)) return Promise.reject(error)
 
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+    const isAuthEndpoint = originalRequest.url?.match(/\/auth\/(login|register|verify-otp|forgot-password|reset-password|resend-otp|refresh)/)
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true
 
       try {
@@ -172,9 +183,17 @@ multipartClient.interceptors.response.use(
           originalRequest.headers.Authorization = `Bearer ${access_token}`
         }
         return multipartClient(originalRequest)
-      } catch {
-        localStorage.removeItem('auth-storage')
-        window.location.href = '/login'
+      } catch (refreshError) {
+        const isAuthError = axios.isAxiosError(refreshError) && refreshError.response?.status && [401, 403].includes(refreshError.response.status)
+        const isNoToken = refreshError instanceof Error && refreshError.message === 'No refresh token'
+
+        if (isAuthError || isNoToken) {
+          localStorage.removeItem('auth-storage')
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login'
+          }
+        }
+        
         return Promise.reject(error)
       }
     }
