@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils'
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'indigo'
+type BadgeVariant = 'default' | 'success' | 'warning' | 'danger' | 'info' | 'purple' | 'indigo' | 'primary'
 
 interface BadgeProps {
   children: React.ReactNode
@@ -9,20 +9,22 @@ interface BadgeProps {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-gray-100 text-gray-700',
-  success: 'bg-green-100 text-green-700',
-  warning: 'bg-amber-100 text-amber-700',
-  danger: 'bg-red-100 text-red-700',
-  info: 'bg-blue-100 text-blue-700',
-  purple: 'bg-purple-100 text-purple-700',
-  indigo: 'bg-indigo-100 text-indigo-700',
+  default: 'bg-secondary text-secondary-foreground border border-border/50',
+  primary: 'bg-primary/10 text-primary border border-primary/20',
+  success: 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20',
+  warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20',
+  danger: 'bg-destructive/10 text-destructive border border-destructive/20',
+  info: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20',
+  // Legacy aliases
+  purple: 'bg-primary/10 text-primary border border-primary/20',
+  indigo: 'bg-primary/10 text-primary border border-primary/20',
 }
 
 export function Badge({ children, variant = 'default', className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
+        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold tracking-wide transition-colors',
         variantClasses[variant],
         className,
       )}

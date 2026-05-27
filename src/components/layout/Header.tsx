@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/auth'
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
 import toast from 'react-hot-toast'
-import { Badge } from '@/components/ui/Badge'
+import { Badge, ThemeToggle } from '@/components/ui'
 
 interface HeaderProps {
   onMenuToggle: () => void
@@ -37,7 +37,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6 sticky top-0 z-40">
       <button
         onClick={onMenuToggle}
         className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors md:hidden"
@@ -58,29 +58,31 @@ export function Header({ onMenuToggle }: HeaderProps) {
           </div>
         )}
 
+        <ThemeToggle />
+
         <button
           onClick={() => setMenuOpen((p) => !p)}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-semibold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-sm">
             {user?.full_name?.charAt(0).toUpperCase() ?? user?.email?.charAt(0).toUpperCase() ?? 'U'}
           </div>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </button>
 
         {menuOpen && (
           <>
             <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-0 top-full mt-2 z-20 w-52 rounded-xl border border-gray-200 bg-white py-1 shadow-lg">
-              <div className="border-b border-gray-100 px-4 py-3">
-                <p className="text-sm font-medium text-gray-900 truncate">
+            <div className="absolute right-0 top-full mt-2 z-20 w-52 rounded-xl border border-border bg-background shadow-lg shadow-black/10">
+              <div className="border-b border-border/50 px-4 py-3">
+                <p className="text-sm font-medium text-foreground truncate">
                   {user?.full_name ?? 'User'}
                 </p>
-                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <button
                 onClick={() => { setMenuOpen(false); navigate('/profile') }}
-                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors"
               >
                 <User className="h-4 w-4" />
                 Profile
@@ -88,7 +90,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                className="flex w-full items-center gap-3 px-4 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <LogOut className="h-4 w-4" />
                 {loggingOut ? 'Logging out…' : 'Logout'}
