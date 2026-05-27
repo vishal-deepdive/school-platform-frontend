@@ -4,12 +4,14 @@ import { useAuthStore } from '@/store/auth'
 /**
  * Gate for all app routes.
  *
- * Two checks in order:
+ * Checks in order:
  *  1. Not authenticated → redirect to /login
- *  2. Authenticated but profile incomplete (no school_id and role is not admin)
- *     → redirect to /login with a toast-friendly explanation.
- *     This covers edge-cases where old Google-OAuth users exist in the DB
- *     with school_id = null due to the pre-fix flow.
+ *  2. Authenticated but profile incomplete (school_id missing, role is not admin)
+ *     → redirect to /complete-profile so the user can finish their Google OAuth
+ *       profile-completion flow without first being bounced to /login.
+ *
+ *  The /complete-profile page handles its own "no signup session" state and
+ *  offers a "Sign in with Google" button if sessionStorage is empty.
  */
 export function ProtectedRoute() {
   const { isAuthenticated, user } = useAuthStore()
@@ -22,20 +24,11 @@ export function ProtectedRoute() {
   // Platform admins are not tied to a school — they always pass through.
   const isAdmin = user?.role === 'admin'
 
-  // If a user somehow has no school_id (e.g. created by old Google OAuth code)
-  // and is not an admin, they can't meaningfully use the app.
-  // Redirect to login so they can re-authenticate with the corrected flow.
+  // A non-admin user with no school_id has an incomplete profile.
+  // Send them to /complete-profile. That page shows a Google sign-in prompt if
+  // the signup session is gone (e.g. after a page refresh or new tab).
   if (!isAdmin && user && !user.school_id) {
-    return (
-      <Navigate
-        to="/login"
-        state={{
-          from: location,
-          incompleteProfile: true,
-        }}
-        replace
-      />
-    )
+    return <Navigate to="/complete-profile" replace />
   }
 
   return <Outlet />
