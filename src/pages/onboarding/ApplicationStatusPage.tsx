@@ -161,7 +161,7 @@ function StatusCard({ data }: { data: OnboardingStatusResponse }) {
       {/* Contextual CTA */}
       {data.onboarding_status === 'pending_verification' && (
         <AuthButton variant="outline" asChild className="w-full">
-          <Link to="/verify-otp">
+          <Link to="/onboarding/verify" state={{ applicationId: data.application_id }}>
             <Mail className="h-4 w-4 mr-2" />
             Verify Email
           </Link>

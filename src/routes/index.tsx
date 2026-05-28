@@ -26,6 +26,7 @@ import { AuthCallbackPage } from '@/pages/auth/AuthCallbackPage'
 import { GoogleCompleteProfilePage } from '@/pages/auth/GoogleCompleteProfilePage'
 import { SchoolOnboardingPage } from '@/pages/onboarding/SchoolOnboardingPage'
 import { ApplicationStatusPage } from '@/pages/onboarding/ApplicationStatusPage'
+import { VerifyOnboardingOtpPage } from '@/pages/onboarding/VerifyOnboardingOtpPage'
 import { OnboardingApplicationsPage } from '@/pages/admin/OnboardingApplicationsPage'
 import { ApplicationDetailPage } from '@/pages/admin/ApplicationDetailPage'
 import { AdminManagementPage } from '@/pages/admin/AdminManagementPage'
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       // ── School onboarding (public, auth-layout) ──────────────────────────
       { path: '/onboarding/apply',  element: <SchoolOnboardingPage /> },
       { path: '/onboarding/status', element: <ApplicationStatusPage /> },
+      { path: '/onboarding/verify', element: <VerifyOnboardingOtpPage /> },
     ],
   },
   {

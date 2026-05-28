@@ -79,8 +79,8 @@ export function SuccessState({
         <AuthButton
           className="w-full"
           onClick={() =>
-            navigate('/verify-otp', {
-              state: { email: principalEmail, purpose: 'verify_email' },
+            navigate('/onboarding/verify', {
+              state: { applicationId: response.application_id, email: principalEmail },
             })
           }
         >
