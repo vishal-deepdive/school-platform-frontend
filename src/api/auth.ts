@@ -18,6 +18,9 @@ import type {
   GoogleCompleteRequest,
   GoogleCompleteResponse,
   UserResponse,
+  SchoolSearchItem,
+  ClassCodeItem,
+  StudentSearchItem,
 } from '@/types/auth'
 
 const BASE = '/api/v1/auth'
@@ -81,4 +84,13 @@ export const authApi = {
         validateStatus: (status) => status >= 200 && status < 300,
       })
       .then((r) => r.data),
+
+  searchSchools: (q: string) =>
+    apiClient.get<SchoolSearchItem[]>(`${BASE}/schools/search`, { params: { q } }).then((r) => r.data),
+
+  getSchoolClasses: (school_id: string) =>
+    apiClient.get<ClassCodeItem[]>(`${BASE}/schools/${school_id}/classes`).then((r) => r.data),
+
+  searchStudentsByRoll: (school_id: string, roll_number: string) =>
+    apiClient.get<StudentSearchItem[]>(`${BASE}/schools/${school_id}/students`, { params: { roll_number } }).then((r) => r.data),
 }

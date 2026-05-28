@@ -20,4 +20,27 @@ export const onboardingApi = {
     apiClient
       .get<OnboardingStatusResponse>(`${BASE}/${encodeURIComponent(applicationId)}/status`)
       .then((r) => r.data),
+
+  /**
+   * Verify the principal email OTP.
+   * Accepts FormData with { otp: string }.
+   */
+  verifyEmail: (applicationId: string, otp: string) => {
+    const fd = new FormData()
+    fd.append('otp', otp)
+    return apiClient
+      .post<OnboardingApplicationResponse>(
+        `${BASE}/${encodeURIComponent(applicationId)}/verify-email`,
+        fd,
+      )
+      .then((r) => r.data)
+  },
+
+  /**
+   * Resend the verification OTP email.
+   */
+  resendOtp: (applicationId: string) =>
+    apiClient
+      .post<{ message: string }>(`${BASE}/${encodeURIComponent(applicationId)}/resend-otp`)
+      .then((r) => r.data),
 }
