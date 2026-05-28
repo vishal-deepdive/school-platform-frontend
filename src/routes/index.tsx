@@ -26,6 +26,9 @@ import { AuthCallbackPage } from '@/pages/auth/AuthCallbackPage'
 import { GoogleCompleteProfilePage } from '@/pages/auth/GoogleCompleteProfilePage'
 import { SchoolOnboardingPage } from '@/pages/onboarding/SchoolOnboardingPage'
 import { ApplicationStatusPage } from '@/pages/onboarding/ApplicationStatusPage'
+import { OnboardingApplicationsPage } from '@/pages/admin/OnboardingApplicationsPage'
+import { ApplicationDetailPage } from '@/pages/admin/ApplicationDetailPage'
+import { AdminManagementPage } from '@/pages/admin/AdminManagementPage'
 
 export const router = createBrowserRouter([
   {
@@ -64,6 +67,10 @@ export const router = createBrowserRouter([
           { path: '/survey', element: <SurveyDashboardPage /> },
           { path: '/survey/search', element: <SurveySearchPage /> },
           { path: '/survey/data', element: <SurveyDataPage /> },
+          // ── Admin routes ─────────────────────────────────────────────────
+          { path: '/admin/onboarding', element: <OnboardingApplicationsPage /> },
+          { path: '/admin/onboarding/:applicationId', element: <ApplicationDetailPage /> },
+          { path: '/admin/admins', element: <AdminManagementPage /> },
         ],
       },
     ],

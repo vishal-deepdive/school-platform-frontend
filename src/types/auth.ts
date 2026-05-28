@@ -69,6 +69,7 @@ export interface GoogleCompleteRequest {
   invite_token?: string
   student_id?: string
   relation?: 'father' | 'mother' | 'guardian' | 'other'
+  roll_number?: string
 }
 
 export interface GoogleCompletePendingResponse {
@@ -107,6 +108,7 @@ export interface StudentRegisterRequest {
   full_name?: string
   school_id: string
   class_code: string
+  roll_number: string
 }
 
 export interface TeacherRegisterRequest {
@@ -146,4 +148,25 @@ export interface ResetPasswordRequest {
   email: string
   otp: string
   new_password: string
+}
+
+export interface SchoolSearchItem {
+  id: string
+  name: string
+  address: string | null
+  city: string | null
+  state: string | null
+  pin_code: string | null
+}
+
+export interface ClassCodeItem {
+  code: string
+  class_name: string
+  section: string | null
+}
+
+export interface StudentSearchItem {
+  id: string
+  full_name: string | null
+  roll_number: string | null
 }

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,6 +8,9 @@ import { parentRegisterSchema, type ParentRegisterFormData } from '@/lib/validat
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
 import { AuthInput, AuthPasswordInput, AuthButton } from '@/components/ui/auth-fuse'
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect'
+import { useDebounce } from '@/hooks/useDebounce'
+import type { SchoolSearchItem, StudentSearchItem } from '@/types/auth'
 import { Select } from '@/components/ui/Select'
 import type { NavProps } from './TeacherInviteRegisterForm'
 
@@ -23,12 +27,77 @@ export function ParentRegisterForm({
 }: NavProps & { defaultSchoolId: string }) {
   const {
     register,
+    watch,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<ParentRegisterFormData>({
     resolver: zodResolver(parentRegisterSchema),
     defaultValues: { school_id: defaultSchoolId, relation: 'guardian' },
   })
+
+  const selectedSchoolId = watch('school_id')
+  const selectedStudentId = watch('student_id')
+
+  const [schoolQuery, setSchoolQuery] = useState('')
+  const debouncedSchoolQuery = useDebounce(schoolQuery, 500)
+  const [schools, setSchools] = useState<SchoolSearchItem[]>([])
+  const [isSearchingSchools, setIsSearchingSchools] = useState(false)
+
+  const [studentQuery, setStudentQuery] = useState('')
+  const debouncedStudentQuery = useDebounce(studentQuery, 500)
+  const [students, setStudents] = useState<StudentSearchItem[]>([])
+  const [isSearchingStudents, setIsSearchingStudents] = useState(false)
+
+  useEffect(() => {
+    if (debouncedSchoolQuery.length === 1) {
+      setSchools([])
+      return
+    }
+    const fetchSchools = async () => {
+      setIsSearchingSchools(true)
+      try {
+        const results = await authApi.searchSchools(debouncedSchoolQuery)
+        setSchools(results)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsSearchingSchools(false)
+      }
+    }
+    fetchSchools()
+  }, [debouncedSchoolQuery])
+
+  useEffect(() => {
+    if (!selectedSchoolId || debouncedStudentQuery.length === 0) {
+      setStudents([])
+      return
+    }
+    const fetchStudents = async () => {
+      setIsSearchingStudents(true)
+      try {
+        const results = await authApi.searchStudentsByRoll(selectedSchoolId, debouncedStudentQuery)
+        setStudents(results)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsSearchingStudents(false)
+      }
+    }
+    fetchStudents()
+  }, [debouncedStudentQuery, selectedSchoolId])
+
+  const schoolOptions: SearchableSelectOption[] = schools.map(s => ({
+    label: s.name,
+    value: s.id,
+    sublabel: [s.address, s.city, s.state, s.pin_code].filter(Boolean).join(', ')
+  }))
+
+  const studentOptions: SearchableSelectOption[] = students.map(s => ({
+    label: s.full_name || 'Unnamed Student',
+    value: s.id,
+    sublabel: `Roll No: ${s.roll_number}`
+  }))
 
   const onSubmit = async (data: ParentRegisterFormData) => {
     try {
@@ -65,22 +134,33 @@ export function ParentRegisterForm({
         {...register('email')}
       />
 
-      <AuthInput
-        label="School ID"
-        type="text"
-        placeholder="School ID (UUID)"
+      <SearchableSelect
+        label="School"
+        placeholder="Search for your school..."
+        searchPlaceholder="Type school name or address..."
+        options={schoolOptions}
+        value={selectedSchoolId}
+        onChange={(val) => {
+          setValue('school_id', val, { shouldValidate: true })
+          setValue('student_id', '', { shouldValidate: true })
+        }}
+        onSearchChange={setSchoolQuery}
+        isLoading={isSearchingSchools}
         error={errors.school_id?.message}
-        hint="UUID of the school where the student is enrolled"
-        {...register('school_id')}
+        hint="Search by name, city, or address"
       />
 
-      <AuthInput
-        label="Student ID"
-        type="text"
-        placeholder="Student ID (UUID)"
+      <SearchableSelect
+        label="Student"
+        placeholder={selectedSchoolId ? "Search for student by roll number..." : "Select a school first..."}
+        searchPlaceholder="Type roll number..."
+        options={studentOptions}
+        value={selectedStudentId}
+        onChange={(val) => setValue('student_id', val, { shouldValidate: true })}
+        onSearchChange={setStudentQuery}
+        isLoading={isSearchingStudents}
         error={errors.student_id?.message}
-        hint="UUID of the student to link to this account"
-        {...register('student_id')}
+        hint="Search by your child's roll number"
       />
 
       <Select
