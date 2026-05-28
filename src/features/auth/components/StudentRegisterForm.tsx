@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -7,6 +8,9 @@ import { studentRegisterSchema, type StudentRegisterFormData } from '@/lib/valid
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
 import { AuthInput, AuthPasswordInput, AuthButton } from '@/components/ui/auth-fuse'
+import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect'
+import { useDebounce } from '@/hooks/useDebounce'
+import type { SchoolSearchItem, ClassCodeItem } from '@/types/auth'
 import { GoogleIcon } from './GoogleIcon'
 import type { NavProps } from './TeacherInviteRegisterForm'
 
@@ -17,12 +21,74 @@ export function StudentRegisterForm({
   const {
     register,
     watch,
+    setValue,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<StudentRegisterFormData>({
     resolver: zodResolver(studentRegisterSchema),
     defaultValues: { school_id: defaultSchoolId },
   })
+
+  const selectedSchoolId = watch('school_id')
+  const selectedClassCode = watch('class_code')
+
+  const [schoolQuery, setSchoolQuery] = useState('')
+  const debouncedSchoolQuery = useDebounce(schoolQuery, 500)
+  const [schools, setSchools] = useState<SchoolSearchItem[]>([])
+  const [isSearchingSchools, setIsSearchingSchools] = useState(false)
+
+  const [classes, setClasses] = useState<ClassCodeItem[]>([])
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false)
+
+  useEffect(() => {
+    if (debouncedSchoolQuery.length === 1) {
+      setSchools([])
+      return
+    }
+    const fetchSchools = async () => {
+      setIsSearchingSchools(true)
+      try {
+        const results = await authApi.searchSchools(debouncedSchoolQuery)
+        setSchools(results)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsSearchingSchools(false)
+      }
+    }
+    fetchSchools()
+  }, [debouncedSchoolQuery])
+
+  useEffect(() => {
+    if (!selectedSchoolId) {
+      setClasses([])
+      return
+    }
+    const fetchClasses = async () => {
+      setIsLoadingClasses(true)
+      try {
+        const results = await authApi.getSchoolClasses(selectedSchoolId)
+        setClasses(results)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setIsLoadingClasses(false)
+      }
+    }
+    fetchClasses()
+  }, [selectedSchoolId])
+
+  const schoolOptions: SearchableSelectOption[] = schools.map(s => ({
+    label: s.name,
+    value: s.id,
+    sublabel: [s.address, s.city, s.state, s.pin_code].filter(Boolean).join(', ')
+  }))
+
+  const classOptions: SearchableSelectOption[] = classes.map(c => ({
+    label: c.class_name,
+    value: c.code,
+    sublabel: c.section ? `Section ${c.section}` : undefined
+  }))
 
   const handleGoogleSignIn = async () => {
     try {
@@ -73,22 +139,40 @@ export function StudentRegisterForm({
         {...register('email')}
       />
 
-      <AuthInput
-        label="School ID"
-        type="text"
-        placeholder="School ID (UUID)"
+      <SearchableSelect
+        label="School"
+        placeholder="Search for your school..."
+        searchPlaceholder="Type school name or address..."
+        options={schoolOptions}
+        value={selectedSchoolId}
+        onChange={(val) => {
+          setValue('school_id', val, { shouldValidate: true })
+          setValue('class_code', '', { shouldValidate: true })
+        }}
+        onSearchChange={setSchoolQuery}
+        isLoading={isSearchingSchools}
         error={errors.school_id?.message}
-        hint="UUID of the school to join"
-        {...register('school_id')}
+        hint="Search by name, city, or address"
+      />
+
+      <SearchableSelect
+        label="Class"
+        placeholder={selectedSchoolId ? "Select your class..." : "Select a school first..."}
+        searchPlaceholder="Search classes..."
+        options={classOptions}
+        value={selectedClassCode}
+        onChange={(val) => setValue('class_code', val, { shouldValidate: true })}
+        isLoading={isLoadingClasses}
+        error={errors.class_code?.message}
+        hint="Provided by your class teacher"
       />
 
       <AuthInput
-        label="Class Code"
+        label="Roll Number"
         type="text"
-        placeholder="Class Code"
-        error={errors.class_code?.message}
-        hint="Provided by your class teacher (e.g. MATH7A-X3K)"
-        {...register('class_code')}
+        placeholder="Enter your roll number"
+        error={errors.roll_number?.message}
+        {...register('roll_number')}
       />
 
       <AuthPasswordInput

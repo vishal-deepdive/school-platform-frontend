@@ -1,8 +1,85 @@
-import { AuthInput, AuthSelect } from '@/components/ui/auth-fuse'
-import { INDIAN_STATES } from '@/lib/validators'
-import type { StepProps } from './types'
+import { useState, useEffect } from "react";
+import { AuthInput, AuthSelect } from "@/components/ui/auth-fuse";
+import { INDIAN_STATES } from "@/lib/validators";
+import type { StepPropsExtra } from "./types";
+import { Loader2 } from "lucide-react";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
-export function ContactStep({ register, errors }: StepProps) {
+const pincodeCache: Record<string, any[]> = {};
+
+export function ContactStep({
+  register,
+  errors,
+  watch,
+  setValue,
+}: StepPropsExtra) {
+  const pinCode = watch("pin_code");
+  const [postOffices, setPostOffices] = useState<any[]>([]);
+  const [loadingPincode, setLoadingPincode] = useState(false);
+  const [pincodeError, setPincodeError] = useState("");
+  const selectedArea = watch("area");
+
+  useEffect(() => {
+    if (!pinCode || pinCode.length !== 6) {
+      setPostOffices([]);
+      setPincodeError("");
+      // Only clear if pin code was invalidated and we had something selected
+      if (selectedArea) {
+        setValue("area", "", { shouldValidate: true });
+      }
+      return;
+    }
+
+    if (pincodeCache[pinCode]) {
+      setPostOffices(pincodeCache[pinCode]);
+      setPincodeError("");
+      return;
+    }
+
+    const fetchPincode = async () => {
+      setLoadingPincode(true);
+      setPincodeError("");
+      try {
+        const res = await fetch(
+          `https://api.postalpincode.in/pincode/${pinCode}`,
+        );
+        const data = await res.json();
+        if (data && data[0] && data[0].Status === "Success") {
+          const offices = data[0].PostOffice || [];
+          pincodeCache[pinCode] = offices;
+          setPostOffices(offices);
+        } else {
+          setPostOffices([]);
+          setPincodeError("Invalid PIN Code or no data found");
+          if (selectedArea) setValue("area", "", { shouldValidate: true });
+        }
+      } catch (err) {
+        setPostOffices([]);
+        setPincodeError("Failed to fetch PIN code details");
+      } finally {
+        setLoadingPincode(false);
+      }
+    };
+
+    const timer = setTimeout(fetchPincode, 500);
+    return () => clearTimeout(timer);
+  }, [pinCode]);
+
+  const handleSelectArea = (val: string) => {
+    setValue("area", val, { shouldValidate: true });
+    const po = postOffices.find((p) => p.Name === val);
+    if (po) {
+      setValue("state", po.State, { shouldValidate: true });
+      setValue("city", po.District || po.Block || "", { shouldValidate: true });
+    }
+  };
+
+  const areaOptions = postOffices.map((po) => ({
+    label: po.Name,
+    value: po.Name,
+    sublabel: `${po.District}, ${po.State}`,
+  }));
+
   return (
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
       <AuthInput
@@ -12,7 +89,7 @@ export function ContactStep({ register, errors }: StepProps) {
         placeholder="admin@yourschool.edu.in"
         error={errors.email?.message}
         hint="School's primary contact email address"
-        {...register('email')}
+        {...register("email")}
       />
 
       <div className="grid grid-cols-2 gap-3">
@@ -23,17 +100,19 @@ export function ContactStep({ register, errors }: StepProps) {
           placeholder="10-digit number"
           maxLength={10}
           error={errors.mobile?.message}
-          hint="Without country code"
-          {...register('mobile')}
+          // hint="Without country code"
+          {...register("mobile")}
         />
         <AuthInput
           label="Office Phone"
           type="tel"
           placeholder="Landline (optional)"
           error={errors.phone?.message}
-          {...register('phone')}
+          {...register("phone")}
         />
       </div>
+
+      <hr className="border-border/50 my-1" />
 
       <AuthInput
         label="Street Address *"
@@ -41,7 +120,7 @@ export function ContactStep({ register, errors }: StepProps) {
         placeholder="Building, Street, Area"
         autoComplete="street-address"
         error={errors.address_line_1?.message}
-        {...register('address_line_1')}
+        {...register("address_line_1")}
       />
 
       <AuthInput
@@ -49,18 +128,10 @@ export function ContactStep({ register, errors }: StepProps) {
         type="text"
         placeholder="Locality, Landmark (optional)"
         error={errors.address_line_2?.message}
-        {...register('address_line_2')}
+        {...register("address_line_2")}
       />
 
-      <div className="grid grid-cols-2 gap-3">
-        <AuthInput
-          label="City *"
-          type="text"
-          autoComplete="address-level2"
-          placeholder="City"
-          error={errors.city?.message}
-          {...register('city')}
-        />
+      <div className="grid gap-4">
         <AuthInput
           label="PIN Code *"
           type="text"
@@ -68,21 +139,70 @@ export function ContactStep({ register, errors }: StepProps) {
           placeholder="6-digit PIN"
           maxLength={6}
           autoComplete="postal-code"
-          error={errors.pin_code?.message}
-          {...register('pin_code')}
+          error={errors.pin_code?.message || pincodeError}
+          {...register("pin_code")}
         />
+
+        {loadingPincode && (
+          <div className="flex items-center text-sm text-muted-foreground gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" /> Fetching area
+            details...
+          </div>
+        )}
+
+        {postOffices.length > 0 ? (
+          <>
+            <SearchableSelect
+              label="Select Area / Post Office *"
+              options={areaOptions}
+              value={selectedArea}
+              onChange={handleSelectArea}
+              placeholder="Select area..."
+              searchPlaceholder="Search area by name..."
+              error={errors.area?.message as string | undefined}
+            />
+            {/* Register the area field secretly to handle validation with react-hook-form */}
+            <input type="hidden" {...register("area")} />
+          </>
+        ) : (
+          <input type="hidden" {...register("area")} />
+        )}
       </div>
 
-      <AuthSelect
-        label="State *"
-        error={errors.state?.message}
-        {...register('state')}
-      >
-        <option value="">— Select state / UT —</option>
-        {INDIAN_STATES.map((s) => (
-          <option key={s} value={s}>{s}</option>
-        ))}
-      </AuthSelect>
+      <div className="grid grid-cols-2 gap-3">
+        <AuthInput
+          label="City *"
+          type="text"
+          autoComplete="address-level2"
+          placeholder="City / District"
+          error={errors.city?.message}
+          readOnly={!!selectedArea}
+          className={
+            selectedArea
+              ? "bg-muted/50 text-muted-foreground pointer-events-none"
+              : ""
+          }
+          {...register("city")}
+        />
+        <AuthSelect
+          label="State *"
+          error={errors.state?.message}
+          className={
+            selectedArea
+              ? "bg-muted/50 text-muted-foreground pointer-events-none"
+              : ""
+          }
+          tabIndex={selectedArea ? -1 : 0}
+          {...register("state")}
+        >
+          <option value="">— Select state / UT —</option>
+          {INDIAN_STATES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </AuthSelect>
+      </div>
     </div>
-  )
+  );
 }

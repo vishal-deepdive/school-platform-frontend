@@ -40,6 +40,7 @@ export const studentRegisterSchema = z.object({
   full_name: z.string().max(255).optional(),
   school_id: z.string().uuid('Invalid school ID'),
   class_code: z.string().min(1, 'Class code is required').max(16),
+  roll_number: z.string().min(1, 'Roll number is required').max(50),
 }).refine((data) => data.password === data.confirm_password, {
   message: 'Passwords do not match',
   path: ['confirm_password'],
@@ -168,6 +169,7 @@ export const googleCompleteStudentSchema = z.object({
   full_name: z.string().max(255).optional(),
   school_id: z.string().uuid('Invalid school ID'),
   class_code: z.string().min(1, 'Class code is required').max(16),
+  roll_number: z.string().min(1, 'Roll number is required').max(50),
 })
 
 export const googleCompleteTeacherSchema = z.object({
@@ -261,7 +263,12 @@ export const onboardingStep1Schema = z.object({
     errorMap: () => ({ message: 'Please select a school type' }),
   }),
   other_school_type: z.string().max(100, 'School type is too long').optional(),
-  established_year: z.string().optional(),
+  established_year: z.string().optional().refine(val => {
+    if (!val) return true;
+    if (!/^\d{4}$/.test(val)) return false;
+    const year = parseInt(val, 10);
+    return year > 1850 && year < new Date().getFullYear();
+  }, { message: `Must be a 4-digit year between 1851 and ${new Date().getFullYear() - 1}` }),
 }).superRefine((data, ctx) => {
   if (data.board === 'OTHER' && (!data.other_board || data.other_board.trim() === '')) {
     ctx.addIssue({
@@ -290,6 +297,7 @@ export const onboardingStep2Schema = z.object({
     .string()
     .min(1, 'PIN code is required')
     .regex(/^\d{6}$/, 'PIN code must be exactly 6 digits'),
+  area: z.string({ required_error: 'Please select an area / post office' }).min(1, 'Please select an area / post office'),
 })
 
 export const onboardingStep3Schema = z
@@ -370,7 +378,12 @@ export const schoolOnboardingSchema = z
       errorMap: () => ({ message: 'Please select a school type' }),
     }),
     other_school_type: z.string().max(100).optional(),
-    established_year: z.string().optional(),
+    established_year: z.string().optional().refine(val => {
+      if (!val) return true;
+      if (!/^\d{4}$/.test(val)) return false;
+      const year = parseInt(val, 10);
+      return year > 1850 && year < new Date().getFullYear();
+    }, { message: `Must be a 4-digit year between 1851 and ${new Date().getFullYear() - 1}` }),
     // Step 2 – Contact & address
     email: z.string().email('Invalid school email address'),
     mobile: z
@@ -383,6 +396,7 @@ export const schoolOnboardingSchema = z
     city: z.string().min(1, 'City is required').max(100),
     state: z.string().min(1, 'Please select a state').max(100),
     pin_code: z.string().regex(/^\d{6}$/, 'PIN code must be exactly 6 digits'),
+    area: z.string({ required_error: 'Please select an area / post office' }).min(1, 'Please select an area / post office'),
     // Step 3 – Academic
     student_count: z
       .string()
