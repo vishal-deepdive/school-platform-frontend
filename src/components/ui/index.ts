@@ -10,3 +10,5 @@ export { Table } from './Table'
 export { Tabs } from './Tabs'
 export { FileUpload } from './FileUpload'
 export { ThemeToggle } from './ThemeToggle'
+
+export { SearchableSelect } from './SearchableSelect'
