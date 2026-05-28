@@ -22,7 +22,11 @@ import {
   Search,
   Database,
   GraduationCap,
+  Shield,
+  ClipboardList,
+  UserCog,
 } from 'lucide-react'
+import { useAuthStore } from '@/store/auth'
 
 interface NavItem {
   label: string
@@ -31,6 +35,26 @@ interface NavItem {
   children?: NavItem[]
   section?: string
 }
+
+const adminNavItems: NavItem[] = [
+  {
+    label: 'Platform Admin',
+    icon: <Shield className="h-4 w-4" />,
+    section: 'ADMIN',
+    children: [
+      {
+        label: 'School Applications',
+        href: '/admin/onboarding',
+        icon: <ClipboardList className="h-4 w-4" />,
+      },
+      {
+        label: 'Manage Admins',
+        href: '/admin/admins',
+        icon: <UserCog className="h-4 w-4" />,
+      },
+    ],
+  },
+]
 
 const navItems: NavItem[] = [
   {
@@ -150,6 +174,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobile, onClose }: SidebarProps) {
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
+
   return (
     <aside
       className={cn(
@@ -176,6 +203,19 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        {/* Admin-only section */}
+        {isAdmin &&
+          adminNavItems.map((item, i) => (
+            <div key={`admin-${i}`}>
+              {item.section && (
+                <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  {item.section}
+                </p>
+              )}
+              <SidebarItem item={item} />
+            </div>
+          ))}
+        {/* Feature nav */}
         {navItems.map((item, i) => (
           <div key={i}>
             {item.section && (
