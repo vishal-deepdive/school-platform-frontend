@@ -267,8 +267,8 @@ export const onboardingStep1Schema = z.object({
     if (!val) return true;
     if (!/^\d{4}$/.test(val)) return false;
     const year = parseInt(val, 10);
-    return year > 1850 && year < new Date().getFullYear();
-  }, { message: `Must be a 4-digit year between 1851 and ${new Date().getFullYear() - 1}` }),
+    return year >= 1850 && year <= new Date().getFullYear();
+  }, { message: `Must be a 4-digit year between 1850 and ${new Date().getFullYear()}` }),
 }).superRefine((data, ctx) => {
   if (data.board === 'OTHER' && (!data.other_board || data.other_board.trim() === '')) {
     ctx.addIssue({
@@ -382,8 +382,8 @@ export const schoolOnboardingSchema = z
       if (!val) return true;
       if (!/^\d{4}$/.test(val)) return false;
       const year = parseInt(val, 10);
-      return year > 1850 && year < new Date().getFullYear();
-    }, { message: `Must be a 4-digit year between 1851 and ${new Date().getFullYear() - 1}` }),
+      return year >= 1850 && year <= new Date().getFullYear();
+    }, { message: `Must be a 4-digit year between 1850 and ${new Date().getFullYear()}` }),
     // Step 2 – Contact & address
     email: z.string().email('Invalid school email address'),
     mobile: z

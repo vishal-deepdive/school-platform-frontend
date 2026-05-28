@@ -55,14 +55,16 @@ export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
 
       <AuthInput
         label="Year Established"
-        type="number"
+        type="text"
         inputMode="numeric"
-        min={1800}
-        max={new Date().getFullYear()}
+        maxLength={4}
         placeholder={`e.g. 1995`}
         error={errors.established_year?.message}
         hint="Optional — the year your school was founded"
         {...register("established_year")}
+        onInput={(e) => {
+          e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '');
+        }}
       />
     </div>
   );
