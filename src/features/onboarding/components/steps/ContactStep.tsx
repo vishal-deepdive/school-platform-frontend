@@ -4,6 +4,7 @@ import { INDIAN_STATES } from "@/lib/validators";
 import type { StepPropsExtra } from "./types";
 import { Loader2 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { onboardingApi } from "@/api/onboarding";
 
 const pincodeCache: Record<string, any[]> = {};
 
@@ -40,10 +41,7 @@ export function ContactStep({
       setLoadingPincode(true);
       setPincodeError("");
       try {
-        const res = await fetch(
-          `https://api.postalpincode.in/pincode/${pinCode}`,
-        );
-        const data = await res.json();
+        const data = await onboardingApi.getPincode(pinCode);
         if (data && data[0] && data[0].Status === "Success") {
           const offices = data[0].PostOffice || [];
           pincodeCache[pinCode] = offices;
