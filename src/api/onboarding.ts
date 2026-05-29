@@ -43,4 +43,12 @@ export const onboardingApi = {
     apiClient
       .post<{ message: string }>(`${BASE}/${encodeURIComponent(applicationId)}/resend-otp`)
       .then((r) => r.data),
+
+  /**
+   * Fetch pincode details via backend proxy
+   */
+  getPincode: (pinCode: string) =>
+    apiClient
+      .get<any>(`${BASE}/pincode/${pinCode}`)
+      .then((r) => r.data),
 }
