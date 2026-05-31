@@ -30,10 +30,10 @@ export const adminApi = {
 
   // ── Onboarding application review ─────────────────────────────────────────
 
-  listApplications: (status?: string, limit = 50, offset = 0) =>
+  listApplications: (status?: string, search?: string, limit = 50, offset = 0) =>
     apiClient
       .get<OnboardingApplicationSummary[]>(`${ADMIN_BASE}/onboarding/applications`, {
-        params: { ...(status ? { status } : {}), limit, offset },
+        params: { ...(status ? { status } : {}), ...(search ? { search } : {}), limit, offset },
       })
       .then((r) => r.data),
 

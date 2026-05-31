@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Mail, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -7,6 +7,7 @@ import { forgotPasswordSchema, type ForgotPasswordFormData } from '@/lib/validat
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
 import { AuthInput, AuthButton } from '@/components/ui/auth-fuse'
+import { useOtpCooldown } from '../hooks/useOtpCooldown'
 
 export function ForgotPasswordForm() {
   const navigate = useNavigate()
@@ -14,13 +15,18 @@ export function ForgotPasswordForm() {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordFormData>({ resolver: zodResolver(forgotPasswordSchema) })
+
+  const watchEmail = useWatch({ control, name: 'email', defaultValue: '' })
+  const { isCoolingDown, timeLeft, startCooldown } = useOtpCooldown(watchEmail)
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     try {
       await authApi.forgotPassword(data)
       toast.success('OTP sent to your email!')
+      startCooldown()
       navigate('/verify-otp', { state: { email: data.email, purpose: 'reset_password' } })
     } catch (err) {
       toast.error(getErrorMessage(err))
@@ -40,9 +46,13 @@ export function ForgotPasswordForm() {
       </div>
 
       <div className="pt-2">
-        <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
-          Send reset OTP
+        <AuthButton type="submit" disabled={isSubmitting || isCoolingDown} className="w-full mt-2">
+          {isSubmitting ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Mail className="h-4 w-4 mr-2" />
+          )}
+          {isCoolingDown ? `Resend available in ${timeLeft}s` : 'Send reset OTP'}
         </AuthButton>
       </div>
 
