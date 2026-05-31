@@ -2,12 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 
 const COOLDOWN_SECONDS = 90;
 
-export function useOtpCooldown(email: string) {
+export function useOtpCooldown(email: string, enableTimer: boolean = true) {
   const [timeLeft, setTimeLeft] = useState(0);
   const storageKey = `otp_cooldown_${email.toLowerCase()}`;
 
   useEffect(() => {
-    if (!email) return;
+    if (!email || !enableTimer) return;
     const lastSent = localStorage.getItem(storageKey);
     if (lastSent) {
       const elapsed = Math.floor((Date.now() - parseInt(lastSent, 10)) / 1000);
@@ -17,10 +17,10 @@ export function useOtpCooldown(email: string) {
         localStorage.removeItem(storageKey);
       }
     }
-  }, [email, storageKey]);
+  }, [email, storageKey, enableTimer]);
 
   useEffect(() => {
-    if (timeLeft <= 0) return;
+    if (timeLeft <= 0 || !enableTimer) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
@@ -33,13 +33,15 @@ export function useOtpCooldown(email: string) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, enableTimer]);
 
   const startCooldown = useCallback(() => {
     if (!email) return;
     localStorage.setItem(storageKey, Date.now().toString());
-    setTimeLeft(COOLDOWN_SECONDS);
-  }, [email, storageKey]);
+    if (enableTimer) {
+      setTimeLeft(COOLDOWN_SECONDS);
+    }
+  }, [email, storageKey, enableTimer]);
 
   return { timeLeft, startCooldown, isCoolingDown: timeLeft > 0 };
 }

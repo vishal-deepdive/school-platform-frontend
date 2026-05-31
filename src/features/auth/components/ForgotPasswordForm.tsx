@@ -20,7 +20,7 @@ export function ForgotPasswordForm() {
   } = useForm<ForgotPasswordFormData>({ resolver: zodResolver(forgotPasswordSchema) })
 
   const watchEmail = useWatch({ control, name: 'email', defaultValue: '' })
-  const { isCoolingDown, timeLeft, startCooldown } = useOtpCooldown(watchEmail)
+  const { startCooldown } = useOtpCooldown(watchEmail, false)
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     try {
@@ -46,13 +46,13 @@ export function ForgotPasswordForm() {
       </div>
 
       <div className="pt-2">
-        <AuthButton type="submit" disabled={isSubmitting || isCoolingDown} className="w-full mt-2">
+        <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
           {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
           ) : (
             <Mail className="h-4 w-4 mr-2" />
           )}
-          {isCoolingDown ? `Resend available in ${timeLeft}s` : 'Send reset OTP'}
+          Send reset OTP
         </AuthButton>
       </div>
 

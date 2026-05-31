@@ -28,7 +28,7 @@ export function TeacherInviteRegisterForm({
   })
 
   const watchEmail = useWatch({ control, name: 'email', defaultValue: '' })
-  const { isCoolingDown, timeLeft, startCooldown } = useOtpCooldown(watchEmail)
+  const { startCooldown } = useOtpCooldown(watchEmail, false)
 
   const handleGoogleSignIn = async () => {
     try {
@@ -111,13 +111,13 @@ export function TeacherInviteRegisterForm({
         </label>
       </div>
 
-      <AuthButton type="submit" disabled={isSubmitting || isCoolingDown} className="w-full mt-2">
+      <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
         {isSubmitting ? (
           <Loader2 className="h-4 w-4 animate-spin mr-2" />
         ) : (
           <UserPlus className="h-4 w-4 mr-2" />
         )}
-        {isCoolingDown ? `Wait ${timeLeft}s to register again` : 'Create Teacher Account'}
+        Create Teacher Account
       </AuthButton>
 
       <div className="relative my-1">
