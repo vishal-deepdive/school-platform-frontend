@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ShieldCheck, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -8,6 +8,7 @@ import { verifyOtpSchema, type VerifyOtpFormData } from '@/lib/validators'
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
 import { AuthInput, AuthButton } from '@/components/ui/auth-fuse'
+import { useOtpCooldown } from '../hooks/useOtpCooldown'
 
 export interface VerifyOtpFormProps {
   initialEmail?: string
@@ -23,6 +24,7 @@ export function VerifyOtpForm({ initialEmail = '', initialPurpose = 'verify_emai
     handleSubmit,
     setValue,
     getValues,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<VerifyOtpFormData>({
     resolver: zodResolver(verifyOtpSchema),
@@ -31,6 +33,9 @@ export function VerifyOtpForm({ initialEmail = '', initialPurpose = 'verify_emai
       purpose: initialPurpose,
     },
   })
+
+  const watchEmail = useWatch({ control, name: 'email', defaultValue: initialEmail })
+  const { isCoolingDown, timeLeft, startCooldown } = useOtpCooldown(watchEmail)
 
   useEffect(() => {
     if (!calledOnce.current && initialEmail) {
@@ -70,6 +75,7 @@ export function VerifyOtpForm({ initialEmail = '', initialPurpose = 'verify_emai
       setIsResending(true)
       await authApi.resendOtp({ email })
       toast.success('A new OTP has been sent to your email.')
+      startCooldown()
     } catch (err) {
       toast.error(getErrorMessage(err))
     } finally {
@@ -116,10 +122,10 @@ export function VerifyOtpForm({ initialEmail = '', initialPurpose = 'verify_emai
           <button
             type="button"
             onClick={onResend}
-            disabled={isResending || isSubmitting}
+            disabled={isResending || isSubmitting || isCoolingDown}
             className="text-sm font-semibold text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
           >
-            {isResending ? 'Resending...' : "Didn't receive a code? Resend"}
+            {isResending ? 'Resending...' : isCoolingDown ? `Resend in ${timeLeft}s` : "Didn't receive a code? Resend"}
           </button>
         </div>
       )}
@@ -132,3 +138,4 @@ export function VerifyOtpForm({ initialEmail = '', initialPurpose = 'verify_emai
     </form>
   )
 }
+

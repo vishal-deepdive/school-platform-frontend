@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { UserPlus, Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -13,6 +13,7 @@ import { useDebounce } from '@/hooks/useDebounce'
 import type { SchoolSearchItem, ClassCodeItem } from '@/types/auth'
 import { GoogleIcon } from './GoogleIcon'
 import type { NavProps } from './TeacherInviteRegisterForm'
+import { useOtpCooldown } from '../hooks/useOtpCooldown'
 
 export function StudentRegisterForm({
   defaultSchoolId,
@@ -23,11 +24,15 @@ export function StudentRegisterForm({
     watch,
     setValue,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<StudentRegisterFormData>({
     resolver: zodResolver(studentRegisterSchema),
     defaultValues: { school_id: defaultSchoolId },
   })
+
+  const watchEmail = useWatch({ control, name: 'email', defaultValue: '' })
+  const { isCoolingDown, timeLeft, startCooldown } = useOtpCooldown(watchEmail)
 
   const selectedSchoolId = watch('school_id')
   const selectedClassCode = watch('class_code')
@@ -109,6 +114,7 @@ export function StudentRegisterForm({
       const { confirm_password: _, ...payload } = data
       await authApi.registerStudent(payload)
       toast.success('Student account created! Please verify your email.')
+      startCooldown()
       navigate('/verify-otp', { state: { email: data.email, purpose: 'verify_email' } })
     } catch (err) {
       toast.error(getErrorMessage(err))
@@ -209,13 +215,13 @@ export function StudentRegisterForm({
         </label>
       </div>
 
-      <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
+      <AuthButton type="submit" disabled={isSubmitting || isCoolingDown} className="w-full mt-2">
         {isSubmitting ? (
           <Loader2 className="h-4 w-4 animate-spin mr-2" />
         ) : (
           <UserPlus className="h-4 w-4 mr-2" />
         )}
-        Create Student Account
+        {isCoolingDown ? `Wait ${timeLeft}s to register again` : 'Create Student Account'}
       </AuthButton>
 
       <div className="relative my-1">
