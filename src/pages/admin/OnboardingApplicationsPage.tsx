@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { adminApi } from '@/api/admin'
 import type { OnboardingStatus } from '@/types/admin'
+import { useDebounce } from '@/hooks/useDebounce'
 
 const STATUS_LABELS: Record<OnboardingStatus, string> = {
   pending_verification: 'Pending Verification',
@@ -12,10 +13,10 @@ const STATUS_LABELS: Record<OnboardingStatus, string> = {
 }
 
 const STATUS_COLORS: Record<OnboardingStatus, string> = {
-  pending_verification: 'bg-yellow-100 text-yellow-800',
-  email_verified: 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
+  pending_verification: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  email_verified: 'bg-blue-100 text-blue-800 border-blue-200',
+  approved: 'bg-green-100 text-green-800 border-green-200',
+  rejected: 'bg-red-100 text-red-800 border-red-200',
 }
 
 const FILTER_OPTIONS = [
@@ -28,20 +29,52 @@ const FILTER_OPTIONS = [
 
 export function OnboardingApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>('email_verified')
+  const [searchTerm, setSearchTerm] = useState('')
+  const debouncedSearch = useDebounce(searchTerm, 500)
+  const [page, setPage] = useState(1)
+  const limit = 50
 
-  const { data: applications, isLoading, error } = useQuery({
-    queryKey: ['onboarding-applications', statusFilter],
-    queryFn: () => adminApi.listApplications(statusFilter || undefined),
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, debouncedSearch])
+
+  const { data: applications, isLoading, error, isPlaceholderData } = useQuery({
+    queryKey: ['onboarding-applications', statusFilter, debouncedSearch, page],
+    queryFn: () =>
+      adminApi.listApplications(
+        statusFilter || undefined,
+        debouncedSearch || undefined,
+        limit,
+        (page - 1) * limit
+      ),
+    placeholderData: (prev) => prev,
   })
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">School Applications</h1>
           <p className="mt-1 text-sm text-slate-500">
             Review and approve school onboarding applications
           </p>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="relative w-full sm:w-72">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            className="block w-full pl-10 pr-3 py-2 border border-slate-300 rounded-md leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition duration-150 ease-in-out"
+            placeholder="Search by school or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
       </div>
 
@@ -51,10 +84,10 @@ export function OnboardingApplicationsPage() {
           <button
             key={opt.value}
             onClick={() => setStatusFilter(opt.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               statusFilter === opt.value
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
+                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
             }`}
           >
             {opt.label}
@@ -63,54 +96,63 @@ export function OnboardingApplicationsPage() {
       </div>
 
       {/* Content */}
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        </div>
-      )}
-
       {error && (
         <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
           Failed to load applications. Please try again.
         </div>
       )}
 
-      {!isLoading && applications && applications.length === 0 && (
-        <div className="rounded-lg border border-dashed border-slate-200 p-12 text-center">
-          <p className="text-slate-500">No applications found for this filter.</p>
-        </div>
-      )}
-
-      {!isLoading && applications && applications.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  School
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Principal
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Location
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Applied At
-                </th>
-                <th className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {applications.map((app) => (
-                <tr key={app.application_id} className="hover:bg-slate-50 transition-colors">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-200">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                School
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Principal
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Location
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Applied At
+              </th>
+              <th className="relative px-6 py-3">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {isLoading ? (
+              // Skeleton Loader
+              Array.from({ length: 5 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-3/4"></div></td>
                   <td className="px-6 py-4">
-                    <p className="font-medium text-slate-900">{app.school_name}</p>
+                    <div className="h-4 bg-slate-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-3 bg-slate-100 rounded w-2/3"></div>
+                  </td>
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-1/2"></div></td>
+                  <td className="px-6 py-4"><div className="h-6 bg-slate-200 rounded-full w-24"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-24"></div></td>
+                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-12 ml-auto"></div></td>
+                </tr>
+              ))
+            ) : applications?.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 border-dashed">
+                  No applications found for this filter.
+                </td>
+              </tr>
+            ) : (
+              applications?.map((app) => (
+                <tr key={app.application_id} className="hover:bg-slate-50/80 transition-all duration-200 group">
+                  <td className="px-6 py-4">
+                    <p className="font-medium text-slate-900 group-hover:text-indigo-600 transition-colors">{app.school_name}</p>
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-sm text-slate-900">{app.principal_name}</p>
@@ -121,7 +163,7 @@ export function OnboardingApplicationsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[app.onboarding_status]}`}
+                      className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium border ${STATUS_COLORS[app.onboarding_status]}`}
                     >
                       {STATUS_LABELS[app.onboarding_status]}
                     </span>
@@ -138,17 +180,42 @@ export function OnboardingApplicationsPage() {
                   <td className="px-6 py-4 text-right">
                     <Link
                       to={`/admin/onboarding/${app.application_id}`}
-                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                      className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors opacity-80 group-hover:opacity-100"
                     >
-                      Review →
+                      Review &rarr;
                     </Link>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              ))
+            )}
+          </tbody>
+        </table>
+        
+        {/* Pagination Controls */}
+        {!isLoading && applications && (applications.length > 0 || page > 1) && (
+          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+            <span className="text-sm text-slate-500">
+              Showing page {page}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={applications.length < limit || isPlaceholderData}
+                className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
