@@ -1,3 +1,5 @@
+import type { User } from '@/types/auth'
+
 export interface DecodedToken {
   sub: string
   email: string
@@ -25,5 +27,23 @@ export function decodeJwt(token: string): DecodedToken | null {
   } catch (error) {
     console.error('Failed to decode JWT token', error)
     return null
+  }
+}
+
+/** Build a User object from a decoded JWT. Applies safe fallbacks when decoding failed. */
+export function buildUserFromJwt(
+  decoded: DecodedToken | null,
+  fallbackEmail: string,
+  fullName: string | null = null,
+): User {
+  return {
+    id:                decoded?.sub ?? '',
+    email:             decoded?.email ?? fallbackEmail,
+    full_name:         fullName,
+    role:              decoded?.role ?? 'viewer',
+    school_id:         decoded?.school_id ?? null,
+    is_active:         true,
+    is_email_verified: true,
+    avatar_url:        decoded?.avatar_url ?? null,
   }
 }

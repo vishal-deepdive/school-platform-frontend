@@ -15,7 +15,6 @@ import { attendanceApi } from '@/api/attendance'
 import { surveyApi } from '@/api/survey'
 import { Card, StatCard } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 
 const quickLinks = [
   {
@@ -154,13 +153,16 @@ export function DashboardPage() {
         <Card padding="md">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">Enrollment by School</h2>
-            <Button variant="ghost" size="sm" icon={<ArrowRight className="h-4 w-4" />}>
-              <Link to="/attendance/stats">View all</Link>
-            </Button>
+            <Link
+              to="/attendance/stats"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+            >
+              View all <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
           <div className="divide-y divide-gray-100">
             {stats.by_school.slice(0, 5).map((school, i) => (
-              <div key={i} className="flex items-center justify-between py-3">
+              <div key={String((school as Record<string, unknown>).school_name ?? i)} className="flex items-center justify-between py-3">
                 <p className="text-sm text-gray-700">
                   {String((school as Record<string, unknown>).school_name ?? 'Unknown')}
                 </p>
