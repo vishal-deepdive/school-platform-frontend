@@ -32,6 +32,9 @@ export interface OtpVerifiedResponse {
   verified: boolean
 }
 
+export type VerifyOtpResponse = OtpVerifiedResponse | TokenResponse | GoogleCompletePendingResponse
+
+
 export interface GoogleAuthUrlResponse {
   auth_url: string
 }

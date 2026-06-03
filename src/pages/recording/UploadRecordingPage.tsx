@@ -4,7 +4,7 @@ import { Mic2, CheckCircle2, XCircle, Clock, Loader2, FileText } from 'lucide-re
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
 import { recordingApi } from '@/api/recording'
-import { getErrorMessage } from '@/lib/utils'
+import { getErrorMessage, downloadFile } from '@/lib/utils'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
 import { Button } from '@/components/ui/Button'
@@ -182,15 +182,7 @@ export function UploadRecordingPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                const blob = new Blob([markdown], { type: 'text/markdown' })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement('a')
-                a.href = url
-                a.download = `study-materials-${jobId}.md`
-                a.click()
-                URL.revokeObjectURL(url)
-              }}
+              onClick={() => downloadFile(markdown, `study-materials-${jobId}.md`)}
             >
               Download .md
             </Button>

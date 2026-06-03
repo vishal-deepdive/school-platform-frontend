@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Activity, RefreshCw } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { recordingApi } from '@/api/recording'
+import { usePagination } from '@/hooks/usePagination'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -12,20 +12,20 @@ import { Alert } from '@/components/ui/Alert'
 const PAGE_SIZE = 20
 
 export function RecordingAuditPage() {
-  const [offset, setOffset] = useState(0)
-
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['recording-audit', offset],
-    queryFn: () => recordingApi.listAuditLogs({ limit: PAGE_SIZE, offset }),
+    queryKey: ['recording-audit'],
+    queryFn: () => recordingApi.listAuditLogs({ limit: 999, offset: 0 }),
     staleTime: 30_000,
   })
 
-  if (isLoading) return <PageSpinner />
-  if (isError) return <Alert variant="error">Failed to load audit logs.</Alert>
-
   const total = data?.total ?? 0
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1
+  const { offset, currentPage, totalPages, hasNext, hasPrev, goNext, goPrev } =
+    usePagination(PAGE_SIZE, total)
+
+  const pagedLogs = data?.logs.slice(offset, offset + PAGE_SIZE) ?? []
+
+  if (isLoading) return <PageSpinner />
+  if (isError)   return <Alert variant="error">Failed to load audit logs.</Alert>
 
   return (
     <div className="space-y-6">
@@ -47,10 +47,10 @@ export function RecordingAuditPage() {
 
       <Card padding="none">
         <div className="divide-y divide-gray-100">
-          {data?.logs.length === 0 && (
+          {pagedLogs.length === 0 && (
             <p className="p-6 text-sm text-gray-400 text-center">No audit logs yet.</p>
           )}
-          {data?.logs.map((log) => (
+          {pagedLogs.map((log) => (
             <div key={log.id} className="flex items-start gap-4 px-6 py-4 hover:bg-gray-50">
               <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-indigo-100">
                 <Activity className="h-4 w-4 text-indigo-600" />
@@ -79,21 +79,13 @@ export function RecordingAuditPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset === 0}
-            onClick={() => setOffset((p) => Math.max(0, p - PAGE_SIZE))}
-          >
+          <Button variant="outline" size="sm" disabled={!hasPrev} onClick={goPrev}>
             Previous
           </Button>
-          <span className="text-sm text-gray-500">Page {currentPage} of {totalPages}</span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset + PAGE_SIZE >= total}
-            onClick={() => setOffset((p) => p + PAGE_SIZE)}
-          >
+          <span className="text-sm text-gray-500">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button variant="outline" size="sm" disabled={!hasNext} onClick={goNext}>
             Next
           </Button>
         </div>

@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Trash2, Eye, RefreshCw, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
-import { formatDate } from '@/lib/utils'
+import { formatDate, getErrorMessage } from '@/lib/utils'
 import { recordingApi } from '@/api/recording'
-import { getErrorMessage } from '@/lib/utils'
+import { usePagination } from '@/hooks/usePagination'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -18,16 +19,21 @@ const PAGE_SIZE = 10
 
 export function RecordingsListPage() {
   const qc = useQueryClient()
-  const [offset, setOffset] = useState(0)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [markdown, setMarkdown] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['recordings', offset],
-    queryFn: () => recordingApi.listRecordings({ limit: PAGE_SIZE, offset }),
+    queryKey: ['recordings'],
+    queryFn: () => recordingApi.listRecordings({ limit: 999, offset: 0 }),
     staleTime: 60_000,
   })
+
+  const total = data?.total ?? 0
+  const { offset, currentPage, totalPages, hasNext, hasPrev, goNext, goPrev } =
+    usePagination(PAGE_SIZE, total)
+
+  const pagedRecordings = data?.recordings.slice(offset, offset + PAGE_SIZE) ?? []
 
   const { mutate: deleteRec, isPending: deleting } = useMutation({
     mutationFn: (id: string) => recordingApi.deleteRecording(id),
@@ -50,12 +56,8 @@ export function RecordingsListPage() {
     }
   }
 
-  const total = data?.total ?? 0
-  const totalPages = Math.ceil(total / PAGE_SIZE)
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1
-
   if (isLoading) return <PageSpinner />
-  if (isError) return <Alert variant="error">Failed to load recordings.</Alert>
+  if (isError)   return <Alert variant="error">Failed to load recordings.</Alert>
 
   return (
     <div className="space-y-6">
@@ -77,14 +79,20 @@ export function RecordingsListPage() {
 
       <Card padding="none">
         <CardHeader title="All Recordings" className="px-6 pt-6" />
-        {data?.recordings.length === 0 ? (
+        {pagedRecordings.length === 0 ? (
           <div className="px-6 pb-8 text-center text-sm text-gray-400">
-            No recordings yet. <a href="/recording/upload" className="text-indigo-600 hover:underline">Upload your first recording.</a>
+            No recordings yet.{' '}
+            <Link to="/recording/upload" className="text-indigo-600 hover:underline">
+              Upload your first recording.
+            </Link>
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {data?.recordings.map((rec) => (
-              <div key={rec.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
+            {pagedRecordings.map((rec) => (
+              <div
+                key={rec.id}
+                className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
+              >
                 <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-purple-100">
                   <FileText className="h-5 w-5 text-purple-600" />
                 </div>
@@ -130,23 +138,13 @@ export function RecordingsListPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset === 0}
-            onClick={() => setOffset((p) => Math.max(0, p - PAGE_SIZE))}
-          >
+          <Button variant="outline" size="sm" disabled={!hasPrev} onClick={goPrev}>
             Previous
           </Button>
           <span className="text-sm text-gray-500">
             Page {currentPage} of {totalPages}
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={offset + PAGE_SIZE >= total}
-            onClick={() => setOffset((p) => p + PAGE_SIZE)}
-          >
+          <Button variant="outline" size="sm" disabled={!hasNext} onClick={goNext}>
             Next
           </Button>
         </div>
