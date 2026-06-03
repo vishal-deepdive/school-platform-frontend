@@ -5,18 +5,16 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { adminApi } from '@/api/admin'
 import { useAuthStore } from '@/store/auth'
+import { emailField, passwordField } from '@/lib/validators'
+import { getErrorMessage, formatDate } from '@/lib/utils'
+import { Modal } from '@/components/ui/Modal'
+import { Alert } from '@/components/ui/Alert'
+import { PageSpinner } from '@/components/ui/Spinner'
 import type { AdminUser } from '@/types/admin'
 
-const PASSWORD_REGEX =
-  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-=_+\[\]{};:'",.<>/?\\|`~]).{8,128}$/
-
 const createAdminSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z
-    .string()
-    .min(8, 'At least 8 characters')
-    .max(128)
-    .regex(PASSWORD_REGEX, 'Must contain uppercase, lowercase, digit, and special character'),
+  email:     emailField,
+  password:  passwordField,
   full_name: z.string().max(255).optional(),
 })
 
@@ -35,10 +33,9 @@ function AdminRow({
   onRemove: (id: string) => void
   removing: boolean
 }) {
-  const isSelf = admin.id === currentUserId
+  const isSelf      = admin.id === currentUserId
   const isMyCreator = currentUserCreatedBy === admin.id
-
-  const canRemove = !isSelf && !isMyCreator
+  const canRemove   = !isSelf && !isMyCreator
 
   return (
     <tr className="hover:bg-slate-50 transition-colors">
@@ -57,18 +54,10 @@ function AdminRow({
         )}
       </td>
       <td className="px-6 py-4 text-sm text-slate-500">
-        {admin.created_at
-          ? new Date(admin.created_at).toLocaleDateString('en-IN', {
-              day: '2-digit',
-              month: 'short',
-              year: 'numeric',
-            })
-          : '—'}
+        {admin.created_at ? formatDate(admin.created_at) : '—'}
       </td>
       <td className="px-6 py-4 text-right">
-        {isSelf && (
-          <span className="text-xs text-slate-400 italic">You</span>
-        )}
+        {isSelf && <span className="text-xs text-slate-400 italic">You</span>}
         {isMyCreator && !isSelf && (
           <span className="text-xs text-slate-400 italic">Your creator</span>
         )}
@@ -114,8 +103,8 @@ export function AdminManagementPage() {
       setRemovingId(null)
       setRemoveError(null)
     },
-    onError: (err: any) => {
-      setRemoveError(err?.response?.data?.detail || 'Failed to remove admin.')
+    onError: (err) => {
+      setRemoveError(getErrorMessage(err))
       setRemovingId(null)
     },
   })
@@ -125,9 +114,7 @@ export function AdminManagementPage() {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<CreateAdminForm>({
-    resolver: zodResolver(createAdminSchema),
-  })
+  } = useForm<CreateAdminForm>({ resolver: zodResolver(createAdminSchema) })
 
   const handleRemove = (id: string) => {
     setRemoveError(null)
@@ -135,9 +122,8 @@ export function AdminManagementPage() {
     removeMutation.mutate(id)
   }
 
-  // Find current user's created_by from the admin list
-  const currentAdminRecord = admins?.find((a) => a.id === user?.id)
-  const currentUserCreatedBy = currentAdminRecord?.created_by ?? null
+  const currentAdminRecord    = admins?.find((a) => a.id === user?.id)
+  const currentUserCreatedBy  = currentAdminRecord?.created_by ?? null
 
   return (
     <div className="space-y-6">
@@ -154,23 +140,10 @@ export function AdminManagementPage() {
         </button>
       </div>
 
-      {removeError && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
-          {removeError}
-        </div>
-      )}
+      {removeError && <Alert variant="error">{removeError}</Alert>}
+      {error      && <Alert variant="error">Failed to load admins.</Alert>}
 
-      {isLoading && (
-        <div className="flex justify-center py-12">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        </div>
-      )}
-
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-red-700 text-sm">
-          Failed to load admins.
-        </div>
-      )}
+      {isLoading && <PageSpinner />}
 
       {!isLoading && admins && (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -208,85 +181,79 @@ export function AdminManagementPage() {
       )}
 
       {/* Add Admin Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-slate-900">Add Platform Admin</h3>
-            <form
-              onSubmit={handleSubmit((data) => createMutation.mutate(data))}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Full Name <span className="text-slate-400 font-normal">(optional)</span>
-                </label>
-                <input
-                  {...register('full_name')}
-                  placeholder="Jane Doe"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  {...register('email')}
-                  type="email"
-                  placeholder="admin@example.com"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                {errors.email && (
-                  <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  {...register('password')}
-                  type="password"
-                  placeholder="Min 8 chars, mixed case + number + symbol"
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                {errors.password && (
-                  <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
-                )}
-              </div>
-
-              {createMutation.isError && (
-                <p className="text-sm text-red-600">
-                  {(createMutation.error as any)?.response?.data?.detail ||
-                    'Failed to create admin.'}
-                </p>
-              )}
-
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false)
-                    reset()
-                  }}
-                  className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors"
-                >
-                  {createMutation.isPending ? 'Creating…' : 'Create Admin'}
-                </button>
-              </div>
-            </form>
+      <Modal
+        open={showAddModal}
+        onClose={() => { setShowAddModal(false); reset() }}
+        title="Add Platform Admin"
+        size="sm"
+      >
+        <form
+          onSubmit={handleSubmit((data) => createMutation.mutate(data))}
+          className="space-y-4"
+        >
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Full Name <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            <input
+              {...register('full_name')}
+              placeholder="Jane Doe"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Email <span className="text-red-500">*</span>
+            </label>
+            <input
+              {...register('email')}
+              type="email"
+              placeholder="admin@example.com"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <input
+              {...register('password')}
+              type="password"
+              placeholder="Min 8 chars, mixed case + number + symbol"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+            {errors.password && (
+              <p className="mt-1 text-xs text-red-600">{errors.password.message}</p>
+            )}
+          </div>
+
+          {createMutation.isError && (
+            <Alert variant="error">{getErrorMessage(createMutation.error)}</Alert>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => { setShowAddModal(false); reset() }}
+              className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+            >
+              {createMutation.isPending ? 'Creating…' : 'Create Admin'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }
