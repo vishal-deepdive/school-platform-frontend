@@ -26,12 +26,11 @@ export const onboardingApi = {
    * Accepts FormData with { otp: string }.
    */
   verifyEmail: (applicationId: string, otp: string) => {
-    const fd = new FormData()
-    fd.append('otp', otp)
     return apiClient
       .post<OnboardingApplicationResponse>(
         `${BASE}/${encodeURIComponent(applicationId)}/verify-email`,
-        fd,
+        { otp },
+        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
       )
       .then((r) => r.data)
   },

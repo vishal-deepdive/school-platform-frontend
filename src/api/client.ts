@@ -2,248 +2,183 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
   type AxiosResponse,
-} from "axios";
+} from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (error: unknown) => void;
-}> = [];
+// ─── localStorage helpers ─────────────────────────────────────────────────────
 
-function processQueue(error: unknown, token: string | null) {
-  failedQueue.forEach(({ resolve, reject }) => {
-    if (error) reject(error);
-    else resolve(token!);
-  });
-  failedQueue = [];
+interface StoredAuthState {
+  state?: { accessToken?: string; refreshToken?: string }
 }
 
-export const apiClient: AxiosInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 60_000,
-  headers: { "Content-Type": "application/json" },
-});
+function parseAuthStorage(): StoredAuthState | null {
+  try {
+    const raw = localStorage.getItem('auth-storage')
+    return raw ? (JSON.parse(raw) as StoredAuthState) : null
+  } catch {
+    return null
+  }
+}
 
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const raw = localStorage.getItem("auth-storage");
-  if (raw) {
-    try {
-      const state = JSON.parse(raw) as { state?: { accessToken?: string } };
-      const token = state?.state?.accessToken;
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch {
-      // malformed storage — skip
+function getStoredToken(): string | null {
+  return parseAuthStorage()?.state?.accessToken ?? null
+}
+
+function getStoredRefreshToken(): string | null {
+  return parseAuthStorage()?.state?.refreshToken ?? null
+}
+
+function updateStoredTokens(accessToken: string, refreshToken: string): void {
+  try {
+    const raw = localStorage.getItem('auth-storage')
+    if (!raw) return
+    const current = JSON.parse(raw) as { state?: Record<string, unknown> }
+    if (current.state) {
+      current.state.accessToken = accessToken
+      current.state.refreshToken = refreshToken
+      localStorage.setItem('auth-storage', JSON.stringify(current))
+    }
+  } catch {
+    // malformed storage — leave it alone
+  }
+}
+
+function handleRefreshFailure(err: unknown): void {
+  const isAuthError =
+    axios.isAxiosError(err) &&
+    err.response?.status != null &&
+    [401, 403].includes(err.response.status)
+  const isNoToken = err instanceof Error && err.message === 'No refresh token'
+
+  if (isAuthError || isNoToken) {
+    localStorage.removeItem('auth-storage')
+    if (window.location.pathname !== '/login') {
+      window.location.href = '/login'
     }
   }
-  return config;
-});
+}
 
-apiClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  async (error: unknown) => {
-    if (!axios.isAxiosError(error)) return Promise.reject(error);
+// ─── Auth-endpoint guard ──────────────────────────────────────────────────────
 
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-    const isAuthEndpoint = originalRequest.url?.match(
-      /\/auth\/(login|register|verify-otp|forgot-password|reset-password|resend-otp|refresh)/,
-    );
+const AUTH_ENDPOINT_PATTERN =
+  /\/auth\/(login|register|verify-otp|forgot-password|reset-password|resend-otp|refresh)/
 
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !isAuthEndpoint
-    ) {
-      if (isRefreshing) {
+// ─── Shared refresh state ─────────────────────────────────────────────────────
+// Both clients share this so a concurrent 401 from a multipart upload doesn't
+// race with a JSON request to refresh the token twice.
+
+const refreshState = {
+  isRefreshing: false,
+  failedQueue: [] as Array<{
+    resolve: (token: string) => void
+    reject: (error: unknown) => void
+  }>,
+}
+
+function processQueue(error: unknown, token: string | null): void {
+  refreshState.failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error)
+    else resolve(token!)
+  })
+  refreshState.failedQueue = []
+}
+
+// ─── HOF: attaches request auth + 401→refresh→retry to any axios instance ─────
+
+function withAuthInterceptors(client: AxiosInstance): AxiosInstance {
+  // Attach access token to every outgoing request
+  client.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+    const token = getStoredToken()
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  })
+
+  // Handle 401 → refresh → retry
+  client.interceptors.response.use(
+    (response: AxiosResponse) => response,
+    async (error: unknown) => {
+      if (!axios.isAxiosError(error)) return Promise.reject(error)
+
+      const originalRequest = error.config as InternalAxiosRequestConfig & {
+        _retry?: boolean
+      }
+      const isAuthEndpoint = AUTH_ENDPOINT_PATTERN.test(originalRequest.url ?? '')
+
+      if (
+        error.response?.status !== 401 ||
+        originalRequest._retry ||
+        isAuthEndpoint
+      ) {
+        return Promise.reject(error)
+      }
+
+      // Queue concurrent requests while a refresh is already in-flight
+      if (refreshState.isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
+          refreshState.failedQueue.push({ resolve, reject })
         }).then((token) => {
           if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+            originalRequest.headers.Authorization = `Bearer ${token}`
           }
-          return apiClient(originalRequest);
-        });
+          return client(originalRequest)
+        })
       }
 
-      originalRequest._retry = true;
-      isRefreshing = true;
+      originalRequest._retry = true
+      refreshState.isRefreshing = true
 
       try {
-        const raw = localStorage.getItem("auth-storage");
-        const state = raw
-          ? (JSON.parse(raw) as { state?: { refreshToken?: string } })
-          : null;
-        const refreshToken = state?.state?.refreshToken;
+        const refreshToken = getStoredRefreshToken()
+        if (!refreshToken) throw new Error('No refresh token')
 
-        if (!refreshToken) throw new Error("No refresh token");
-
-        // Use a dedicated axios instance with an explicit timeout so a slow or
-        // unresponsive backend does not cause the refresh call to hang forever.
-        // Previously this used bare axios.post() with no timeout (axios default = 0 = ∞),
-        // which caused the browser to hang until the connection dropped, then clear
-        // localStorage and redirect to /login — appearing as an unexpected "auto reload".
+        // Dedicated axios instance with a short timeout prevents the browser
+        // from hanging indefinitely when the backend is slow / unresponsive.
         const res = await axios.post<{
-          access_token: string;
-          refresh_token: string;
+          access_token: string
+          refresh_token: string
         }>(
           `${BASE_URL}/api/v1/auth/refresh`,
           { refresh_token: refreshToken },
           { timeout: 10_000 },
-        );
+        )
 
-        const { access_token, refresh_token } = res.data;
+        const { access_token, refresh_token } = res.data
+        updateStoredTokens(access_token, refresh_token)
+        processQueue(null, access_token)
 
-        const currentRaw = localStorage.getItem("auth-storage");
-        if (currentRaw) {
-          const current = JSON.parse(currentRaw) as {
-            state?: Record<string, unknown>;
-          };
-          if (current.state) {
-            current.state.accessToken = access_token;
-            current.state.refreshToken = refresh_token;
-            localStorage.setItem("auth-storage", JSON.stringify(current));
-          }
-        }
-
-        processQueue(null, access_token);
         if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+          originalRequest.headers.Authorization = `Bearer ${access_token}`
         }
-        return apiClient(originalRequest);
+        return client(originalRequest)
       } catch (refreshError) {
-        processQueue(refreshError, null);
-
-        const isAuthError =
-          axios.isAxiosError(refreshError) &&
-          refreshError.response?.status &&
-          [401, 403].includes(refreshError.response.status);
-        const isNoToken =
-          refreshError instanceof Error &&
-          refreshError.message === "No refresh token";
-
-        if (isAuthError || isNoToken) {
-          localStorage.removeItem("auth-storage");
-          if (window.location.pathname !== "/login") {
-            window.location.href = "/login";
-          }
-        }
-
-        return Promise.reject(refreshError);
+        processQueue(refreshError, null)
+        handleRefreshFailure(refreshError)
+        return Promise.reject(refreshError)
       } finally {
-        isRefreshing = false;
+        refreshState.isRefreshing = false
       }
-    }
+    },
+  )
 
-    return Promise.reject(error);
-  },
-);
+  return client
+}
 
-export const multipartClient: AxiosInstance = axios.create({
-  baseURL: BASE_URL,
-  timeout: 300_000,
-});
+// ─── Exported clients ─────────────────────────────────────────────────────────
 
-multipartClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const raw = localStorage.getItem("auth-storage");
-    if (raw) {
-      try {
-        const state = JSON.parse(raw) as { state?: { accessToken?: string } };
-        const token = state?.state?.accessToken;
-        if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-      } catch {
-        // skip
-      }
-    }
-    return config;
-  },
-);
+export const apiClient: AxiosInstance = withAuthInterceptors(
+  axios.create({
+    baseURL: BASE_URL,
+    timeout: 60_000,
+    headers: { 'Content-Type': 'application/json' },
+  }),
+)
 
-// multipartClient needs the same 401 → refresh → retry logic as apiClient.
-// Without this, file uploads that hit an expired access token silently fail
-// with a 401 and never attempt to renew the session.
-multipartClient.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  async (error: unknown) => {
-    if (!axios.isAxiosError(error)) return Promise.reject(error);
-
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-    const isAuthEndpoint = originalRequest.url?.match(
-      /\/auth\/(login|register|verify-otp|forgot-password|reset-password|resend-otp|refresh)/,
-    );
-
-    if (
-      error.response?.status === 401 &&
-      !originalRequest._retry &&
-      !isAuthEndpoint
-    ) {
-      originalRequest._retry = true;
-
-      try {
-        const raw = localStorage.getItem("auth-storage");
-        const state = raw
-          ? (JSON.parse(raw) as { state?: { refreshToken?: string } })
-          : null;
-        const refreshToken = state?.state?.refreshToken;
-
-        if (!refreshToken) throw new Error("No refresh token");
-
-        const res = await axios.post<{
-          access_token: string;
-          refresh_token: string;
-        }>(
-          `${BASE_URL}/api/v1/auth/refresh`,
-          { refresh_token: refreshToken },
-          { timeout: 10_000 },
-        );
-
-        const { access_token, refresh_token } = res.data;
-
-        const currentRaw = localStorage.getItem("auth-storage");
-        if (currentRaw) {
-          const current = JSON.parse(currentRaw) as {
-            state?: Record<string, unknown>;
-          };
-          if (current.state) {
-            current.state.accessToken = access_token;
-            current.state.refreshToken = refresh_token;
-            localStorage.setItem("auth-storage", JSON.stringify(current));
-          }
-        }
-
-        if (originalRequest.headers) {
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
-        }
-        return multipartClient(originalRequest);
-      } catch (refreshError) {
-        const isAuthError =
-          axios.isAxiosError(refreshError) &&
-          refreshError.response?.status &&
-          [401, 403].includes(refreshError.response.status);
-        const isNoToken =
-          refreshError instanceof Error &&
-          refreshError.message === "No refresh token";
-
-        if (isAuthError || isNoToken) {
-          localStorage.removeItem("auth-storage");
-          if (window.location.pathname !== "/login") {
-            window.location.href = "/login";
-          }
-        }
-
-        return Promise.reject(error);
-      }
-    }
-
-    return Promise.reject(error);
-  },
-);
+export const multipartClient: AxiosInstance = withAuthInterceptors(
+  axios.create({
+    baseURL: BASE_URL,
+    timeout: 300_000,
+  }),
+)
