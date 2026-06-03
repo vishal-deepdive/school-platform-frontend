@@ -1,18 +1,17 @@
-import { Link } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { UserPlus, Loader2 } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { teacherInviteFormSchema, type TeacherInviteFormData } from '@/lib/validators'
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
-import { AuthInput, AuthPasswordInput, AuthButton } from '@/components/ui/auth-fuse'
+import { AuthInput, AuthPasswordInput, AuthButton, AuthSubmitButton } from '@/components/ui/auth-fuse'
+import { TermsCheckbox } from '@/components/common/TermsCheckbox'
+import { OrDivider } from '@/components/common/OrDivider'
 import { GoogleIcon } from './GoogleIcon'
+import { useGoogleAuth } from '@/hooks/useGoogleAuth'
 import { useOtpCooldown } from '../hooks/useOtpCooldown'
-
-export interface NavProps {
-  navigate: (path: string, options?: { state?: unknown }) => void
-}
+import type { NavProps } from './types'
 
 export function TeacherInviteRegisterForm({
   inviteToken,
@@ -25,25 +24,16 @@ export function TeacherInviteRegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<TeacherInviteFormData>({
     resolver: zodResolver(teacherInviteFormSchema),
+    defaultValues: { terms: false },
   })
 
   const watchEmail = useWatch({ control, name: 'email', defaultValue: '' })
-  const { startCooldown } = useOtpCooldown(watchEmail, false)
-
-  const handleGoogleSignIn = async () => {
-    try {
-      sessionStorage.setItem('google_pending_role', 'teacher')
-      sessionStorage.setItem('google_pending_invite_token', inviteToken)
-      const { auth_url } = await authApi.googleLogin()
-      window.location.href = auth_url
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    }
-  }
+  const { startCooldown } = useOtpCooldown(watchEmail, 'verify_email', false)
+  const { handleGoogleLogin } = useGoogleAuth()
 
   const onSubmit = async (data: TeacherInviteFormData) => {
     try {
-      const { confirm_password: _cp, ...rest } = data
+      const { confirm_password: _, terms: __, ...rest } = data
       await authApi.registerTeacher({ ...rest, invite_token: inviteToken })
       toast.success('Teacher account created! Please verify your email.')
       startCooldown()
@@ -94,46 +84,19 @@ export function TeacherInviteRegisterForm({
         {...register('confirm_password')}
       />
 
-      <div className="flex items-start gap-2 mt-2">
-        <input
-          type="checkbox"
-          id="terms-teacher-invite"
-          className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer transition-colors"
-        />
-        <label
-          htmlFor="terms-teacher-invite"
-          className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
-        >
-          I accept the{' '}
-          <Link to="#" className="font-medium text-primary hover:text-primary/80 transition-colors">
-            Terms &amp; Conditions
-          </Link>
-        </label>
-      </div>
+      <TermsCheckbox error={errors.terms?.message} {...register('terms')} />
 
-      <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
-        {isSubmitting ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        ) : (
-          <UserPlus className="h-4 w-4 mr-2" />
-        )}
+      <AuthSubmitButton icon={UserPlus} isLoading={isSubmitting} className="mt-2">
         Create Teacher Account
-      </AuthButton>
+      </AuthSubmitButton>
 
-      <div className="relative my-1">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-background px-3 text-muted-foreground font-medium">or</span>
-        </div>
-      </div>
+      <OrDivider />
 
       <AuthButton
         type="button"
         variant="outline"
         className="w-full"
-        onClick={handleGoogleSignIn}
+        onClick={() => handleGoogleLogin({ role: 'teacher', inviteToken })}
       >
         <GoogleIcon />
         Continue with Google

@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { UserPlus, Loader2 } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { studentRegisterSchema, type StudentRegisterFormData } from '@/lib/validators'
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
-import { AuthInput, AuthPasswordInput, AuthButton } from '@/components/ui/auth-fuse'
-import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/SearchableSelect'
-import { useDebounce } from '@/hooks/useDebounce'
-import type { SchoolSearchItem, ClassCodeItem } from '@/types/auth'
+import { AuthInput, AuthPasswordInput, AuthButton, AuthSubmitButton } from '@/components/ui/auth-fuse'
+import { SearchableSelect } from '@/components/ui/SearchableSelect'
+import { TermsCheckbox } from '@/components/common/TermsCheckbox'
+import { OrDivider } from '@/components/common/OrDivider'
 import { GoogleIcon } from './GoogleIcon'
-import type { NavProps } from './TeacherInviteRegisterForm'
+import { useSchoolSearch, useSchoolClasses } from '@/hooks/useSchoolSearch'
+import { useGoogleAuth } from '@/hooks/useGoogleAuth'
 import { useOtpCooldown } from '../hooks/useOtpCooldown'
+import type { NavProps } from './types'
 
 export function StudentRegisterForm({
   defaultSchoolId,
@@ -21,97 +21,32 @@ export function StudentRegisterForm({
 }: NavProps & { defaultSchoolId: string }) {
   const {
     register,
-    watch,
     setValue,
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
   } = useForm<StudentRegisterFormData>({
     resolver: zodResolver(studentRegisterSchema),
-    defaultValues: { school_id: defaultSchoolId },
+    defaultValues: { school_id: defaultSchoolId, terms: false },
   })
 
-  const watchEmail = useWatch({ control, name: 'email', defaultValue: '' })
-  const { startCooldown } = useOtpCooldown(watchEmail, false)
+  // useWatch instead of watch — only re-renders on changes to these specific fields
+  const watchEmail       = useWatch({ control, name: 'email',      defaultValue: '' })
+  const selectedSchoolId = useWatch({ control, name: 'school_id',  defaultValue: defaultSchoolId })
+  const selectedClassCode = useWatch({ control, name: 'class_code', defaultValue: '' })
 
-  const selectedSchoolId = watch('school_id')
-  const selectedClassCode = watch('class_code')
+  const { startCooldown } = useOtpCooldown(watchEmail, 'verify_email', false)
 
-  const [schoolQuery, setSchoolQuery] = useState('')
-  const debouncedSchoolQuery = useDebounce(schoolQuery, 500)
-  const [schools, setSchools] = useState<SchoolSearchItem[]>([])
-  const [isSearchingSchools, setIsSearchingSchools] = useState(false)
+  const { options: schoolOptions, setQuery: setSchoolQuery, isSearching: isSearchingSchools } =
+    useSchoolSearch()
+  const { options: classOptions, isLoading: isLoadingClasses } =
+    useSchoolClasses(selectedSchoolId)
 
-  const [classes, setClasses] = useState<ClassCodeItem[]>([])
-  const [isLoadingClasses, setIsLoadingClasses] = useState(false)
-
-  useEffect(() => {
-    if (debouncedSchoolQuery.length === 1) {
-      setSchools([])
-      return
-    }
-    const fetchSchools = async () => {
-      setIsSearchingSchools(true)
-      try {
-        const results = await authApi.searchSchools(debouncedSchoolQuery)
-        setSchools(results)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setIsSearchingSchools(false)
-      }
-    }
-    fetchSchools()
-  }, [debouncedSchoolQuery])
-
-  useEffect(() => {
-    if (!selectedSchoolId) {
-      setClasses([])
-      return
-    }
-    const fetchClasses = async () => {
-      setIsLoadingClasses(true)
-      try {
-        const results = await authApi.getSchoolClasses(selectedSchoolId)
-        setClasses(results)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setIsLoadingClasses(false)
-      }
-    }
-    fetchClasses()
-  }, [selectedSchoolId])
-
-  const schoolOptions: SearchableSelectOption[] = schools.map(s => ({
-    label: s.name,
-    value: s.id,
-    sublabel: [s.address, s.city, s.state, s.pin_code].filter(Boolean).join(', ')
-  }))
-
-  const classOptions: SearchableSelectOption[] = classes.map(c => ({
-    label: c.class_name,
-    value: c.code,
-    sublabel: c.section ? `Section ${c.section}` : undefined
-  }))
-
-  const handleGoogleSignIn = async () => {
-    try {
-      const currentSchoolId = watch('school_id') ?? ''
-      sessionStorage.setItem('google_pending_role', 'student')
-      if (currentSchoolId) {
-        sessionStorage.setItem('google_pending_school_id', currentSchoolId)
-      }
-      const { auth_url } = await authApi.googleLogin()
-      window.location.href = auth_url
-    } catch (err) {
-      toast.error(getErrorMessage(err))
-    }
-  }
+  const { handleGoogleLogin } = useGoogleAuth()
 
   const onSubmit = async (data: StudentRegisterFormData) => {
     try {
-      const { confirm_password: _, ...payload } = data
+      const { confirm_password: _, terms: __, ...payload } = data
       await authApi.registerStudent(payload)
       toast.success('Student account created! Please verify your email.')
       startCooldown()
@@ -163,7 +98,7 @@ export function StudentRegisterForm({
 
       <SearchableSelect
         label="Class"
-        placeholder={selectedSchoolId ? "Select your class..." : "Select a school first..."}
+        placeholder={selectedSchoolId ? 'Select your class...' : 'Select a school first...'}
         searchPlaceholder="Search classes..."
         options={classOptions}
         value={selectedClassCode}
@@ -198,46 +133,19 @@ export function StudentRegisterForm({
         {...register('confirm_password')}
       />
 
-      <div className="flex items-start gap-2 mt-2">
-        <input
-          type="checkbox"
-          id="terms-student"
-          className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer transition-colors"
-        />
-        <label
-          htmlFor="terms-student"
-          className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
-        >
-          I accept the{' '}
-          <Link to="#" className="font-medium text-primary hover:text-primary/80 transition-colors">
-            Terms &amp; Conditions
-          </Link>
-        </label>
-      </div>
+      <TermsCheckbox error={errors.terms?.message} {...register('terms')} />
 
-      <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
-        {isSubmitting ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-        ) : (
-          <UserPlus className="h-4 w-4 mr-2" />
-        )}
+      <AuthSubmitButton icon={UserPlus} isLoading={isSubmitting} className="mt-2">
         Create Student Account
-      </AuthButton>
+      </AuthSubmitButton>
 
-      <div className="relative my-1">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs">
-          <span className="bg-background px-3 text-muted-foreground font-medium">or</span>
-        </div>
-      </div>
+      <OrDivider />
 
       <AuthButton
         type="button"
         variant="outline"
         className="w-full"
-        onClick={handleGoogleSignIn}
+        onClick={() => handleGoogleLogin({ role: 'student', schoolId: selectedSchoolId ?? '' })}
       >
         <GoogleIcon />
         Continue with Google

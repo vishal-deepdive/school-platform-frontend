@@ -1,12 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { KeyRound, Loader2 } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { resetPasswordSchema, type ResetPasswordFormData } from '@/lib/validators'
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
-import { AuthInput, AuthPasswordInput, AuthButton } from '@/components/ui/auth-fuse'
+import { AuthInput, AuthPasswordInput, AuthSubmitButton } from '@/components/ui/auth-fuse'
 
 export interface ResetPasswordFormProps {
   initialEmail?: string
@@ -35,6 +35,8 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
     }
   }
 
+  const otpReg = register('otp')
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
       <div>
@@ -43,6 +45,8 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
           autoComplete="email"
           placeholder="Email"
           error={errors.email?.message}
+          readOnly={!!initialEmail}
+          className={initialEmail ? 'bg-muted/50 text-muted-foreground cursor-default' : ''}
           {...register('email')}
         />
       </div>
@@ -55,7 +59,11 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
           placeholder="OTP Code"
           error={errors.otp?.message}
           className="font-mono text-center text-lg tracking-widest"
-          {...register('otp')}
+          {...otpReg}
+          onChange={(e) => {
+            e.target.value = e.target.value.replace(/\D/g, '')
+            otpReg.onChange(e)
+          }}
         />
       </div>
 
@@ -79,10 +87,9 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
       </div>
 
       <div className="pt-2">
-        <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
-          {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <KeyRound className="h-4 w-4 mr-2" />}
+        <AuthSubmitButton icon={KeyRound} isLoading={isSubmitting} className="mt-2">
           Reset password
-        </AuthButton>
+        </AuthSubmitButton>
       </div>
 
       <p className="text-center text-sm text-muted-foreground mt-2">

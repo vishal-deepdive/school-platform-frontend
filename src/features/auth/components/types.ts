@@ -1,5 +1,9 @@
 import type { TokenResponse } from '@/types/auth'
 
+export interface NavProps {
+  navigate: (path: string, options?: { state?: unknown }) => void
+}
+
 export interface CompleteFormProps {
   googleToken: string
   prefillName: string
