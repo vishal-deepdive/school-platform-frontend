@@ -4,7 +4,7 @@ import { StickyNote, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import ReactMarkdown from 'react-markdown'
 import { ragApi } from '@/api/rag'
-import { getErrorMessage } from '@/lib/utils'
+import { getErrorMessage, downloadFile } from '@/lib/utils'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { Button } from '@/components/ui/Button'
@@ -97,15 +97,9 @@ export function NotesPage() {
                   variant="outline"
                   size="sm"
                   icon={<Download className="h-4 w-4" />}
-                  onClick={() => {
-                    const blob = new Blob([result], { type: 'text/markdown' })
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = `notes-${filters.chapter_name?.[0] ?? 'chapter'}.md`
-                    a.click()
-                    URL.revokeObjectURL(url)
-                  }}
+                  onClick={() =>
+                    downloadFile(result, `notes-${filters.chapter_name?.[0] ?? 'chapter'}.md`)
+                  }
                 >
                   Download
                 </Button>
