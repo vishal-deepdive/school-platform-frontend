@@ -1,5 +1,6 @@
-import { AuthInput, AuthPasswordInput } from '@/components/ui/auth-fuse'
 import { Link } from 'react-router-dom'
+import { AuthInput, AuthPasswordInput } from '@/components/ui/auth-fuse'
+import { TermsCheckbox } from '@/components/common/TermsCheckbox'
 import type { StepPropsExtra } from './types'
 
 export function PrincipalStep({ register, errors }: StepPropsExtra) {
@@ -49,31 +50,23 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
         {...register('confirm_password')}
       />
 
-      <div className="flex flex-col gap-1.5 mt-1">
-        <div className="flex items-start gap-3">
-          <input
-            id="onboarding-terms"
-            type="checkbox"
-            className="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer shrink-0"
-            {...register('terms')}
-          />
-          <label
-            htmlFor="onboarding-terms"
-            className="text-sm text-muted-foreground leading-relaxed cursor-pointer"
-          >
+      <TermsCheckbox
+        error={errors.terms?.message}
+        label={
+          <>
             I confirm that all provided details are accurate and I accept the{' '}
             <Link
-              to="#"
+              to="/terms"
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-medium text-primary hover:text-primary/80 transition-colors"
             >
               Terms &amp; Conditions
             </Link>
-          </label>
-        </div>
-        {errors.terms?.message && (
-          <p className="text-xs text-destructive font-medium pl-7">{errors.terms.message}</p>
-        )}
-      </div>
+          </>
+        }
+        {...register('terms')}
+      />
     </div>
   )
 }

@@ -1,40 +1,37 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { schoolOnboardingSchema, type SchoolOnboardingFormData } from '@/lib/validators'
+import { readSession, SESSION_KEYS } from '@/lib/session'
 import type { StepIndex } from '../components/StepIndicator'
 
-const STORAGE_KEY = 'onboarding_form_data'
-const STEP_KEY = 'onboarding_current_step'
-
 export function useOnboardingForm() {
-  // Load initial step
   const [currentStep, setCurrentStepState] = useState<StepIndex>(() => {
-    const savedStep = sessionStorage.getItem(STEP_KEY)
-    if (savedStep) {
-      const parsed = parseInt(savedStep, 10)
+    const saved = sessionStorage.getItem(SESSION_KEYS.ONBOARDING_STEP)
+    if (saved) {
+      const parsed = parseInt(saved, 10)
       if (parsed >= 1 && parsed <= 5) return parsed as StepIndex
     }
     return 1
   })
 
-  // Load initial data
   const defaultValues: Partial<SchoolOnboardingFormData> = {
-    board: '' as any,
-    school_type: '' as any,
-    state: '',
-    established_year: '',
-    phone: '',
-    address_line_2: '',
+    board:                 '' as never,
+    school_type:           '' as never,
+    state:                 '',
+    established_year:      '',
+    phone:                 '',
+    address_line_2:        '',
     medium_of_instruction: '',
-    classes_from: '',
-    classes_to: '',
-    udise_code: '',
-    terms: false,
+    classes_from:          '',
+    classes_to:            '',
+    udise_code:            '',
+    terms:                 false,
   }
 
-  const savedData = sessionStorage.getItem(STORAGE_KEY)
-  const initialData = savedData ? { ...defaultValues, ...JSON.parse(savedData) } : defaultValues
+  // readSession wraps JSON.parse in try/catch — safe against corrupt sessionStorage
+  const savedData = readSession<Partial<SchoolOnboardingFormData>>(SESSION_KEYS.ONBOARDING_FORM)
+  const initialData = savedData ? { ...defaultValues, ...savedData } : defaultValues
 
   const methods = useForm<SchoolOnboardingFormData>({
     resolver: zodResolver(schoolOnboardingSchema),
@@ -42,26 +39,29 @@ export function useOnboardingForm() {
     mode: 'onTouched',
   })
 
-  // Subscribe to changes and save to sessionStorage
+  const saveTimerRef = useRef<number | null>(null)
+
+  // Debounced persist — batches rapid keystrokes into one write per 400 ms
   useEffect(() => {
     const subscription = methods.watch((value) => {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value))
+      if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = window.setTimeout(() => {
+        sessionStorage.setItem(SESSION_KEYS.ONBOARDING_FORM, JSON.stringify(value))
+      }, 400)
     })
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+      if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current)
+    }
   }, [methods])
 
-  // Custom step setter that also persists
   const setCurrentStep = useCallback((step: StepIndex | ((prev: StepIndex) => StepIndex)) => {
     setCurrentStepState((prev) => {
-      const nextStep = typeof step === 'function' ? step(prev) : step
-      sessionStorage.setItem(STEP_KEY, String(nextStep))
-      return nextStep
+      const next = typeof step === 'function' ? step(prev) : step
+      sessionStorage.setItem(SESSION_KEYS.ONBOARDING_STEP, String(next))
+      return next
     })
   }, [])
 
-  return {
-    methods,
-    currentStep,
-    setCurrentStep,
-  }
+  return { methods, currentStep, setCurrentStep }
 }
