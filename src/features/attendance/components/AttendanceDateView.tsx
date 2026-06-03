@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Search, Download } from 'lucide-react'
-import { toIndianDate } from '@/lib/utils'
+import { toIndianDate, downloadBlob } from '@/lib/utils'
 import { attendanceApi } from '@/api/attendance'
 import { Card, CardHeader } from '@/components/ui/Card'
 import { Input } from '@/components/ui/Input'
@@ -17,6 +17,8 @@ interface DateFilters {
   section: string
   subject: string
 }
+
+type AttendanceRow = Record<string, unknown>
 
 export function AttendanceDateView() {
   const [dateFilters, setDateFilters] = useState<DateFilters>({
@@ -38,12 +40,7 @@ export function AttendanceDateView() {
   const handleExportCSV = async () => {
     if (!queryDate?.school_name) return
     const blob = await attendanceApi.viewStudents(queryDate as unknown as Record<string, string>)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `students-${queryDate.school_name}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    downloadBlob(blob, `students-${queryDate.school_name}.csv`)
   }
 
   return (
@@ -88,7 +85,11 @@ export function AttendanceDateView() {
         >
           Search
         </Button>
-        <Button variant="outline" onClick={handleExportCSV} icon={<Download className="h-4 w-4" />}>
+        <Button
+          variant="outline"
+          onClick={handleExportCSV}
+          icon={<Download className="h-4 w-4" />}
+        >
           Export CSV
         </Button>
       </div>
@@ -105,31 +106,31 @@ export function AttendanceDateView() {
               <thead className="bg-gray-50">
                 <tr>
                   {['Roll No', 'Name', 'Class', 'Section', 'Subject', 'Status', 'Time'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                    <th
+                      key={h}
+                      className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500"
+                    >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white">
-                {dateData.data.map((row: any, i: number) => {
-                  const r = row as Record<string, unknown>
-                  return (
-                    <tr key={i} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">{String(r.roll_number ?? r.roll_no ?? '—')}</td>
-                      <td className="px-4 py-3">{String(r.name ?? '—')}</td>
-                      <td className="px-4 py-3">{String(r.class_name ?? r.class ?? '—')}</td>
-                      <td className="px-4 py-3">{String(r.section ?? '—')}</td>
-                      <td className="px-4 py-3">{String(r.subject ?? '—')}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={r.attendance_record === 'P' ? 'success' : 'danger'}>
-                          {r.attendance_record === 'P' ? 'Present' : 'Absent'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">{String(r.time ?? '—')}</td>
-                    </tr>
-                  )
-                })}
+                {(dateData.data as AttendanceRow[]).map((row, i) => (
+                  <tr key={i} className="hover:bg-gray-50">
+                    <td className="px-4 py-3">{String(row.roll_number ?? row.roll_no ?? '—')}</td>
+                    <td className="px-4 py-3">{String(row.name ?? '—')}</td>
+                    <td className="px-4 py-3">{String(row.class_name ?? row.class ?? '—')}</td>
+                    <td className="px-4 py-3">{String(row.section ?? '—')}</td>
+                    <td className="px-4 py-3">{String(row.subject ?? '—')}</td>
+                    <td className="px-4 py-3">
+                      <Badge variant={row.attendance_record === 'P' ? 'success' : 'danger'}>
+                        {row.attendance_record === 'P' ? 'Present' : 'Absent'}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">{String(row.time ?? '—')}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
