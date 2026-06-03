@@ -2,12 +2,12 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthLayout } from '@/components/layout/AuthLayout'
 import { ProtectedRoute } from './ProtectedRoute'
+import { useAuthStore } from '@/store/auth'
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { VerifyOtpPage } from '@/pages/auth/VerifyOtpPage'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
-import { LandingPage } from '@/pages/LandingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { EnrollPage } from '@/pages/attendance/EnrollPage'
 import { MarkAttendancePage } from '@/pages/attendance/MarkAttendancePage'
@@ -32,8 +32,13 @@ import { OnboardingApplicationsPage } from '@/pages/admin/OnboardingApplications
 import { ApplicationDetailPage } from '@/pages/admin/ApplicationDetailPage'
 import { AdminManagementPage } from '@/pages/admin/AdminManagementPage'
 
+function RootRedirect() {
+  const { isAuthenticated } = useAuthStore()
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />
+}
+
 export const router = createBrowserRouter([
-  { path: '/', element: <LandingPage /> },
+  { path: '/', element: <RootRedirect /> },
   {
     element: <AuthLayout />,
     children: [
