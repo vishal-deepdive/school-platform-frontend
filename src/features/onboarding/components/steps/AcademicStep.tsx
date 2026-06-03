@@ -16,6 +16,8 @@ const MEDIUM_OPTIONS = [
 
 export function AcademicStep({ register, errors, watch }: StepPropsExtra) {
   const selectedMedium = watch('medium_of_instruction')
+  const udiseReg = register('udise_code')
+
   return (
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
       <AuthInput
@@ -89,10 +91,14 @@ export function AcademicStep({ register, errors, watch }: StepPropsExtra) {
         type="text"
         inputMode="numeric"
         placeholder="11-digit UDISE code (optional)"
-        maxLength={20}
+        maxLength={11}
         error={errors.udise_code?.message}
         hint="Unified District Information System for Education Plus code"
-        {...register('udise_code')}
+        {...udiseReg}
+        onChange={(e) => {
+          e.target.value = e.target.value.replace(/\D/g, '')
+          udiseReg.onChange(e)
+        }}
       />
     </div>
   )

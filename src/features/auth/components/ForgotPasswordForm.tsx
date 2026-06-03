@@ -1,12 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Mail, Loader2 } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { forgotPasswordSchema, type ForgotPasswordFormData } from '@/lib/validators'
 import { authApi } from '@/api/auth'
 import { getErrorMessage } from '@/lib/utils'
-import { AuthInput, AuthButton } from '@/components/ui/auth-fuse'
+import { AuthInput, AuthSubmitButton } from '@/components/ui/auth-fuse'
 import { useOtpCooldown } from '../hooks/useOtpCooldown'
 
 export function ForgotPasswordForm() {
@@ -20,7 +20,7 @@ export function ForgotPasswordForm() {
   } = useForm<ForgotPasswordFormData>({ resolver: zodResolver(forgotPasswordSchema) })
 
   const watchEmail = useWatch({ control, name: 'email', defaultValue: '' })
-  const { startCooldown } = useOtpCooldown(watchEmail, false)
+  const { startCooldown } = useOtpCooldown(watchEmail, 'reset_password', false)
 
   const onSubmit = async (data: ForgotPasswordFormData) => {
     try {
@@ -46,14 +46,9 @@ export function ForgotPasswordForm() {
       </div>
 
       <div className="pt-2">
-        <AuthButton type="submit" disabled={isSubmitting} className="w-full mt-2">
-          {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-          ) : (
-            <Mail className="h-4 w-4 mr-2" />
-          )}
+        <AuthSubmitButton icon={Mail} isLoading={isSubmitting} className="mt-2">
           Send reset OTP
-        </AuthButton>
+        </AuthSubmitButton>
       </div>
 
       <p className="text-center text-sm text-muted-foreground mt-2">

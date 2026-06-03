@@ -4,6 +4,9 @@ import type { StepPropsExtra } from "./types";
 
 export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
   const selectedBoard = watch("board");
+
+  const yearReg = register("established_year");
+
   return (
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
       <AuthInput
@@ -58,12 +61,14 @@ export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
         type="text"
         inputMode="numeric"
         maxLength={4}
-        placeholder={`e.g. 1995`}
+        placeholder="e.g. 1995"
         error={errors.established_year?.message}
         hint="Optional — the year your school was founded"
-        {...register("established_year")}
-        onInput={(e) => {
-          e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '');
+        {...yearReg}
+        onChange={(e) => {
+          // Filter non-digits before RHF processes the value
+          e.target.value = e.target.value.replace(/\D/g, "");
+          yearReg.onChange(e);
         }}
       />
     </div>

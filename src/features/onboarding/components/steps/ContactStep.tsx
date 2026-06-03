@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AuthInput, AuthSelect } from "@/components/ui/auth-fuse";
 import { INDIAN_STATES } from "@/lib/validators";
 import type { StepPropsExtra } from "./types";
@@ -6,7 +6,14 @@ import { Loader2 } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { onboardingApi } from "@/api/onboarding";
 
-const pincodeCache: Record<string, any[]> = {};
+interface PostOffice {
+  Name: string
+  District: string
+  Block: string
+  State: string
+}
+
+const pincodeCache: Record<string, PostOffice[]> = {};
 
 export function ContactStep({
   register,
@@ -14,20 +21,29 @@ export function ContactStep({
   watch,
   setValue,
 }: StepPropsExtra) {
-  const pinCode = watch("pin_code");
-  const [postOffices, setPostOffices] = useState<any[]>([]);
+  const pinCode     = watch("pin_code");
+  const selectedArea = watch("area");
+
+  const [postOffices, setPostOffices] = useState<PostOffice[]>([]);
   const [loadingPincode, setLoadingPincode] = useState(false);
   const [pincodeError, setPincodeError] = useState("");
-  const selectedArea = watch("area");
+
+  // Memoised area options — only recomputed when postOffices reference changes
+  const areaOptions = useMemo(
+    () => postOffices.map((po) => ({
+      label:    po.Name,
+      value:    po.Name,
+      sublabel: `${po.District}, ${po.State}`,
+    })),
+    [postOffices],
+  );
 
   useEffect(() => {
     if (!pinCode || pinCode.length !== 6) {
       setPostOffices([]);
       setPincodeError("");
-      // Only clear if pin code was invalidated and we had something selected
-      if (selectedArea) {
-        setValue("area", "", { shouldValidate: true });
-      }
+      // Clear selected area when the pin code becomes invalid
+      if (selectedArea) setValue("area", "", { shouldValidate: true });
       return;
     }
 
@@ -43,7 +59,7 @@ export function ContactStep({
       try {
         const data = await onboardingApi.getPincode(pinCode);
         if (data && data[0] && data[0].Status === "Success") {
-          const offices = data[0].PostOffice || [];
+          const offices: PostOffice[] = data[0].PostOffice || [];
           pincodeCache[pinCode] = offices;
           setPostOffices(offices);
         } else {
@@ -51,7 +67,7 @@ export function ContactStep({
           setPincodeError("Invalid PIN Code or no data found");
           if (selectedArea) setValue("area", "", { shouldValidate: true });
         }
-      } catch (err) {
+      } catch {
         setPostOffices([]);
         setPincodeError("Failed to fetch PIN code details");
       } finally {
@@ -61,7 +77,10 @@ export function ContactStep({
 
     const timer = setTimeout(fetchPincode, 500);
     return () => clearTimeout(timer);
-  }, [pinCode]);
+    // selectedArea is intentionally excluded — effect should only fire on pin code changes;
+    // selectedArea is read only in the "invalid pin" branch where it's still the right value.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pinCode, setValue]);
 
   const handleSelectArea = (val: string) => {
     setValue("area", val, { shouldValidate: true });
@@ -72,11 +91,8 @@ export function ContactStep({
     }
   };
 
-  const areaOptions = postOffices.map((po) => ({
-    label: po.Name,
-    value: po.Name,
-    sublabel: `${po.District}, ${po.State}`,
-  }));
+  const mobileReg  = register("mobile");
+  const pinReg     = register("pin_code");
 
   return (
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
@@ -98,8 +114,11 @@ export function ContactStep({
           placeholder="10-digit number"
           maxLength={10}
           error={errors.mobile?.message}
-          // hint="Without country code"
-          {...register("mobile")}
+          {...mobileReg}
+          onChange={(e) => {
+            e.target.value = e.target.value.replace(/\D/g, "");
+            mobileReg.onChange(e);
+          }}
         />
         <AuthInput
           label="Office Phone"
@@ -138,13 +157,16 @@ export function ContactStep({
           maxLength={6}
           autoComplete="postal-code"
           error={errors.pin_code?.message || pincodeError}
-          {...register("pin_code")}
+          {...pinReg}
+          onChange={(e) => {
+            e.target.value = e.target.value.replace(/\D/g, "");
+            pinReg.onChange(e);
+          }}
         />
 
         {loadingPincode && (
           <div className="flex items-center text-sm text-muted-foreground gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Fetching area
-            details...
+            <Loader2 className="h-4 w-4 animate-spin" /> Fetching area details...
           </div>
         )}
 
@@ -159,7 +181,6 @@ export function ContactStep({
               searchPlaceholder="Search area by name..."
               error={errors.area?.message as string | undefined}
             />
-            {/* Register the area field secretly to handle validation with react-hook-form */}
             <input type="hidden" {...register("area")} />
           </>
         ) : (
@@ -176,9 +197,7 @@ export function ContactStep({
           error={errors.city?.message}
           readOnly={!!selectedArea}
           className={
-            selectedArea
-              ? "bg-muted/50 text-muted-foreground pointer-events-none"
-              : ""
+            selectedArea ? "bg-muted/50 text-muted-foreground pointer-events-none" : ""
           }
           {...register("city")}
         />
@@ -186,9 +205,7 @@ export function ContactStep({
           label="State *"
           error={errors.state?.message}
           className={
-            selectedArea
-              ? "bg-muted/50 text-muted-foreground pointer-events-none"
-              : ""
+            selectedArea ? "bg-muted/50 text-muted-foreground pointer-events-none" : ""
           }
           tabIndex={selectedArea ? -1 : 0}
           {...register("state")}
