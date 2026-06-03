@@ -7,20 +7,19 @@ import { LoginForm } from '@/features/auth/components'
 export function LoginPage() {
   const location = useLocation()
   const { logout } = useAuthStore()
-  
+
   const locationState = location.state as { from?: { pathname: string }; incompleteProfile?: boolean } | null
-  const from = locationState?.from?.pathname ?? '/'
+  const from = locationState?.from?.pathname ?? '/dashboard'
+  const incompleteProfile = locationState?.incompleteProfile === true
 
   useEffect(() => {
-    if (locationState?.incompleteProfile) {
-      logout()
-      toast.error(
-        'Your account profile is incomplete. Please sign in with Google again to finish setup.',
-        { duration: 6000 },
-      )
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+    if (!incompleteProfile) return
+    logout()
+    toast.error(
+      'Your account profile is incomplete. Please sign in with Google again to finish setup.',
+      { duration: 6000 },
+    )
+  }, [incompleteProfile, logout])
 
   return (
     <div className="mx-auto grid w-full max-w-[350px] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">

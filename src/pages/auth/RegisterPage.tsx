@@ -8,20 +8,16 @@ import {
   MailOpen,
 } from "lucide-react";
 import { AuthButton } from "@/components/ui/auth-fuse";
+import { isValidInviteToken } from "@/lib/validators";
 import {
   TeacherInviteRegisterForm,
   StudentRegisterForm,
   ParentRegisterForm,
 } from "@/features/auth/components";
 
-/** Invite codes must be exactly 8 characters from the invite code alphabet (letters + digits 2–9). */
-function isValidTokenFormat(token: string): boolean {
-  return /^[A-Za-z2-9]{8}$/.test(token);
-}
-
 const tabs = [
   { id: "student", label: "Student", icon: GraduationCap },
-  { id: "parent", label: "Parent", icon: Users },
+  { id: "parent",  label: "Parent",  icon: Users },
 ] as const;
 
 type TabType = (typeof tabs)[number]["id"];
@@ -30,10 +26,9 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const tokenParam = searchParams.get("token");
-  const schoolParam =
-    searchParams.get("school") || searchParams.get("school_id");
-  const roleParam = searchParams.get("role");
+  const tokenParam  = searchParams.get("token");
+  const schoolParam = searchParams.get("school") || searchParams.get("school_id");
+  const roleParam   = searchParams.get("role");
 
   const initialTab: TabType = roleParam === "parent" ? "parent" : "student";
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
@@ -41,7 +36,7 @@ export function RegisterPage() {
   if (tokenParam !== null) {
     const trimmedToken = tokenParam.trim();
 
-    if (!trimmedToken || !isValidTokenFormat(trimmedToken)) {
+    if (!trimmedToken || !isValidInviteToken(trimmedToken)) {
       return (
         <div className="mx-auto grid w-full max-w-[400px] gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="flex flex-col items-center gap-3 text-center">
@@ -129,7 +124,10 @@ export function RegisterPage() {
         </p>
       </div>
 
-      <div className="mb-6 flex gap-1 p-1.5 bg-muted rounded-3xl border border-border/50">
+      <div
+        role="tablist"
+        className="mb-6 flex gap-1 p-1.5 bg-muted rounded-3xl border border-border/50"
+      >
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -137,6 +135,9 @@ export function RegisterPage() {
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`tabpanel-register-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all duration-300 relative ${
                 isActive
@@ -157,19 +158,28 @@ export function RegisterPage() {
         })}
       </div>
 
+      {/* Both forms always mounted — CSS toggles visibility to preserve entered data */}
       <div className="relative px-1">
-        {activeTab === "student" && (
+        <div
+          id="tabpanel-register-student"
+          role="tabpanel"
+          className={activeTab !== "student" ? "hidden" : ""}
+        >
           <StudentRegisterForm
             defaultSchoolId={schoolParam || ""}
             navigate={navigate}
           />
-        )}
-        {activeTab === "parent" && (
+        </div>
+        <div
+          id="tabpanel-register-parent"
+          role="tabpanel"
+          className={activeTab !== "parent" ? "hidden" : ""}
+        >
           <ParentRegisterForm
             defaultSchoolId={schoolParam || ""}
             navigate={navigate}
           />
-        )}
+        </div>
       </div>
 
       <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/50 px-3 py-3 mt-1">

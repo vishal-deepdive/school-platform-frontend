@@ -4,18 +4,13 @@
  * Phase 2 of the Google OAuth sign-up flow.
  * Shown only to new Google users who don't have an account yet.
  *
- * Session data is read from sessionStorage (never the URL) under the key
- * "google_signup_session": { google_token, email, full_name, avatar_url }.
+ * Session data is read from sessionStorage (never the URL) via session.ts helpers.
+ * Key: SESSION_KEYS.GOOGLE_SIGNUP → { google_token, email, full_name, avatar_url }
  *
  * Optional hints for pre-filling (set before the Google redirect):
- *   - google_pending_role              → pre-select a tab or trigger teacher-invite flow
- *   - google_pending_invite_token      → invite token for teacher registration (hidden from UI)
- *   - google_pending_school_id         → pre-fill student school_id
- *
- * Role-specific information collected here mirrors the email/password paths:
- *   - Student  → school_id + class_code
- *   - Teacher  → invite token sourced from sessionStorage (never shown in the form)
- *   - Parent   → school_id + student_id + relation
+ *   - PENDING_ROLE         → pre-select a tab or trigger teacher-invite flow
+ *   - PENDING_INVITE_TOKEN → invite token for teacher registration (hidden from UI)
+ *   - PENDING_SCHOOL_ID    → pre-fill student school_id
  *
  * ── Teacher-invite via Google OAuth ──────────────────────────────────────────
  * When a teacher follows the principal's invite link (/register?token=xxx) and
@@ -25,11 +20,11 @@
  * invisibly when calling the API.
  *
  * Edge cases handled:
- *   - google_pending_role === 'teacher' but NO invite token  → error state
- *   - invite token present but invalid format                → error state
- *   - API rejects the token (expired / already used)         → toast error
- *   - google_signup_session missing                          → bounce to login
- *   - google_token expired                                   → expiry banner + re-login link
+ *   - PENDING_ROLE === 'teacher' but NO invite token  → error state
+ *   - invite token present but invalid format         → error state
+ *   - API rejects the token (expired / already used)  → toast error
+ *   - GOOGLE_SIGNUP session missing                   → bounce to login
+ *   - google_token expired                            → expiry banner + re-login link
  */
 
 import { useState, useEffect, useCallback } from 'react'
@@ -47,10 +42,12 @@ import toast from 'react-hot-toast'
 
 import { authApi } from '@/api/auth'
 import { useAuthStore } from '@/store/auth'
-import { decodeJwt } from '@/lib/jwt'
+import { decodeJwt, buildUserFromJwt } from '@/lib/jwt'
 import { getErrorMessage } from '@/lib/utils'
+import { SESSION_KEYS, readSignupSession, clearSignupSession } from '@/lib/session'
+import { isValidInviteToken } from '@/lib/validators'
 import { AuthButton } from '@/components/ui/auth-fuse'
-import type { TokenResponse, User } from '@/types/auth'
+import type { TokenResponse } from '@/types/auth'
 
 import {
   GoogleIcon,
@@ -59,54 +56,8 @@ import {
   ParentCompleteForm,
 } from '@/features/auth/components'
 
-/* ──────────────────────────────────────────────────────────────────────────────
-   Invite code format validation (8 chars: letters + digits 2–9, case-insensitive)
-   ──────────────────────────────────────────────────────────────────────────── */
-function isValidTokenFormat(token: string): boolean {
-  return /^[A-Za-z2-9]{8}$/.test(token)
-}
+// ─── Token expiry countdown ───────────────────────────────────────────────────
 
-/* ──────────────────────────────────────────────────────────────────────────────
-   Session storage helpers
-   ──────────────────────────────────────────────────────────────────────────── */
-interface GoogleSignupSession {
-  google_token: string
-  email: string
-  full_name: string | null
-  avatar_url: string | null
-}
-
-function readSignupSession(): GoogleSignupSession | null {
-  try {
-    const raw = sessionStorage.getItem('google_signup_session')
-    if (!raw) return null
-    return JSON.parse(raw) as GoogleSignupSession
-  } catch {
-    return null
-  }
-}
-
-function clearSignupSession() {
-  sessionStorage.removeItem('google_signup_session')
-  sessionStorage.removeItem('google_pending_role')
-  sessionStorage.removeItem('google_pending_invite_token')
-  sessionStorage.removeItem('google_pending_school_id')
-}
-
-/* ──────────────────────────────────────────────────────────────────────────────
-   Tabs config — Teacher is intentionally absent.
-   Teachers complete registration via the dedicated invite flow below.
-   ──────────────────────────────────────────────────────────────────────────── */
-const tabs = [
-  { id: 'student', label: 'Student', icon: GraduationCap },
-  { id: 'parent',  label: 'Parent',  icon: Users },
-] as const
-
-type TabType = typeof tabs[number]['id']
-
-/* ──────────────────────────────────────────────────────────────────────────────
-   Token expiry countdown hook
-   ──────────────────────────────────────────────────────────────────────────── */
 function useTokenExpiry(googleToken: string): { secondsLeft: number; expired: boolean } {
   const decoded = decodeJwt(googleToken)
   const expTimestamp = decoded?.exp ?? 0
@@ -137,23 +88,28 @@ function formatCountdown(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-/* ──────────────────────────────────────────────────────────────────────────────
-   Main page
-   ──────────────────────────────────────────────────────────────────────────── */
+// ─── Tabs config ──────────────────────────────────────────────────────────────
+
+const TABS = [
+  { id: 'student', label: 'Student', icon: GraduationCap },
+  { id: 'parent',  label: 'Parent',  icon: Users },
+] as const
+
+type TabType = (typeof TABS)[number]['id']
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export function GoogleCompleteProfilePage() {
   const navigate = useNavigate()
   const { login } = useAuthStore()
 
   const session = readSignupSession()
 
-  // Read pending hints set before the Google redirect
-  const hintRole        = sessionStorage.getItem('google_pending_role')
-  const hintInviteToken = sessionStorage.getItem('google_pending_invite_token')
+  const hintRole        = sessionStorage.getItem(SESSION_KEYS.PENDING_ROLE)
+  const hintInviteToken = sessionStorage.getItem(SESSION_KEYS.PENDING_INVITE_TOKEN)
 
-  // Whether this user arrived via a teacher invite link
   const isTeacherInviteFlow = hintRole === 'teacher'
 
-  // For the normal (student/parent) tab flow — determine initial tab
   const validTabs: TabType[] = ['student', 'parent']
   const initialTab: TabType =
     hintRole && validTabs.includes(hintRole as TabType)
@@ -161,7 +117,7 @@ export function GoogleCompleteProfilePage() {
       : 'student'
   const [activeTab, setActiveTab] = useState<TabType>(initialTab)
 
-  /* ── Guard: no signup session → offer Google re-auth ───────────────────── */
+  /* ── Guard: no signup session ───────────────────────────────────────────── */
   if (!session) {
     return (
       <div className="flex flex-col items-center gap-6 py-10 text-center w-full max-w-sm mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -176,7 +132,6 @@ export function GoogleCompleteProfilePage() {
           </p>
         </div>
 
-        {/* Google re-auth button */}
         <AuthButton
           type="button"
           className="w-full"
@@ -205,26 +160,13 @@ export function GoogleCompleteProfilePage() {
 
   const { google_token, email, full_name, avatar_url } = session
 
-  /** Called by student / teacher forms on successful API response (201). */
   const handleTokenSuccess = (tokens: TokenResponse) => {
-    const decoded = decodeJwt(tokens.access_token)
-    const user: User = {
-      id:                decoded?.sub ?? '',
-      email:             decoded?.email ?? email,
-      full_name:         full_name || null,
-      role:              decoded?.role ?? 'student',
-      school_id:         decoded?.school_id ?? null,
-      is_active:         true,
-      is_email_verified: true,
-      avatar_url:        decoded?.avatar_url ?? avatar_url ?? null,
-    }
-    login(tokens, user)
+    login(tokens, buildUserFromJwt(decodeJwt(tokens.access_token), email, full_name ?? null))
     clearSignupSession()
     toast.success('Account created! Welcome 🎉')
-    navigate('/', { replace: true })
+    navigate('/dashboard', { replace: true })
   }
 
-  /** Called by parent form on 202 pending_approval response. */
   const handleParentPending = (message: string) => {
     clearSignupSession()
     toast.success(message, { duration: 6000 })
@@ -233,8 +175,7 @@ export function GoogleCompleteProfilePage() {
 
   /* ── Teacher-invite via Google OAuth ────────────────────────────────────── */
   if (isTeacherInviteFlow) {
-    // Edge case: teacher role hint present but no (or invalid) token stored
-    if (!hintInviteToken || !isValidTokenFormat(hintInviteToken)) {
+    if (!hintInviteToken || !isValidInviteToken(hintInviteToken)) {
       return (
         <div className="w-full max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
           <IdentityBadge email={email} fullName={full_name} avatarUrl={avatar_url} />
@@ -260,13 +201,9 @@ export function GoogleCompleteProfilePage() {
       )
     }
 
-    // Valid invite token stored → show teacher invite completion form
     return (
       <div className="w-full max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-        {/* Google identity badge */}
         <IdentityBadge email={email} fullName={full_name} avatarUrl={avatar_url} />
-
-        {/* Heading */}
         <div className="mt-4 mb-3">
           <div className="flex items-center gap-2.5 mb-3">
             <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -277,8 +214,6 @@ export function GoogleCompleteProfilePage() {
               <p className="text-xs text-muted-foreground">Complete your teacher registration</p>
             </div>
           </div>
-
-          {/* Invite badge */}
           <div className="flex items-center gap-2.5 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5">
             <School className="h-4 w-4 text-primary shrink-0" />
             <p className="text-xs text-muted-foreground">
@@ -287,11 +222,7 @@ export function GoogleCompleteProfilePage() {
             </p>
           </div>
         </div>
-
-        {/* Expiry countdown */}
         <ExpiryBanner googleToken={google_token} />
-
-        {/* Teacher invite completion form */}
         <TeacherInviteCompleteForm
           googleToken={google_token}
           prefillName={full_name ?? ''}
@@ -305,11 +236,8 @@ export function GoogleCompleteProfilePage() {
   /* ── Normal flow: Student / Parent tabs ─────────────────────────────────── */
   return (
     <div className="w-full max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
       <div className="mb-6">
-        {/* Google identity badge */}
         <IdentityBadge email={email} fullName={full_name} avatarUrl={avatar_url} />
-
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground mt-4">
           Complete your profile
         </h1>
@@ -318,18 +246,22 @@ export function GoogleCompleteProfilePage() {
         </p>
       </div>
 
-      {/* Expiry countdown */}
       <ExpiryBanner googleToken={google_token} />
 
-      {/* Role tabs — Student and Parent only */}
-      <div className="mb-6 flex gap-1 p-1.5 bg-muted rounded-xl border border-border/50">
-        {tabs.map((tab) => {
+      <div
+        role="tablist"
+        className="mb-6 flex gap-1 p-1.5 bg-muted rounded-xl border border-border/50"
+      >
+        {TABS.map((tab) => {
           const Icon = tab.icon
           const isActive = activeTab === tab.id
           return (
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls={`tabpanel-complete-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all duration-300 ${
                 isActive
@@ -348,7 +280,6 @@ export function GoogleCompleteProfilePage() {
         })}
       </div>
 
-      {/* Teacher info note */}
       <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/50 px-3 py-2.5 mb-5">
         <School className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
@@ -358,30 +289,37 @@ export function GoogleCompleteProfilePage() {
         </p>
       </div>
 
-      {/* Form area */}
+      {/* Both panels always mounted; CSS toggles visibility to preserve form state */}
       <div className="relative min-h-[320px]">
-        {activeTab === 'student' && (
+        <div
+          id="tabpanel-complete-student"
+          role="tabpanel"
+          className={activeTab !== 'student' ? 'hidden' : ''}
+        >
           <StudentCompleteForm
             googleToken={google_token}
             prefillName={full_name ?? ''}
             onSuccess={handleTokenSuccess}
           />
-        )}
-        {activeTab === 'parent' && (
+        </div>
+        <div
+          id="tabpanel-complete-parent"
+          role="tabpanel"
+          className={activeTab !== 'parent' ? 'hidden' : ''}
+        >
           <ParentCompleteForm
             googleToken={google_token}
             prefillName={full_name ?? ''}
             onPending={handleParentPending}
           />
-        )}
+        </div>
       </div>
     </div>
   )
 }
 
-/* ──────────────────────────────────────────────────────────────────────────────
-   Expiry banner
-   ──────────────────────────────────────────────────────────────────────────── */
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
 function ExpiryBanner({ googleToken }: { googleToken: string }) {
   const { secondsLeft, expired } = useTokenExpiry(googleToken)
 
@@ -415,11 +353,7 @@ function ExpiryBanner({ googleToken }: { googleToken: string }) {
       <Clock className={`h-3.5 w-3.5 shrink-0 ${isWarning ? 'text-amber-500' : ''}`} />
       <span>
         Session expires in{' '}
-        <span
-          className={`font-mono font-bold ${
-            isWarning ? 'text-amber-600 dark:text-amber-400' : ''
-          }`}
-        >
+        <span className={`font-mono font-bold ${isWarning ? 'text-amber-600 dark:text-amber-400' : ''}`}>
           {formatCountdown(secondsLeft)}
         </span>
       </span>
@@ -427,9 +361,6 @@ function ExpiryBanner({ googleToken }: { googleToken: string }) {
   )
 }
 
-/* ──────────────────────────────────────────────────────────────────────────────
-   Shared identity badge (compact avatar + email strip)
-   ──────────────────────────────────────────────────────────────────────────── */
 function IdentityBadge({
   email,
   fullName,

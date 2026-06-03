@@ -7,6 +7,7 @@ import { RegisterPage } from '@/pages/auth/RegisterPage'
 import { VerifyOtpPage } from '@/pages/auth/VerifyOtpPage'
 import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
+import { LandingPage } from '@/pages/LandingPage'
 import { DashboardPage } from '@/pages/DashboardPage'
 import { EnrollPage } from '@/pages/attendance/EnrollPage'
 import { MarkAttendancePage } from '@/pages/attendance/MarkAttendancePage'
@@ -32,6 +33,7 @@ import { ApplicationDetailPage } from '@/pages/admin/ApplicationDetailPage'
 import { AdminManagementPage } from '@/pages/admin/AdminManagementPage'
 
 export const router = createBrowserRouter([
+  { path: '/', element: <LandingPage /> },
   {
     element: <AuthLayout />,
     children: [
@@ -54,7 +56,7 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: '/', element: <DashboardPage /> },
+          { path: '/dashboard', element: <DashboardPage /> },
           { path: '/attendance/enroll', element: <EnrollPage /> },
           { path: '/attendance/mark', element: <MarkAttendancePage /> },
           { path: '/attendance/view', element: <ViewAttendancePage /> },

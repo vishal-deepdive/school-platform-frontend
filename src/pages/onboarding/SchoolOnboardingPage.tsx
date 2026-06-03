@@ -24,6 +24,7 @@ import type { FieldPath } from "react-hook-form";
 import type { SchoolOnboardingFormData } from "@/lib/validators";
 import { onboardingApi } from "@/api/onboarding";
 import { getErrorMessage, cn } from "@/lib/utils";
+import { SESSION_KEYS, removeSession } from "@/lib/session";
 import { AuthButton } from "@/components/ui/auth-fuse";
 import type { OnboardingApplicationResponse } from "@/types/onboarding";
 
@@ -69,14 +70,8 @@ const STEPS: {
 ];
 
 const STEP_FIELDS: Record<StepIndex, FieldPath<SchoolOnboardingFormData>[]> = {
-  1: [
-    "school_name",
-    "board",
-    "other_board",
-    "school_type",
-    "other_school_type",
-  ],
-  2: ["email", "mobile", "address_line_1", "city", "state", "pin_code", "area"],
+  1: ["school_name", "board", "other_board", "school_type", "established_year"],
+  2: ["email", "mobile", "phone", "address_line_1", "city", "state", "pin_code", "area"],
   3: [
     "student_count",
     "classes_from",
@@ -157,8 +152,6 @@ export function SchoolOnboardingPage() {
       if (data.other_board?.trim())
         fd.append("other_board", data.other_board.trim());
       fd.append("school_type", data.school_type);
-      if (data.other_school_type?.trim())
-        fd.append("other_school_type", data.other_school_type.trim());
       if (data.established_year?.trim())
         fd.append("established_year", data.established_year.trim());
 
@@ -200,8 +193,7 @@ export function SchoolOnboardingPage() {
       const response = await onboardingApi.apply(fd);
       setPrincipalEmail(data.principal_email);
       setSubmitted(response);
-      sessionStorage.removeItem("onboarding_form_data");
-      sessionStorage.removeItem("onboarding_current_step");
+      removeSession(SESSION_KEYS.ONBOARDING_FORM, SESSION_KEYS.ONBOARDING_STEP);
       toast.success("Application submitted!");
     } catch (err) {
       toast.error(getErrorMessage(err));
