@@ -14,9 +14,10 @@ import type { JobStatus } from '@/types/recording'
 
 const statusConfig: Record<JobStatus, { label: string; color: 'default' | 'info' | 'success' | 'danger'; icon: React.ReactNode }> = {
   pending: { label: 'Queued', color: 'default', icon: <Clock className="h-4 w-4" /> },
-  running: { label: 'Processing', color: 'info', icon: <Loader2 className="h-4 w-4 animate-spin" /> },
+  processing: { label: 'Processing', color: 'info', icon: <Loader2 className="h-4 w-4 animate-spin" /> },
   completed: { label: 'Completed', color: 'success', icon: <CheckCircle2 className="h-4 w-4" /> },
   failed: { label: 'Failed', color: 'danger', icon: <XCircle className="h-4 w-4" /> },
+  not_found: { label: 'Not Found', color: 'danger', icon: <XCircle className="h-4 w-4" /> },
 }
 
 export function UploadRecordingPage() {
@@ -47,7 +48,7 @@ export function UploadRecordingPage() {
     enabled: !!jobId,
     refetchInterval: (query) => {
       const status = query.state.data?.status
-      return status === 'pending' || status === 'running' ? 3000 : false
+      return status === 'pending' || status === 'processing' ? 3000 : false
     },
   })
 
@@ -116,15 +117,15 @@ export function UploadRecordingPage() {
             <FileUpload
               label="Audio File"
               accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/*"
-              maxSize={100 * 1024 * 1024}
+              maxSize={500 * 1024 * 1024}
               onChange={setFile}
-              hint="MP3, WAV, M4A. Max 100 MB."
+              hint="MP3, WAV, M4A. Max 500 MB."
             />
 
             <Button
               onClick={handleUpload}
               loading={uploading}
-              disabled={!!jobId && (jobStatus?.status === 'pending' || jobStatus?.status === 'running')}
+              disabled={!!jobId && (jobStatus?.status === 'pending' || jobStatus?.status === 'processing')}
               icon={<Mic2 className="h-4 w-4" />}
             >
               {uploading ? 'Uploading…' : 'Process Recording'}
@@ -132,15 +133,17 @@ export function UploadRecordingPage() {
           </div>
         </Card>
 
-        {jobId && jobStatus && (
+        {jobId && jobStatus && (() => {
+          const config = statusConfig[jobStatus.status] ?? statusConfig.pending
+          return (
           <Card>
             <CardHeader title="Processing Status" />
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                {statusConfig[jobStatus.status].icon}
+                {config.icon}
                 <div>
-                  <Badge variant={statusConfig[jobStatus.status].color}>
-                    {statusConfig[jobStatus.status].label}
+                  <Badge variant={config.color}>
+                    {config.label}
                   </Badge>
                   <p className="text-xs text-gray-400 mt-1">Job ID: {jobId}</p>
                 </div>
@@ -150,7 +153,7 @@ export function UploadRecordingPage() {
                 <p className="text-sm text-gray-600">{jobStatus.progress}</p>
               )}
 
-              {jobStatus.status === 'running' && (
+              {jobStatus.status === 'processing' && (
                 <div className="rounded-lg bg-blue-50 p-4">
                   <p className="text-sm text-blue-700">
                     AI is transcribing and generating study materials. This may take 1–3 minutes.
@@ -169,7 +172,8 @@ export function UploadRecordingPage() {
               )}
             </div>
           </Card>
-        )}
+          )
+        })()}
       </div>
 
       {markdown && (

@@ -1,4 +1,4 @@
-export type JobStatus = 'pending' | 'running' | 'completed' | 'failed'
+export type JobStatus = 'pending' | 'processing' | 'completed' | 'failed' | 'not_found'
 
 export interface JobResponse {
   job_id: string
@@ -59,4 +59,22 @@ export interface AuditLogsListResponse {
 export interface DeleteRecordingResponse {
   message: string
   record_id: string
+}
+
+export interface SearchResultItem {
+  id: string
+  date?: string
+  school_name: string
+  class?: string
+  section?: string
+  subject?: string
+  recording_subject?: string
+  job_id?: string
+  similarity?: number
+}
+
+export interface SearchResponse {
+  query: string
+  results: SearchResultItem[]
+  total: number
 }

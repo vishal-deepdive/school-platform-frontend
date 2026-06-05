@@ -129,7 +129,7 @@ export function EnrollPage() {
             accept=".zip"
             maxSize={100 * 1024 * 1024}
             onChange={setFiles}
-            hint="Max 100 MB. Each student's folder should contain 3–5 clear face photos."
+            hint="Max 100 MB. Each student's folder should contain 3-5 clear face photos."
           />
 
           <Button
