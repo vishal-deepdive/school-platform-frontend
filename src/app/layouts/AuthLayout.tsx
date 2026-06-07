@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { Typewriter } from "@/components/ui/auth-fuse";
+import { Typewriter } from "@/shared/components/ui/auth-fuse";
 import logoImg from "@/public/logo.png";
 import authImg from "@/public/auth.png";
 import registerImg from "@/public/register.png";
