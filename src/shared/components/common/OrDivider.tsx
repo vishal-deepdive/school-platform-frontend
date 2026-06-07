@@ -6,8 +6,10 @@ export function OrDivider() {
         <div className="w-full border-t border-border" />
       </div>
       <div className="relative flex justify-center text-xs">
-        <span className="bg-background px-3 text-muted-foreground font-medium">or</span>
+        <span className="bg-background px-3 text-muted-foreground font-medium">
+          or
+        </span>
       </div>
     </div>
-  )
+  );
 }

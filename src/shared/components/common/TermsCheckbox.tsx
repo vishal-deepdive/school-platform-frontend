@@ -1,14 +1,14 @@
-import { forwardRef, useId, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
-import { cn } from '@/lib/utils'
+import { forwardRef, useId, type ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { cn } from "@/shared/lib/utils";
 
 interface TermsCheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  error?: string
+  error?: string;
   /**
    * Override the label text. Defaults to the standard "I accept the Terms & Conditions".
    * Pass a ReactNode for rich content.
    */
-  label?: ReactNode
+  label?: ReactNode;
 }
 
 /**
@@ -17,12 +17,12 @@ interface TermsCheckboxProps extends React.InputHTMLAttributes<HTMLInputElement>
  */
 export const TermsCheckbox = forwardRef<HTMLInputElement, TermsCheckboxProps>(
   ({ error, id: externalId, className, label, ...props }, ref) => {
-    const generatedId = useId()
-    const id = externalId ?? generatedId
+    const generatedId = useId();
+    const id = externalId ?? generatedId;
 
     const labelContent: ReactNode = label ?? (
       <>
-        I accept the{' '}
+        I accept the{" "}
         <Link
           to="#"
           className="font-medium text-primary hover:text-primary/80 transition-colors"
@@ -30,7 +30,7 @@ export const TermsCheckbox = forwardRef<HTMLInputElement, TermsCheckboxProps>(
           Terms &amp; Conditions
         </Link>
       </>
-    )
+    );
 
     return (
       <div className="flex flex-col gap-1 mt-2">
@@ -40,8 +40,8 @@ export const TermsCheckbox = forwardRef<HTMLInputElement, TermsCheckboxProps>(
             id={id}
             ref={ref}
             className={cn(
-              'mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer transition-colors',
-              error && 'border-destructive',
+              "mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary cursor-pointer transition-colors",
+              error && "border-destructive",
               className,
             )}
             {...props}
@@ -57,7 +57,7 @@ export const TermsCheckbox = forwardRef<HTMLInputElement, TermsCheckboxProps>(
           <p className="text-xs text-destructive font-medium pl-6">{error}</p>
         )}
       </div>
-    )
+    );
   },
-)
-TermsCheckbox.displayName = 'TermsCheckbox'
+);
+TermsCheckbox.displayName = "TermsCheckbox";
