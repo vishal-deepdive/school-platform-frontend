@@ -1,7 +1,10 @@
-import { multipartClient, apiClient } from './client'
-import type { OnboardingApplicationResponse, OnboardingStatusResponse } from '@/types/onboarding'
+import { multipartClient, apiClient } from "@/shared/api/client";
+import type {
+  OnboardingApplicationResponse,
+  OnboardingStatusResponse,
+} from "@/features/onboarding/types";
 
-const BASE = '/api/v1/onboarding'
+const BASE = "/api/v1/onboarding";
 
 export const onboardingApi = {
   /**
@@ -18,7 +21,9 @@ export const onboardingApi = {
    */
   getStatus: (applicationId: string) =>
     apiClient
-      .get<OnboardingStatusResponse>(`${BASE}/${encodeURIComponent(applicationId)}/status`)
+      .get<OnboardingStatusResponse>(
+        `${BASE}/${encodeURIComponent(applicationId)}/status`,
+      )
       .then((r) => r.data),
 
   /**
@@ -30,9 +35,9 @@ export const onboardingApi = {
       .post<OnboardingApplicationResponse>(
         `${BASE}/${encodeURIComponent(applicationId)}/verify-email`,
         { otp },
-        { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } },
       )
-      .then((r) => r.data)
+      .then((r) => r.data);
   },
 
   /**
@@ -40,14 +45,14 @@ export const onboardingApi = {
    */
   resendOtp: (applicationId: string) =>
     apiClient
-      .post<{ message: string }>(`${BASE}/${encodeURIComponent(applicationId)}/resend-otp`)
+      .post<{
+        message: string;
+      }>(`${BASE}/${encodeURIComponent(applicationId)}/resend-otp`)
       .then((r) => r.data),
 
   /**
    * Fetch pincode details via backend proxy
    */
   getPincode: (pinCode: string) =>
-    apiClient
-      .get<any>(`${BASE}/pincode/${pinCode}`)
-      .then((r) => r.data),
-}
+    apiClient.get<any>(`${BASE}/pincode/${pinCode}`).then((r) => r.data),
+};
