@@ -1,13 +1,15 @@
-import { motion } from "framer-motion"
-import { ShieldCheck, ArrowUpRight } from "lucide-react"
-import { Link } from "react-router-dom"
+import { motion } from "framer-motion";
+import { ShieldCheck, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Stat = ({ label, value }: { label: string; value: string }) => (
   <div className="space-y-1">
-    <div className="text-3xl font-semibold tracking-tight text-slate-900">{value}</div>
+    <div className="text-3xl font-semibold tracking-tight text-slate-900">
+      {value}
+    </div>
     <div className="text-sm text-slate-500">{label}</div>
   </div>
-)
+);
 
 function MiniBars() {
   return (
@@ -23,7 +25,7 @@ function MiniBars() {
         />
       ))}
     </div>
-  )
+  );
 }
 
 function Planet() {
@@ -48,12 +50,27 @@ function Planet() {
       <circle cx="94" cy="98" r="10" fill="white" opacity="0.45" />
       <circle cx="132" cy="126" r="8" fill="white" opacity="0.35" />
       <motion.ellipse
-        cx="110" cy="110" rx="100" ry="34" stroke="white" strokeOpacity="0.6" fill="none"
-        animate={{ strokeDashoffset: [200, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} strokeDasharray="200 200"
+        cx="110"
+        cy="110"
+        rx="100"
+        ry="34"
+        stroke="white"
+        strokeOpacity="0.6"
+        fill="none"
+        animate={{ strokeDashoffset: [200, 0] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        strokeDasharray="200 200"
       />
-      <motion.circle cx="210" cy="110" r="4" fill="white" animate={{ opacity: [0.2, 1, 0.2] }} transition={{ duration: 2.2, repeat: Infinity }} />
+      <motion.circle
+        cx="210"
+        cy="110"
+        r="4"
+        fill="white"
+        animate={{ opacity: [0.2, 1, 0.2] }}
+        transition={{ duration: 2.2, repeat: Infinity }}
+      />
     </motion.svg>
-  )
+  );
 }
 
 export function HeroSection() {
@@ -68,7 +85,11 @@ export function HeroSection() {
             with precision.
           </h1>
           <p className="mt-4 max-w-md text-slate-600">
-            Join over a thousand institutions who choose <span className="font-medium text-slate-900">DeepDive Consulting</span> for fast, secure, and smart school management.
+            Join over a thousand institutions who choose{" "}
+            <span className="font-medium text-slate-900">
+              DeepDive Consulting
+            </span>{" "}
+            for fast, secure, and smart school management.
           </p>
         </div>
 
@@ -87,7 +108,9 @@ export function HeroSection() {
         </div>
 
         <div className="mt-6 flex items-center gap-8 opacity-70">
-          <span className="text-xs text-slate-500">TRUSTED BY TOP INSTITUTIONS</span>
+          <span className="text-xs text-slate-500">
+            TRUSTED BY TOP INSTITUTIONS
+          </span>
           <div className="flex items-center gap-6 text-slate-400">
             <span className="font-semibold text-sm">Delhi Public School</span>
             <span className="font-semibold text-sm">KVS</span>
@@ -106,7 +129,11 @@ export function HeroSection() {
           className="relative col-span-1 overflow-hidden rounded-xl bg-gradient-to-b from-primary to-primary/80 p-6 text-primary-foreground shadow-lg"
         >
           <div className="absolute inset-0">
-            <svg className="absolute inset-0 h-full w-full opacity-30" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+            <svg
+              className="absolute inset-0 h-full w-full opacity-30"
+              viewBox="0 0 400 400"
+              xmlns="http://www.w3.org/2000/svg"
+            >
               <defs>
                 <radialGradient id="rg" cx="50%" cy="50%" r="50%">
                   <stop offset="0%" stopColor="white" stopOpacity="0.35" />
@@ -115,7 +142,15 @@ export function HeroSection() {
               </defs>
               <rect width="400" height="400" fill="url(#rg)" />
               {[...Array(12)].map((_, i) => (
-                <circle key={i} cx="200" cy="200" r={20 + i * 14} fill="none" stroke="currentColor" strokeOpacity="0.12" />
+                <circle
+                  key={i}
+                  cx="200"
+                  cy="200"
+                  r={20 + i * 14}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeOpacity="0.12"
+                />
               ))}
             </svg>
           </div>
@@ -125,7 +160,9 @@ export function HeroSection() {
               <div className="rounded-full bg-primary-foreground/20 p-2 ring-1 ring-white/10 text-white">
                 <ShieldCheck className="h-5 w-5" />
               </div>
-              <span className="text-xs uppercase tracking-wider text-white/80">Extra Secure</span>
+              <span className="text-xs uppercase tracking-wider text-white/80">
+                Extra Secure
+              </span>
             </div>
             <div className="mt-6 text-xl leading-snug text-white/95">
               Role-based access
@@ -133,7 +170,12 @@ export function HeroSection() {
             </div>
             <motion.div
               className="absolute right-6 top-6 h-12 w-12 rounded-full bg-white/20"
-              animate={{ boxShadow: ["0 0 0 0 rgba(255,255,255,0.35)", "0 0 0 16px rgba(255,255,255,0)"] }}
+              animate={{
+                boxShadow: [
+                  "0 0 0 0 rgba(255,255,255,0.35)",
+                  "0 0 0 16px rgba(255,255,255,0)",
+                ],
+              }}
               transition={{ duration: 2.5, repeat: Infinity }}
             />
           </div>
@@ -150,7 +192,9 @@ export function HeroSection() {
           <div className="pointer-events-none absolute -right-8 -top-10 opacity-70">
             <Planet />
           </div>
-          <div className="relative mt-24 text-sm text-white/90">Platform Reach</div>
+          <div className="relative mt-24 text-sm text-white/90">
+            Platform Reach
+          </div>
           <div className="text-xl font-medium leading-snug">
             Connect
             <br /> everywhere seamlessly
@@ -166,11 +210,16 @@ export function HeroSection() {
           className="col-span-1 md:col-span-2 rounded-xl bg-white p-6 text-slate-800 shadow-lg ring-1 ring-slate-200"
         >
           <div className="text-sm text-slate-500">Student Attendance Rate</div>
-          <div className="mt-2 text-3xl font-semibold tracking-tight">96.4% <span className="text-sm font-medium text-slate-400 align-middle">Avg</span></div>
+          <div className="mt-2 text-3xl font-semibold tracking-tight">
+            96.4%{" "}
+            <span className="text-sm font-medium text-slate-400 align-middle">
+              Avg
+            </span>
+          </div>
           <div className="mt-1 text-xs text-primary">↑ 2.1% this month</div>
           <MiniBars />
         </motion.div>
       </div>
     </div>
-  )
+  );
 }

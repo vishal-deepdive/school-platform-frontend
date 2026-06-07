@@ -1,0 +1,61 @@
+// ─── School onboarding option lists ───────────────────────────────────────────
+
+export const INDIAN_STATES = [
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
+] as const;
+
+export const SCHOOL_BOARDS = [
+  { value: "CBSE", label: "CBSE – Central Board of Secondary Education" },
+  {
+    value: "ICSE",
+    label: "ICSE / ISC – Indian Certificate of Secondary Education",
+  },
+  { value: "STATE", label: "State Board" },
+  { value: "IB", label: "IB – International Baccalaureate" },
+  { value: "IGCSE", label: "IGCSE – Cambridge International" },
+  { value: "CAMBRIDGE", label: "Cambridge (A-Level)" },
+  { value: "OTHER", label: "Other" },
+] as const;
+
+export const SCHOOL_TYPES = [
+  { value: "private", label: "Private" },
+  { value: "government", label: "Government" },
+  { value: "aided", label: "Government Aided" },
+  { value: "international", label: "International" },
+  { value: "autonomous", label: "Autonomous" },
+] as const;
