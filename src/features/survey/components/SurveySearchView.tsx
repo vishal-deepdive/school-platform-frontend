@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Search, BarChart2, MessageSquare, Sparkles } from "lucide-react";
@@ -55,6 +55,17 @@ const exampleQueries = [
 export function SurveySearchView() {
   const [result, setResult] = useState<SearchResponse | null>(null);
 
+  const { data: surveyStatus } = useQuery({
+    queryKey: ["survey", "status"],
+    queryFn: () => surveyApi.getStatus(),
+    staleTime: 5 * 60_000,
+  });
+
+  const classOptions: SelectOption[] = surveyStatus?.by_class?.map((c) => ({
+    value: String((c as any).class),
+    label: `${(c as any).class}`,
+  })) ?? [];
+
   const {
     register,
     handleSubmit,
@@ -64,6 +75,7 @@ export function SurveySearchView() {
   } = useForm<SurveySearchFormData>({
     resolver: zodResolver(surveySearchSchema),
     defaultValues: {
+      class_name: "",
       feedback_column: "school_feedback",
       limit: 10,
     },
@@ -73,6 +85,7 @@ export function SurveySearchView() {
     mutationFn: (data: SurveySearchFormData) =>
       surveyApi.search({
         query: data.query,
+        class_name: data.class_name,
         feedback_column: data.feedback_column as FeedbackColumn,
         limit: data.limit,
       }),
@@ -97,8 +110,8 @@ export function SurveySearchView() {
           onSubmit={handleSubmit((data) => search(data))}
           className="space-y-4"
         >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="sm:col-span-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <div className="sm:col-span-4">
               <label className="text-sm font-medium text-gray-700 block mb-1">
                 Query
               </label>
@@ -111,12 +124,22 @@ export function SurveySearchView() {
                 <Search className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
             </div>
-            <Select
-              label="Feedback Column"
-              options={feedbackOptions}
-              value={feedbackCol}
-              {...register("feedback_column")}
-            />
+            <div className="sm:col-span-2">
+              <Select
+                label="Class Name"
+                options={classOptions}
+                placeholder="Select a class..."
+                {...register("class_name")}
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <Select
+                label="Feedback Column"
+                options={feedbackOptions}
+                value={feedbackCol}
+                {...register("feedback_column")}
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-4 flex-wrap">

@@ -16,6 +16,7 @@ export interface SurveyStatusResponse {
 
 export interface SearchRequest {
   query: string;
+  class_name: string;
   feedback_column: FeedbackColumn;
   limit: number;
   filters?: Record<string, unknown>;
