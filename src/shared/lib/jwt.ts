@@ -1,32 +1,32 @@
-import type { User } from '@/types/auth'
+import type { User } from "@/features/auth/types";
 
 export interface DecodedToken {
-  sub: string
-  email: string
-  school_id: string | null
-  role: 'admin' | 'principal' | 'teacher' | 'student' | 'parent' | 'viewer'
-  iat: number
-  exp: number
-  roll_no?: string | null
-  avatar_url?: string | null
+  sub: string;
+  email: string;
+  school_id: string | null;
+  role: "admin" | "principal" | "teacher" | "student" | "parent" | "viewer";
+  iat: number;
+  exp: number;
+  roll_no?: string | null;
+  avatar_url?: string | null;
 }
 
 export function decodeJwt(token: string): DecodedToken | null {
   try {
-    const base64Url = token.split('.')[1]
-    if (!base64Url) return null
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
     const jsonPayload = decodeURIComponent(
       window
         .atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    )
-    return JSON.parse(jsonPayload)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    return JSON.parse(jsonPayload);
   } catch (error) {
-    console.error('Failed to decode JWT token', error)
-    return null
+    console.error("Failed to decode JWT token", error);
+    return null;
   }
 }
 
@@ -37,13 +37,13 @@ export function buildUserFromJwt(
   fullName: string | null = null,
 ): User {
   return {
-    id:                decoded?.sub ?? '',
-    email:             decoded?.email ?? fallbackEmail,
-    full_name:         fullName,
-    role:              decoded?.role ?? 'viewer',
-    school_id:         decoded?.school_id ?? null,
-    is_active:         true,
+    id: decoded?.sub ?? "",
+    email: decoded?.email ?? fallbackEmail,
+    full_name: fullName,
+    role: decoded?.role ?? "viewer",
+    school_id: decoded?.school_id ?? null,
+    is_active: true,
     is_email_verified: true,
-    avatar_url:        decoded?.avatar_url ?? null,
-  }
+    avatar_url: decoded?.avatar_url ?? null,
+  };
 }
