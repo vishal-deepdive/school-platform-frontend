@@ -21,12 +21,12 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { FieldPath } from "react-hook-form";
-import type { SchoolOnboardingFormData } from "@/lib/validators";
-import { onboardingApi } from "@/api/onboarding";
-import { getErrorMessage, cn } from "@/lib/utils";
-import { SESSION_KEYS, removeSession } from "@/lib/session";
-import { AuthButton } from "@/components/ui/auth-fuse";
-import type { OnboardingApplicationResponse } from "@/types/onboarding";
+import type { SchoolOnboardingFormData } from "@/features/onboarding/schema";
+import { onboardingApi } from "@/features/onboarding/api/onboarding";
+import { getErrorMessage, cn } from "@/shared/lib/utils";
+import { SESSION_KEYS, removeSession } from "@/shared/lib/session";
+import { AuthButton } from "@/shared/components/ui/auth-fuse";
+import type { OnboardingApplicationResponse } from "@/features/onboarding/types";
 
 import {
   StepIndicator,
@@ -36,9 +36,9 @@ import {
   AcademicStep,
   DocumentsStep,
   PrincipalStep,
-  useOnboardingForm,
   type StepIndex,
-} from "@/features/onboarding";
+} from "@/features/onboarding/components";
+import { useOnboardingForm } from "@/features/onboarding/hooks";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STEPS: {
@@ -71,7 +71,16 @@ const STEPS: {
 
 const STEP_FIELDS: Record<StepIndex, FieldPath<SchoolOnboardingFormData>[]> = {
   1: ["school_name", "board", "other_board", "school_type", "established_year"],
-  2: ["email", "mobile", "phone", "address_line_1", "city", "state", "pin_code", "area"],
+  2: [
+    "email",
+    "mobile",
+    "phone",
+    "address_line_1",
+    "city",
+    "state",
+    "pin_code",
+    "area",
+  ],
   3: [
     "student_count",
     "classes_from",
@@ -108,26 +117,29 @@ export function SchoolOnboardingPage() {
     useState<OnboardingApplicationResponse | null>(null);
   const [principalEmail, setPrincipalEmail] = useState("");
 
-  const handleNext = useCallback(async (e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
-    if (currentStep === 4) {
-      if (!certificate) {
-        setCertError("Please upload the school registration certificate");
+  const handleNext = useCallback(
+    async (e?: React.MouseEvent) => {
+      if (e) e.preventDefault();
+      if (currentStep === 4) {
+        if (!certificate) {
+          setCertError("Please upload the school registration certificate");
+          return;
+        }
+        setCertError("");
+        setCurrentStep(5);
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
-      setCertError("");
-      setCurrentStep(5);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
 
-    const fields = STEP_FIELDS[currentStep];
-    const valid = await trigger(fields);
-    if (valid) {
-      setCurrentStep((s: StepIndex) => Math.min(s + 1, 5) as StepIndex);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, [currentStep, certificate, trigger, setCurrentStep]);
+      const fields = STEP_FIELDS[currentStep];
+      const valid = await trigger(fields);
+      if (valid) {
+        setCurrentStep((s: StepIndex) => Math.min(s + 1, 5) as StepIndex);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [currentStep, certificate, trigger, setCurrentStep],
+  );
 
   const handleBack = useCallback(() => {
     setCurrentStep((s: StepIndex) => Math.max(s - 1, 1) as StepIndex);

@@ -1,5 +1,5 @@
-import { AuthInput, AuthSelect } from "@/components/ui/auth-fuse";
-import { SCHOOL_BOARDS, SCHOOL_TYPES } from "@/lib/validators";
+import { AuthInput, AuthSelect } from "@/shared/components/ui/auth-fuse";
+import { SCHOOL_BOARDS, SCHOOL_TYPES } from "@/features/onboarding/constants";
 import type { StepPropsExtra } from "./types";
 
 export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
