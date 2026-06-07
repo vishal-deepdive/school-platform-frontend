@@ -2,9 +2,9 @@ import { useState } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { onboardingApi } from "@/api/onboarding";
-import { getErrorMessage } from "@/lib/utils";
-import { AuthInput, AuthButton } from "@/components/ui/auth-fuse";
+import { onboardingApi } from "@/features/onboarding/api/onboarding";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { AuthInput, AuthButton } from "@/shared/components/ui/auth-fuse";
 
 export function VerifyOnboardingOtpPage() {
   const location = useLocation();
