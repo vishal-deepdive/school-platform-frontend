@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient } from "@/shared/api/client";
 import type {
   LoginRequest,
   RegisterRequest,
@@ -21,7 +21,7 @@ import type {
   SchoolSearchItem,
   ClassCodeItem,
   StudentSearchItem,
-} from "@/types/auth";
+} from "@/features/auth/types";
 
 const BASE = "/api/v1/auth";
 
