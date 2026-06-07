@@ -1,37 +1,42 @@
-import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { UserPlus, CheckCircle2 } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { enrollSchema, type EnrollFormData } from '@/lib/validators'
-import { attendanceApi } from '@/api/attendance'
-import { getErrorMessage } from '@/lib/utils'
-import { Card, CardHeader } from '@/components/ui/Card'
-import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
-import { Button } from '@/components/ui/Button'
-import { FileUpload } from '@/components/ui/FileUpload'
-import { Alert } from '@/components/ui/Alert'
-import { Badge } from '@/components/ui/Badge'
-import { Tabs } from '@/components/ui/Tabs'
-import type { EnrollResponse } from '@/types/attendance'
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { UserPlus, CheckCircle2 } from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  enrollSchema,
+  type EnrollFormData,
+} from "@/features/attendance/schema";
+import { attendanceApi } from "@/features/attendance/api/attendance";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Input } from "@/shared/components/ui/Input";
+import { Select } from "@/shared/components/ui/Select";
+import { Button } from "@/shared/components/ui/Button";
+import { FileUpload } from "@/shared/components/ui/FileUpload";
+import { Alert } from "@/shared/components/ui/Alert";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Tabs } from "@/shared/components/ui/Tabs";
+import type { EnrollResponse } from "@/features/attendance/types";
 
 const enrollModes = [
-  { id: 'new', label: 'New Batch' },
-  { id: 'single', label: 'Single Student' },
-  { id: 'replace', label: 'Batch with Replacement' },
-]
+  { id: "new", label: "New Batch" },
+  { id: "single", label: "Single Student" },
+  { id: "replace", label: "Batch with Replacement" },
+];
 
-const sessionOptions = ['2023-24', '2024-25', '2025-26', '2026-27'].map((s) => ({
-  value: s,
-  label: s,
-}))
+const sessionOptions = ["2023-24", "2024-25", "2025-26", "2026-27"].map(
+  (s) => ({
+    value: s,
+    label: s,
+  }),
+);
 
 export function EnrollPage() {
-  const [mode, setMode] = useState('new')
-  const [files, setFiles] = useState<File[]>([])
-  const [result, setResult] = useState<EnrollResponse | null>(null)
+  const [mode, setMode] = useState("new");
+  const [files, setFiles] = useState<File[]>([]);
+  const [result, setResult] = useState<EnrollResponse | null>(null);
 
   const {
     register,
@@ -39,26 +44,34 @@ export function EnrollPage() {
     formState: { errors },
   } = useForm<EnrollFormData>({
     resolver: zodResolver(enrollSchema),
-    defaultValues: { session: '2025-26' },
-  })
+    defaultValues: { session: "2025-26" },
+  });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: ({ file, params }: { file: File; params: Record<string, string> }) => {
-      if (mode === 'single') return attendanceApi.enrollNewStudent(file, params)
-      if (mode === 'replace') return attendanceApi.enrollWithReplacement(file, params)
-      return attendanceApi.enroll(file, params)
+    mutationFn: ({
+      file,
+      params,
+    }: {
+      file: File;
+      params: Record<string, string>;
+    }) => {
+      if (mode === "single")
+        return attendanceApi.enrollNewStudent(file, params);
+      if (mode === "replace")
+        return attendanceApi.enrollWithReplacement(file, params);
+      return attendanceApi.enroll(file, params);
     },
     onSuccess: (data) => {
-      setResult(data)
-      toast.success(`Enrolled ${data.enrolled_students.length} student(s)`)
+      setResult(data);
+      toast.success(`Enrolled ${data.enrolled_students.length} student(s)`);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
-  })
+  });
 
   const onSubmit = (data: EnrollFormData) => {
     if (!files[0]) {
-      toast.error('Please select a ZIP file')
-      return
+      toast.error("Please select a ZIP file");
+      return;
     }
     const params: Record<string, string> = {
       school_name: data.school_name,
@@ -66,29 +79,37 @@ export function EnrollPage() {
       ...(data.class_name && { class_name: data.class_name }),
       ...(data.section && { section: data.section }),
       ...(data.subject && { subject: data.subject }),
-    }
-    mutate({ file: files[0], params })
-  }
+    };
+    mutate({ file: files[0], params });
+  };
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Enroll Students</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Upload a ZIP of face photos to register students for face-recognition attendance.
+          Upload a ZIP of face photos to register students for face-recognition
+          attendance.
         </p>
       </div>
 
-      <Tabs tabs={enrollModes} active={mode} onChange={(id) => { setMode(id); setResult(null) }} />
+      <Tabs
+        tabs={enrollModes}
+        active={mode}
+        onChange={(id) => {
+          setMode(id);
+          setResult(null);
+        }}
+      />
 
       <Card>
         <CardHeader
           title={
-            mode === 'new'
-              ? 'New Batch Enrollment'
-              : mode === 'single'
-              ? 'Enroll Single Student'
-              : 'Batch Enrollment with Replacement'
+            mode === "new"
+              ? "New Batch Enrollment"
+              : mode === "single"
+                ? "Enroll Single Student"
+                : "Batch Enrollment with Replacement"
           }
           description="ZIP structure: each student in a subfolder named roll_no_student_name (e.g. 101_Priya_Sharma)"
         />
@@ -99,28 +120,28 @@ export function EnrollPage() {
               label="School Name"
               placeholder="Delhi Public School"
               error={errors.school_name?.message}
-              {...register('school_name')}
+              {...register("school_name")}
             />
             <Select
               label="Session"
               options={sessionOptions}
               error={errors.session?.message}
-              {...register('session')}
+              {...register("session")}
             />
             <Input
               label="Class (optional)"
               placeholder="10A"
-              {...register('class_name')}
+              {...register("class_name")}
             />
             <Input
               label="Section (optional)"
               placeholder="A"
-              {...register('section')}
+              {...register("section")}
             />
             <Input
               label="Subject (optional)"
               placeholder="Mathematics"
-              {...register('subject')}
+              {...register("subject")}
             />
           </div>
 
@@ -137,7 +158,7 @@ export function EnrollPage() {
             loading={isPending}
             icon={<UserPlus className="h-4 w-4" />}
           >
-            {isPending ? 'Enrolling…' : 'Enroll Students'}
+            {isPending ? "Enrolling…" : "Enroll Students"}
           </Button>
         </form>
       </Card>
@@ -158,7 +179,9 @@ export function EnrollPage() {
                     key={s.roll_no}
                     className="rounded-lg border border-green-200 bg-green-50 px-3 py-1.5"
                   >
-                    <p className="text-sm font-medium text-green-800">{s.name}</p>
+                    <p className="text-sm font-medium text-green-800">
+                      {s.name}
+                    </p>
                     <p className="text-xs text-green-600">
                       #{s.roll_no} · {s.images_processed} photos
                     </p>
@@ -181,7 +204,9 @@ export function EnrollPage() {
           )}
 
           <div className="flex gap-2 flex-wrap">
-            {result.school_name && <Badge variant="info">School: {result.school_name}</Badge>}
+            {result.school_name && (
+              <Badge variant="info">School: {result.school_name}</Badge>
+            )}
             {result.session && <Badge>Session: {result.session}</Badge>}
             {result.class_name && <Badge>Class: {result.class_name}</Badge>}
             {result.section && <Badge>Section: {result.section}</Badge>}
@@ -189,5 +214,5 @@ export function EnrollPage() {
         </div>
       )}
     </div>
-  )
+  );
 }

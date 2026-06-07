@@ -1,14 +1,17 @@
-import { useState } from 'react'
-import { Tabs } from '@/components/ui/Tabs'
-import { AttendanceDateView, AttendanceRangeView } from '@/features/attendance/components'
+import { useState } from "react";
+import { Tabs } from "@/shared/components/ui/Tabs";
+import {
+  AttendanceDateView,
+  AttendanceRangeView,
+} from "@/features/attendance/components";
 
 const viewTabs = [
-  { id: 'date', label: 'By Date' },
-  { id: 'range', label: 'Date Range' },
-]
+  { id: "date", label: "By Date" },
+  { id: "range", label: "Date Range" },
+];
 
 export function ViewAttendancePage() {
-  const [tab, setTab] = useState('date')
+  const [tab, setTab] = useState("date");
 
   return (
     <div className="space-y-6">
@@ -19,10 +22,16 @@ export function ViewAttendancePage() {
         </p>
       </div>
 
-      <Tabs tabs={viewTabs} active={tab} onChange={(id) => { setTab(id) }} />
+      <Tabs
+        tabs={viewTabs}
+        active={tab}
+        onChange={(id) => {
+          setTab(id);
+        }}
+      />
 
-      {tab === 'date' && <AttendanceDateView />}
-      {tab === 'range' && <AttendanceRangeView />}
+      {tab === "date" && <AttendanceDateView />}
+      {tab === "range" && <AttendanceRangeView />}
     </div>
-  )
+  );
 }
