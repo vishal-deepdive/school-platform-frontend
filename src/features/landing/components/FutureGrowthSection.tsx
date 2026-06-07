@@ -1,9 +1,12 @@
-import { motion } from "framer-motion"
-import { TrendingUp, Users, Activity } from "lucide-react"
+import { motion } from "framer-motion";
+import { TrendingUp, Users, Activity } from "lucide-react";
 
 export function FutureGrowthSection() {
   return (
-    <section id="growth" className="w-full bg-[#F8FAFC] py-24 border-t border-slate-200">
+    <section
+      id="growth"
+      className="w-full bg-[#F8FAFC] py-24 border-t border-slate-200"
+    >
       <div className="mx-auto max-w-[1180px] px-4 md:px-0">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Left: Text Content */}
@@ -17,7 +20,9 @@ export function FutureGrowthSection() {
                 Visualize Future Growth
               </h2>
               <p className="mt-4 text-slate-600 text-lg">
-                Gain actionable insights into your institution's performance. Predict student success and streamline administrative efficiency with beautiful, real-time analytics.
+                Gain actionable insights into your institution's performance.
+                Predict student success and streamline administrative efficiency
+                with beautiful, real-time analytics.
               </p>
             </motion.div>
 
@@ -33,8 +38,13 @@ export function FutureGrowthSection() {
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900">Predictive Analytics</h3>
-                  <p className="text-sm text-slate-600 mt-1">Forecast student enrollment trends and resource needs months in advance.</p>
+                  <h3 className="font-semibold text-slate-900">
+                    Predictive Analytics
+                  </h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Forecast student enrollment trends and resource needs months
+                    in advance.
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -42,8 +52,13 @@ export function FutureGrowthSection() {
                   <Users className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900">Engagement Metrics</h3>
-                  <p className="text-sm text-slate-600 mt-1">Track classroom participation and interactive learning success rates.</p>
+                  <h3 className="font-semibold text-slate-900">
+                    Engagement Metrics
+                  </h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Track classroom participation and interactive learning
+                    success rates.
+                  </p>
                 </div>
               </div>
               <div className="flex gap-4">
@@ -51,8 +66,13 @@ export function FutureGrowthSection() {
                   <Activity className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-900">Real-time Activity</h3>
-                  <p className="text-sm text-slate-600 mt-1">Monitor live attendance and daily active usage across your entire platform.</p>
+                  <h3 className="font-semibold text-slate-900">
+                    Real-time Activity
+                  </h3>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Monitor live attendance and daily active usage across your
+                    entire platform.
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -67,15 +87,15 @@ export function FutureGrowthSection() {
             className="relative"
           >
             <div className="rounded-2xl p-2 bg-white shadow-xl ring-1 ring-slate-900/5">
-              <img 
-                src="/images/demo-chart.png" 
-                alt="Demo Analytics Dashboard" 
+              <img
+                src="/images/demo-chart.png"
+                alt="Demo Analytics Dashboard"
                 className="w-full h-auto rounded-xl object-cover"
               />
             </div>
-            
+
             {/* Floating accent card */}
-            <motion.div 
+            <motion.div
               initial={{ y: 20, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
@@ -86,7 +106,9 @@ export function FutureGrowthSection() {
                 <TrendingUp className="h-5 w-5" />
               </div>
               <div>
-                <div className="text-xs text-slate-500 font-medium">Monthly Growth</div>
+                <div className="text-xs text-slate-500 font-medium">
+                  Monthly Growth
+                </div>
                 <div className="text-lg font-bold text-slate-900">+14.2%</div>
               </div>
             </motion.div>
@@ -94,5 +116,5 @@ export function FutureGrowthSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
