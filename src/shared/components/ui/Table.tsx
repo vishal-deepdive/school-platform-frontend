@@ -1,27 +1,32 @@
-import { cn } from '@/lib/utils'
+import { cn } from "@/shared/lib/utils";
 
 interface Column<T> {
-  key: string
-  header: string
-  render?: (row: T) => React.ReactNode
-  className?: string
+  key: string;
+  header: string;
+  render?: (row: T) => React.ReactNode;
+  className?: string;
 }
 
 interface TableProps<T extends Record<string, unknown>> {
-  columns: Column<T>[]
-  data: T[]
-  emptyMessage?: string
-  className?: string
+  columns: Column<T>[];
+  data: T[];
+  emptyMessage?: string;
+  className?: string;
 }
 
 export function Table<T extends Record<string, unknown>>({
   columns,
   data,
-  emptyMessage = 'No data found.',
+  emptyMessage = "No data found.",
   className,
 }: TableProps<T>) {
   return (
-    <div className={cn('overflow-x-auto rounded-lg border border-border/50 bg-background', className)}>
+    <div
+      className={cn(
+        "overflow-x-auto rounded-lg border border-border/50 bg-background",
+        className,
+      )}
+    >
       <table className="min-w-full divide-y divide-border/50">
         <thead className="bg-muted/50">
           <tr>
@@ -30,7 +35,7 @@ export function Table<T extends Record<string, unknown>>({
                 key={col.key}
                 scope="col"
                 className={cn(
-                  'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground',
+                  "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground",
                   col.className,
                 )}
               >
@@ -53,8 +58,14 @@ export function Table<T extends Record<string, unknown>>({
             data.map((row, i) => (
               <tr key={i} className="hover:bg-accent/50 transition-colors">
                 {columns.map((col) => (
-                  <td key={col.key} className={cn('px-4 py-3 text-sm text-foreground', col.className)}>
-                    {col.render ? col.render(row) : String(row[col.key] ?? '—')}
+                  <td
+                    key={col.key}
+                    className={cn(
+                      "px-4 py-3 text-sm text-foreground",
+                      col.className,
+                    )}
+                  >
+                    {col.render ? col.render(row) : String(row[col.key] ?? "—")}
                   </td>
                 ))}
               </tr>
@@ -63,5 +74,5 @@ export function Table<T extends Record<string, unknown>>({
         </tbody>
       </table>
     </div>
-  )
+  );
 }
