@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { apiClient } from "@/shared/api/client";
 import type {
   SurveyStatusResponse,
   SearchRequest,
@@ -6,17 +6,19 @@ import type {
   LoadRecentResponse,
   SurveyDeleteResponse,
   ChartsListResponse,
-} from '@/types/survey'
+} from "@/features/survey/types";
 
-const BASE = '/api/v1/survey'
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+const BASE = "/api/v1/survey";
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export const surveyApi = {
   getStatus: () =>
     apiClient.get<SurveyStatusResponse>(`${BASE}/status`).then((r) => r.data),
 
   loadRecent: () =>
-    apiClient.post<LoadRecentResponse>(`${BASE}/load-recent`).then((r) => r.data),
+    apiClient
+      .post<LoadRecentResponse>(`${BASE}/load-recent`)
+      .then((r) => r.data),
 
   search: (data: SearchRequest) =>
     apiClient.post<SearchResponse>(`${BASE}/search`, data).then((r) => r.data),
@@ -35,7 +37,9 @@ export const surveyApi = {
 
   deleteBySchool: (school_name: string) =>
     apiClient
-      .delete<SurveyDeleteResponse>(`${BASE}/delete/by-school`, { data: { school_name } })
+      .delete<SurveyDeleteResponse>(`${BASE}/delete/by-school`, {
+        data: { school_name },
+      })
       .then((r) => r.data),
 
   deleteByClass: (class_name: string, subject_group?: string) =>
@@ -44,4 +48,4 @@ export const surveyApi = {
         data: { class_name, subject_group },
       })
       .then((r) => r.data),
-}
+};
