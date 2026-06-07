@@ -1,32 +1,42 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-import { adminApi } from '@/api/admin'
-import { formatDate } from '@/lib/utils'
-import { useDebounce } from '@/hooks/useDebounce'
-import type { OnboardingStatus } from '@/types/admin'
-import { APPLICATION_STATUS_LABELS, APPLICATION_STATUS_COLORS } from './shared'
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { adminApi } from "@/features/admin/api/admin";
+import { formatDate } from "@/shared/lib/utils";
+import { useDebounce } from "@/shared/hooks/useDebounce";
+import type { OnboardingStatus } from "@/features/admin/types";
+import {
+  APPLICATION_STATUS_LABELS,
+  APPLICATION_STATUS_COLORS,
+} from "@/features/admin/constants";
 
 const FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: '',                 label: 'All' },
-  { value: 'email_verified',   label: 'Needs Review' },
-  { value: 'pending_verification', label: 'Pending Verification' },
-  { value: 'approved',         label: 'Approved' },
-  { value: 'rejected',         label: 'Rejected' },
-]
+  { value: "", label: "All" },
+  { value: "email_verified", label: "Needs Review" },
+  { value: "pending_verification", label: "Pending Verification" },
+  { value: "approved", label: "Approved" },
+  { value: "rejected", label: "Rejected" },
+];
 
-const PAGE_LIMIT = 50
+const PAGE_LIMIT = 50;
 
 export function OnboardingApplicationsPage() {
-  const [statusFilter, setStatusFilter] = useState<string>('email_verified')
-  const [searchTerm, setSearchTerm] = useState('')
-  const debouncedSearch = useDebounce(searchTerm, 500)
-  const [page, setPage] = useState(1)
+  const [statusFilter, setStatusFilter] = useState<string>("email_verified");
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 500);
+  const [page, setPage] = useState(1);
 
-  useEffect(() => { setPage(1) }, [statusFilter, debouncedSearch])
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, debouncedSearch]);
 
-  const { data: applications, isLoading, error, isPlaceholderData } = useQuery({
-    queryKey: ['onboarding-applications', statusFilter, debouncedSearch, page],
+  const {
+    data: applications,
+    isLoading,
+    error,
+    isPlaceholderData,
+  } = useQuery({
+    queryKey: ["onboarding-applications", statusFilter, debouncedSearch, page],
     queryFn: () =>
       adminApi.listApplications(
         statusFilter || undefined,
@@ -35,13 +45,15 @@ export function OnboardingApplicationsPage() {
         (page - 1) * PAGE_LIMIT,
       ),
     placeholderData: (prev) => prev,
-  })
+  });
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">School Applications</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            School Applications
+          </h1>
           <p className="mt-1 text-sm text-slate-500">
             Review and approve school onboarding applications
           </p>
@@ -49,7 +61,11 @@ export function OnboardingApplicationsPage() {
 
         <div className="relative w-full sm:w-72">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg className="h-5 w-5 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+            <svg
+              className="h-5 w-5 text-slate-400"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
               <path
                 fillRule="evenodd"
                 d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
@@ -75,8 +91,8 @@ export function OnboardingApplicationsPage() {
             onClick={() => setStatusFilter(opt.value)}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               statusFilter === opt.value
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200'
-                : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-200"
+                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
             }`}
           >
             {opt.label}
@@ -94,7 +110,14 @@ export function OnboardingApplicationsPage() {
         <table className="min-w-full divide-y divide-slate-200">
           <thead className="bg-slate-50">
             <tr>
-              {['School', 'Principal', 'Location', 'Status', 'Applied At', ''].map((h) => (
+              {[
+                "School",
+                "Principal",
+                "Location",
+                "Status",
+                "Applied At",
+                "",
+              ].map((h) => (
                 <th
                   key={h}
                   className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500"
@@ -108,20 +131,33 @@ export function OnboardingApplicationsPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, idx) => (
                 <tr key={idx} className="animate-pulse">
-                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-3/4" /></td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 bg-slate-200 rounded w-3/4" />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="h-4 bg-slate-200 rounded w-1/2 mb-2" />
                     <div className="h-3 bg-slate-100 rounded w-2/3" />
                   </td>
-                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-1/2" /></td>
-                  <td className="px-6 py-4"><div className="h-6 bg-slate-200 rounded-full w-24" /></td>
-                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-24" /></td>
-                  <td className="px-6 py-4"><div className="h-4 bg-slate-200 rounded w-12 ml-auto" /></td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 bg-slate-200 rounded w-1/2" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="h-6 bg-slate-200 rounded-full w-24" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 bg-slate-200 rounded w-24" />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="h-4 bg-slate-200 rounded w-12 ml-auto" />
+                  </td>
                 </tr>
               ))
             ) : applications?.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 border-dashed">
+                <td
+                  colSpan={6}
+                  className="px-6 py-12 text-center text-slate-500 border-dashed"
+                >
                   No applications found for this filter.
                 </td>
               </tr>
@@ -137,8 +173,12 @@ export function OnboardingApplicationsPage() {
                     </p>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm text-slate-900">{app.principal_name}</p>
-                    <p className="text-xs text-slate-500">{app.principal_email}</p>
+                    <p className="text-sm text-slate-900">
+                      {app.principal_name}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {app.principal_email}
+                    </p>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-600">
                     {app.city}, {app.state}
@@ -147,11 +187,15 @@ export function OnboardingApplicationsPage() {
                     <span
                       className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${APPLICATION_STATUS_COLORS[app.onboarding_status as OnboardingStatus]}`}
                     >
-                      {APPLICATION_STATUS_LABELS[app.onboarding_status as OnboardingStatus]}
+                      {
+                        APPLICATION_STATUS_LABELS[
+                          app.onboarding_status as OnboardingStatus
+                        ]
+                      }
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-slate-500">
-                    {app.applied_at ? formatDate(app.applied_at) : '—'}
+                    {app.applied_at ? formatDate(app.applied_at) : "—"}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link
@@ -167,28 +211,34 @@ export function OnboardingApplicationsPage() {
           </tbody>
         </table>
 
-        {!isLoading && applications && (applications.length > 0 || page > 1) && (
-          <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
-            <span className="text-sm text-slate-500">Showing page {page}</span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Previous
-              </button>
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                disabled={applications.length < PAGE_LIMIT || isPlaceholderData}
-                className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Next
-              </button>
+        {!isLoading &&
+          applications &&
+          (applications.length > 0 || page > 1) && (
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+              <span className="text-sm text-slate-500">
+                Showing page {page}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={
+                    applications.length < PAGE_LIMIT || isPlaceholderData
+                  }
+                  className="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </div>
-  )
+  );
 }
