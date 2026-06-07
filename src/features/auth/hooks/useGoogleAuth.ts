@@ -1,12 +1,12 @@
-import toast from 'react-hot-toast'
-import { authApi } from '@/api/auth'
-import { getErrorMessage } from '@/lib/utils'
-import { SESSION_KEYS } from '@/lib/session'
+import toast from "react-hot-toast";
+import { authApi } from "@/features/auth/api/auth";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { SESSION_KEYS } from "@/shared/lib/session";
 
 interface GoogleAuthOptions {
-  role?: 'student' | 'teacher' | 'parent'
-  inviteToken?: string
-  schoolId?: string
+  role?: "student" | "teacher" | "parent";
+  inviteToken?: string;
+  schoolId?: string;
 }
 
 /**
@@ -17,15 +17,24 @@ interface GoogleAuthOptions {
 export function useGoogleAuth() {
   const handleGoogleLogin = async (options: GoogleAuthOptions = {}) => {
     try {
-      const { auth_url } = await authApi.googleLogin()
-      if (options.role)        sessionStorage.setItem(SESSION_KEYS.PENDING_ROLE, options.role)
-      if (options.inviteToken) sessionStorage.setItem(SESSION_KEYS.PENDING_INVITE_TOKEN, options.inviteToken)
-      if (options.schoolId)    sessionStorage.setItem(SESSION_KEYS.PENDING_SCHOOL_ID, options.schoolId)
-      window.location.href = auth_url
+      const { auth_url } = await authApi.googleLogin();
+      if (options.role)
+        sessionStorage.setItem(SESSION_KEYS.PENDING_ROLE, options.role);
+      if (options.inviteToken)
+        sessionStorage.setItem(
+          SESSION_KEYS.PENDING_INVITE_TOKEN,
+          options.inviteToken,
+        );
+      if (options.schoolId)
+        sessionStorage.setItem(
+          SESSION_KEYS.PENDING_SCHOOL_ID,
+          options.schoolId,
+        );
+      window.location.href = auth_url;
     } catch (err) {
-      toast.error(getErrorMessage(err))
+      toast.error(getErrorMessage(err));
     }
-  }
+  };
 
-  return { handleGoogleLogin }
+  return { handleGoogleLogin };
 }

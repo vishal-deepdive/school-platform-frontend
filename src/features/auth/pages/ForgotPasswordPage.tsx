@@ -1,5 +1,5 @@
-import { Mail } from 'lucide-react'
-import { ForgotPasswordForm } from '@/features/auth/components'
+import { Mail } from "lucide-react";
+import { ForgotPasswordForm } from "@/features/auth/components";
 
 export function ForgotPasswordPage() {
   return (
@@ -10,7 +10,9 @@ export function ForgotPasswordPage() {
             <Mail className="h-7 w-7 text-primary" />
           </div>
         </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Forgot password?</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+          Forgot password?
+        </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Enter your email and we'll send you a reset OTP.
         </p>
@@ -18,5 +20,5 @@ export function ForgotPasswordPage() {
 
       <ForgotPasswordForm />
     </div>
-  )
+  );
 }
