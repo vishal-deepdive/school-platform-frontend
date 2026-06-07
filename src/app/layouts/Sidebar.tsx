@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
-import { cn } from '@/lib/utils'
+import { useState } from "react";
+import { NavLink, useLocation } from "react-router-dom";
+import { cn } from "@/shared/lib/utils";
 import {
   LayoutDashboard,
   UserCheck,
@@ -25,116 +25,179 @@ import {
   Shield,
   ClipboardList,
   UserCog,
-} from 'lucide-react'
-import { useAuthStore } from '@/store/auth'
+} from "lucide-react";
+import { useAuthStore } from "@/features/auth/store/auth";
 
 interface NavItem {
-  label: string
-  href?: string
-  icon: React.ReactNode
-  children?: NavItem[]
-  section?: string
+  label: string;
+  href?: string;
+  icon: React.ReactNode;
+  children?: NavItem[];
+  section?: string;
 }
 
 const adminNavItems: NavItem[] = [
   {
-    label: 'Platform Admin',
+    label: "Platform Admin",
     icon: <Shield className="h-4 w-4" />,
-    section: 'ADMIN',
+    section: "ADMIN",
     children: [
       {
-        label: 'School Applications',
-        href: '/admin/onboarding',
+        label: "School Applications",
+        href: "/admin/onboarding",
         icon: <ClipboardList className="h-4 w-4" />,
       },
       {
-        label: 'Manage Admins',
-        href: '/admin/admins',
+        label: "Manage Admins",
+        href: "/admin/admins",
         icon: <UserCog className="h-4 w-4" />,
       },
     ],
   },
-]
+];
 
 const navItems: NavItem[] = [
   {
-    label: 'Dashboard',
-    href: '/',
+    label: "Dashboard",
+    href: "/",
     icon: <LayoutDashboard className="h-4 w-4" />,
   },
   {
-    label: 'Attendance',
+    label: "Attendance",
     icon: <UserCheck className="h-4 w-4" />,
-    section: 'FACE RECOGNITION',
+    section: "FACE RECOGNITION",
     children: [
-      { label: 'Enroll Students', href: '/attendance/enroll', icon: <Users className="h-4 w-4" /> },
-      { label: 'Mark Attendance', href: '/attendance/mark', icon: <CheckSquare className="h-4 w-4" /> },
-      { label: 'View Records', href: '/attendance/view', icon: <List className="h-4 w-4" /> },
-      { label: 'Statistics', href: '/attendance/stats', icon: <TrendingUp className="h-4 w-4" /> },
+      {
+        label: "Enroll Students",
+        href: "/attendance/enroll",
+        icon: <Users className="h-4 w-4" />,
+      },
+      {
+        label: "Mark Attendance",
+        href: "/attendance/mark",
+        icon: <CheckSquare className="h-4 w-4" />,
+      },
+      {
+        label: "View Records",
+        href: "/attendance/view",
+        icon: <List className="h-4 w-4" />,
+      },
+      {
+        label: "Statistics",
+        href: "/attendance/stats",
+        icon: <TrendingUp className="h-4 w-4" />,
+      },
     ],
   },
   {
-    label: 'Recording',
+    label: "Recording",
     icon: <Mic2 className="h-4 w-4" />,
-    section: 'LECTURE AI',
+    section: "LECTURE AI",
     children: [
-      { label: 'Upload Audio', href: '/recording/upload', icon: <Upload className="h-4 w-4" /> },
-      { label: 'My Recordings', href: '/recording/list', icon: <FileText className="h-4 w-4" /> },
-      { label: 'Audit Logs', href: '/recording/audit', icon: <Activity className="h-4 w-4" /> },
+      {
+        label: "Upload Audio",
+        href: "/recording/upload",
+        icon: <Upload className="h-4 w-4" />,
+      },
+      {
+        label: "My Recordings",
+        href: "/recording/list",
+        icon: <FileText className="h-4 w-4" />,
+      },
+      {
+        label: "Search Notes",
+        href: "/recording/search",
+        icon: <Search className="h-4 w-4" />,
+      },
+      {
+        label: "Audit Logs",
+        href: "/recording/audit",
+        icon: <Activity className="h-4 w-4" />,
+      },
     ],
   },
   {
-    label: 'RAG Assistant',
+    label: "RAG Assistant",
     icon: <BookOpen className="h-4 w-4" />,
-    section: 'TEXTBOOK AI',
+    section: "TEXTBOOK AI",
     children: [
-      { label: 'Q&A Chat', href: '/rag/qa', icon: <MessageSquare className="h-4 w-4" /> },
-      { label: 'Generate Questions', href: '/rag/questions', icon: <HelpCircle className="h-4 w-4" /> },
-      { label: 'Generate Notes', href: '/rag/notes', icon: <StickyNote className="h-4 w-4" /> },
-      { label: 'Knowledge Audit', href: '/rag/audit', icon: <Database className="h-4 w-4" /> },
+      {
+        label: "Q&A Chat",
+        href: "/rag/qa",
+        icon: <MessageSquare className="h-4 w-4" />,
+      },
+      {
+        label: "Generate Questions",
+        href: "/rag/questions",
+        icon: <HelpCircle className="h-4 w-4" />,
+      },
+      {
+        label: "Generate Notes",
+        href: "/rag/notes",
+        icon: <StickyNote className="h-4 w-4" />,
+      },
+      {
+        label: "Knowledge Audit",
+        href: "/rag/audit",
+        icon: <Database className="h-4 w-4" />,
+      },
     ],
   },
   {
-    label: 'Survey Analytics',
+    label: "Survey Analytics",
     icon: <BarChart2 className="h-4 w-4" />,
-    section: 'FEEDBACK AI',
+    section: "FEEDBACK AI",
     children: [
-      { label: 'Dashboard', href: '/survey', icon: <BarChart2 className="h-4 w-4" /> },
-      { label: 'AI Search', href: '/survey/search', icon: <Search className="h-4 w-4" /> },
-      { label: 'Data Management', href: '/survey/data', icon: <Database className="h-4 w-4" /> },
+      {
+        label: "Dashboard",
+        href: "/survey",
+        icon: <BarChart2 className="h-4 w-4" />,
+      },
+      {
+        label: "AI Search",
+        href: "/survey/search",
+        icon: <Search className="h-4 w-4" />,
+      },
+      {
+        label: "Data Management",
+        href: "/survey/data",
+        icon: <Database className="h-4 w-4" />,
+      },
     ],
   },
-]
+];
 
 interface SidebarItemProps {
-  item: NavItem
-  depth?: number
+  item: NavItem;
+  depth?: number;
 }
 
 function SidebarItem({ item, depth = 0 }: SidebarItemProps) {
-  const location = useLocation()
-  const isChildActive = item.children?.some((c) => c.href && location.pathname.startsWith(c.href))
-  const [open, setOpen] = useState(isChildActive ?? false)
+  const location = useLocation();
+  const isChildActive = item.children?.some(
+    (c) => c.href && location.pathname.startsWith(c.href),
+  );
+  const [open, setOpen] = useState(isChildActive ?? false);
 
   if (item.href) {
     return (
       <NavLink
         to={item.href}
-        end={item.href === '/'}
+        end={item.href === "/"}
         className={({ isActive }) =>
           cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-            depth > 0 ? 'ml-4' : '',
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+            depth > 0 ? "ml-4" : "",
             isActive
-              ? 'bg-indigo-600 text-white'
-              : 'text-slate-300 hover:bg-slate-700 hover:text-white',
+              ? "bg-indigo-600 text-white"
+              : "text-slate-300 hover:bg-slate-700 hover:text-white",
           )
         }
       >
         {item.icon}
         {item.label}
       </NavLink>
-    )
+    );
   }
 
   return (
@@ -142,10 +205,10 @@ function SidebarItem({ item, depth = 0 }: SidebarItemProps) {
       <button
         onClick={() => setOpen((p) => !p)}
         className={cn(
-          'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
           isChildActive
-            ? 'bg-slate-700 text-white'
-            : 'text-slate-300 hover:bg-slate-700 hover:text-white',
+            ? "bg-slate-700 text-white"
+            : "text-slate-300 hover:bg-slate-700 hover:text-white",
         )}
       >
         {item.icon}
@@ -165,23 +228,23 @@ function SidebarItem({ item, depth = 0 }: SidebarItemProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 interface SidebarProps {
-  mobile?: boolean
-  onClose?: () => void
+  mobile?: boolean;
+  onClose?: () => void;
 }
 
 export function Sidebar({ mobile, onClose }: SidebarProps) {
-  const { user } = useAuthStore()
-  const isAdmin = user?.role === 'admin'
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
 
   return (
     <aside
       className={cn(
-        'flex h-full w-64 flex-col bg-slate-900',
-        mobile && 'animate-slide-in',
+        "flex h-full w-64 flex-col bg-slate-900",
+        mobile && "animate-slide-in",
       )}
     >
       <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700">
@@ -228,5 +291,5 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
         ))}
       </nav>
     </aside>
-  )
+  );
 }
