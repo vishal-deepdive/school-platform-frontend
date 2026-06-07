@@ -7,8 +7,8 @@ import {
   ShieldAlert,
   MailOpen,
 } from "lucide-react";
-import { AuthButton } from "@/components/ui/auth-fuse";
-import { isValidInviteToken } from "@/lib/validators";
+import { AuthButton } from "@/shared/components/ui/auth-fuse";
+import { isValidInviteToken } from "@/shared/lib/validators";
 import {
   TeacherInviteRegisterForm,
   StudentRegisterForm,
@@ -17,7 +17,7 @@ import {
 
 const tabs = [
   { id: "student", label: "Student", icon: GraduationCap },
-  { id: "parent",  label: "Parent",  icon: Users },
+  { id: "parent", label: "Parent", icon: Users },
 ] as const;
 
 type TabType = (typeof tabs)[number]["id"];
@@ -26,9 +26,10 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
-  const tokenParam  = searchParams.get("token");
-  const schoolParam = searchParams.get("school") || searchParams.get("school_id");
-  const roleParam   = searchParams.get("role");
+  const tokenParam = searchParams.get("token");
+  const schoolParam =
+    searchParams.get("school") || searchParams.get("school_id");
+  const roleParam = searchParams.get("role");
 
   const initialTab: TabType = roleParam === "parent" ? "parent" : "student";
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
