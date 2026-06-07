@@ -1,38 +1,39 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { BarChart2, RefreshCw, Download, Users, Database } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { formatDateTime, getErrorMessage } from '@/lib/utils'
-import { surveyApi } from '@/api/survey'
-import { Card, CardHeader, StatCard } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { PageSpinner } from '@/components/ui/Spinner'
-import { Alert } from '@/components/ui/Alert'
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { BarChart2, RefreshCw, Download, Users, Database } from "lucide-react";
+import toast from "react-hot-toast";
+import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
+import { surveyApi } from "@/features/survey/api/survey";
+import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { Button } from "@/shared/components/ui/Button";
+import { Badge } from "@/shared/components/ui/Badge";
+import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { Alert } from "@/shared/components/ui/Alert";
 
 export function SurveyDashboardPage() {
-  const qc = useQueryClient()
+  const qc = useQueryClient();
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['survey', 'status'],
+    queryKey: ["survey", "status"],
     queryFn: () => surveyApi.getStatus(),
     staleTime: 2 * 60_000,
-  })
+  });
 
   const { mutate: syncSheets, isPending: syncing } = useMutation({
     mutationFn: () => surveyApi.loadRecent(),
     onSuccess: (res) => {
       toast.success(
         `Synced! +${res.summary.records_added} added, ${res.summary.records_skipped} skipped`,
-      )
-      qc.invalidateQueries({ queryKey: ['survey'] })
+      );
+      qc.invalidateQueries({ queryKey: ["survey"] });
     },
     onError: (err) => toast.error(getErrorMessage(err)),
-  })
+  });
 
-  if (isLoading) return <PageSpinner />
-  if (isError) return <Alert variant="error">Failed to load survey status.</Alert>
+  if (isLoading) return <PageSpinner />;
+  if (isError)
+    return <Alert variant="error">Failed to load survey status.</Alert>;
 
-  const embeddingFields = Object.entries(data?.embeddings ?? {})
+  const embeddingFields = Object.entries(data?.embeddings ?? {});
 
   return (
     <div className="space-y-6">
@@ -40,7 +41,8 @@ export function SurveyDashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Survey Analytics</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Student feedback overview — last updated {formatDateTime(data?.timestamp ?? '')}
+            Student feedback overview — last updated{" "}
+            {formatDateTime(data?.timestamp ?? "")}
           </p>
         </div>
         <div className="flex gap-3">
@@ -96,9 +98,12 @@ export function SurveyDashboardPage() {
           <CardHeader title="Embeddings Coverage" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {embeddingFields.map(([field, count]) => (
-              <div key={field} className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+              <div
+                key={field}
+                className="rounded-lg bg-gray-50 border border-gray-200 p-4"
+              >
                 <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
-                  {field.replace(/_/g, ' ')}
+                  {field.replace(/_/g, " ")}
                 </p>
                 <p className="text-2xl font-bold text-gray-900">{count}</p>
                 <div className="mt-2 bg-gray-200 rounded-full h-1.5">
@@ -110,7 +115,10 @@ export function SurveyDashboardPage() {
                   />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {Math.round(((count as number) / (data?.total_records ?? 1)) * 100)}% covered
+                  {Math.round(
+                    ((count as number) / (data?.total_records ?? 1)) * 100,
+                  )}
+                  % covered
                 </p>
               </div>
             ))}
@@ -124,13 +132,20 @@ export function SurveyDashboardPage() {
             <CardHeader title="Responses by School" className="px-6 pt-6" />
             <div className="divide-y divide-gray-100 pb-2">
               {data.by_school.map((s, i) => {
-                const school = s as Record<string, unknown>
+                const school = s as Record<string, unknown>;
                 return (
-                  <div key={i} className="flex items-center justify-between px-6 py-3">
-                    <p className="text-sm text-gray-700">{String(school.school_name ?? '—')}</p>
-                    <Badge variant="info">{String(school.count ?? 0)} responses</Badge>
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-6 py-3"
+                  >
+                    <p className="text-sm text-gray-700">
+                      {String(school.school_name ?? "—")}
+                    </p>
+                    <Badge variant="info">
+                      {String(school.count ?? 0)} responses
+                    </Badge>
                   </div>
-                )
+                );
               })}
             </div>
           </Card>
@@ -141,18 +156,25 @@ export function SurveyDashboardPage() {
             <CardHeader title="Responses by Class" className="px-6 pt-6" />
             <div className="divide-y divide-gray-100 pb-2">
               {data.by_class.map((c, i) => {
-                const cls = c as Record<string, unknown>
+                const cls = c as Record<string, unknown>;
                 return (
-                  <div key={i} className="flex items-center justify-between px-6 py-3">
-                    <p className="text-sm text-gray-700">{String(cls.class ?? cls.class_name ?? '—')}</p>
-                    <Badge variant="success">{String(cls.count ?? 0)} responses</Badge>
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-6 py-3"
+                  >
+                    <p className="text-sm text-gray-700">
+                      {String(cls.class ?? cls.class_name ?? "—")}
+                    </p>
+                    <Badge variant="success">
+                      {String(cls.count ?? 0)} responses
+                    </Badge>
                   </div>
-                )
+                );
               })}
             </div>
           </Card>
         )}
       </div>
     </div>
-  )
+  );
 }
