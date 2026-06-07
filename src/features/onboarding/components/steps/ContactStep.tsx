@@ -1,16 +1,16 @@
 import { useState, useEffect, useMemo } from "react";
-import { AuthInput, AuthSelect } from "@/components/ui/auth-fuse";
-import { INDIAN_STATES } from "@/lib/validators";
+import { AuthInput, AuthSelect } from "@/shared/components/ui/auth-fuse";
+import { INDIAN_STATES } from "@/features/onboarding/constants";
 import type { StepPropsExtra } from "./types";
 import { Loader2 } from "lucide-react";
-import { SearchableSelect } from "@/components/ui/SearchableSelect";
-import { onboardingApi } from "@/api/onboarding";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
+import { onboardingApi } from "@/features/onboarding/api/onboarding";
 
 interface PostOffice {
-  Name: string
-  District: string
-  Block: string
-  State: string
+  Name: string;
+  District: string;
+  Block: string;
+  State: string;
 }
 
 const pincodeCache: Record<string, PostOffice[]> = {};
@@ -21,7 +21,7 @@ export function ContactStep({
   watch,
   setValue,
 }: StepPropsExtra) {
-  const pinCode     = watch("pin_code");
+  const pinCode = watch("pin_code");
   const selectedArea = watch("area");
 
   const [postOffices, setPostOffices] = useState<PostOffice[]>([]);
@@ -30,11 +30,12 @@ export function ContactStep({
 
   // Memoised area options — only recomputed when postOffices reference changes
   const areaOptions = useMemo(
-    () => postOffices.map((po) => ({
-      label:    po.Name,
-      value:    po.Name,
-      sublabel: `${po.District}, ${po.State}`,
-    })),
+    () =>
+      postOffices.map((po) => ({
+        label: po.Name,
+        value: po.Name,
+        sublabel: `${po.District}, ${po.State}`,
+      })),
     [postOffices],
   );
 
@@ -91,8 +92,8 @@ export function ContactStep({
     }
   };
 
-  const mobileReg  = register("mobile");
-  const pinReg     = register("pin_code");
+  const mobileReg = register("mobile");
+  const pinReg = register("pin_code");
 
   return (
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
@@ -166,7 +167,8 @@ export function ContactStep({
 
         {loadingPincode && (
           <div className="flex items-center text-sm text-muted-foreground gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Fetching area details...
+            <Loader2 className="h-4 w-4 animate-spin" /> Fetching area
+            details...
           </div>
         )}
 
@@ -197,7 +199,9 @@ export function ContactStep({
           error={errors.city?.message}
           readOnly={!!selectedArea}
           className={
-            selectedArea ? "bg-muted/50 text-muted-foreground pointer-events-none" : ""
+            selectedArea
+              ? "bg-muted/50 text-muted-foreground pointer-events-none"
+              : ""
           }
           {...register("city")}
         />
@@ -205,7 +209,9 @@ export function ContactStep({
           label="State *"
           error={errors.state?.message}
           className={
-            selectedArea ? "bg-muted/50 text-muted-foreground pointer-events-none" : ""
+            selectedArea
+              ? "bg-muted/50 text-muted-foreground pointer-events-none"
+              : ""
           }
           tabIndex={selectedArea ? -1 : 0}
           {...register("state")}

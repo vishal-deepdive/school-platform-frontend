@@ -1,29 +1,29 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Check, Copy, MailCheck } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { AuthButton } from '@/components/ui/auth-fuse'
-import type { OnboardingApplicationResponse } from '@/types/onboarding'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { CheckCircle2, Check, Copy, MailCheck } from "lucide-react";
+import toast from "react-hot-toast";
+import { AuthButton } from "@/shared/components/ui/auth-fuse";
+import type { OnboardingApplicationResponse } from "@/features/onboarding/types";
 
 export function SuccessState({
   response,
   principalEmail,
 }: {
-  response: OnboardingApplicationResponse
-  principalEmail: string
+  response: OnboardingApplicationResponse;
+  principalEmail: string;
 }) {
-  const navigate = useNavigate()
-  const [copied, setCopied] = useState(false)
+  const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
 
   const copyId = async () => {
     try {
-      await navigator.clipboard.writeText(response.application_id)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(response.application_id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Failed to copy')
+      toast.error("Failed to copy");
     }
-  }
+  };
 
   return (
     <div className="mx-auto grid w-full max-w-[440px] gap-5 animate-in fade-in zoom-in-95 duration-500">
@@ -33,8 +33,12 @@ export function SuccessState({
           <CheckCircle2 className="h-9 w-9 text-green-600" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Application Submitted!</h1>
-          <p className="mt-1 text-sm text-muted-foreground text-balance">{response.message}</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Application Submitted!
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground text-balance">
+            {response.message}
+          </p>
         </div>
       </div>
 
@@ -53,10 +57,11 @@ export function SuccessState({
             className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Copy application ID"
           >
-            {copied
-              ? <Check className="h-4 w-4 text-green-600" />
-              : <Copy className="h-4 w-4" />
-            }
+            {copied ? (
+              <Check className="h-4 w-4 text-green-600" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
           </button>
         </div>
       </div>
@@ -65,9 +70,11 @@ export function SuccessState({
       <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3.5">
         <MailCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-semibold text-foreground">Verify your email next</p>
+          <p className="text-sm font-semibold text-foreground">
+            Verify your email next
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-            A verification OTP has been sent to{' '}
+            A verification OTP has been sent to{" "}
             <strong className="text-foreground">{principalEmail}</strong>.
             Verifying helps speed up the admin review.
           </p>
@@ -79,8 +86,11 @@ export function SuccessState({
         <AuthButton
           className="w-full"
           onClick={() =>
-            navigate('/onboarding/verify', {
-              state: { applicationId: response.application_id, email: principalEmail },
+            navigate("/onboarding/verify", {
+              state: {
+                applicationId: response.application_id,
+                email: principalEmail,
+              },
             })
           }
         >
@@ -91,7 +101,9 @@ export function SuccessState({
           variant="outline"
           className="w-full"
           onClick={() =>
-            navigate(`/onboarding/status?id=${encodeURIComponent(response.application_id)}`)
+            navigate(
+              `/onboarding/status?id=${encodeURIComponent(response.application_id)}`,
+            )
           }
         >
           Check Application Status
@@ -99,9 +111,9 @@ export function SuccessState({
       </div>
 
       <p className="text-center text-xs text-muted-foreground">
-        Your application is under review. The admin will notify you by email once a decision is
-        made.
+        Your application is under review. The admin will notify you by email
+        once a decision is made.
       </p>
     </div>
-  )
+  );
 }
