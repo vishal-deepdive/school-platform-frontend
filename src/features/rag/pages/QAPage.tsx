@@ -1,66 +1,60 @@
-import { useState } from 'react'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { MessageSquare, Send, BookOpen } from 'lucide-react'
-import toast from 'react-hot-toast'
-import ReactMarkdown from 'react-markdown'
-import { qaSchema, type QAFormData } from '@/lib/validators'
-import { ragApi } from '@/api/rag'
-import { getErrorMessage } from '@/lib/utils'
-import { Card, CardHeader } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
-import { Select } from '@/components/ui/Select'
-import { Badge } from '@/components/ui/Badge'
-import { PageSpinner } from '@/components/ui/Spinner'
-import type { RagFilters } from '@/types/rag'
-
-interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  sources?: { chunk_id: string; book?: string; chapter_name?: string; title?: string; page?: number }[]
-}
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { MessageSquare, Send, BookOpen } from "lucide-react";
+import toast from "react-hot-toast";
+import ReactMarkdown from "react-markdown";
+import { qaSchema, type QAFormData } from "@/features/rag/schema";
+import { useRagMetadata, useRagQa } from "@/features/rag/hooks/useRag";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Button } from "@/shared/components/ui/Button";
+import { Select } from "@/shared/components/ui/Select";
+import { Badge } from "@/shared/components/ui/Badge";
+import { PageSpinner } from "@/shared/components/ui/Spinner";
+import type { RagFilters, ChatMessage } from "@/features/rag/types";
 
 export function QAPage() {
-  const [chat, setChat] = useState<ChatMessage[]>([])
-  const [filters, setFilters] = useState<RagFilters>({})
+  const [chat, setChat] = useState<ChatMessage[]>([]);
+  const [filters, setFilters] = useState<RagFilters>({});
 
-  const { data: meta, isLoading: metaLoading } = useQuery({
-    queryKey: ['rag', 'metadata'],
-    queryFn: () => ragApi.getMetadata(),
-    staleTime: 10 * 60_000,
-  })
+  const { data: meta, isLoading: metaLoading } = useRagMetadata();
 
-  const { mutate: ask, isPending } = useMutation({
-    mutationFn: (data: QAFormData) => ragApi.qa({ query: data.query, filters }),
+  const { mutate: ask, isPending } = useRagQa({
     onSuccess: (data, vars) => {
       setChat((p) => [
         ...p,
-        { id: Date.now() + '-u', role: 'user', content: vars.query },
-        { id: Date.now() + '-a', role: 'assistant', content: data.answer, sources: data.sources },
-      ])
-      reset()
+        { id: Date.now() + "-u", role: "user", content: vars.query },
+        {
+          id: Date.now() + "-a",
+          role: "assistant",
+          content: data.answer,
+          sources: data.sources,
+        },
+      ]);
+      reset();
     },
     onError: (err) => toast.error(getErrorMessage(err)),
-  })
+  });
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<QAFormData>({ resolver: zodResolver(qaSchema) })
+  } = useForm<QAFormData>({ resolver: zodResolver(qaSchema) });
 
-  const bookOptions = meta?.books?.map((b) => ({ value: b, label: b })) ?? []
-  const subjectOptions = meta?.subjects?.map((s) => ({ value: s, label: s })) ?? []
+  const bookOptions = meta?.books?.map((b) => ({ value: b, label: b })) ?? [];
+  const subjectOptions =
+    meta?.subjects?.map((s) => ({ value: s, label: s })) ?? [];
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Textbook Q&A</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Ask questions about your textbooks — answers are cited from source chapters.
+          Ask questions about your textbooks — answers are cited from source
+          chapters.
         </p>
       </div>
 
@@ -74,21 +68,32 @@ export function QAPage() {
               <div className="space-y-3">
                 <Select
                   label="Book"
-                  options={[{ value: '', label: 'All books' }, ...bookOptions]}
-                  value={filters.book ?? ''}
+                  options={[{ value: "", label: "All books" }, ...bookOptions]}
+                  value={filters.book ?? ""}
                   onChange={(e) =>
-                    setFilters((p) => ({ ...p, book: e.target.value || undefined }))
+                    setFilters((p) => ({
+                      ...p,
+                      book: e.target.value || undefined,
+                    }))
                   }
                 />
                 <Select
                   label="Subject"
-                  options={[{ value: '', label: 'All subjects' }, ...subjectOptions]}
-                  value={filters.subject ?? ''}
+                  options={[
+                    { value: "", label: "All subjects" },
+                    ...subjectOptions,
+                  ]}
+                  value={filters.subject ?? ""}
                   onChange={(e) =>
-                    setFilters((p) => ({ ...p, subject: e.target.value || undefined }))
+                    setFilters((p) => ({
+                      ...p,
+                      subject: e.target.value || undefined,
+                    }))
                   }
                 />
-                {Object.keys(filters).filter((k) => filters[k as keyof RagFilters]).length > 0 && (
+                {Object.keys(filters).filter(
+                  (k) => filters[k as keyof RagFilters],
+                ).length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -111,7 +116,9 @@ export function QAPage() {
                   <MessageSquare className="h-8 w-8 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Ask anything about your textbooks</p>
+                  <p className="font-semibold text-gray-900">
+                    Ask anything about your textbooks
+                  </p>
                   <p className="mt-1 text-sm text-gray-400">
                     Answers include citations from relevant chapters and pages.
                   </p>
@@ -122,16 +129,16 @@ export function QAPage() {
             {chat.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    msg.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-br-sm'
-                      : 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                    msg.role === "user"
+                      ? "bg-indigo-600 text-white rounded-br-sm"
+                      : "bg-gray-100 text-gray-900 rounded-bl-sm"
                   }`}
                 >
-                  {msg.role === 'assistant' ? (
+                  {msg.role === "assistant" ? (
                     <div className="prose prose-sm max-w-none">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
@@ -146,10 +153,16 @@ export function QAPage() {
                       </p>
                       {msg.sources.map((src, i) => (
                         <div key={i} className="text-xs text-gray-500">
-                          {src.book && <span className="font-medium">{src.book}</span>}
-                          {src.chapter_name && <span> · {src.chapter_name}</span>}
+                          {src.book && (
+                            <span className="font-medium">{src.book}</span>
+                          )}
+                          {src.chapter_name && (
+                            <span> · {src.chapter_name}</span>
+                          )}
                           {src.title && <span> · {src.title}</span>}
-                          {src.page && <Badge className="ml-1">p.{src.page}</Badge>}
+                          {src.page && (
+                            <Badge className="ml-1">p.{src.page}</Badge>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -177,11 +190,13 @@ export function QAPage() {
 
           <div className="border-t border-gray-200 p-4">
             <form
-              onSubmit={handleSubmit((data) => ask(data))}
+              onSubmit={handleSubmit((data) =>
+                ask({ query: data.query, filters }),
+              )}
               className="flex gap-3"
             >
               <input
-                {...register('query')}
+                {...register("query")}
                 placeholder="Ask a question about the textbook…"
                 className="flex-1 rounded-xl border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
                 disabled={isPending}
@@ -201,5 +216,5 @@ export function QAPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

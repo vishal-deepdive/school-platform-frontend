@@ -1,27 +1,30 @@
-import { useQuery } from '@tanstack/react-query'
-import { Database, RefreshCw, AlertTriangle } from 'lucide-react'
-import { ragApi } from '@/api/rag'
-import { Card, CardHeader, StatCard } from '@/components/ui/Card'
-import { PageSpinner } from '@/components/ui/Spinner'
-import { Alert } from '@/components/ui/Alert'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
+import { useQuery } from "@tanstack/react-query";
+import { Database, RefreshCw, AlertTriangle } from "lucide-react";
+import { ragApi } from "@/features/rag/api/rag";
+import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { Alert } from "@/shared/components/ui/Alert";
+import { Button } from "@/shared/components/ui/Button";
+import { Badge } from "@/shared/components/ui/Badge";
 
 export function RagAuditPage() {
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
-    queryKey: ['rag', 'audit'],
+    queryKey: ["rag", "audit"],
     queryFn: () => ragApi.getAudit(),
     staleTime: 2 * 60_000,
-  })
+  });
 
-  if (isLoading) return <PageSpinner />
-  if (isError) return <Alert variant="error">Failed to load RAG audit data.</Alert>
+  if (isLoading) return <PageSpinner />;
+  if (isError)
+    return <Alert variant="error">Failed to load RAG audit data.</Alert>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Knowledge Base Audit</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Knowledge Base Audit
+          </h1>
           <p className="mt-1 text-sm text-gray-500">
             Overview of indexed textbook chunks and embedding quality.
           </p>
@@ -48,21 +51,21 @@ export function RagAuditPage() {
           label="Missing Titles"
           value={data?.missing_fields?.titles ?? 0}
           icon={<AlertTriangle className="h-5 w-5" />}
-          color={data?.missing_fields?.titles ? 'amber' : 'green'}
+          color={data?.missing_fields?.titles ? "amber" : "green"}
         />
         <StatCard
           label="Missing Chapters"
           value={data?.missing_fields?.chapter_names ?? 0}
           icon={<AlertTriangle className="h-5 w-5" />}
-          color={data?.missing_fields?.chapter_names ? 'amber' : 'green'}
+          color={data?.missing_fields?.chapter_names ? "amber" : "green"}
         />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {[
-          { label: 'By Book', data: data?.counts?.by_book },
-          { label: 'By Class', data: data?.counts?.by_class },
-          { label: 'By Subject', data: data?.counts?.by_subject },
+          { label: "By Book", data: data?.counts?.by_book },
+          { label: "By Class", data: data?.counts?.by_class },
+          { label: "By Subject", data: data?.counts?.by_subject },
         ].map(({ label, data: rows }) => (
           <Card key={label} padding="none">
             <CardHeader title={label} className="px-6 pt-6" />
@@ -71,31 +74,38 @@ export function RagAuditPage() {
                 <p className="px-6 py-4 text-sm text-gray-400">No data.</p>
               )}
               {(rows ?? []).map((row, i) => {
-                const r = row as Record<string, unknown>
-                const name = String(r.book ?? r.class_level ?? r.subject ?? r.name ?? '—')
-                const count = String(r.count ?? r.total ?? '—')
+                const r = row as Record<string, unknown>;
+                const name = String(
+                  r.book ?? r.class_level ?? r.subject ?? r.name ?? "—",
+                );
+                const count = String(r.count ?? r.total ?? "—");
                 return (
-                  <div key={i} className="flex items-center justify-between px-6 py-3">
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-6 py-3"
+                  >
                     <p className="text-sm text-gray-700 truncate">{name}</p>
                     <Badge variant="info">{count} chunks</Badge>
                   </div>
-                )
+                );
               })}
             </div>
           </Card>
         ))}
       </div>
 
-      {(data?.missing_fields?.titles ?? 0) > 0 || (data?.missing_fields?.chapter_names ?? 0) > 0 ? (
+      {(data?.missing_fields?.titles ?? 0) > 0 ||
+      (data?.missing_fields?.chapter_names ?? 0) > 0 ? (
         <Alert variant="warning" title="Missing Metadata Detected">
-          Some chunks are missing title or chapter metadata. This may affect search quality.
-          Re-index your textbooks to ensure full coverage.
+          Some chunks are missing title or chapter metadata. This may affect
+          search quality. Re-index your textbooks to ensure full coverage.
         </Alert>
       ) : (
         <Alert variant="success">
-          All chunks have complete metadata. Your knowledge base is in good shape.
+          All chunks have complete metadata. Your knowledge base is in good
+          shape.
         </Alert>
       )}
     </div>
-  )
+  );
 }
