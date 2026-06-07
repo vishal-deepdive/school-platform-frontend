@@ -1,10 +1,10 @@
-import { LandingNavbar } from "@/components/landing/LandingNavbar"
-import { HeroSection } from "@/components/landing/HeroSection"
-import { FeatureSection } from "@/components/landing/FeatureSection"
-import { FutureGrowthSection } from "@/components/landing/FutureGrowthSection"
-import { OnboardingSection } from "@/components/landing/OnboardingSection"
-import { QASection } from "@/components/landing/QASection"
-import { Footer } from "@/components/landing/Footer"
+import { LandingNavbar } from "@/features/landing/components/LandingNavbar";
+import { HeroSection } from "@/features/landing/components/HeroSection";
+import { FeatureSection } from "@/features/landing/components/FeatureSection";
+import { FutureGrowthSection } from "@/features/landing/components/FutureGrowthSection";
+import { OnboardingSection } from "@/features/landing/components/OnboardingSection";
+import { QASection } from "@/features/landing/components/QASection";
+import { Footer } from "@/features/landing/components/Footer";
 
 export function LandingPage() {
   return (
@@ -19,5 +19,5 @@ export function LandingPage() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
