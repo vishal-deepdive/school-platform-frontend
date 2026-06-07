@@ -1,47 +1,55 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { Search, Download } from 'lucide-react'
-import { toIndianDate, downloadBlob } from '@/lib/utils'
-import { attendanceApi } from '@/api/attendance'
-import { Card, CardHeader } from '@/components/ui/Card'
-import { Input } from '@/components/ui/Input'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { PageSpinner } from '@/components/ui/Spinner'
-import { Alert } from '@/components/ui/Alert'
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Search, Download } from "lucide-react";
+import { toIndianDate, downloadBlob } from "@/shared/lib/utils";
+import { attendanceApi } from "@/features/attendance/api/attendance";
+import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Input } from "@/shared/components/ui/Input";
+import { Button } from "@/shared/components/ui/Button";
+import { Badge } from "@/shared/components/ui/Badge";
+import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { Alert } from "@/shared/components/ui/Alert";
 
 interface DateFilters {
-  school_name: string
-  date: string
-  class_name: string
-  section: string
-  subject: string
+  school_name: string;
+  date: string;
+  class_name: string;
+  section: string;
+  subject: string;
 }
 
-type AttendanceRow = Record<string, unknown>
+type AttendanceRow = Record<string, unknown>;
 
 export function AttendanceDateView() {
   const [dateFilters, setDateFilters] = useState<DateFilters>({
-    school_name: '',
+    school_name: "",
     date: toIndianDate(new Date()),
-    class_name: '',
-    section: '',
-    subject: '',
-  })
-  const [queryDate, setQueryDate] = useState<DateFilters | null>(null)
+    class_name: "",
+    section: "",
+    subject: "",
+  });
+  const [queryDate, setQueryDate] = useState<DateFilters | null>(null);
 
-  const { data: dateData, isLoading: dateLoading, isError: dateError } = useQuery({
-    queryKey: ['attendance', 'date', queryDate],
+  const {
+    data: dateData,
+    isLoading: dateLoading,
+    isError: dateError,
+  } = useQuery({
+    queryKey: ["attendance", "date", queryDate],
     queryFn: () =>
-      attendanceApi.getAttendanceOnDate(queryDate as unknown as Record<string, string>),
+      attendanceApi.getAttendanceOnDate(
+        queryDate as unknown as Record<string, string>,
+      ),
     enabled: !!queryDate?.school_name,
-  })
+  });
 
   const handleExportCSV = async () => {
-    if (!queryDate?.school_name) return
-    const blob = await attendanceApi.viewStudents(queryDate as unknown as Record<string, string>)
-    downloadBlob(blob, `students-${queryDate.school_name}.csv`)
-  }
+    if (!queryDate?.school_name) return;
+    const blob = await attendanceApi.viewStudents(
+      queryDate as unknown as Record<string, string>,
+    );
+    downloadBlob(blob, `students-${queryDate.school_name}.csv`);
+  };
 
   return (
     <Card>
@@ -50,31 +58,41 @@ export function AttendanceDateView() {
         <Input
           label="School Name"
           value={dateFilters.school_name}
-          onChange={(e) => setDateFilters((p) => ({ ...p, school_name: e.target.value }))}
+          onChange={(e) =>
+            setDateFilters((p) => ({ ...p, school_name: e.target.value }))
+          }
           placeholder="Delhi Public School"
         />
         <Input
           label="Date (DD-MM-YYYY)"
           value={dateFilters.date}
-          onChange={(e) => setDateFilters((p) => ({ ...p, date: e.target.value }))}
+          onChange={(e) =>
+            setDateFilters((p) => ({ ...p, date: e.target.value }))
+          }
           placeholder="15-08-2025"
         />
         <Input
           label="Class"
           value={dateFilters.class_name}
-          onChange={(e) => setDateFilters((p) => ({ ...p, class_name: e.target.value }))}
+          onChange={(e) =>
+            setDateFilters((p) => ({ ...p, class_name: e.target.value }))
+          }
           placeholder="10"
         />
         <Input
           label="Section"
           value={dateFilters.section}
-          onChange={(e) => setDateFilters((p) => ({ ...p, section: e.target.value }))}
+          onChange={(e) =>
+            setDateFilters((p) => ({ ...p, section: e.target.value }))
+          }
           placeholder="A"
         />
         <Input
           label="Subject (optional)"
           value={dateFilters.subject}
-          onChange={(e) => setDateFilters((p) => ({ ...p, subject: e.target.value }))}
+          onChange={(e) =>
+            setDateFilters((p) => ({ ...p, subject: e.target.value }))
+          }
           placeholder="Mathematics"
         />
       </div>
@@ -95,7 +113,9 @@ export function AttendanceDateView() {
       </div>
 
       {dateLoading && <PageSpinner />}
-      {dateError && <Alert variant="error">Failed to fetch attendance records.</Alert>}
+      {dateError && (
+        <Alert variant="error">Failed to fetch attendance records.</Alert>
+      )}
       {dateData && (
         <div className="mt-6">
           <p className="text-sm text-gray-500 mb-3">
@@ -105,7 +125,15 @@ export function AttendanceDateView() {
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Roll No', 'Name', 'Class', 'Section', 'Subject', 'Status', 'Time'].map((h) => (
+                  {[
+                    "Roll No",
+                    "Name",
+                    "Class",
+                    "Section",
+                    "Subject",
+                    "Status",
+                    "Time",
+                  ].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500"
@@ -118,17 +146,25 @@ export function AttendanceDateView() {
               <tbody className="divide-y divide-gray-100 bg-white">
                 {(dateData.data as AttendanceRow[]).map((row, i) => (
                   <tr key={i} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">{String(row.roll_number ?? row.roll_no ?? '—')}</td>
-                    <td className="px-4 py-3">{String(row.name ?? '—')}</td>
-                    <td className="px-4 py-3">{String(row.class_name ?? row.class ?? '—')}</td>
-                    <td className="px-4 py-3">{String(row.section ?? '—')}</td>
-                    <td className="px-4 py-3">{String(row.subject ?? '—')}</td>
                     <td className="px-4 py-3">
-                      <Badge variant={row.attendance_record === 'P' ? 'success' : 'danger'}>
-                        {row.attendance_record === 'P' ? 'Present' : 'Absent'}
+                      {String(row.roll_number ?? row.roll_no ?? "—")}
+                    </td>
+                    <td className="px-4 py-3">{String(row.name ?? "—")}</td>
+                    <td className="px-4 py-3">
+                      {String(row.class_name ?? row.class ?? "—")}
+                    </td>
+                    <td className="px-4 py-3">{String(row.section ?? "—")}</td>
+                    <td className="px-4 py-3">{String(row.subject ?? "—")}</td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        variant={
+                          row.attendance_record === "P" ? "success" : "danger"
+                        }
+                      >
+                        {row.attendance_record === "P" ? "Present" : "Absent"}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3">{String(row.time ?? '—')}</td>
+                    <td className="px-4 py-3">{String(row.time ?? "—")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -137,5 +173,5 @@ export function AttendanceDateView() {
         </div>
       )}
     </Card>
-  )
+  );
 }
