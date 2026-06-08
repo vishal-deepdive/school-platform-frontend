@@ -1,22 +1,22 @@
-import { AuthInput, AuthSelect } from '@/components/ui/auth-fuse'
-import type { StepPropsExtra } from './types'
+import { AuthInput, AuthSelect } from "@/shared/components/ui/auth-fuse";
+import type { StepPropsExtra } from "./types";
 
 const CLASS_OPTIONS = Array.from({ length: 13 }, (_, i) => ({
   value: String(i),
-  label: i === 0 ? 'Nursery / KG' : `Class ${i}`,
-}))
+  label: i === 0 ? "Nursery / KG" : `Class ${i}`,
+}));
 
 const MEDIUM_OPTIONS = [
-  { value: 'English',   label: 'English' },
-  { value: 'Hindi',     label: 'Hindi' },
-  { value: 'Regional',  label: 'Regional Language' },
-  { value: 'Bilingual', label: 'Bilingual (English + Regional)' },
-  { value: 'Other',     label: 'Other' },
-]
+  { value: "English", label: "English" },
+  { value: "Hindi", label: "Hindi" },
+  { value: "Regional", label: "Regional Language" },
+  { value: "Bilingual", label: "Bilingual (English + Regional)" },
+  { value: "Other", label: "Other" },
+];
 
 export function AcademicStep({ register, errors, watch }: StepPropsExtra) {
-  const selectedMedium = watch('medium_of_instruction')
-  const udiseReg = register('udise_code')
+  const selectedMedium = watch("medium_of_instruction");
+  const udiseReg = register("udise_code");
 
   return (
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
@@ -29,29 +29,31 @@ export function AcademicStep({ register, errors, watch }: StepPropsExtra) {
         max={200000}
         error={errors.student_count?.message}
         hint="Approximate number of currently enrolled students"
-        {...register('student_count')}
+        {...register("student_count")}
       />
 
       <AuthSelect
         label="Medium of Instruction"
         error={errors.medium_of_instruction?.message}
         hint="Primary language used for teaching"
-        {...register('medium_of_instruction')}
+        {...register("medium_of_instruction")}
       >
         <option value="">— Select medium (optional) —</option>
         {MEDIUM_OPTIONS.map((m) => (
-          <option key={m.value} value={m.value}>{m.label}</option>
+          <option key={m.value} value={m.value}>
+            {m.label}
+          </option>
         ))}
       </AuthSelect>
 
-      {selectedMedium === 'Other' && (
+      {selectedMedium === "Other" && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
           <AuthInput
             label="Please specify medium *"
             type="text"
             placeholder="e.g. French, German"
             error={errors.other_medium_of_instruction?.message}
-            {...register('other_medium_of_instruction')}
+            {...register("other_medium_of_instruction")}
           />
         </div>
       )}
@@ -60,22 +62,26 @@ export function AcademicStep({ register, errors, watch }: StepPropsExtra) {
         <AuthSelect
           label="Classes From"
           error={errors.classes_from?.message}
-          {...register('classes_from')}
+          {...register("classes_from")}
         >
           <option value="">— From —</option>
           {CLASS_OPTIONS.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
           ))}
         </AuthSelect>
 
         <AuthSelect
           label="Classes To"
           error={errors.classes_to?.message}
-          {...register('classes_to')}
+          {...register("classes_to")}
         >
           <option value="">— To —</option>
-          {CLASS_OPTIONS.filter((c) => c.value !== '0').map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
+          {CLASS_OPTIONS.filter((c) => c.value !== "0").map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
           ))}
         </AuthSelect>
       </div>
@@ -96,10 +102,10 @@ export function AcademicStep({ register, errors, watch }: StepPropsExtra) {
         hint="Unified District Information System for Education Plus code"
         {...udiseReg}
         onChange={(e) => {
-          e.target.value = e.target.value.replace(/\D/g, '')
-          udiseReg.onChange(e)
+          e.target.value = e.target.value.replace(/\D/g, "");
+          udiseReg.onChange(e);
         }}
       />
     </div>
-  )
+  );
 }

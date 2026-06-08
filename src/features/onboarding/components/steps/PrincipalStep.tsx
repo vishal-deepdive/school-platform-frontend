@@ -1,16 +1,17 @@
-import { Link } from 'react-router-dom'
-import { AuthInput, AuthPasswordInput } from '@/components/ui/auth-fuse'
-import { TermsCheckbox } from '@/components/common/TermsCheckbox'
-import type { StepPropsExtra } from './types'
+import { Link } from "react-router-dom";
+import { AuthInput, AuthPasswordInput } from "@/shared/components/ui/auth-fuse";
+import { TermsCheckbox } from "@/shared/components/common/TermsCheckbox";
+import type { StepPropsExtra } from "./types";
 
 export function PrincipalStep({ register, errors }: StepPropsExtra) {
   return (
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
       <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Create the <strong className="text-foreground">principal account</strong> for the person
-          submitting this application. Once approved by the admin, use these credentials to
-          manage the school.
+          Create the{" "}
+          <strong className="text-foreground">principal account</strong> for the
+          person submitting this application. Once approved by the admin, use
+          these credentials to manage the school.
         </p>
       </div>
 
@@ -20,7 +21,7 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
         autoComplete="name"
         placeholder="Full name of the principal"
         error={errors.principal_name?.message}
-        {...register('principal_name')}
+        {...register("principal_name")}
       />
 
       <AuthInput
@@ -30,7 +31,7 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
         placeholder="principal@yourschool.edu.in"
         error={errors.principal_email?.message}
         hint="This will be the principal's login email address"
-        {...register('principal_email')}
+        {...register("principal_email")}
       />
 
       <AuthPasswordInput
@@ -39,7 +40,7 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
         placeholder="Create a strong password"
         error={errors.principal_password?.message}
         hint="Min 8 chars — uppercase, lowercase, number & special character"
-        {...register('principal_password')}
+        {...register("principal_password")}
       />
 
       <AuthPasswordInput
@@ -47,14 +48,14 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
         autoComplete="new-password"
         placeholder="Repeat your password"
         error={errors.confirm_password?.message}
-        {...register('confirm_password')}
+        {...register("confirm_password")}
       />
 
       <TermsCheckbox
         error={errors.terms?.message}
         label={
           <>
-            I confirm that all provided details are accurate and I accept the{' '}
+            I confirm that all provided details are accurate and I accept the{" "}
             <Link
               to="/terms"
               target="_blank"
@@ -65,8 +66,8 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
             </Link>
           </>
         }
-        {...register('terms')}
+        {...register("terms")}
       />
     </div>
-  )
+  );
 }

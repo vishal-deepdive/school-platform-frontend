@@ -1,46 +1,61 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { LogIn } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { loginSchema, type LoginFormData } from '@/lib/validators'
-import { authApi } from '@/api/auth'
-import { useAuthStore } from '@/store/auth'
-import { getErrorMessage } from '@/lib/utils'
-import { decodeJwt, buildUserFromJwt } from '@/lib/jwt'
-import { AuthInput, AuthPasswordInput, AuthButton, AuthSubmitButton } from '@/components/ui/auth-fuse'
-import { OrDivider } from '@/components/common/OrDivider'
-import { GoogleIcon } from './GoogleIcon'
-import { useGoogleAuth } from '@/hooks/useGoogleAuth'
+import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { LogIn } from "lucide-react";
+import toast from "react-hot-toast";
+import { loginSchema, type LoginFormData } from "@/features/auth/schema";
+import { authApi } from "@/features/auth/api/auth";
+import { useAuthStore } from "@/features/auth/store/auth";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { decodeJwt, buildUserFromJwt } from "@/shared/lib/jwt";
+import {
+  AuthInput,
+  AuthPasswordInput,
+  AuthButton,
+  AuthSubmitButton,
+} from "@/shared/components/ui/auth-fuse";
+import { OrDivider } from "@/shared/components/common/OrDivider";
+import { GoogleIcon } from "./GoogleIcon";
+import { useGoogleAuth } from "@/features/auth/hooks/useGoogleAuth";
 
-export function LoginForm({ redirectPath = '/dashboard' }: { redirectPath?: string }) {
-  const navigate = useNavigate()
-  const { login } = useAuthStore()
-  const { handleGoogleLogin } = useGoogleAuth()
+export function LoginForm({
+  redirectPath = "/dashboard",
+}: {
+  redirectPath?: string;
+}) {
+  const navigate = useNavigate();
+  const { login } = useAuthStore();
+  const { handleGoogleLogin } = useGoogleAuth();
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) })
+  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      const tokens = await authApi.login(data)
-      login(tokens, buildUserFromJwt(decodeJwt(tokens.access_token), data.email))
-      toast.success('Welcome back!')
-      navigate(redirectPath, { replace: true })
+      const tokens = await authApi.login(data);
+      login(
+        tokens,
+        buildUserFromJwt(decodeJwt(tokens.access_token), data.email),
+      );
+      toast.success("Welcome back!");
+      navigate(redirectPath, { replace: true });
     } catch (err) {
-      const msg = getErrorMessage(err)
-      if (msg.toLowerCase().includes('verify') || msg.toLowerCase().includes('otp')) {
-        navigate('/verify-otp', {
-          state: { email: data.email, purpose: 'verify_email' },
-        })
+      const msg = getErrorMessage(err);
+      if (
+        msg.toLowerCase().includes("verify") ||
+        msg.toLowerCase().includes("otp")
+      ) {
+        navigate("/verify-otp", {
+          state: { email: data.email, purpose: "verify_email" },
+        });
       } else {
-        toast.error(msg)
+        toast.error(msg);
       }
     }
-  }
+  };
 
   return (
     <>
@@ -56,7 +71,7 @@ export function LoginForm({ redirectPath = '/dashboard' }: { redirectPath?: stri
             autoComplete="email"
             placeholder="m@example.com"
             error={errors.email?.message}
-            {...register('email')}
+            {...register("email")}
           />
 
           <div className="flex flex-col gap-1.5">
@@ -65,7 +80,7 @@ export function LoginForm({ redirectPath = '/dashboard' }: { redirectPath?: stri
               autoComplete="current-password"
               placeholder="Password"
               error={errors.password?.message}
-              {...register('password')}
+              {...register("password")}
             />
             <Link
               to="/forgot-password"
@@ -75,14 +90,18 @@ export function LoginForm({ redirectPath = '/dashboard' }: { redirectPath?: stri
             </Link>
           </div>
 
-          <AuthSubmitButton icon={LogIn} isLoading={isSubmitting} className="mt-2">
+          <AuthSubmitButton
+            icon={LogIn}
+            isLoading={isSubmitting}
+            className="mt-2"
+          >
             Sign in
           </AuthSubmitButton>
         </div>
       </form>
 
       <div className="text-center text-sm mt-8">
-        Don&apos;t have an account?{' '}
+        Don&apos;t have an account?{" "}
         <Link
           to="/register"
           className="pl-1 font-semibold text-primary hover:text-primary/80 transition-colors"
@@ -103,5 +122,5 @@ export function LoginForm({ redirectPath = '/dashboard' }: { redirectPath?: stri
         Continue with Google
       </AuthButton>
     </>
-  )
+  );
 }

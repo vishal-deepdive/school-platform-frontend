@@ -1,19 +1,28 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { KeyRound } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { resetPasswordSchema, type ResetPasswordFormData } from '@/lib/validators'
-import { authApi } from '@/api/auth'
-import { getErrorMessage } from '@/lib/utils'
-import { AuthInput, AuthPasswordInput, AuthSubmitButton } from '@/components/ui/auth-fuse'
+import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { KeyRound } from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  resetPasswordSchema,
+  type ResetPasswordFormData,
+} from "@/features/auth/schema";
+import { authApi } from "@/features/auth/api/auth";
+import { getErrorMessage } from "@/shared/lib/utils";
+import {
+  AuthInput,
+  AuthPasswordInput,
+  AuthSubmitButton,
+} from "@/shared/components/ui/auth-fuse";
 
 export interface ResetPasswordFormProps {
-  initialEmail?: string
+  initialEmail?: string;
 }
 
-export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps) {
-  const navigate = useNavigate()
+export function ResetPasswordForm({
+  initialEmail = "",
+}: ResetPasswordFormProps) {
+  const navigate = useNavigate();
 
   const {
     register,
@@ -22,23 +31,27 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { email: initialEmail },
-  })
+  });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
     try {
-      const { confirm_password: _, ...rest } = data
-      await authApi.resetPassword(rest)
-      toast.success('Password reset! Please sign in with your new password.')
-      navigate('/login')
+      const { confirm_password: _, ...rest } = data;
+      await authApi.resetPassword(rest);
+      toast.success("Password reset! Please sign in with your new password.");
+      navigate("/login");
     } catch (err) {
-      toast.error(getErrorMessage(err))
+      toast.error(getErrorMessage(err));
     }
-  }
+  };
 
-  const otpReg = register('otp')
+  const otpReg = register("otp");
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="flex flex-col gap-5"
+      noValidate
+    >
       <div>
         <AuthInput
           type="email"
@@ -46,8 +59,12 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
           placeholder="Email"
           error={errors.email?.message}
           readOnly={!!initialEmail}
-          className={initialEmail ? 'bg-muted/50 text-muted-foreground cursor-default' : ''}
-          {...register('email')}
+          className={
+            initialEmail
+              ? "bg-muted/50 text-muted-foreground cursor-default"
+              : ""
+          }
+          {...register("email")}
         />
       </div>
 
@@ -61,8 +78,8 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
           className="font-mono text-center text-lg tracking-widest"
           {...otpReg}
           onChange={(e) => {
-            e.target.value = e.target.value.replace(/\D/g, '')
-            otpReg.onChange(e)
+            e.target.value = e.target.value.replace(/\D/g, "");
+            otpReg.onChange(e);
           }}
         />
       </div>
@@ -73,7 +90,7 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
           placeholder="New password"
           error={errors.new_password?.message}
           hint="Min 8 chars with uppercase, lowercase, number & special character"
-          {...register('new_password')}
+          {...register("new_password")}
         />
       </div>
 
@@ -82,21 +99,28 @@ export function ResetPasswordForm({ initialEmail = '' }: ResetPasswordFormProps)
           autoComplete="new-password"
           placeholder="Confirm new password"
           error={errors.confirm_password?.message}
-          {...register('confirm_password')}
+          {...register("confirm_password")}
         />
       </div>
 
       <div className="pt-2">
-        <AuthSubmitButton icon={KeyRound} isLoading={isSubmitting} className="mt-2">
+        <AuthSubmitButton
+          icon={KeyRound}
+          isLoading={isSubmitting}
+          className="mt-2"
+        >
           Reset password
         </AuthSubmitButton>
       </div>
 
       <p className="text-center text-sm text-muted-foreground mt-2">
-        <Link to="/login" className="font-semibold text-primary hover:text-primary/80 transition-colors">
+        <Link
+          to="/login"
+          className="font-semibold text-primary hover:text-primary/80 transition-colors"
+        >
           Back to sign in
         </Link>
       </p>
     </form>
-  )
+  );
 }

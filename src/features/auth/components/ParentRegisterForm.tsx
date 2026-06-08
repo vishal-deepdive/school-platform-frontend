@@ -1,18 +1,28 @@
-import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { UserPlus } from 'lucide-react'
-import toast from 'react-hot-toast'
-import { parentRegisterSchema, type ParentRegisterFormData } from '@/lib/validators'
-import { authApi } from '@/api/auth'
-import { getErrorMessage } from '@/lib/utils'
-import { AuthInput, AuthPasswordInput, AuthSubmitButton } from '@/components/ui/auth-fuse'
-import { SearchableSelect } from '@/components/ui/SearchableSelect'
-import { Select } from '@/components/ui/Select'
-import { TermsCheckbox } from '@/components/common/TermsCheckbox'
-import { useSchoolSearch, useStudentSearch } from '@/hooks/useSchoolSearch'
-import { useOtpCooldown } from '../hooks/useOtpCooldown'
-import { RELATION_OPTIONS } from '../constants'
-import type { NavProps } from './types'
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { UserPlus } from "lucide-react";
+import toast from "react-hot-toast";
+import {
+  parentRegisterSchema,
+  type ParentRegisterFormData,
+} from "@/features/auth/schema";
+import { authApi } from "@/features/auth/api/auth";
+import { getErrorMessage } from "@/shared/lib/utils";
+import {
+  AuthInput,
+  AuthPasswordInput,
+  AuthSubmitButton,
+} from "@/shared/components/ui/auth-fuse";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
+import { Select } from "@/shared/components/ui/Select";
+import { TermsCheckbox } from "@/shared/components/common/TermsCheckbox";
+import {
+  useSchoolSearch,
+  useStudentSearch,
+} from "@/shared/hooks/useSchoolSearch";
+import { useOtpCooldown } from "../hooks/useOtpCooldown";
+import { RELATION_OPTIONS } from "../constants";
+import type { NavProps } from "./types";
 
 export function ParentRegisterForm({
   defaultSchoolId,
@@ -26,32 +36,54 @@ export function ParentRegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<ParentRegisterFormData>({
     resolver: zodResolver(parentRegisterSchema),
-    defaultValues: { school_id: defaultSchoolId, relation: 'guardian', terms: false },
-  })
+    defaultValues: {
+      school_id: defaultSchoolId,
+      relation: "guardian",
+      terms: false,
+    },
+  });
 
   // useWatch instead of watch — only re-renders on changes to these specific fields
-  const watchEmail       = useWatch({ control, name: 'email',      defaultValue: '' })
-  const selectedSchoolId = useWatch({ control, name: 'school_id',  defaultValue: defaultSchoolId })
-  const selectedStudentId = useWatch({ control, name: 'student_id', defaultValue: '' })
+  const watchEmail = useWatch({ control, name: "email", defaultValue: "" });
+  const selectedSchoolId = useWatch({
+    control,
+    name: "school_id",
+    defaultValue: defaultSchoolId,
+  });
+  const selectedStudentId = useWatch({
+    control,
+    name: "student_id",
+    defaultValue: "",
+  });
 
-  const { startCooldown } = useOtpCooldown(watchEmail, 'verify_email', false)
+  const { startCooldown } = useOtpCooldown(watchEmail, "verify_email", false);
 
-  const { options: schoolOptions, setQuery: setSchoolQuery, isSearching: isSearchingSchools } =
-    useSchoolSearch()
-  const { options: studentOptions, setQuery: setStudentQuery, isSearching: isSearchingStudents } =
-    useStudentSearch(selectedSchoolId)
+  const {
+    options: schoolOptions,
+    setQuery: setSchoolQuery,
+    isSearching: isSearchingSchools,
+  } = useSchoolSearch();
+  const {
+    options: studentOptions,
+    setQuery: setStudentQuery,
+    isSearching: isSearchingStudents,
+  } = useStudentSearch(selectedSchoolId);
 
   const onSubmit = async (data: ParentRegisterFormData) => {
     try {
-      const { confirm_password: _, terms: __, ...payload } = data
-      await authApi.registerParent(payload)
-      toast.success('Parent account registered! Please verify your email address. Approval is pending.')
-      startCooldown()
-      navigate('/verify-otp', { state: { email: data.email, purpose: 'verify_email' } })
+      const { confirm_password: _, terms: __, ...payload } = data;
+      await authApi.registerParent(payload);
+      toast.success(
+        "Parent account registered! Please verify your email address. Approval is pending.",
+      );
+      startCooldown();
+      navigate("/verify-otp", {
+        state: { email: data.email, purpose: "verify_email" },
+      });
     } catch (err) {
-      toast.error(getErrorMessage(err))
+      toast.error(getErrorMessage(err));
     }
-  }
+  };
 
   return (
     <form
@@ -65,7 +97,7 @@ export function ParentRegisterForm({
         autoComplete="name"
         placeholder="Full name"
         error={errors.full_name?.message}
-        {...register('full_name')}
+        {...register("full_name")}
       />
 
       <AuthInput
@@ -74,7 +106,7 @@ export function ParentRegisterForm({
         autoComplete="email"
         placeholder="Email Address"
         error={errors.email?.message}
-        {...register('email')}
+        {...register("email")}
       />
 
       <SearchableSelect
@@ -84,8 +116,8 @@ export function ParentRegisterForm({
         options={schoolOptions}
         value={selectedSchoolId}
         onChange={(val) => {
-          setValue('school_id', val, { shouldValidate: true })
-          setValue('student_id', '', { shouldValidate: true })
+          setValue("school_id", val, { shouldValidate: true });
+          setValue("student_id", "", { shouldValidate: true });
         }}
         onSearchChange={setSchoolQuery}
         isLoading={isSearchingSchools}
@@ -95,11 +127,17 @@ export function ParentRegisterForm({
 
       <SearchableSelect
         label="Student"
-        placeholder={selectedSchoolId ? 'Search for student by roll number...' : 'Select a school first...'}
+        placeholder={
+          selectedSchoolId
+            ? "Search for student by roll number..."
+            : "Select a school first..."
+        }
         searchPlaceholder="Type roll number..."
         options={studentOptions}
         value={selectedStudentId}
-        onChange={(val) => setValue('student_id', val, { shouldValidate: true })}
+        onChange={(val) =>
+          setValue("student_id", val, { shouldValidate: true })
+        }
         onSearchChange={setStudentQuery}
         isLoading={isSearchingStudents}
         error={errors.student_id?.message}
@@ -110,7 +148,7 @@ export function ParentRegisterForm({
         label="Relationship to Student"
         options={RELATION_OPTIONS}
         error={errors.relation?.message}
-        {...register('relation')}
+        {...register("relation")}
       />
 
       <AuthPasswordInput
@@ -119,7 +157,7 @@ export function ParentRegisterForm({
         placeholder="Password"
         error={errors.password?.message}
         hint="Min 8 chars, uppercase, lowercase, digit &amp; special char"
-        {...register('password')}
+        {...register("password")}
       />
 
       <AuthPasswordInput
@@ -127,14 +165,18 @@ export function ParentRegisterForm({
         autoComplete="new-password"
         placeholder="Confirm password"
         error={errors.confirm_password?.message}
-        {...register('confirm_password')}
+        {...register("confirm_password")}
       />
 
-      <TermsCheckbox error={errors.terms?.message} {...register('terms')} />
+      <TermsCheckbox error={errors.terms?.message} {...register("terms")} />
 
-      <AuthSubmitButton icon={UserPlus} isLoading={isSubmitting} className="mt-2">
+      <AuthSubmitButton
+        icon={UserPlus}
+        isLoading={isSubmitting}
+        className="mt-2"
+      >
         Register Parent Account
       </AuthSubmitButton>
     </form>
-  )
+  );
 }
