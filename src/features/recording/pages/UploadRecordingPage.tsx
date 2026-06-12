@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -55,6 +56,7 @@ const statusConfig: Record<
 };
 
 export function UploadRecordingPage() {
+  const { user } = useAuthStore();
   const [file, setFile] = useState<File[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export function UploadRecordingPage() {
       toast.error("Please select an audio file");
       return;
     }
-    if (!params.school_name || !params.class_name) {
+    if ((user?.role === "admin" && !params.school_name) || !params.class_name) {
       toast.error("School name and class are required");
       return;
     }
@@ -124,14 +126,16 @@ export function UploadRecordingPage() {
           <CardHeader title="Recording Details" />
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="School Name"
-                placeholder="Delhi Public School"
-                value={params.school_name}
-                onChange={(e) =>
-                  setParams((p) => ({ ...p, school_name: e.target.value }))
-                }
-              />
+              {user?.role === "admin" && (
+                <Input
+                  label="School Name"
+                  placeholder="Delhi Public School"
+                  value={params.school_name}
+                  onChange={(e) =>
+                    setParams((p) => ({ ...p, school_name: e.target.value }))
+                  }
+                />
+              )}
               <Input
                 label="Class"
                 placeholder="10"

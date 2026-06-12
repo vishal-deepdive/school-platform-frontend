@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Trash2, AlertTriangle } from "lucide-react";
@@ -14,6 +15,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 type DeleteMode = "roll-school" | "school" | "class" | null;
 
 export function SurveyDataView() {
+  const { user } = useAuthStore();
   const qc = useQueryClient();
   const [confirmMode, setConfirmMode] = useState<DeleteMode>(null);
   const [rollNumber, setRollNumber] = useState("");
@@ -81,17 +83,19 @@ export function SurveyDataView() {
               value={rollNumber}
               onChange={(e) => setRollNumber(e.target.value)}
             />
-            <Input
-              label="School Name"
-              placeholder="Delhi Public School"
-              value={schoolName}
-              onChange={(e) => setSchoolName(e.target.value)}
-            />
+            {user?.role === "admin" && (
+              <Input
+                label="School Name"
+                placeholder="Delhi Public School"
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+              />
+            )}
           </div>
           <Button
             variant="danger"
             icon={<Trash2 className="h-4 w-4" />}
-            disabled={!rollNumber || !schoolName}
+            disabled={!rollNumber || (user?.role === "admin" && !schoolName)}
             onClick={() => setConfirmMode("roll-school")}
           >
             Delete Student Feedback
@@ -103,17 +107,19 @@ export function SurveyDataView() {
             title="Delete by School"
             description="Remove all feedback from a school."
           />
-          <Input
-            label="School Name"
-            placeholder="Delhi Public School"
-            value={schoolName}
-            onChange={(e) => setSchoolName(e.target.value)}
-            className="mb-4"
-          />
+          {user?.role === "admin" && (
+            <Input
+              label="School Name"
+              placeholder="Delhi Public School"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
+              className="mb-4"
+            />
+          )}
           <Button
             variant="danger"
             icon={<Trash2 className="h-4 w-4" />}
-            disabled={!schoolName}
+            disabled={user?.role === "admin" && !schoolName}
             onClick={() => setConfirmMode("school")}
           >
             Delete All School Feedback
