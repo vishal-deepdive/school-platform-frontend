@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const markAttendanceSchema = z.object({
-  school_name: z.string().min(1, "School name is required"),
+  school_name: z.string().optional(),
   class_name: z.string().min(1, "Class is required"),
   section: z.string().min(1, "Section is required"),
   subject: z.string().optional(),
@@ -10,7 +10,7 @@ export const markAttendanceSchema = z.object({
 });
 
 export const enrollSchema = z.object({
-  school_name: z.string().min(1, "School name is required"),
+  school_name: z.string().optional(),
   session: z.string().min(1, "Session is required"),
   class_name: z.string().optional(),
   section: z.string().optional(),

@@ -58,7 +58,7 @@ export function OnboardingSection() {
             className="mt-8 flex items-center gap-4"
           >
             <Link
-              to="/onboarding/apply"
+              to="/"
               className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-8 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-slate-900 group hover:scale-105"
             >
               Onboard New School

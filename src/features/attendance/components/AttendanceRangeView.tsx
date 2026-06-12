@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, AlertTriangle } from "lucide-react";
@@ -21,6 +22,7 @@ interface RangeFilters {
 }
 
 export function AttendanceRangeView() {
+  const { user } = useAuthStore();
   const [rangeFilters, setRangeFilters] = useState<RangeFilters>({
     school_name: "",
     start_date: toIndianDate(new Date(Date.now() - 7 * 86400000)),
@@ -41,7 +43,7 @@ export function AttendanceRangeView() {
       attendanceApi.getAttendanceRange(
         queryRange as unknown as Record<string, string>,
       ),
-    enabled: !!queryRange?.school_name,
+    enabled: !!queryRange && (user?.role !== "admin" || !!queryRange.school_name),
   });
 
   const lowAttendance = rangeData?.data?.filter(
@@ -52,14 +54,16 @@ export function AttendanceRangeView() {
     <Card>
       <CardHeader title="Attendance Over Date Range" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-4">
-        <Input
-          label="School Name"
-          value={rangeFilters.school_name}
-          onChange={(e) =>
-            setRangeFilters((p) => ({ ...p, school_name: e.target.value }))
-          }
-          placeholder="Delhi Public School"
-        />
+        {user?.role === "admin" && (
+          <Input
+            label="School Name"
+            value={rangeFilters.school_name}
+            onChange={(e) =>
+              setRangeFilters((p) => ({ ...p, school_name: e.target.value }))
+            }
+            placeholder="Delhi Public School"
+          />
+        )}
         <Input
           label="Start Date (DD-MM-YYYY)"
           value={rangeFilters.start_date}

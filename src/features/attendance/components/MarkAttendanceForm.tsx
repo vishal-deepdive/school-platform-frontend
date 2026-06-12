@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
@@ -42,6 +43,7 @@ const attendanceCols = [
 ];
 
 export function MarkAttendanceForm() {
+  const { user } = useAuthStore();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<MarkAttendanceResponse | null>(null);
 
@@ -78,7 +80,7 @@ export function MarkAttendanceForm() {
       return;
     }
     const params: Record<string, string> = {
-      school_name: data.school_name,
+      school_name: data.school_name || "",
       class_name: data.class_name,
       section: data.section,
       threshold: String(data.threshold),
@@ -104,12 +106,14 @@ export function MarkAttendanceForm() {
             className="flex flex-col gap-4"
           >
             <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="School Name"
-                placeholder="Delhi Public School"
-                error={errors.school_name?.message}
-                {...register("school_name")}
-              />
+              {user?.role === "admin" && (
+                <Input
+                  label="School Name"
+                  placeholder="Delhi Public School"
+                  error={errors.school_name?.message}
+                  {...register("school_name")}
+                />
+              )}
               <Input
                 label="Class"
                 placeholder="10"

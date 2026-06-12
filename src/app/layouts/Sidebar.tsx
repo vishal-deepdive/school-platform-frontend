@@ -137,6 +137,11 @@ const navItems: NavItem[] = [
         icon: <StickyNote className="h-4 w-4" />,
       },
       {
+        label: "Manage Documents",
+        href: "/rag/documents",
+        icon: <FileText className="h-4 w-4" />,
+      },
+      {
         label: "Knowledge Audit",
         href: "/rag/audit",
         icon: <Database className="h-4 w-4" />,

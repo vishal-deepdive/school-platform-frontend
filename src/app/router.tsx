@@ -25,7 +25,7 @@ import {
   SearchRecordingsPage,
   RecordingAuditPage,
 } from "@/features/recording";
-import { QAPage, QuestionsPage, NotesPage, RagAuditPage } from "@/features/rag";
+import { QAPage, QuestionsPage, NotesPage, RagAuditPage, RagDocumentsPage } from "@/features/rag";
 import {
   SurveyDashboardPage,
   SurveySearchPage,
@@ -79,6 +79,7 @@ export const router = createBrowserRouter([
           { path: "/rag/questions", element: <QuestionsPage /> },
           { path: "/rag/notes", element: <NotesPage /> },
           { path: "/rag/audit", element: <RagAuditPage /> },
+          { path: "/rag/documents", element: <RagDocumentsPage /> },
           { path: "/survey", element: <SurveyDashboardPage /> },
           { path: "/survey/search", element: <SurveySearchPage /> },
           { path: "/survey/data", element: <SurveyDataPage /> },

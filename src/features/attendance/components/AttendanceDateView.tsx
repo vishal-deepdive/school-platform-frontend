@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Download } from "lucide-react";
@@ -21,6 +22,7 @@ interface DateFilters {
 type AttendanceRow = Record<string, unknown>;
 
 export function AttendanceDateView() {
+  const { user } = useAuthStore();
   const [dateFilters, setDateFilters] = useState<DateFilters>({
     school_name: "",
     date: toIndianDate(new Date()),
@@ -40,11 +42,11 @@ export function AttendanceDateView() {
       attendanceApi.getAttendanceOnDate(
         queryDate as unknown as Record<string, string>,
       ),
-    enabled: !!queryDate?.school_name,
+    enabled: !!queryDate && (user?.role !== "admin" || !!queryDate.school_name),
   });
 
   const handleExportCSV = async () => {
-    if (!queryDate?.school_name) return;
+    if (!queryDate || (user?.role === "admin" && !queryDate.school_name)) return;
     const blob = await attendanceApi.viewStudents(
       queryDate as unknown as Record<string, string>,
     );
@@ -55,14 +57,16 @@ export function AttendanceDateView() {
     <Card>
       <CardHeader title="Attendance on a Date" />
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-4">
-        <Input
-          label="School Name"
-          value={dateFilters.school_name}
-          onChange={(e) =>
-            setDateFilters((p) => ({ ...p, school_name: e.target.value }))
-          }
-          placeholder="Delhi Public School"
-        />
+        {user?.role === "admin" && (
+          <Input
+            label="School Name"
+            value={dateFilters.school_name}
+            onChange={(e) =>
+              setDateFilters((p) => ({ ...p, school_name: e.target.value }))
+            }
+            placeholder="Delhi Public School"
+          />
+        )}
         <Input
           label="Date (DD-MM-YYYY)"
           value={dateFilters.date}

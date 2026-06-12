@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { HelpCircle, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import { ragApi } from "@/features/rag/api/rag";
+import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Badge } from "@/shared/components/ui/Badge";
 import type {
   QuestionType,
@@ -43,12 +43,6 @@ export function QuestionsPage() {
   const [marks, setMarks] = useState<number | undefined>(undefined);
   const [result, setResult] = useState<string | null>(null);
 
-  const { data: meta, isLoading: metaLoading } = useQuery({
-    queryKey: ["rag", "metadata"],
-    queryFn: () => ragApi.getMetadata(),
-    staleTime: 10 * 60_000,
-  });
-
   const { mutate: generate, isPending } = useMutation({
     mutationFn: () =>
       ragApi.generateQuestions({
@@ -65,12 +59,10 @@ export function QuestionsPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const bookOptions: SelectOption[] =
-    meta?.books?.map((b) => ({ value: b, label: b })) ?? [];
-  const subjectOptions: SelectOption[] =
-    meta?.subjects?.map((s) => ({ value: s, label: s })) ?? [];
-  const chapterOptions: SelectOption[] =
-    meta?.chapters?.map((c) => ({ value: c, label: c })) ?? [];
+  const canGenerate =
+    !!filters.class_level &&
+    !!filters.subject &&
+    (qType !== "BRIEF" || marks != null);
 
   return (
     <div className="space-y-6">
@@ -85,51 +77,7 @@ export function QuestionsPage() {
         <Card className="lg:col-span-1">
           <CardHeader title="Configuration" />
 
-          {metaLoading ? (
-            <PageSpinner />
-          ) : (
-            <div className="space-y-4">
-              <Select
-                label="Book"
-                options={[{ value: "", label: "All books" }, ...bookOptions]}
-                value={filters.book ?? ""}
-                onChange={(e) =>
-                  setFilters((p) => ({
-                    ...p,
-                    book: e.target.value || undefined,
-                  }))
-                }
-              />
-              <Select
-                label="Subject"
-                options={[
-                  { value: "", label: "All subjects" },
-                  ...subjectOptions,
-                ]}
-                value={filters.subject ?? ""}
-                onChange={(e) =>
-                  setFilters((p) => ({
-                    ...p,
-                    subject: e.target.value || undefined,
-                  }))
-                }
-              />
-              <Select
-                label="Chapter"
-                options={[
-                  { value: "", label: "All chapters" },
-                  ...chapterOptions,
-                ]}
-                value={filters.chapter_name?.[0] ?? ""}
-                onChange={(e) =>
-                  setFilters((p) => ({
-                    ...p,
-                    chapter_name: e.target.value ? [e.target.value] : undefined,
-                  }))
-                }
-              />
-            </div>
-          )}
+          <RagFilterPanel filters={filters} onChange={setFilters} />
 
           <div className="mt-4 space-y-4">
             <Select
@@ -148,30 +96,46 @@ export function QuestionsPage() {
               label="Number of Questions"
               type="number"
               min={1}
-              max={100}
+              max={25}
               value={numQuestions}
-              onChange={(e) => setNumQuestions(parseInt(e.target.value) || 10)}
+              onChange={(e) => {
+                const n = parseInt(e.target.value) || 1;
+                setNumQuestions(Math.min(25, Math.max(1, n)));
+              }}
+              hint="Up to 25 per batch"
             />
-            <Input
-              label="Marks per Question (optional)"
-              type="number"
-              min={1}
-              max={100}
-              placeholder="Leave blank for none"
-              value={marks ?? ""}
-              onChange={(e) =>
-                setMarks(e.target.value ? parseInt(e.target.value) : undefined)
-              }
-            />
+            {qType === "BRIEF" && (
+              <Input
+                label="Marks per Question"
+                type="number"
+                min={1}
+                max={100}
+                placeholder="e.g. 5"
+                value={marks ?? ""}
+                onChange={(e) =>
+                  setMarks(
+                    e.target.value ? parseInt(e.target.value) : undefined,
+                  )
+                }
+              />
+            )}
 
             <Button
               onClick={() => generate()}
               loading={isPending}
+              disabled={!canGenerate}
               icon={<HelpCircle className="h-4 w-4" />}
               className="w-full"
             >
               {isPending ? "Generating…" : "Generate Questions"}
             </Button>
+            {!canGenerate && (
+              <p className="text-xs text-gray-400">
+                Select a class and subject
+                {qType === "BRIEF" ? ", and set marks per question," : ""} to
+                continue.
+              </p>
+            )}
           </div>
         </Card>
 

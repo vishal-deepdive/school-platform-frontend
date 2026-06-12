@@ -63,7 +63,6 @@ export function RagAuditPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {[
-          { label: "By Book", data: data?.counts?.by_book },
           { label: "By Class", data: data?.counts?.by_class },
           { label: "By Subject", data: data?.counts?.by_subject },
         ].map(({ label, data: rows }) => (
