@@ -1,3 +1,4 @@
+import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -34,6 +35,7 @@ const sessionOptions = ["2023-24", "2024-25", "2025-26", "2026-27"].map(
 );
 
 export function EnrollPage() {
+  const { user } = useAuthStore();
   const [mode, setMode] = useState("new");
   const [files, setFiles] = useState<File[]>([]);
   const [result, setResult] = useState<EnrollResponse | null>(null);
@@ -74,7 +76,7 @@ export function EnrollPage() {
       return;
     }
     const params: Record<string, string> = {
-      school_name: data.school_name,
+      school_name: data.school_name || "",
       session: data.session,
       ...(data.class_name && { class_name: data.class_name }),
       ...(data.section && { section: data.section }),
@@ -116,12 +118,14 @@ export function EnrollPage() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input
-              label="School Name"
-              placeholder="Delhi Public School"
-              error={errors.school_name?.message}
-              {...register("school_name")}
-            />
+            {user?.role === "admin" && (
+              <Input
+                label="School Name"
+                placeholder="Delhi Public School"
+                error={errors.school_name?.message}
+                {...register("school_name")}
+              />
+            )}
             <Select
               label="Session"
               options={sessionOptions}
