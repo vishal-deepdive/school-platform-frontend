@@ -5,20 +5,17 @@ import { MessageSquare, Send, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import { qaSchema, type QAFormData } from "@/features/rag/schema";
-import { useRagMetadata, useRagQa } from "@/features/rag/hooks/useRag";
+import { useRagQa } from "@/features/rag/hooks/useRag";
+import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
-import { Select } from "@/shared/components/ui/Select";
 import { Badge } from "@/shared/components/ui/Badge";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
 import type { RagFilters, ChatMessage } from "@/features/rag/types";
 
 export function QAPage() {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [filters, setFilters] = useState<RagFilters>({});
-
-  const { data: meta, isLoading: metaLoading } = useRagMetadata();
 
   const { mutate: ask, isPending } = useRagQa({
     onSuccess: (data, vars) => {
@@ -44,9 +41,9 @@ export function QAPage() {
     formState: { errors },
   } = useForm<QAFormData>({ resolver: zodResolver(qaSchema) });
 
-  const bookOptions = meta?.books?.map((b) => ({ value: b, label: b })) ?? [];
-  const subjectOptions =
-    meta?.subjects?.map((s) => ({ value: s, label: s })) ?? [];
+  const hasFilters = Object.keys(filters).some(
+    (k) => filters[k as keyof RagFilters],
+  );
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
@@ -61,50 +58,20 @@ export function QAPage() {
       <div className="flex gap-4 flex-1 overflow-hidden">
         <div className="hidden lg:block w-64 flex-shrink-0">
           <Card className="h-full overflow-y-auto" padding="md">
-            <CardHeader title="Filter by Book" />
-            {metaLoading ? (
-              <PageSpinner />
-            ) : (
-              <div className="space-y-3">
-                <Select
-                  label="Book"
-                  options={[{ value: "", label: "All books" }, ...bookOptions]}
-                  value={filters.book ?? ""}
-                  onChange={(e) =>
-                    setFilters((p) => ({
-                      ...p,
-                      book: e.target.value || undefined,
-                    }))
-                  }
-                />
-                <Select
-                  label="Subject"
-                  options={[
-                    { value: "", label: "All subjects" },
-                    ...subjectOptions,
-                  ]}
-                  value={filters.subject ?? ""}
-                  onChange={(e) =>
-                    setFilters((p) => ({
-                      ...p,
-                      subject: e.target.value || undefined,
-                    }))
-                  }
-                />
-                {Object.keys(filters).filter(
-                  (k) => filters[k as keyof RagFilters],
-                ).length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setFilters({})}
-                    className="w-full"
-                  >
-                    Clear filters
-                  </Button>
-                )}
-              </div>
-            )}
+            <CardHeader title="Filter content" />
+            <div className="space-y-3">
+              <RagFilterPanel filters={filters} onChange={setFilters} />
+              {hasFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFilters({})}
+                  className="w-full"
+                >
+                  Clear filters
+                </Button>
+              )}
+            </div>
           </Card>
         </div>
 
@@ -152,16 +119,19 @@ export function QAPage() {
                         <BookOpen className="h-3 w-3" /> Sources
                       </p>
                       {msg.sources.map((src, i) => (
-                        <div key={i} className="text-xs text-gray-500">
-                          {src.book && (
-                            <span className="font-medium">{src.book}</span>
-                          )}
-                          {src.chapter_name && (
-                            <span> · {src.chapter_name}</span>
-                          )}
-                          {src.title && <span> · {src.title}</span>}
+                        <div
+                          key={i}
+                          className="flex flex-wrap items-center gap-x-1 text-xs text-gray-500"
+                        >
+                          {src.chapter_name && <span>{src.chapter_name}</span>}
+                          {src.title && <span>· {src.title}</span>}
                           {src.page && (
                             <Badge className="ml-1">p.{src.page}</Badge>
+                          )}
+                          {src.similarity && (
+                            <span className="ml-1 text-gray-400">
+                              {src.similarity} match
+                            </span>
                           )}
                         </div>
                       ))}
