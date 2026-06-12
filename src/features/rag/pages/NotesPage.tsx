@@ -1,26 +1,18 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { StickyNote, Download } from "lucide-react";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import { ragApi } from "@/features/rag/api/rag";
+import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
-import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
 import type { RagFilters } from "@/features/rag/types";
-import type { SelectOption } from "@/shared/types/common";
 
 export function NotesPage() {
   const [filters, setFilters] = useState<RagFilters>({});
   const [result, setResult] = useState<string | null>(null);
-
-  const { data: meta, isLoading: metaLoading } = useQuery({
-    queryKey: ["rag", "metadata"],
-    queryFn: () => ragApi.getMetadata(),
-    staleTime: 10 * 60_000,
-  });
 
   const { mutate: generate, isPending } = useMutation({
     mutationFn: () => ragApi.generateNotes({ filters }),
@@ -31,12 +23,10 @@ export function NotesPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const bookOptions: SelectOption[] =
-    meta?.books?.map((b) => ({ value: b, label: b })) ?? [];
-  const subjectOptions: SelectOption[] =
-    meta?.subjects?.map((s) => ({ value: s, label: s })) ?? [];
-  const chapterOptions: SelectOption[] =
-    meta?.chapters?.map((c) => ({ value: c, label: c })) ?? [];
+  const canGenerate =
+    !!filters.class_level &&
+    !!filters.subject &&
+    !!filters.chapter_name?.length;
 
   return (
     <div className="space-y-6">
@@ -52,60 +42,23 @@ export function NotesPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader title="Select Content" />
-          {metaLoading ? (
-            <PageSpinner />
-          ) : (
-            <div className="space-y-4">
-              <Select
-                label="Book"
-                options={[{ value: "", label: "All books" }, ...bookOptions]}
-                value={filters.book ?? ""}
-                onChange={(e) =>
-                  setFilters((p) => ({
-                    ...p,
-                    book: e.target.value || undefined,
-                  }))
-                }
-              />
-              <Select
-                label="Subject"
-                options={[
-                  { value: "", label: "All subjects" },
-                  ...subjectOptions,
-                ]}
-                value={filters.subject ?? ""}
-                onChange={(e) =>
-                  setFilters((p) => ({
-                    ...p,
-                    subject: e.target.value || undefined,
-                  }))
-                }
-              />
-              <Select
-                label="Chapter"
-                options={[
-                  { value: "", label: "All chapters" },
-                  ...chapterOptions,
-                ]}
-                value={filters.chapter_name?.[0] ?? ""}
-                onChange={(e) =>
-                  setFilters((p) => ({
-                    ...p,
-                    chapter_name: e.target.value ? [e.target.value] : undefined,
-                  }))
-                }
-              />
-
-              <Button
-                onClick={() => generate()}
-                loading={isPending}
-                icon={<StickyNote className="h-4 w-4" />}
-                className="w-full"
-              >
-                {isPending ? "Generating…" : "Generate Notes"}
-              </Button>
-            </div>
-          )}
+          <div className="space-y-4">
+            <RagFilterPanel filters={filters} onChange={setFilters} />
+            <Button
+              onClick={() => generate()}
+              loading={isPending}
+              disabled={!canGenerate}
+              icon={<StickyNote className="h-4 w-4" />}
+              className="w-full"
+            >
+              {isPending ? "Generating…" : "Generate Notes"}
+            </Button>
+            {!canGenerate && (
+              <p className="text-xs text-gray-400">
+                Select a class, subject, and chapter to continue.
+              </p>
+            )}
+          </div>
         </Card>
 
         <div className="lg:col-span-2">
