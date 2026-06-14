@@ -20,15 +20,7 @@ export function RagAuditPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Knowledge Base Audit
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Overview of indexed textbook chunks and embedding quality.
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Button
           variant="outline"
           size="sm"
@@ -68,9 +60,9 @@ export function RagAuditPage() {
         ].map(({ label, data: rows }) => (
           <Card key={label} padding="none">
             <CardHeader title={label} className="px-6 pt-6" />
-            <div className="divide-y divide-gray-100 pb-2">
+            <div className="divide-y divide-border pb-2">
               {!rows?.length && (
-                <p className="px-6 py-4 text-sm text-gray-400">No data.</p>
+                <p className="px-6 py-4 text-sm text-muted-foreground">No data.</p>
               )}
               {(rows ?? []).map((row, i) => {
                 const r = row as Record<string, unknown>;
@@ -83,7 +75,7 @@ export function RagAuditPage() {
                     key={i}
                     className="flex items-center justify-between px-6 py-3"
                   >
-                    <p className="text-sm text-gray-700 truncate">{name}</p>
+                    <p className="text-sm text-foreground truncate">{name}</p>
                     <Badge variant="info">{count} chunks</Badge>
                   </div>
                 );

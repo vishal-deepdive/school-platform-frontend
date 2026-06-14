@@ -1,15 +1,16 @@
 import React, { useState } from "react";
 import { Plus, Trash2, RefreshCw, FileText } from "lucide-react";
 import toast from "react-hot-toast";
+import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card } from "@/shared/components/ui/Card";
+import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
 import { SUBJECT_OPTIONS, RAG_OTHER_SUBJECT } from "@/features/rag/constants";
 import {
   useRagDocuments,
@@ -44,9 +45,10 @@ export function RagDocumentsPage() {
   const queryClient = useQueryClient();
 
   const { data: classData } = useRagClassLevels();
+  const sortedClasses = sortClassesDescending(classData?.class_levels ?? []);
   const classOptions = [
     { value: "", label: "Select class" },
-    ...(classData?.class_levels ?? []).map((c) => ({ value: c, label: c })),
+    ...sortedClasses.map((c) => ({ value: c, label: c })),
   ];
 
   // Auto-refresh while any document is still being ingested.
@@ -72,6 +74,36 @@ export function RagDocumentsPage() {
     formData.subject === RAG_OTHER_SUBJECT
       ? formData.subject_other.trim()
       : formData.subject;
+
+  const submitUpload = (payload: FormData, replace = false) => {
+    if (replace) {
+      payload.set("replace", "true");
+    }
+    uploadDoc(payload, {
+      onSuccess: () => {
+        toast.success("Document uploaded successfully. Ingestion started.");
+        setIsModalOpen(false);
+        setFile(null);
+        setFormData({ ...EMPTY_FORM });
+        queryClient.invalidateQueries({ queryKey: ragKeys.all });
+      },
+      onError: (err) => {
+        if (isAxiosError(err) && err.response?.status === 409) {
+          const detail = getErrorMessage(err);
+          if (
+            confirm(
+              `${detail}\n\nDo you want to replace the existing document?`,
+            )
+          ) {
+            submitUpload(payload, true);
+            return;
+          }
+          return;
+        }
+        toast.error(getErrorMessage(err));
+      },
+    });
+  };
 
   const handleUpload = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,18 +134,7 @@ export function RagDocumentsPage() {
       payload.append("school_id", formData.school_id);
     }
 
-    uploadDoc(payload, {
-      onSuccess: () => {
-        toast.success("Document uploaded successfully. Ingestion started.");
-        setIsModalOpen(false);
-        setFile(null);
-        setFormData({ ...EMPTY_FORM });
-        queryClient.invalidateQueries({ queryKey: ragKeys.all });
-      },
-      onError: (err) => {
-        toast.error(getErrorMessage(err));
-      },
-    });
+    submitUpload(payload);
   };
 
   const handleDelete = (id: string) => {
@@ -165,65 +186,63 @@ export function RagDocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Document Management</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Upload and manage textbook documents for the knowledge base.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            loading={isFetching}
-            icon={<RefreshCw className="h-4 w-4" />}
-          >
-            Refresh
-          </Button>
-          <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
-            Upload Document
-          </Button>
-        </div>
-      </div>
-
       <Card padding="none">
+        <CardHeader
+          title="Documents"
+          description={`${data?.total ?? 0} document(s) in the knowledge base`}
+          className="px-6 pt-6"
+          action={
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                loading={isFetching}
+                icon={<RefreshCw className="h-4 w-4" />}
+              >
+                Refresh
+              </Button>
+              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+                Upload Document
+              </Button>
+            </div>
+          }
+        />
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">File</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class / Chapter</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Class / Chapter</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-background divide-y divide-border">
               {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">Loading documents...</td></tr>
+                <tr><td colSpan={4} className="px-6 py-4 text-center text-sm text-muted-foreground">Loading documents...</td></tr>
               ) : data?.items?.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-4 text-center text-sm text-gray-500">No documents found.</td></tr>
+                <tr><td colSpan={4} className="px-6 py-4 text-center text-sm text-muted-foreground">No documents found.</td></tr>
               ) : (
                 data?.items?.map((doc) => (
                   <tr key={doc.id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <FileText className="h-5 w-5 text-gray-400 mr-2" />
+                        <FileText className="h-5 w-5 text-muted-foreground mr-2" />
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{doc.original_filename}</div>
-                          <div className="text-xs text-gray-500">{(doc.file_size / 1024).toFixed(1)} KB • {doc.parser}</div>
+                          <div className="text-sm font-medium text-foreground">{doc.original_filename}</div>
+                          <div className="text-xs text-muted-foreground">{(doc.file_size / 1024).toFixed(1)} KB • {doc.parser}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{doc.class_level}, {doc.subject}</div>
-                      <div className="text-xs text-gray-500">Ch {doc.chapter_number}: {doc.chapter_name}</div>
+                      <div className="text-sm text-foreground">{doc.class_level}, {doc.subject}</div>
+                      <div className="text-xs text-muted-foreground">Ch {doc.chapter_number}: {doc.chapter_name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(doc.status, doc.error)}
                       {doc.status.toLowerCase() === 'failed' && doc.error && (
-                        <div className="text-xs text-red-500 mt-1 max-w-xs truncate" title={doc.error}>{doc.error}</div>
+                        <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={doc.error}>{doc.error}</div>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -233,7 +252,7 @@ export function RagDocumentsPage() {
                           size="sm"
                           onClick={() => handleRetry(doc.id)}
                           loading={pendingRow?.id === doc.id && pendingRow.action === "retry"}
-                          className="text-indigo-600 hover:text-indigo-900 mr-2"
+                          className="text-primary hover:text-primary/80 mr-2"
                         >
                           Retry
                         </Button>
@@ -243,7 +262,7 @@ export function RagDocumentsPage() {
                         size="sm"
                         onClick={() => handleDelete(doc.id)}
                         loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-destructive hover:text-destructive/80"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

@@ -1,21 +1,18 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
 import { HelpCircle, Download } from "lucide-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
+import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
-import type {
-  QuestionType,
-  Difficulty,
-  RagFilters,
-} from "@/features/rag/types";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
+import { useRagUiStore } from "@/features/rag/store/ragUiStore";
+import type { QuestionType, Difficulty } from "@/features/rag/types";
 import type { SelectOption } from "@/shared/types/common";
 
 const qTypeOptions: SelectOption[] = [
@@ -36,28 +33,44 @@ const difficultyBadge: Record<Difficulty, "success" | "warning" | "danger"> = {
 };
 
 export function QuestionsPage() {
-  const [filters, setFilters] = useState<RagFilters>({});
-  const [qType, setQType] = useState<QuestionType>("MCQ");
-  const [difficulty, setDifficulty] = useState<Difficulty>("Medium");
-  const [numQuestions, setNumQuestions] = useState(10);
-  const [marks, setMarks] = useState<number | undefined>(undefined);
-  const [result, setResult] = useState<string | null>(null);
+  const { filters, qType, difficulty, numQuestions, marks, result, isPending } =
+    useRagUiStore((s) => s.questions);
+  const setFilters = useRagUiStore((s) => s.setQuestionsFilters);
+  const setConfig = useRagUiStore((s) => s.setQuestionsConfig);
+  const setPending = useRagUiStore((s) => s.setQuestionsPending);
+  const setResult = useRagUiStore((s) => s.setQuestionsResult);
+  const appendResult = useRagUiStore((s) => s.appendQuestionsResult);
+  const { push: queueToken, flush: flushPending } = useStreamBatcher(appendResult);
 
-  const { mutate: generate, isPending } = useMutation({
-    mutationFn: () =>
-      ragApi.generateQuestions({
+  const generate = async () => {
+    setResult("");
+    setPending(true);
+    try {
+      for await (const event of ragApi.generateQuestionsStream({
         filters,
         q_type: qType,
         difficulty,
         num_questions: numQuestions,
         ...(marks != null && { marks }),
-      }),
-    onSuccess: (data) => {
-      setResult(data.content);
-      toast.success(`${numQuestions} question(s) generated!`);
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
+      })) {
+        if (event.type === "token") {
+          queueToken(event.content);
+        } else if (event.type === "error") {
+          flushPending();
+          toast.error(event.message);
+        } else if (event.type === "done") {
+          flushPending();
+          toast.success(`${numQuestions} question(s) generated!`);
+        }
+      }
+    } catch (err) {
+      flushPending();
+      toast.error(getErrorMessage(err));
+    } finally {
+      flushPending();
+      setPending(false);
+    }
+  };
 
   const canGenerate =
     !!filters.class_level &&
@@ -66,15 +79,8 @@ export function QuestionsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Generate Questions</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Create exam-ready MCQ or short-answer questions from textbook content.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+      <div className={`grid grid-cols-1 gap-6 ${(result !== null || isPending) ? "lg:grid-cols-3" : ""}`}>
+        <Card className={(result !== null || isPending) ? "lg:col-span-1" : "w-full"}>
           <CardHeader title="Configuration" />
 
           <RagFilterPanel filters={filters} onChange={setFilters} />
@@ -84,13 +90,17 @@ export function QuestionsPage() {
               label="Question Type"
               options={qTypeOptions}
               value={qType}
-              onChange={(e) => setQType(e.target.value as QuestionType)}
+              onChange={(e) =>
+                setConfig({ qType: e.target.value as QuestionType })
+              }
             />
             <Select
               label="Difficulty"
               options={difficultyOptions}
               value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as Difficulty)}
+              onChange={(e) =>
+                setConfig({ difficulty: e.target.value as Difficulty })
+              }
             />
             <Input
               label="Number of Questions"
@@ -100,7 +110,7 @@ export function QuestionsPage() {
               value={numQuestions}
               onChange={(e) => {
                 const n = parseInt(e.target.value) || 1;
-                setNumQuestions(Math.min(25, Math.max(1, n)));
+                setConfig({ numQuestions: Math.min(25, Math.max(1, n)) });
               }}
               hint="Up to 25 per batch"
             />
@@ -113,9 +123,9 @@ export function QuestionsPage() {
                 placeholder="e.g. 5"
                 value={marks ?? ""}
                 onChange={(e) =>
-                  setMarks(
-                    e.target.value ? parseInt(e.target.value) : undefined,
-                  )
+                  setConfig({
+                    marks: e.target.value ? parseInt(e.target.value) : undefined,
+                  })
                 }
               />
             )}
@@ -130,7 +140,7 @@ export function QuestionsPage() {
               {isPending ? "Generating…" : "Generate Questions"}
             </Button>
             {!canGenerate && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Select a class and subject
                 {qType === "BRIEF" ? ", and set marks per question," : ""} to
                 continue.
@@ -139,49 +149,54 @@ export function QuestionsPage() {
           </div>
         </Card>
 
-        <div className="lg:col-span-2">
-          {result ? (
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-indigo-600" />
-                  <h3 className="font-semibold text-gray-900">
-                    Generated Questions
-                  </h3>
-                  <Badge variant={difficultyBadge[difficulty]}>
-                    {difficulty}
-                  </Badge>
-                  <Badge variant="info">{qType}</Badge>
+        {(result !== null || isPending) && (
+          <div className="lg:col-span-2">
+            {result !== null ? (
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">
+                      Generated Questions
+                    </h3>
+                    <Badge variant={difficultyBadge[difficulty]}>
+                      {difficulty}
+                    </Badge>
+                    <Badge variant="info">{qType}</Badge>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Download className="h-4 w-4" />}
+                    onClick={() =>
+                      downloadFile(result, `questions-${qType}-${difficulty}.md`)
+                    }
+                  >
+                    Download
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={<Download className="h-4 w-4" />}
-                  onClick={() =>
-                    downloadFile(result, `questions-${qType}-${difficulty}.md`)
-                  }
-                >
-                  Download
-                </Button>
-              </div>
-              <div className="prose prose-sm max-w-none overflow-y-auto max-h-[65vh] rounded-lg bg-gray-50 p-4">
-                <ReactMarkdown>{result}</ReactMarkdown>
-              </div>
-            </Card>
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-16 text-center">
-              <HelpCircle className="h-12 w-12 text-gray-300" />
-              <div>
-                <p className="font-semibold text-gray-500">
-                  No questions generated yet
-                </p>
-                <p className="mt-1 text-sm text-gray-400">
-                  Configure your settings and click Generate.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+                <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/40 p-4">
+                  {isPending ? (
+                    <pre className="whitespace-pre-wrap break-words font-sans text-sm text-foreground">
+                      {result}
+                    </pre>
+                  ) : (
+                    <MarkdownRenderer content={result} />
+                  )}
+                </div>
+              </Card>
+            ) : (
+              <Card className="h-full flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 py-12 text-muted-foreground">
+                  <div className="animate-spin">
+                    <HelpCircle className="h-8 w-8" />
+                  </div>
+                  <p>Generating your questions...</p>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

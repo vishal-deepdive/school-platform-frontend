@@ -1,190 +1,315 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { MessageSquare, Send, BookOpen } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ArrowDown,
+  MessageSquare,
+  Send,
+  SlidersHorizontal,
+  Square,
+  Trash2,
+} from "lucide-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
-import { qaSchema, type QAFormData } from "@/features/rag/schema";
-import { useRagQa } from "@/features/rag/hooks/useRag";
+import { qaSchema } from "@/features/rag/schema";
+import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
+import { ChatMessageBubble } from "@/features/rag/components/ChatMessageBubble";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
-import { Badge } from "@/shared/components/ui/Badge";
-import type { RagFilters, ChatMessage } from "@/features/rag/types";
+import { Modal } from "@/shared/components/ui/Modal";
+import { useRagUiStore } from "@/features/rag/store/ragUiStore";
+import type { RagFilters } from "@/features/rag/types";
+
+const MAX_TEXTAREA_HEIGHT = 160;
+const AUTO_SCROLL_THRESHOLD = 96;
 
 export function QAPage() {
-  const [chat, setChat] = useState<ChatMessage[]>([]);
-  const [filters, setFilters] = useState<RagFilters>({});
+  const { chat, filters, isStreaming } = useRagUiStore((s) => s.qa);
+  const setFilters = useRagUiStore((s) => s.setQaFilters);
+  const appendChatMessages = useRagUiStore((s) => s.appendChatMessages);
+  const appendToMessage = useRagUiStore((s) => s.appendToMessage);
+  const setMessageSources = useRagUiStore((s) => s.setMessageSources);
+  const setMessageError = useRagUiStore((s) => s.setMessageError);
+  const setQaStreaming = useRagUiStore((s) => s.setQaStreaming);
+  const clearQaChat = useRagUiStore((s) => s.clearQaChat);
 
-  const { mutate: ask, isPending } = useRagQa({
-    onSuccess: (data, vars) => {
-      setChat((p) => [
-        ...p,
-        { id: Date.now() + "-u", role: "user", content: vars.query },
-        {
-          id: Date.now() + "-a",
-          role: "assistant",
-          content: data.answer,
-          sources: data.sources,
-        },
-      ]);
-      reset();
+  const [input, setInput] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [autoScroll, setAutoScroll] = useState(true);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Batches incoming tokens and flushes them to the store at most once per
+  // animation frame, so a fast stream doesn't trigger a re-render per token.
+  const pendingRef = useRef<{ id: string; text: string } | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  const flushPending = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (pendingRef.current) {
+      const { id, text } = pendingRef.current;
+      pendingRef.current = null;
+      appendToMessage(id, text);
+    }
+  }, [appendToMessage]);
+
+  const queueToken = useCallback(
+    (id: string, token: string) => {
+      if (pendingRef.current?.id === id) {
+        pendingRef.current.text += token;
+      } else {
+        flushPending();
+        pendingRef.current = { id, text: token };
+      }
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          flushPending();
+        });
+      }
     },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
+    [flushPending],
+  );
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<QAFormData>({ resolver: zodResolver(qaSchema) });
+  useEffect(() => () => flushPending(), [flushPending]);
+
+  // Auto-resize the textarea up to MAX_TEXTAREA_HEIGHT.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+  }, [input]);
+
+  // Keep the transcript pinned to the bottom while streaming, unless the
+  // user has scrolled up to read earlier messages.
+  useEffect(() => {
+    if (!autoScroll) return;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chat, autoScroll]);
+
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setAutoScroll(distanceFromBottom < AUTO_SCROLL_THRESHOLD);
+  };
+
+  const scrollToBottom = () => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+    setAutoScroll(true);
+  };
+
+  const handleSend = async () => {
+    if (isStreaming) return;
+    const result = qaSchema.safeParse({ query: input.trim() });
+    if (!result.success) {
+      toast.error(result.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    const query = result.data.query;
+    setInput("");
+
+    const assistantId = `${Date.now()}-a`;
+    appendChatMessages([
+      { id: `${Date.now()}-u`, role: "user", content: query },
+      { id: assistantId, role: "assistant", content: "", sources: [] },
+    ]);
+    setAutoScroll(true);
+    setQaStreaming(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      for await (const event of ragApi.qaStream({ query, filters }, controller.signal)) {
+        if (event.type === "token") {
+          queueToken(assistantId, event.content);
+        } else if (event.type === "done") {
+          flushPending();
+          setMessageSources(assistantId, event.sources);
+        } else if (event.type === "error") {
+          flushPending();
+          setMessageError(assistantId, event.message);
+        }
+      }
+    } catch (err) {
+      flushPending();
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        setMessageError(assistantId, getErrorMessage(err));
+      }
+    } finally {
+      flushPending();
+      setQaStreaming(false);
+      abortRef.current = null;
+    }
+  };
+
+  const handleStop = () => abortRef.current?.abort();
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      void handleSend();
+    }
+  };
 
   const hasFilters = Object.keys(filters).some(
     (k) => filters[k as keyof RagFilters],
   );
 
+  const filterPanel = (
+    <div className="space-y-3">
+      <RagFilterPanel filters={filters} onChange={setFilters} />
+      {hasFilters && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setFilters({})}
+          className="w-full"
+        >
+          Clear filters
+        </Button>
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col gap-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Textbook Q&A</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Ask questions about your textbooks — answers are cited from source
-          chapters.
-        </p>
+    <div className="flex h-full gap-4 overflow-hidden">
+      <div className="hidden lg:block w-64 flex-shrink-0">
+        <Card className="h-full overflow-y-auto" padding="md">
+          <CardHeader title="Filter content" />
+          {filterPanel}
+        </Card>
       </div>
 
-      <div className="flex gap-4 flex-1 overflow-hidden">
-        <div className="hidden lg:block w-64 flex-shrink-0">
-          <Card className="h-full overflow-y-auto" padding="md">
-            <CardHeader title="Filter content" />
-            <div className="space-y-3">
-              <RagFilterPanel filters={filters} onChange={setFilters} />
+      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <MessageSquare className="h-4 w-4 text-primary" />
+            Ask the textbook
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative lg:hidden"
+              icon={<SlidersHorizontal className="h-4 w-4" />}
+              onClick={() => setShowFilters(true)}
+            >
+              Filters
               {hasFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFilters({})}
-                  className="w-full"
-                >
-                  Clear filters
-                </Button>
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
               )}
-            </div>
-          </Card>
+            </Button>
+            {chat.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={<Trash2 className="h-4 w-4" />}
+                onClick={clearQaChat}
+                disabled={isStreaming}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </div>
 
-        <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {chat.length === 0 && (
+        <div className="relative flex-1 overflow-hidden">
+          <div
+            ref={scrollRef}
+            onScroll={handleScroll}
+            className="scrollbar-thin h-full overflow-y-auto p-4 space-y-4"
+          >
+            {chat.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-100">
-                  <MessageSquare className="h-8 w-8 text-indigo-600" />
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                  <MessageSquare className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">
+                  <p className="font-semibold text-foreground">
                     Ask anything about your textbooks
                   </p>
-                  <p className="mt-1 text-sm text-gray-400">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Answers include citations from relevant chapters and pages.
                   </p>
                 </div>
               </div>
-            )}
-
-            {chat.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    msg.role === "user"
-                      ? "bg-indigo-600 text-white rounded-br-sm"
-                      : "bg-gray-100 text-gray-900 rounded-bl-sm"
-                  }`}
-                >
-                  {msg.role === "assistant" ? (
-                    <div className="prose prose-sm max-w-none">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="text-sm">{msg.content}</p>
-                  )}
-
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
-                      <p className="text-xs font-semibold text-gray-500 flex items-center gap-1">
-                        <BookOpen className="h-3 w-3" /> Sources
-                      </p>
-                      {msg.sources.map((src, i) => (
-                        <div
-                          key={i}
-                          className="flex flex-wrap items-center gap-x-1 text-xs text-gray-500"
-                        >
-                          {src.chapter_name && <span>{src.chapter_name}</span>}
-                          {src.title && <span>· {src.title}</span>}
-                          {src.page && (
-                            <Badge className="ml-1">p.{src.page}</Badge>
-                          )}
-                          {src.similarity && (
-                            <span className="ml-1 text-gray-400">
-                              {src.similarity} match
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {isPending && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-4 py-3">
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map((i) => (
-                      <span
-                        key={i}
-                        className="h-2 w-2 rounded-full bg-gray-400 animate-bounce"
-                        style={{ animationDelay: `${i * 0.15}s` }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
+            ) : (
+              chat.map((msg, i) => (
+                <ChatMessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isStreaming={isStreaming && i === chat.length - 1 && msg.role === "assistant"}
+                />
+              ))
             )}
           </div>
 
-          <div className="border-t border-gray-200 p-4">
-            <form
-              onSubmit={handleSubmit((data) =>
-                ask({ query: data.query, filters }),
-              )}
-              className="flex gap-3"
+          {!autoScroll && chat.length > 0 && (
+            <button
+              type="button"
+              onClick={scrollToBottom}
+              className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-accent hover:text-foreground"
+              aria-label="Scroll to latest message"
             >
-              <input
-                {...register("query")}
-                placeholder="Ask a question about the textbook…"
-                className="flex-1 rounded-xl border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
-                disabled={isPending}
-              />
-              {errors.query && (
-                <p className="text-xs text-red-600">{errors.query.message}</p>
-              )}
+              <ArrowDown className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="border-t border-border p-3">
+          <div className="flex items-end gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask a question about the textbook… (Shift+Enter for a new line)"
+              rows={1}
+              disabled={isStreaming}
+              className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-60"
+            />
+            {isStreaming ? (
               <Button
-                type="submit"
-                loading={isPending}
+                type="button"
+                variant="outline"
+                size="sm"
+                icon={<Square className="h-3.5 w-3.5" />}
+                onClick={handleStop}
+              >
+                Stop
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
                 icon={<Send className="h-4 w-4" />}
+                onClick={() => void handleSend()}
+                disabled={!input.trim()}
               >
                 Send
               </Button>
-            </form>
+            )}
           </div>
         </div>
       </div>
+
+      <Modal
+        open={showFilters}
+        onClose={() => setShowFilters(false)}
+        title="Filter content"
+        size="sm"
+      >
+        {filterPanel}
+      </Modal>
     </div>
   );
 }
