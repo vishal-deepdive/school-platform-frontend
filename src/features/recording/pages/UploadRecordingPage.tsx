@@ -111,17 +111,7 @@ export function UploadRecordingPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Upload Lecture Recording
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Upload audio to generate transcripts, notes, summaries, and exam
-          questions.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-6 ${(jobId && jobStatus) ? "lg:grid-cols-2" : ""}`}>
         <Card>
           <CardHeader title="Recording Details" />
           <div className="flex flex-col gap-4">
@@ -210,21 +200,21 @@ export function UploadRecordingPage() {
                     {config.icon}
                     <div>
                       <Badge variant={config.color}>{config.label}</Badge>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Job ID: {jobId}
                       </p>
                     </div>
                   </div>
 
                   {jobStatus.progress && (
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-muted-foreground">
                       {jobStatus.progress}
                     </p>
                   )}
 
                   {jobStatus.status === "processing" && (
-                    <div className="rounded-lg bg-blue-50 p-4">
-                      <p className="text-sm text-blue-700">
+                    <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
                         AI is transcribing and generating study materials. This
                         may take 1–3 minutes.
                       </p>
@@ -232,15 +222,15 @@ export function UploadRecordingPage() {
                   )}
 
                   {jobStatus.status === "failed" && (
-                    <div className="rounded-lg bg-red-50 p-4">
-                      <p className="text-sm text-red-700">
+                    <div className="rounded-lg bg-red-50 dark:bg-red-950/30 p-4">
+                      <p className="text-sm text-red-700 dark:text-red-300">
                         {jobStatus.error ?? "Processing failed."}
                       </p>
                     </div>
                   )}
 
                   {jobStatus.status === "completed" && !markdown && (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Loading study materials…
                     </p>
                   )}
@@ -254,8 +244,8 @@ export function UploadRecordingPage() {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-indigo-600" />
-              <h3 className="font-semibold text-gray-900">
+              <FileText className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">
                 Generated Study Materials
               </h3>
             </div>
@@ -269,7 +259,7 @@ export function UploadRecordingPage() {
               Download .md
             </Button>
           </div>
-          <div className="prose prose-sm max-w-none overflow-y-auto max-h-[60vh] rounded-lg bg-gray-50 p-4">
+          <div className="prose prose-sm dark:prose-invert max-w-none overflow-y-auto max-h-[60vh] rounded-lg bg-muted/40 p-4">
             <ReactMarkdown>{markdown}</ReactMarkdown>
           </div>
         </Card>

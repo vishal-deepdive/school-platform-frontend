@@ -38,13 +38,9 @@ export function SurveyDashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Survey Analytics</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Student feedback overview — last updated{" "}
-            {formatDateTime(data?.timestamp ?? "")}
-          </p>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Last updated {formatDateTime(data?.timestamp ?? "")}
+        </p>
         <div className="flex gap-3">
           <Button
             variant="outline"
@@ -100,21 +96,21 @@ export function SurveyDashboardPage() {
             {embeddingFields.map(([field, count]) => (
               <div
                 key={field}
-                className="rounded-lg bg-gray-50 border border-gray-200 p-4"
+                className="rounded-lg bg-muted/40 border border-border p-4"
               >
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1">
                   {field.replace(/_/g, " ")}
                 </p>
-                <p className="text-2xl font-bold text-gray-900">{count}</p>
-                <div className="mt-2 bg-gray-200 rounded-full h-1.5">
+                <p className="text-2xl font-bold text-foreground">{count}</p>
+                <div className="mt-2 bg-muted rounded-full h-1.5">
                   <div
-                    className="bg-indigo-600 h-1.5 rounded-full"
+                    className="bg-primary h-1.5 rounded-full"
                     style={{
                       width: `${Math.min(100, Math.round(((count as number) / (data?.total_records ?? 1)) * 100))}%`,
                     }}
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   {Math.round(
                     ((count as number) / (data?.total_records ?? 1)) * 100,
                   )}
@@ -130,7 +126,7 @@ export function SurveyDashboardPage() {
         {data?.by_school && data.by_school.length > 0 && (
           <Card padding="none">
             <CardHeader title="Responses by School" className="px-6 pt-6" />
-            <div className="divide-y divide-gray-100 pb-2">
+            <div className="divide-y divide-border pb-2">
               {data.by_school.map((s, i) => {
                 const school = s as Record<string, unknown>;
                 return (
@@ -138,7 +134,7 @@ export function SurveyDashboardPage() {
                     key={i}
                     className="flex items-center justify-between px-6 py-3"
                   >
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-foreground">
                       {String(school.school_name ?? "—")}
                     </p>
                     <Badge variant="info">
@@ -154,7 +150,7 @@ export function SurveyDashboardPage() {
         {data?.by_class && data.by_class.length > 0 && (
           <Card padding="none">
             <CardHeader title="Responses by Class" className="px-6 pt-6" />
-            <div className="divide-y divide-gray-100 pb-2">
+            <div className="divide-y divide-border pb-2">
               {data.by_class.map((c, i) => {
                 const cls = c as Record<string, unknown>;
                 return (
@@ -162,7 +158,7 @@ export function SurveyDashboardPage() {
                     key={i}
                     className="flex items-center justify-between px-6 py-3"
                   >
-                    <p className="text-sm text-gray-700">
+                    <p className="text-sm text-foreground">
                       {String(cls.class ?? cls.class_name ?? "—")}
                     </p>
                     <Badge variant="success">
