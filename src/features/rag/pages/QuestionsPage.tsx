@@ -9,7 +9,6 @@ import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
-import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 import type { QuestionType, Difficulty } from "@/features/rag/types";

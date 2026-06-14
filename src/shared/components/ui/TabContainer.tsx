@@ -19,7 +19,7 @@ interface TabContainerProps {
  * pages so every module (Attendance, Recording, RAG, Survey) shares the
  * same tabbed-page structure.
  */
-export function TabContainer({ tabs, className }: TabContainerProps) {
+export function TabContainer({ className }: TabContainerProps) {
   return (
     <div className={cn("w-full min-h-0 flex-1", className)}>
       <Outlet />

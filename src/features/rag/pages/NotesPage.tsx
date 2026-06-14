@@ -6,7 +6,6 @@ import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
-import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 
