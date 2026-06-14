@@ -24,17 +24,14 @@ export interface QASource {
   similarity?: string;
 }
 
-export interface QAResponse {
-  answer: string;
-  sources: QASource[];
-}
-
 /** A single message in the Q&A chat transcript. */
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   sources?: QASource[];
+  /** Set when streaming ended with an `{"type": "error"}` event — content holds the error message. */
+  isError?: boolean;
 }
 
 export interface QuestionsRequest {
@@ -49,9 +46,17 @@ export interface NotesRequest {
   filters: RagFilters;
 }
 
-export interface ContentResponse {
-  content: string;
-}
+/** Streaming events for POST /qa/stream. */
+export type QAStreamEvent =
+  | { type: "token"; content: string }
+  | { type: "done"; sources: QASource[] }
+  | { type: "error"; message: string };
+
+/** Streaming events for POST /questions/stream and POST /notes/stream. */
+export type ContentStreamEvent =
+  | { type: "token"; content: string }
+  | { type: "done" }
+  | { type: "error"; message: string };
 
 /**
  * Nested knowledge-base hierarchy:
