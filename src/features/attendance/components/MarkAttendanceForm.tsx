@@ -54,7 +54,7 @@ export function MarkAttendanceForm() {
     formState: { errors },
   } = useForm<MarkAttendanceFormData>({
     resolver: zodResolver(markAttendanceSchema),
-    defaultValues: { threshold: 0.3, session: "2025-26" },
+    defaultValues: { threshold: 0.4, session: "2025-26" },
   });
 
   const { mutate, isPending } = useMutation({
@@ -98,7 +98,7 @@ export function MarkAttendanceForm() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
         <Card>
           <CardHeader title="Session Details" />
           <form
@@ -137,7 +137,7 @@ export function MarkAttendanceForm() {
                 {...register("session")}
               />
               <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-foreground">
                   Similarity Threshold
                 </label>
                 <Controller
@@ -156,14 +156,14 @@ export function MarkAttendanceForm() {
                         }
                         className="flex-1"
                       />
-                      <span className="w-12 text-sm font-medium text-gray-700">
+                      <span className="w-12 text-sm font-medium text-foreground">
                         {field.value.toFixed(2)}
                       </span>
                     </div>
                   )}
                 />
-                <p className="text-xs text-gray-400">
-                  Lower = stricter matching
+                <p className="text-xs text-muted-foreground">
+                  Higher = stricter matching
                 </p>
               </div>
             </div>
@@ -212,9 +212,11 @@ export function MarkAttendanceForm() {
                 {result.date} · {result.time}
               </Badge>
               <Badge variant="default">
-                {Math.round(
-                  (result.present_count / result.total_enrolled) * 100,
-                )}
+                {result.total_enrolled > 0
+                  ? Math.round(
+                      (result.present_count / result.total_enrolled) * 100,
+                    )
+                  : 0}
                 % attendance
               </Badge>
             </div>
@@ -224,11 +226,11 @@ export function MarkAttendanceForm() {
 
       {result && (
         <Card padding="none">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="font-semibold text-gray-900">
+          <div className="px-6 py-4 border-b border-border">
+            <h3 className="font-semibold text-foreground">
               Attendance Record — {result.date}
             </h3>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {result.total_enrolled} enrolled · {result.present_count} present
               · {result.absent_count} absent
             </p>

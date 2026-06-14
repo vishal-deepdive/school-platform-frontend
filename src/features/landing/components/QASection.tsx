@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
+import { Link } from "react-router-dom";
+import { SectionHeading } from "@/features/landing/components/SectionHeading";
+import { fadeUp, staggerContainer } from "@/features/landing/animations";
 
-const faqs = [
+const FAQS = [
   {
     question: "Is it easy to onboard my entire school?",
     answer:
@@ -19,6 +22,11 @@ const faqs = [
       "Yes, parents can have their own secure logins to track their child's attendance, grades, and access lecture recordings to help them stay involved in the learning process.",
   },
   {
+    question: "How does the AI question answering work?",
+    answer:
+      "Our AI is grounded in your school's own course material and lecture recordings. Students ask questions in natural language and receive accurate answers with references to the exact class and chapter.",
+  },
+  {
     question: "Do you offer customer support?",
     answer:
       "We offer 24/7 priority customer support for all our partner institutions via chat, email, and phone.",
@@ -29,60 +37,62 @@ export function QASection() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="w-full bg-white py-24">
-      <div className="mx-auto max-w-[800px] px-4 md:px-0">
-        <div className="text-center mb-12">
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-3xl md:text-4xl font-bold tracking-tight text-slate-900"
-          >
-            Frequently Asked Questions
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="mt-4 text-slate-600"
-          >
-            Everything you need to know about the product and billing.
-          </motion.p>
-        </div>
+    <section id="faq" className="w-full scroll-mt-24 bg-background py-24">
+      <div className="mx-auto max-w-[800px] px-4 xl:px-0">
+        <SectionHeading
+          eyebrow="FAQ"
+          title="Frequently asked questions"
+          subtitle="Everything you need to know about the platform and onboarding."
+        />
 
-        <div className="space-y-4">
-          {faqs.map((faq, index) => {
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          className="space-y-4"
+        >
+          {FAQS.map((faq, index) => {
             const isOpen = openIndex === index;
             return (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 * index }}
-                className="border border-slate-200 rounded-xl overflow-hidden"
+                variants={fadeUp}
+                className={`overflow-hidden rounded-2xl border transition-colors duration-300 ${
+                  isOpen
+                    ? "border-primary/30 shadow-md shadow-primary/5"
+                    : "border-border"
+                }`}
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between bg-slate-50 px-6 py-4 text-left transition hover:bg-slate-100 focus:outline-none"
+                  className="flex w-full items-center justify-between gap-4 bg-card px-6 py-5 text-left transition hover:bg-accent hover:text-accent-foreground focus:outline-none"
+                  aria-expanded={isOpen}
                 >
-                  <span className="font-medium text-slate-900">
+                  <span className="font-medium text-card-foreground">
                     {faq.question}
                   </span>
-                  <ChevronDown
-                    className={`h-5 w-5 text-slate-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-                  />
+                  <motion.span
+                    animate={{ rotate: isOpen ? 180 : 0 }}
+                    transition={{ duration: 0.25 }}
+                    className={`shrink-0 rounded-full p-1 ${
+                      isOpen
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    <ChevronDown className="h-5 w-5" />
+                  </motion.span>
                 </button>
-                <AnimatePresence>
+                <AnimatePresence initial={false}>
                   {isOpen && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
+                      transition={{ duration: 0.25, ease: "easeOut" }}
                     >
-                      <div className="px-6 pb-4 pt-2 text-slate-600 border-t border-slate-100 bg-white">
+                      <div className="border-t border-border/50 bg-card px-6 pb-5 pt-4 leading-relaxed text-muted-foreground">
                         {faq.answer}
                       </div>
                     </motion.div>
@@ -91,7 +101,24 @@ export function QASection() {
               </motion.div>
             );
           })}
-        </div>
+        </motion.div>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.3, duration: 0.6 }}
+          className="mt-10 text-center text-sm text-muted-foreground"
+        >
+          Still have questions?{" "}
+          <Link
+            to="/onboarding/apply"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Reach out through your application
+          </Link>{" "}
+          and our team will get back to you within a day.
+        </motion.p>
       </div>
     </section>
   );
