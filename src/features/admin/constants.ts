@@ -13,8 +13,11 @@ export const APPLICATION_STATUS_LABELS: Record<OnboardingStatus, string> = {
 
 /** Includes border colour for use with `border` utility on the badge element. */
 export const APPLICATION_STATUS_COLORS: Record<OnboardingStatus, string> = {
-  pending_verification: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  email_verified: "bg-blue-100 text-blue-800 border-blue-200",
-  approved: "bg-green-100 text-green-800 border-green-200",
-  rejected: "bg-red-100 text-red-800 border-red-200",
+  pending_verification:
+    "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+  email_verified:
+    "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  approved:
+    "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
+  rejected: "bg-destructive/10 text-destructive border-destructive/20",
 };

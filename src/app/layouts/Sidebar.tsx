@@ -1,240 +1,11 @@
-import { useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import {
-  LayoutDashboard,
-  UserCheck,
-  Mic2,
-  BookOpen,
-  BarChart2,
-  ChevronDown,
-  ChevronRight,
-  Users,
-  CheckSquare,
-  List,
-  TrendingUp,
-  Upload,
-  FileText,
-  MessageSquare,
-  HelpCircle,
-  StickyNote,
-  Activity,
-  Search,
-  Database,
-  GraduationCap,
-  Shield,
-  ClipboardList,
-  UserCog,
-} from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
-
-interface NavItem {
-  label: string;
-  href?: string;
-  icon: React.ReactNode;
-  children?: NavItem[];
-  section?: string;
-}
-
-const adminNavItems: NavItem[] = [
-  {
-    label: "Platform Admin",
-    icon: <Shield className="h-4 w-4" />,
-    section: "ADMIN",
-    children: [
-      {
-        label: "School Applications",
-        href: "/admin/onboarding",
-        icon: <ClipboardList className="h-4 w-4" />,
-      },
-      {
-        label: "Manage Admins",
-        href: "/admin/admins",
-        icon: <UserCog className="h-4 w-4" />,
-      },
-    ],
-  },
-];
-
-const navItems: NavItem[] = [
-  {
-    label: "Dashboard",
-    href: "/",
-    icon: <LayoutDashboard className="h-4 w-4" />,
-  },
-  {
-    label: "Attendance",
-    icon: <UserCheck className="h-4 w-4" />,
-    section: "FACE RECOGNITION",
-    children: [
-      {
-        label: "Enroll Students",
-        href: "/attendance/enroll",
-        icon: <Users className="h-4 w-4" />,
-      },
-      {
-        label: "Mark Attendance",
-        href: "/attendance/mark",
-        icon: <CheckSquare className="h-4 w-4" />,
-      },
-      {
-        label: "View Records",
-        href: "/attendance/view",
-        icon: <List className="h-4 w-4" />,
-      },
-      {
-        label: "Statistics",
-        href: "/attendance/stats",
-        icon: <TrendingUp className="h-4 w-4" />,
-      },
-    ],
-  },
-  {
-    label: "Recording",
-    icon: <Mic2 className="h-4 w-4" />,
-    section: "LECTURE AI",
-    children: [
-      {
-        label: "Upload Audio",
-        href: "/recording/upload",
-        icon: <Upload className="h-4 w-4" />,
-      },
-      {
-        label: "My Recordings",
-        href: "/recording/list",
-        icon: <FileText className="h-4 w-4" />,
-      },
-      {
-        label: "Search Notes",
-        href: "/recording/search",
-        icon: <Search className="h-4 w-4" />,
-      },
-      {
-        label: "Audit Logs",
-        href: "/recording/audit",
-        icon: <Activity className="h-4 w-4" />,
-      },
-    ],
-  },
-  {
-    label: "RAG Assistant",
-    icon: <BookOpen className="h-4 w-4" />,
-    section: "TEXTBOOK AI",
-    children: [
-      {
-        label: "Q&A Chat",
-        href: "/rag/qa",
-        icon: <MessageSquare className="h-4 w-4" />,
-      },
-      {
-        label: "Generate Questions",
-        href: "/rag/questions",
-        icon: <HelpCircle className="h-4 w-4" />,
-      },
-      {
-        label: "Generate Notes",
-        href: "/rag/notes",
-        icon: <StickyNote className="h-4 w-4" />,
-      },
-      {
-        label: "Manage Documents",
-        href: "/rag/documents",
-        icon: <FileText className="h-4 w-4" />,
-      },
-      {
-        label: "Knowledge Audit",
-        href: "/rag/audit",
-        icon: <Database className="h-4 w-4" />,
-      },
-    ],
-  },
-  {
-    label: "Survey Analytics",
-    icon: <BarChart2 className="h-4 w-4" />,
-    section: "FEEDBACK AI",
-    children: [
-      {
-        label: "Dashboard",
-        href: "/survey",
-        icon: <BarChart2 className="h-4 w-4" />,
-      },
-      {
-        label: "AI Search",
-        href: "/survey/search",
-        icon: <Search className="h-4 w-4" />,
-      },
-      {
-        label: "Data Management",
-        href: "/survey/data",
-        icon: <Database className="h-4 w-4" />,
-      },
-    ],
-  },
-];
-
-interface SidebarItemProps {
-  item: NavItem;
-  depth?: number;
-}
-
-function SidebarItem({ item, depth = 0 }: SidebarItemProps) {
-  const location = useLocation();
-  const isChildActive = item.children?.some(
-    (c) => c.href && location.pathname.startsWith(c.href),
-  );
-  const [open, setOpen] = useState(isChildActive ?? false);
-
-  if (item.href) {
-    return (
-      <NavLink
-        to={item.href}
-        end={item.href === "/"}
-        className={({ isActive }) =>
-          cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-            depth > 0 ? "ml-4" : "",
-            isActive
-              ? "bg-indigo-600 text-white"
-              : "text-slate-300 hover:bg-slate-700 hover:text-white",
-          )
-        }
-      >
-        {item.icon}
-        {item.label}
-      </NavLink>
-    );
-  }
-
-  return (
-    <div>
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-          isChildActive
-            ? "bg-slate-700 text-white"
-            : "text-slate-300 hover:bg-slate-700 hover:text-white",
-        )}
-      >
-        {item.icon}
-        <span className="flex-1 text-left">{item.label}</span>
-        {open ? (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-slate-400" />
-        )}
-      </button>
-
-      {open && (
-        <div className="mt-1 flex flex-col gap-1">
-          {item.children?.map((child) => (
-            <SidebarItem key={child.href} item={child} depth={depth + 1} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+import { navItems, adminNavItems, type NavItem } from "./navConfig";
+import { UserProfileMenu } from "./UserProfileMenu";
+import { MobileSidebarItem } from "./MobileSidebarItem";
 
 interface SidebarProps {
   mobile?: boolean;
@@ -244,57 +15,196 @@ interface SidebarProps {
 export function Sidebar({ mobile, onClose }: SidebarProps) {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  return (
-    <aside
-      className={cn(
-        "flex h-full w-64 flex-col bg-slate-900",
-        mobile && "animate-slide-in",
-      )}
-    >
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-slate-700">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600">
-          <GraduationCap className="h-5 w-5 text-white" />
-        </div>
-        <div>
-          <p className="text-sm font-bold text-white">DeepDive</p>
-          <p className="text-xs text-slate-400">School Platform</p>
-        </div>
-        {mobile && onClose && (
-          <button
-            onClick={onClose}
-            className="ml-auto text-slate-400 hover:text-white transition-colors"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+  const allItems = useMemo(() => {
+    return [...navItems, ...(isAdmin ? adminNavItems : [])];
+  }, [isAdmin]);
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {/* Admin-only section */}
-        {isAdmin &&
-          adminNavItems.map((item, i) => (
-            <div key={`admin-${i}`}>
-              {item.section && (
-                <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                  {item.section}
-                </p>
-              )}
-              <SidebarItem item={item} />
+  const [activeCategory, setActiveCategory] = useState<NavItem | null>(null);
+
+  // Sync active category with current route (Desktop mainly)
+  useEffect(() => {
+    const active = allItems.find((item) => {
+      if (item.href === "/" && location.pathname === "/") return true;
+      if (
+        item.href &&
+        item.href !== "/" &&
+        location.pathname.startsWith(item.href)
+      )
+        return true;
+      if (item.children) {
+        return item.children.some(
+          (c) => c.href && location.pathname.startsWith(c.href),
+        );
+      }
+      return false;
+    });
+
+    setActiveCategory((prev) => {
+      if (active) return active;
+      if (!prev && allItems.length > 0) return allItems[0];
+      return prev;
+    });
+  }, [location.pathname, allItems]);
+
+  const handleCategoryClick = (item: NavItem) => {
+    setActiveCategory(item);
+    if (item.href && !item.children) {
+      navigate(item.href);
+      if (mobile && onClose) onClose();
+    } else if (item.children && item.children.length > 0) {
+      const firstChildHref = item.children[0].href;
+      if (firstChildHref) {
+        navigate(firstChildHref);
+        if (mobile && onClose) onClose();
+      }
+    }
+  };
+
+  // ------------------------------------
+  // MOBILE RENDER (ACCORDION)
+  // ------------------------------------
+  if (mobile) {
+    return (
+      <aside className="flex h-full w-[280px] flex-col bg-background shadow-2xl animate-slide-in relative">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-5">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="DeepDive Logo"
+              className="w-36 h-18 object-contain"
+            />
+          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+          {allItems.map((item, i) => (
+            <div key={i}>
+              <MobileSidebarItem item={item} onClose={onClose} />
             </div>
           ))}
-        {/* Feature nav */}
-        {navItems.map((item, i) => (
-          <div key={i}>
-            {item.section && (
-              <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                {item.section}
-              </p>
-            )}
-            <SidebarItem item={item} />
+        </div>
+        <div className="shrink-0 border-t border-border p-4">
+          <UserProfileMenu mobile />
+        </div>
+      </aside>
+    );
+  }
+
+  // ------------------------------------
+  // DESKTOP RENDER (DUAL-PANE)
+  // ------------------------------------
+  const hasSecondary =
+    activeCategory?.children && activeCategory.children.length > 0;
+
+  return (
+    <div className="flex h-full">
+      {/* Primary Sidebar (Icons only) */}
+      <aside className="relative z-20 flex h-full w-16 flex-col items-center border-r border-border bg-background py-4 shadow-sm">
+        {/* Logo */}
+        <div className="mb-8 flex h-10 w-8 shrink-0 items-center justify-center">
+          <img
+            src="/favicon.png"
+            alt="DeepDive Logo"
+            className="h-full w-full object-contain"
+          />
+        </div>
+
+        {/* Primary Nav Items */}
+        <nav className="flex w-full flex-1 flex-col items-center gap-3 px-1 pb-4 overflow-visible">
+          {allItems.map((item, idx) => {
+            const isActive = activeCategory === item;
+            return (
+              <div key={idx} className="group relative w-full">
+                <button
+                  onClick={() => handleCategoryClick(item)}
+                  className={cn(
+                    "flex w-full items-center justify-center rounded-xl p-3 transition-all duration-200",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                  )}
+                  aria-label={item.label}
+                >
+                  {item.icon}
+                </button>
+                {/* Tooltip */}
+                <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 pointer-events-none z-50 whitespace-nowrap">
+                  {item.label}
+                  <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-[4px] border-transparent border-r-foreground" />
+                </div>
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* User Profile */}
+        <div className="mt-auto flex w-full shrink-0 flex-col items-center px-2 pt-4">
+          <UserProfileMenu />
+        </div>
+      </aside>
+
+      {/* Secondary Sidebar (Context Menu) */}
+      <aside
+        className={cn(
+          "z-10 h-full border-r border-border bg-muted/40 transition-all duration-300 ease-in-out overflow-hidden",
+          hasSecondary ? "w-60" : "w-0 border-r-0",
+        )}
+      >
+        {hasSecondary && (
+          <div className="flex h-full w-60 flex-col">
+            <div className="flex h-[72px] shrink-0 items-center px-5">
+              <h2 className="text-base font-semibold text-foreground tracking-tight">
+                {activeCategory?.label}
+              </h2>
+            </div>
+            <div className="flex-1 overflow-y-auto px-3 pb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <nav className="space-y-1">
+                {activeCategory?.children?.map((child, i) => (
+                  <NavLink
+                    key={i}
+                    to={child.href || "#"}
+                    end={child.href === "/"}
+                    className={({ isActive }) =>
+                      cn(
+                        "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      )
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <div
+                          className={cn(
+                            "flex items-center justify-center transition-colors",
+                            isActive
+                              ? "text-primary"
+                              : "text-muted-foreground group-hover:text-foreground",
+                          )}
+                        >
+                          {child.icon}
+                        </div>
+                        {child.label}
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
           </div>
-        ))}
-      </nav>
-    </aside>
+        )}
+      </aside>
+    </div>
   );
 }
