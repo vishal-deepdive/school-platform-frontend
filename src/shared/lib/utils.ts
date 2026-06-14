@@ -100,3 +100,18 @@ export function downloadBlob(blob: Blob, filename: string): void {
   // Revoke after a tick so the browser has time to start the download
   setTimeout(() => URL.revokeObjectURL(url), 100);
 }
+
+/**
+ * Sorts class levels in descending order:
+ * "Class 12" -> "Class 1" -> "Nursery"
+ */
+export function sortClassesDescending(classes: string[]): string[] {
+  const getWeight = (c: string) => {
+    const lower = c.toLowerCase();
+    if (lower.includes("nursery") || lower.includes("kg")) return 0;
+    const match = c.match(/\d+/);
+    if (match) return parseInt(match[0], 10);
+    return -1;
+  };
+  return [...classes].sort((a, b) => getWeight(b) - getWeight(a));
+}
