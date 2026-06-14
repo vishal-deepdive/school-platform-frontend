@@ -86,15 +86,7 @@ export function EnrollPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Enroll Students</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Upload a ZIP of face photos to register students for face-recognition
-          attendance.
-        </p>
-      </div>
-
+    <div className="space-y-6 w-full">
       <Tabs
         tabs={enrollModes}
         active={mode}
@@ -104,119 +96,126 @@ export function EnrollPage() {
         }}
       />
 
-      <Card>
-        <CardHeader
-          title={
-            mode === "new"
-              ? "New Batch Enrollment"
-              : mode === "single"
-                ? "Enroll Single Student"
-                : "Batch Enrollment with Replacement"
-          }
-          description="ZIP structure: each student in a subfolder named roll_no_student_name (e.g. 101_Priya_Sharma)"
-        />
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {user?.role === "admin" && (
-              <Input
-                label="School Name"
-                placeholder="Delhi Public School"
-                error={errors.school_name?.message}
-                {...register("school_name")}
-              />
-            )}
-            <Select
-              label="Session"
-              options={sessionOptions}
-              error={errors.session?.message}
-              {...register("session")}
-            />
-            <Input
-              label="Class (optional)"
-              placeholder="10A"
-              {...register("class_name")}
-            />
-            <Input
-              label="Section (optional)"
-              placeholder="A"
-              {...register("section")}
-            />
-            <Input
-              label="Subject (optional)"
-              placeholder="Mathematics"
-              {...register("subject")}
-            />
-          </div>
-
-          <FileUpload
-            label="Student ZIP File"
-            accept=".zip"
-            maxSize={100 * 1024 * 1024}
-            onChange={setFiles}
-            hint="Max 100 MB. Each student's folder should contain 3-5 clear face photos."
+      <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
+        <Card>
+          <CardHeader
+            title={
+              mode === "new"
+                ? "New Batch Enrollment"
+                : mode === "single"
+                  ? "Enroll Single Student"
+                  : "Batch Enrollment with Replacement"
+            }
+            description="ZIP structure: each student in a subfolder named roll_no_student_name (e.g. 101_Priya_Sharma)"
           />
 
-          <Button
-            type="submit"
-            loading={isPending}
-            icon={<UserPlus className="h-4 w-4" />}
-          >
-            {isPending ? "Enrolling…" : "Enroll Students"}
-          </Button>
-        </form>
-      </Card>
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {user?.role === "admin" && (
+                <Input
+                  label="School Name"
+                  placeholder="Delhi Public School"
+                  error={errors.school_name?.message}
+                  {...register("school_name")}
+                />
+              )}
+              <Select
+                label="Session"
+                options={sessionOptions}
+                error={errors.session?.message}
+                {...register("session")}
+              />
+              <Input
+                label="Class (optional)"
+                placeholder="10A"
+                {...register("class_name")}
+              />
+              <Input
+                label="Section (optional)"
+                placeholder="A"
+                {...register("section")}
+              />
+              <Input
+                label="Subject (optional)"
+                placeholder="Mathematics"
+                {...register("subject")}
+              />
+            </div>
 
-      {result && (
-        <div className="space-y-4">
-          {result.enrolled_students.length > 0 && (
-            <Card>
-              <div className="flex items-center gap-2 mb-4">
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
-                <h3 className="font-semibold text-gray-900">
-                  {result.enrolled_students.length} Student(s) Enrolled
-                </h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {result.enrolled_students.map((s) => (
-                  <div
-                    key={s.roll_no}
-                    className="rounded-lg border border-green-200 bg-green-50 px-3 py-1.5"
-                  >
-                    <p className="text-sm font-medium text-green-800">
-                      {s.name}
-                    </p>
-                    <p className="text-xs text-green-600">
-                      #{s.roll_no} · {s.images_processed} photos
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          )}
+            <FileUpload
+              label="Student ZIP File"
+              accept=".zip"
+              maxSize={100 * 1024 * 1024}
+              onChange={setFiles}
+              hint="Max 100 MB. Each student's folder should contain 3-5 clear face photos."
+            />
 
-          {result.skipped && result.skipped.length > 0 && (
-            <Alert variant="warning" title={`${result.skipped.length} Skipped`}>
-              <ul className="mt-1 space-y-1">
-                {result.skipped.map((s, i) => (
-                  <li key={i} className="text-xs">
-                    <span className="font-medium">{s.folder}</span> — {s.reason}
-                  </li>
-                ))}
-              </ul>
-            </Alert>
-          )}
+            <Button
+              type="submit"
+              loading={isPending}
+              icon={<UserPlus className="h-4 w-4" />}
+            >
+              {isPending ? "Enrolling…" : "Enroll Students"}
+            </Button>
+          </form>
+        </Card>
 
-          <div className="flex gap-2 flex-wrap">
-            {result.school_name && (
-              <Badge variant="info">School: {result.school_name}</Badge>
+        {result && (
+          <div className="space-y-4">
+            {result.enrolled_students.length > 0 && (
+              <Card>
+                <div className="flex items-center gap-2 mb-4">
+                  <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
+                  <h3 className="font-semibold text-foreground">
+                    {result.enrolled_students.length} Student(s) Enrolled
+                  </h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {result.enrolled_students.map((s) => (
+                    <div
+                      key={s.roll_no}
+                      className="rounded-lg border border-green-200 dark:border-green-900/50 bg-green-50 dark:bg-green-950/30 px-3 py-1.5"
+                    >
+                      <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                        {s.name}
+                      </p>
+                      <p className="text-xs text-green-600 dark:text-green-400">
+                        #{s.roll_no} · {s.images_processed} photos
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             )}
-            {result.session && <Badge>Session: {result.session}</Badge>}
-            {result.class_name && <Badge>Class: {result.class_name}</Badge>}
-            {result.section && <Badge>Section: {result.section}</Badge>}
+
+            {result.skipped && result.skipped.length > 0 && (
+              <Alert variant="warning" title={`${result.skipped.length} Skipped`}>
+                <ul className="mt-1 space-y-1">
+                  {result.skipped.map((s, i) => (
+                    <li key={i} className="text-xs">
+                      <span className="font-medium">{s.folder}</span> — {s.reason}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
+            <div className="flex gap-2 flex-wrap">
+              {result.school_name && (
+                <Badge variant="info">School: {result.school_name}</Badge>
+              )}
+              {result.session && <Badge>Session: {result.session}</Badge>}
+              {result.class_name && <Badge>Class: {result.class_name}</Badge>}
+              {result.section && <Badge>Section: {result.section}</Badge>}
+              {result.removed_count != null && (
+                <Badge variant={result.removed_count > 0 ? "warning" : "default"}>
+                  Removed: {result.removed_count} student(s)
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
