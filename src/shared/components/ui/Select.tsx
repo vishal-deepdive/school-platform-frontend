@@ -27,6 +27,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const [displayValue, setDisplayValue] = useState("");
     const internalRef = useRef<HTMLSelectElement | null>(null);
     const dropdownRef = useRef<HTMLDivElement | null>(null);
+    const optionsRef = useRef<(HTMLDivElement | null)[]>([]);
+
+    const [searchQuery, setSearchQuery] = useState("");
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
     useEffect(() => {
       function handleClickOutside(event: MouseEvent) {
@@ -41,6 +46,22 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       return () =>
         document.removeEventListener("mousedown", handleClickOutside);
     }, []);
+
+    useEffect(() => {
+      if (isOpen) {
+        const currentIndex = options.findIndex(o => o.value === internalRef.current?.value);
+        setFocusedIndex(currentIndex >= 0 ? currentIndex : 0);
+        setSearchQuery("");
+      }
+    }, [isOpen, options]);
+
+    useEffect(() => {
+      if (isOpen && focusedIndex >= 0 && optionsRef.current[focusedIndex]) {
+        optionsRef.current[focusedIndex]?.scrollIntoView({
+          block: "nearest",
+        });
+      }
+    }, [focusedIndex, isOpen]);
 
     const setRefs = useCallback(
       (node: HTMLSelectElement) => {
@@ -85,6 +106,64 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       }
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!isOpen) {
+        if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
+          e.preventDefault();
+          setIsOpen(true);
+        }
+        return;
+      }
+
+      if (e.key === "Escape") {
+        setIsOpen(false);
+        return;
+      }
+
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (focusedIndex >= 0 && options[focusedIndex]) {
+          handleSelect(options[focusedIndex].value, options[focusedIndex].label);
+        }
+        return;
+      }
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setFocusedIndex((prev) => (prev < options.length - 1 ? prev + 1 : prev));
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setFocusedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+        return;
+      }
+
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const char = e.key.toLowerCase();
+        const newQuery = searchQuery + char;
+        setSearchQuery(newQuery);
+
+        if (searchTimeoutRef.current) {
+          clearTimeout(searchTimeoutRef.current);
+        }
+
+        searchTimeoutRef.current = setTimeout(() => {
+          setSearchQuery("");
+        }, 500);
+
+        const matchIndex = options.findIndex((opt) =>
+          opt.label.toLowerCase().startsWith(newQuery)
+        );
+
+        if (matchIndex !== -1) {
+          setFocusedIndex(matchIndex);
+        }
+      }
+    };
+
     return (
       <div className="grid gap-2 w-full relative" ref={dropdownRef}>
         {label && (
@@ -112,7 +191,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
 
         {/* Custom UI */}
         <div
+          tabIndex={0}
           onClick={() => setIsOpen(!isOpen)}
+          onKeyDown={handleKeyDown}
           className={cn(
             "flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer",
             "text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200",
@@ -124,7 +205,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         >
           <span
             className={cn(
-              "truncate",
+              "truncate flex-1 text-left min-w-0 mr-2",
               !displayValue && "text-muted-foreground/70",
             )}
           >
@@ -141,12 +222,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {/* Dropdown Menu */}
         {isOpen && (
           <div className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 py-1 max-h-60 overflow-y-auto scrollbar-thin">
-            {options.map((opt) => (
+            {options.map((opt, index) => (
               <div
                 key={opt.value}
+                ref={(el) => { optionsRef.current[index] = el; }}
                 className={cn(
-                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors",
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors truncate",
                   "hover:bg-accent hover:text-accent-foreground",
+                  focusedIndex === index && "bg-accent text-accent-foreground",
                   internalRef.current?.value === opt.value &&
                     "bg-primary/10 text-primary font-medium",
                 )}
