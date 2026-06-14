@@ -61,3 +61,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
     },
   ),
 );
+
+// Keep auth state in sync across browser tabs. Without this, a backgrounded
+// tab can hold onto a refresh token that another tab has already rotated —
+// replaying that stale token later triggers reuse detection on the backend.
+// Re-hydrating from localStorage whenever another tab updates it means every
+// tab always has the latest token pair before it next calls the API.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (event.key === "auth-storage") {
+      void useAuthStore.persist.rehydrate();
+    }
+  });
+}
