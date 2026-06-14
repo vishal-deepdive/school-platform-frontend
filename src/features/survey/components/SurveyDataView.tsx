@@ -156,11 +156,11 @@ export function SurveyDataView() {
         size="sm"
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-lg bg-red-50 p-4">
-            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 rounded-lg bg-destructive/10 p-4">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-800">Are you sure?</p>
-              <p className="text-sm text-red-600 mt-1">
+              <p className="text-sm font-medium text-destructive">Are you sure?</p>
+              <p className="text-sm text-destructive/90 mt-1">
                 {confirmMode === "roll-school" && (
                   <>
                     Deleting feedback for{" "}
