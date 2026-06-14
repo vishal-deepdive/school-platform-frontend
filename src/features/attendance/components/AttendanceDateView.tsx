@@ -47,10 +47,10 @@ export function AttendanceDateView() {
 
   const handleExportCSV = async () => {
     if (!queryDate || (user?.role === "admin" && !queryDate.school_name)) return;
-    const blob = await attendanceApi.viewStudents(
+    const blob = await attendanceApi.exportAttendanceOnDate(
       queryDate as unknown as Record<string, string>,
     );
-    downloadBlob(blob, `students-${queryDate.school_name}.csv`);
+    downloadBlob(blob, `attendance-${queryDate.date}.csv`);
   };
 
   return (
@@ -122,12 +122,12 @@ export function AttendanceDateView() {
       )}
       {dateData && (
         <div className="mt-6">
-          <p className="text-sm text-gray-500 mb-3">
+          <p className="text-sm text-muted-foreground mb-3">
             {dateData.total_records} record(s) on {dateData.date}
           </p>
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/50">
                 <tr>
                   {[
                     "Roll No",
@@ -140,16 +140,16 @@ export function AttendanceDateView() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500"
+                      className="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground"
                     >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-border bg-background">
                 {(dateData.data as AttendanceRow[]).map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
+                  <tr key={i} className="hover:bg-muted/50">
                     <td className="px-4 py-3">
                       {String(row.roll_number ?? row.roll_no ?? "—")}
                     </td>

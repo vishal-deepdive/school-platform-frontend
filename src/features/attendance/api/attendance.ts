@@ -81,6 +81,14 @@ export const attendanceApi = {
       )
       .then((r) => r.data),
 
+  exportAttendanceOnDate: (params: Record<string, string>) =>
+    apiClient
+      .get(
+        `${BASE}/view-attendance-on-date/${buildQueryString({ ...params, format: "csv" })}`,
+        { responseType: "blob" },
+      )
+      .then((r) => r.data as Blob),
+
   getAttendanceRange: (params: Record<string, string>) =>
     apiClient
       .get<AttendanceRangeResponse>(

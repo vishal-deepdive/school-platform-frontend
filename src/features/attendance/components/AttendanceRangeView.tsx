@@ -47,7 +47,7 @@ export function AttendanceRangeView() {
   });
 
   const lowAttendance = rangeData?.data?.filter(
-    (s: AttendanceRangeStudent) => s.below_75_percent,
+    (s: AttendanceRangeStudent) => s.below_75_percent === "Yes",
   );
 
   return (
@@ -109,8 +109,10 @@ export function AttendanceRangeView() {
 
       {rangeData && (
         <div className="mt-6 space-y-4">
-          <p className="text-sm text-gray-500">
-            {rangeData.total_students} student(s) · {rangeData.date_range}
+          <p className="text-sm text-muted-foreground">
+            {rangeData.total_students} student(s) ·{" "}
+            {rangeData.date_range.start_date} – {rangeData.date_range.end_date}{" "}
+            ({rangeData.date_range.total_days} days)
           </p>
 
           {lowAttendance && lowAttendance.length > 0 && (
@@ -120,7 +122,7 @@ export function AttendanceRangeView() {
             >
               <div className="flex flex-wrap gap-2 mt-2">
                 {lowAttendance.map((s: AttendanceRangeStudent) => (
-                  <Badge key={s.roll_no} variant="warning">
+                  <Badge key={s.roll_number} variant="warning">
                     {s.name} ({s.attendance_percentage.toFixed(0)}%)
                   </Badge>
                 ))}
@@ -128,38 +130,38 @@ export function AttendanceRangeView() {
             </Alert>
           )}
 
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-muted/50">
                 <tr>
-                  <th className="sticky left-0 bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                  <th className="sticky left-0 bg-muted/50 px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">
                     Student
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground">
                     %
                   </th>
                   {rangeData.dates?.map((d: string) => (
                     <th
                       key={d}
-                      className="px-2 py-3 text-xs font-semibold uppercase text-gray-500 whitespace-nowrap"
+                      className="px-2 py-3 text-xs font-semibold uppercase text-muted-foreground whitespace-nowrap"
                     >
                       {d}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-border bg-background">
                 {rangeData.data?.map((student: AttendanceRangeStudent) => (
-                  <tr key={student.roll_no} className="hover:bg-gray-50">
-                    <td className="sticky left-0 bg-white px-4 py-3 font-medium">
+                  <tr key={student.roll_number} className="hover:bg-muted/50">
+                    <td className="sticky left-0 bg-background px-4 py-3 font-medium">
                       <div className="flex items-center gap-2">
-                        {student.below_75_percent && (
+                        {student.below_75_percent === "Yes" && (
                           <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
                         )}
                         <div>
                           <p>{student.name}</p>
-                          <p className="text-xs text-gray-400">
-                            #{student.roll_no}
+                          <p className="text-xs text-muted-foreground">
+                            #{student.roll_number}
                           </p>
                         </div>
                       </div>
@@ -179,12 +181,12 @@ export function AttendanceRangeView() {
                       <td key={d} className="px-2 py-3 text-center">
                         <span
                           className={
-                            student.dates?.[d] === "P"
-                              ? "text-green-600 font-bold"
-                              : "text-red-500"
+                            student[d] === "P"
+                              ? "text-green-600 dark:text-green-400 font-bold"
+                              : "text-red-500 dark:text-red-400"
                           }
                         >
-                          {student.dates?.[d] ?? "—"}
+                          {student[d] ?? "—"}
                         </span>
                       </td>
                     ))}
