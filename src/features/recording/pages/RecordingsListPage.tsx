@@ -5,6 +5,7 @@ import { usePagination } from "@/shared/hooks/usePagination";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
+import { Pagination } from "@/shared/components/ui/Pagination";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
 import {
@@ -40,38 +41,35 @@ export function RecordingsListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Recordings</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {total} recording(s) total
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          loading={isFetching}
-          icon={<RefreshCw className="h-4 w-4" />}
-        >
-          Refresh
-        </Button>
-      </div>
-
       <Card padding="none">
-        <CardHeader title="All Recordings" className="px-6 pt-6" />
+        <CardHeader
+          title="All Recordings"
+          description={`${total} recording(s) total`}
+          className="px-6 pt-6"
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              loading={isFetching}
+              icon={<RefreshCw className="h-4 w-4" />}
+            >
+              Refresh
+            </Button>
+          }
+        />
         {pagedRecordings.length === 0 ? (
-          <div className="px-6 pb-8 text-center text-sm text-gray-400">
+          <div className="px-6 pb-8 text-center text-sm text-muted-foreground">
             No recordings yet.{" "}
             <Link
               to="/recording/upload"
-              className="text-indigo-600 hover:underline"
+              className="text-primary hover:underline"
             >
               Upload your first recording.
             </Link>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {pagedRecordings.map((rec) => (
               <RecordingListItem
                 key={rec.id}
@@ -87,29 +85,14 @@ export function RecordingsListPage() {
         )}
       </Card>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasPrev}
-            onClick={goPrev}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-gray-500">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasNext}
-            onClick={goNext}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        hasNext={hasNext}
+        hasPrev={hasPrev}
+        onNext={goNext}
+        onPrev={goPrev}
+      />
 
       <MarkdownPreviewModal
         open={!!preview.previewId}
@@ -123,7 +106,7 @@ export function RecordingsListPage() {
         title="Delete Recording"
         size="sm"
       >
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Are you sure you want to delete this recording? This action cannot be
           undone.
         </p>

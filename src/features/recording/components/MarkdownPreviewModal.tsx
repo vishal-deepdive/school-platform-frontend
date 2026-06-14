@@ -1,6 +1,6 @@
-import ReactMarkdown from "react-markdown";
 import { Modal } from "@/shared/components/ui/Modal";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 
 interface MarkdownPreviewModalProps {
   open: boolean;
@@ -22,8 +22,8 @@ export function MarkdownPreviewModal({
       {!markdown ? (
         <PageSpinner />
       ) : (
-        <div className="prose prose-sm max-w-none overflow-y-auto max-h-[60vh]">
-          <ReactMarkdown>{markdown}</ReactMarkdown>
+        <div className="overflow-y-auto max-h-[60vh]">
+          <MarkdownRenderer content={markdown} />
         </div>
       )}
     </Modal>

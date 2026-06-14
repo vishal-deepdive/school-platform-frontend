@@ -23,12 +23,12 @@ export function RecordingListItem({
   retrying,
 }: RecordingListItemProps) {
   return (
-    <div className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors">
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-purple-100">
-        <FileText className="h-5 w-5 text-purple-600" />
+    <div className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
+        <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">
+        <p className="text-sm font-medium text-foreground truncate">
           {rec.audio_filename}
         </p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -39,7 +39,7 @@ export function RecordingListItem({
           {rec.recording_subject && (
             <Badge variant="purple">{rec.recording_subject}</Badge>
           )}
-          <span className="text-xs text-gray-400">{formatDate(rec.date)}</span>
+          <span className="text-xs text-muted-foreground">{formatDate(rec.date)}</span>
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
@@ -77,7 +77,7 @@ export function RecordingListItem({
           size="sm"
           icon={<Trash2 className="h-4 w-4" />}
           onClick={() => onDelete(rec.id)}
-          className="text-red-500 hover:bg-red-50"
+          className="text-destructive hover:bg-destructive/10"
         >
           Delete
         </Button>

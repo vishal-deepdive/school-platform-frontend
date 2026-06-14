@@ -4,6 +4,7 @@ export * from "./types";
 export * from "./hooks/useRecordings";
 export * from "./components/MarkdownPreviewModal";
 export * from "./components/RecordingListItem";
+export * from "./pages/RecordingPage";
 export * from "./pages/RecordingAuditPage";
 export * from "./pages/RecordingsListPage";
 export * from "./pages/SearchRecordingsPage";
