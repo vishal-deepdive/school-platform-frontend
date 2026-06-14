@@ -5,6 +5,7 @@ export * from "./types";
 export * from "./constants";
 export * from "./filters";
 export * from "./hooks/useRag";
+export * from "./pages/RagPage";
 export * from "./pages/NotesPage";
 export * from "./pages/QAPage";
 export * from "./pages/QuestionsPage";

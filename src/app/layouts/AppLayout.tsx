@@ -8,7 +8,7 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-muted/30">
       <div className="hidden md:flex md:flex-shrink-0">
         <Sidebar />
       </div>
@@ -27,7 +27,7 @@ export function AppLayout() {
 
       <div className={cn("flex flex-1 flex-col overflow-hidden")}>
         <Header onMenuToggle={() => setSidebarOpen((p) => !p)} />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto px-4 md:p-6">
           <Outlet />
         </main>
       </div>

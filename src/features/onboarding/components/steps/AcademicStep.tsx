@@ -1,10 +1,13 @@
 import { AuthInput, AuthSelect } from "@/shared/components/ui/auth-fuse";
 import type { StepPropsExtra } from "./types";
 
-const CLASS_OPTIONS = Array.from({ length: 13 }, (_, i) => ({
-  value: String(i),
-  label: i === 0 ? "Nursery / KG" : `Class ${i}`,
-}));
+const CLASS_OPTIONS = Array.from({ length: 13 }, (_, i) => {
+  const val = 12 - i;
+  return {
+    value: String(val),
+    label: val === 0 ? "Nursery / KG" : `Class ${val}`,
+  };
+});
 
 const MEDIUM_OPTIONS = [
   { value: "English", label: "English" },
