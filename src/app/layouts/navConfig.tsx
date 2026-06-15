@@ -138,6 +138,11 @@ export const navItems: NavItem[] = [
       },
     ],
   },
+  {
+    label: "Parent Approvals",
+    href: "/approvals/parents",
+    icon: <UserCheck className="h-5 w-5" />,
+  },
 ];
 
 export const adminNavItems: NavItem[] = [

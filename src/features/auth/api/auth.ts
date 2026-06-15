@@ -21,6 +21,7 @@ import type {
   SchoolSearchItem,
   ClassCodeItem,
   StudentSearchItem,
+  PendingParentsResponse,
 } from "@/features/auth/types";
 
 const BASE = "/api/v1/auth";
@@ -127,5 +128,21 @@ export const authApi = {
       .get<
         StudentSearchItem[]
       >(`${BASE}/schools/${school_id}/students`, { params: { roll_number } })
+      .then((r) => r.data),
+
+  // ── Parent approval (principal / admin) ──────────────────────────────────
+  getPendingParents: () =>
+    apiClient
+      .get<PendingParentsResponse>(`${BASE}/parents/pending`)
+      .then((r) => r.data),
+
+  approveParent: (userId: string) =>
+    apiClient
+      .post<MessageResponse>(`${BASE}/parents/${userId}/approve`)
+      .then((r) => r.data),
+
+  rejectParent: (userId: string) =>
+    apiClient
+      .post<MessageResponse>(`${BASE}/parents/${userId}/reject`)
       .then((r) => r.data),
 };

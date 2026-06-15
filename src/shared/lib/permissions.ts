@@ -40,6 +40,9 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/survey/search": ["admin", "principal", "teacher"],
   "/survey/data": ["admin", "principal"],
 
+  // Parent account approvals (principal/admin)
+  "/approvals/parents": ["admin", "principal"],
+
   // Platform admin
   "/admin/onboarding": ["admin"],
   "/admin/admins": ["admin"],

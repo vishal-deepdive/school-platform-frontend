@@ -183,3 +183,19 @@ export interface StudentSearchItem {
   full_name: string | null;
   roll_number: string | null;
 }
+
+export interface PendingParentItem {
+  parent_id: string;
+  parent_email: string;
+  parent_name: string | null;
+  relation: string;
+  requested_at: string | null;
+  student_id: string;
+  student_name: string | null;
+  student_roll_no: string | null;
+}
+
+export interface PendingParentsResponse {
+  items: PendingParentItem[];
+  total: number;
+}

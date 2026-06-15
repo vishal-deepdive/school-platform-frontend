@@ -52,6 +52,7 @@ import {
   ApplicationDetailPage,
   AdminManagementPage,
 } from "@/features/admin";
+import { ParentApprovalsPage } from "@/features/parents";
 
 export const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> },
@@ -154,6 +155,14 @@ export const router = createBrowserRouter([
             element: (
               <RoleRoute allow={["admin"]}>
                 <AdminManagementPage />
+              </RoleRoute>
+            ),
+          },
+          {
+            path: "/approvals/parents",
+            element: (
+              <RoleRoute allow={["admin", "principal"]}>
+                <ParentApprovalsPage />
               </RoleRoute>
             ),
           },
