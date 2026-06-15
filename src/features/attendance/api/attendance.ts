@@ -2,6 +2,7 @@ import { multipartClient, apiClient } from "@/shared/api/client";
 import type {
   EnrollResponse,
   MarkAttendanceResponse,
+  CorrectAttendanceResponse,
   AttendanceDateResponse,
   AttendanceRangeResponse,
   ChangeLogResponse,
@@ -59,6 +60,14 @@ export const attendanceApi = {
     Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
     return multipartClient
       .post<MarkAttendanceResponse>(`${BASE}/mark-attendance/`, form)
+      .then((r) => r.data);
+  },
+
+  correctAttendance: (params: Record<string, string>) => {
+    const form = new FormData();
+    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
+    return multipartClient
+      .post<CorrectAttendanceResponse>(`${BASE}/correct/`, form)
       .then((r) => r.data);
   },
 

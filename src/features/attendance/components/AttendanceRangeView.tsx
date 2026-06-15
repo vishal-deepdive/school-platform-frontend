@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
+import { statusTextClass } from "@/features/attendance/lib/status";
 import type { AttendanceRangeStudent } from "@/features/attendance/types";
 
 interface RangeFilters {
@@ -180,11 +181,7 @@ export function AttendanceRangeView() {
                     {rangeData.dates?.map((d: string) => (
                       <td key={d} className="px-2 py-3 text-center">
                         <span
-                          className={
-                            student[d] === "P"
-                              ? "text-green-600 dark:text-green-400 font-bold"
-                              : "text-red-500 dark:text-red-400"
-                          }
+                          className={`font-bold ${statusTextClass(String(student[d]))}`}
                         >
                           {student[d] ?? "—"}
                         </span>
