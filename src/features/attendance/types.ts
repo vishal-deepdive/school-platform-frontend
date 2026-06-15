@@ -1,4 +1,4 @@
-export type AttendanceStatus = "P" | "A";
+export type AttendanceStatus = "P" | "A" | "L" | "E" | "H";
 
 export interface EnrolledStudent {
   roll_no: string;
@@ -61,6 +61,19 @@ export interface MarkAttendanceResponse {
   absent_count: number;
   present_students: AttendanceRecord[];
   absent_students: AttendanceRecord[];
+}
+
+export interface CorrectAttendanceResponse {
+  school_name: string;
+  class_name: string;
+  section: string;
+  subject: string | null;
+  session: string;
+  roll_no: string;
+  name: string | null;
+  status: AttendanceStatus;
+  date: string;
+  time: string;
 }
 
 export interface AttendanceDateResponse {

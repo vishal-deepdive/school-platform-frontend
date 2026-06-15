@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/features/auth/store/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,44 +10,72 @@ import {
   type EnrollFormData,
 } from "@/features/attendance/schema";
 import { attendanceApi } from "@/features/attendance/api/attendance";
+import { SESSION_OPTIONS, ENROLL_MODE_OPTIONS } from "@/features/attendance/constants";
+import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
-import { Tabs } from "@/shared/components/ui/Tabs";
 import type { EnrollResponse } from "@/features/attendance/types";
-
-const enrollModes = [
-  { id: "new", label: "New Batch" },
-  { id: "single", label: "Single Student" },
-  { id: "replace", label: "Batch with Replacement" },
-];
-
-const sessionOptions = ["2023-24", "2024-25", "2025-26", "2026-27"].map(
-  (s) => ({
-    value: s,
-    label: s,
-  }),
-);
 
 export function EnrollPage() {
   const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
   const [mode, setMode] = useState("new");
   const [files, setFiles] = useState<File[]>([]);
   const [result, setResult] = useState<EnrollResponse | null>(null);
+  const [schoolId, setSchoolId] = useState<string | undefined>(
+    isAdmin ? undefined : user?.school_id ?? undefined,
+  );
+
+  const {
+    options: schoolOptions,
+    setQuery: setSchoolQuery,
+    isSearching: schoolsLoading,
+  } = useSchoolSearch();
+  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
 
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<EnrollFormData>({
     resolver: zodResolver(enrollSchema),
-    defaultValues: { session: "2025-26" },
+    defaultValues: {
+      session: "2025-26",
+      school_name: "",
+      class_name: "",
+      section: "",
+    },
   });
+
+  const selectedClass = watch("class_name");
+  const sectionOptions = selectedClass ? getSectionOptions(selectedClass) : [];
+
+  // Reset class/section whenever the selected school changes
+  useEffect(() => {
+    setValue("class_name", "");
+    setValue("section", "");
+  }, [schoolId, setValue]);
+
+  // Reset section whenever the selected class changes
+  useEffect(() => {
+    setValue("section", "");
+  }, [selectedClass, setValue]);
+
+  const handleSchoolChange = (id: string) => {
+    setSchoolId(id);
+    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
+    setValue("school_name", name);
+  };
 
   const { mutate, isPending } = useMutation({
     mutationFn: ({
@@ -75,6 +103,10 @@ export function EnrollPage() {
       toast.error("Please select a ZIP file");
       return;
     }
+    if (isAdmin && !data.school_name) {
+      toast.error("Please select a school");
+      return;
+    }
     const params: Record<string, string> = {
       school_name: data.school_name || "",
       session: data.session,
@@ -87,15 +119,6 @@ export function EnrollPage() {
 
   return (
     <div className="space-y-6 w-full">
-      <Tabs
-        tabs={enrollModes}
-        active={mode}
-        onChange={(id) => {
-          setMode(id);
-          setResult(null);
-        }}
-      />
-
       <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
         <Card>
           <CardHeader
@@ -110,31 +133,56 @@ export function EnrollPage() {
           />
 
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+            <Select
+              label="Enrollment Mode"
+              options={ENROLL_MODE_OPTIONS}
+              value={mode}
+              onChange={(e) => {
+                setMode(e.target.value);
+                setResult(null);
+              }}
+            />
+
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {user?.role === "admin" && (
-                <Input
-                  label="School Name"
-                  placeholder="Delhi Public School"
-                  error={errors.school_name?.message}
-                  {...register("school_name")}
+              {isAdmin && (
+                <SearchableSelect
+                  label="School"
+                  placeholder="Select school..."
+                  options={schoolOptions}
+                  value={schoolId}
+                  onChange={handleSchoolChange}
+                  onSearchChange={setSchoolQuery}
+                  isLoading={schoolsLoading}
                 />
               )}
               <Select
                 label="Session"
-                options={sessionOptions}
+                options={SESSION_OPTIONS}
                 error={errors.session?.message}
                 {...register("session")}
               />
-              <Input
+              <Select
                 label="Class (optional)"
-                placeholder="10A"
+                placeholder={
+                  schoolId ? "Select class" : "Select a school first"
+                }
+                options={classNameOptions}
                 {...register("class_name")}
               />
-              <Input
-                label="Section (optional)"
-                placeholder="A"
-                {...register("section")}
-              />
+              {sectionOptions.length > 0 ? (
+                <Select
+                  label="Section (optional)"
+                  placeholder="Select section"
+                  options={sectionOptions}
+                  {...register("section")}
+                />
+              ) : (
+                <Input
+                  label="Section (optional)"
+                  placeholder="A"
+                  {...register("section")}
+                />
+              )}
               <Input
                 label="Subject (optional)"
                 placeholder="Mathematics"
