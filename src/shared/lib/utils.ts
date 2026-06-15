@@ -78,6 +78,24 @@ export function toIndianDate(date: Date): string {
   return `${d}-${m}-${y}`;
 }
 
+/** Converts an HTML date input value (YYYY-MM-DD) to DD-MM-YYYY. */
+export function isoToIndianDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}-${m}-${y}`;
+}
+
+/** Converts DD-MM-YYYY to an HTML date input value (YYYY-MM-DD). */
+export function indianDateToIso(indian: string): string {
+  const [d, m, y] = indian.split("-");
+  return `${y}-${m}-${d}`;
+}
+
+/** True if the given HTML date input value (YYYY-MM-DD) falls on a Sunday. */
+export function isSunday(iso: string): boolean {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay() === 0;
+}
+
 /** Triggers a browser download of a text/blob file without opening a new tab. */
 export function downloadFile(
   content: string,

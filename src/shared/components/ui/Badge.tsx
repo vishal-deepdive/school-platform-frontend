@@ -1,6 +1,6 @@
 import { cn } from "@/shared/lib/utils";
 
-type BadgeVariant =
+export type BadgeVariant =
   | "default"
   | "success"
   | "warning"
