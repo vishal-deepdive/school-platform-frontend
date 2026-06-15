@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckSquare, Users, UserX, Pencil } from "lucide-react";
@@ -21,7 +21,6 @@ import {
 import {
   getErrorMessage,
   isoToIndianDate,
-  indianDateToIso,
   isSunday,
 } from "@/shared/lib/utils";
 import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
@@ -62,6 +61,7 @@ function updateRecordStatus(
 export function MarkAttendanceForm() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
+  const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<MarkAttendanceResponse | null>(null);
   const [schoolId, setSchoolId] = useState<string | undefined>(
@@ -133,6 +133,8 @@ export function MarkAttendanceForm() {
     }) => attendanceApi.markAttendance(f, params),
     onSuccess: (data) => {
       setResult(data);
+      // Views and stats may now be stale after marking attendance.
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
       toast.success(
         `Attendance marked: ${data.present_count} present, ${data.absent_count} absent`,
       );
@@ -143,16 +145,17 @@ export function MarkAttendanceForm() {
   const correctMutation = useMutation({
     mutationFn: (vars: { roll_no: string; status: AttendanceStatus }) => {
       if (!result) return Promise.reject(new Error("No attendance result"));
+      // result.date is YYYY-MM-DD; the /correct endpoint requires DD-MM-YYYY.
       const params: Record<string, string> = {
         class_name: result.class_name,
         section: result.section,
         roll_no: vars.roll_no,
         status: vars.status,
         session: result.session,
-        attendance_date: result.date,
+        attendance_date: isoToIndianDate(result.date),
         ...(result.school_name && { school_name: result.school_name }),
         ...(result.subject && { subject: result.subject }),
-        ...(isSunday(indianDateToIso(result.date)) && {
+        ...(isSunday(result.date) && {
           allow_holiday: "true",
         }),
       };
@@ -163,6 +166,8 @@ export function MarkAttendanceForm() {
       setResult((prev) =>
         prev ? updateRecordStatus(prev, data.roll_no, data.status) : prev,
       );
+      // A correction changes the stored record; refresh date/range/stats views.
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
       toast.success(`${data.name ?? data.roll_no}: marked ${statusLabel(data.status)}`);
     },
     onError: (err) => toast.error(getErrorMessage(err)),

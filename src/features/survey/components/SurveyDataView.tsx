@@ -1,6 +1,6 @@
 import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import { surveyApi } from "@/features/survey/api/survey";
@@ -14,8 +14,14 @@ import { Badge } from "@/shared/components/ui/Badge";
 
 type DeleteMode = "roll-school" | "school" | "class" | null;
 
+function asCount(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function SurveyDataView() {
   const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
   const qc = useQueryClient();
   const [confirmMode, setConfirmMode] = useState<DeleteMode>(null);
   const [rollNumber, setRollNumber] = useState("");
@@ -25,6 +31,41 @@ export function SurveyDataView() {
     deleted: number;
     mode: string;
   } | null>(null);
+
+  // Used to source class options and show an impact preview (record counts)
+  // before an irreversible delete.
+  const { data: surveyStatus } = useQuery({
+    queryKey: ["survey", "status"],
+    queryFn: () => surveyApi.getStatus(),
+    staleTime: 5 * 60_000,
+  });
+
+  const classCounts = (surveyStatus?.by_class ?? []).map((c) => {
+    const cls = c as Record<string, unknown>;
+    return {
+      name: String(cls.class ?? cls.class_name ?? ""),
+      count: asCount(cls.count) ?? 0,
+    };
+  });
+
+  const schoolCounts = (surveyStatus?.by_school ?? []).map((s) => {
+    const school = s as Record<string, unknown>;
+    return {
+      name: String(school.school_name ?? ""),
+      count: asCount(school.count) ?? 0,
+    };
+  });
+
+  // Best-effort impact estimate for the active confirmation.
+  const impactCount = (() => {
+    if (confirmMode === "school") {
+      return schoolCounts.find((s) => s.name === schoolName.trim())?.count ?? null;
+    }
+    if (confirmMode === "class") {
+      return classCounts.find((c) => c.name === className.trim())?.count ?? null;
+    }
+    return null;
+  })();
 
   const { mutate: deleteByRoll, isPending: delByRoll } = useMutation({
     mutationFn: () => surveyApi.deleteByRollSchool(rollNumber, schoolName),
@@ -49,7 +90,11 @@ export function SurveyDataView() {
   });
 
   const { mutate: deleteByClass, isPending: delByClass } = useMutation({
-    mutationFn: () => surveyApi.deleteByClass(className),
+    mutationFn: () =>
+      surveyApi.deleteByClass(className, {
+        // Admins must supply school_name; principal/teacher are scoped via JWT.
+        school_name: isAdmin ? schoolName : undefined,
+      }),
     onSuccess: (r) => {
       toast.success(`Deleted ${r.deleted_count} record(s)`);
       setLastResult({ deleted: r.deleted_count, mode: "class" });
@@ -83,7 +128,7 @@ export function SurveyDataView() {
               value={rollNumber}
               onChange={(e) => setRollNumber(e.target.value)}
             />
-            {user?.role === "admin" && (
+            {isAdmin && (
               <Input
                 label="School Name"
                 placeholder="Delhi Public School"
@@ -95,7 +140,7 @@ export function SurveyDataView() {
           <Button
             variant="danger"
             icon={<Trash2 className="h-4 w-4" />}
-            disabled={!rollNumber || (user?.role === "admin" && !schoolName)}
+            disabled={!rollNumber || (isAdmin && !schoolName)}
             onClick={() => setConfirmMode("roll-school")}
           >
             Delete Student Feedback
@@ -107,7 +152,7 @@ export function SurveyDataView() {
             title="Delete by School"
             description="Remove all feedback from a school."
           />
-          {user?.role === "admin" && (
+          {isAdmin && (
             <Input
               label="School Name"
               placeholder="Delhi Public School"
@@ -119,7 +164,7 @@ export function SurveyDataView() {
           <Button
             variant="danger"
             icon={<Trash2 className="h-4 w-4" />}
-            disabled={user?.role === "admin" && !schoolName}
+            disabled={isAdmin && !schoolName}
             onClick={() => setConfirmMode("school")}
           >
             Delete All School Feedback
@@ -131,17 +176,35 @@ export function SurveyDataView() {
             title="Delete by Class"
             description="Remove all feedback for a class."
           />
+          {isAdmin && (
+            <Input
+              label="School Name"
+              placeholder="Delhi Public School"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
+              className="mb-4"
+            />
+          )}
           <Input
             label="Class Name"
-            placeholder="10A"
+            placeholder="10th"
+            hint="Enter a class like '10' or '10th' (not a section such as '10A')."
             value={className}
             onChange={(e) => setClassName(e.target.value)}
             className="mb-4"
+            list="survey-class-options"
           />
+          {classCounts.length > 0 && (
+            <datalist id="survey-class-options">
+              {classCounts.map((c) => (
+                <option key={c.name} value={c.name} />
+              ))}
+            </datalist>
+          )}
           <Button
             variant="danger"
             icon={<Trash2 className="h-4 w-4" />}
-            disabled={!className}
+            disabled={!className || (isAdmin && !schoolName)}
             onClick={() => setConfirmMode("class")}
           >
             Delete Class Feedback
@@ -178,8 +241,23 @@ export function SurveyDataView() {
                   <>
                     Deleting ALL feedback for class{" "}
                     <Badge variant="danger">{className}</Badge>
+                    {isAdmin && schoolName && (
+                      <>
+                        {" "}
+                        at <Badge variant="danger">{schoolName}</Badge>
+                      </>
+                    )}
                   </>
                 )}
+              </p>
+              {impactCount !== null && (
+                <p className="text-sm font-semibold text-destructive mt-2">
+                  This will permanently delete approximately {impactCount}{" "}
+                  record(s).
+                </p>
+              )}
+              <p className="text-xs text-destructive/80 mt-2">
+                This action cannot be undone.
               </p>
             </div>
           </div>

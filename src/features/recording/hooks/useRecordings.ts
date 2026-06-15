@@ -3,30 +3,36 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { recordingApi } from "@/features/recording/api/recording";
 import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
+import type { MarkdownResult } from "@/features/recording/types";
 
 /**
  * Centralised React Query keys for the recording feature. Using a factory keeps
  * cache reads/writes consistent and makes invalidation refactor-safe.
+ *
+ * `list`/`audit` include the page offset so React Query refetches each page
+ * server-side instead of us holding (and slicing) one giant client-side array.
  */
 export const recordingKeys = {
   all: ["recordings"] as const,
-  list: () => ["recordings"] as const,
+  list: (limit: number, offset: number) =>
+    ["recordings", "list", limit, offset] as const,
   search: (query: string) => ["recordings", "search", query] as const,
-  audit: () => ["recording-audit"] as const,
+  audit: (limit: number, offset: number) =>
+    ["recording-audit", limit, offset] as const,
 };
 
-export function useRecordingsList() {
+export function useRecordingsList(limit: number, offset: number) {
   return useQuery({
-    queryKey: recordingKeys.list(),
-    queryFn: () => recordingApi.listRecordings({ limit: 999, offset: 0 }),
+    queryKey: recordingKeys.list(limit, offset),
+    queryFn: () => recordingApi.listRecordings({ limit, offset }),
     staleTime: 60_000,
   });
 }
 
-export function useRecordingAuditLogs() {
+export function useRecordingAuditLogs(limit: number, offset: number) {
   return useQuery({
-    queryKey: recordingKeys.audit(),
-    queryFn: () => recordingApi.listAuditLogs({ limit: 999, offset: 0 }),
+    queryKey: recordingKeys.audit(limit, offset),
+    queryFn: () => recordingApi.listAuditLogs({ limit, offset }),
     staleTime: 30_000,
   });
 }
@@ -76,26 +82,25 @@ export function useDownloadRecording() {
 /**
  * Encapsulates the "open a recording's generated study materials in a modal"
  * flow shared by the list and search pages: tracks which recording is being
- * previewed, lazily fetches its markdown, and falls back to a placeholder.
+ * previewed and lazily fetches its markdown. `result` is `null` while the
+ * fetch is in flight; afterwards it is a discriminated state (ready /
+ * generating / not_found / error) so the modal can show the right thing
+ * instead of rendering an error string as markdown.
  */
 export function useRecordingPreview() {
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const [markdown, setMarkdown] = useState<string | null>(null);
+  const [result, setResult] = useState<MarkdownResult | null>(null);
 
   const open = async (id: string) => {
     setPreviewId(id);
-    setMarkdown(null);
-    try {
-      setMarkdown(await recordingApi.getRecordingMarkdown(id));
-    } catch {
-      setMarkdown("*Study materials not yet available for this recording.*");
-    }
+    setResult(null);
+    setResult(await recordingApi.getRecordingMarkdown(id));
   };
 
   const close = () => {
     setPreviewId(null);
-    setMarkdown(null);
+    setResult(null);
   };
 
-  return { previewId, markdown, open, close };
+  return { previewId, result, open, close };
 }

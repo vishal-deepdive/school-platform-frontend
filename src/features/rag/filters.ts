@@ -13,8 +13,7 @@ export function subjectsForClass(
   cls?: string,
 ): string[] {
   if (!meta || !cls) return [];
-  const node = meta.hierarchy?.[cls];
-  return (node?.subjects as string[] | undefined) ?? [];
+  return meta.hierarchy?.[cls]?.subjects ?? [];
 }
 
 export function chaptersForClassSubject(
@@ -24,5 +23,8 @@ export function chaptersForClassSubject(
 ): string[] {
   if (!meta || !cls || !subject) return [];
   const subjectNode = meta.hierarchy?.[cls]?.[subject];
-  return (subjectNode?.chapters as string[] | undefined) ?? [];
+  // `subjects` (string[]) shares the index signature; only a real subject node
+  // (non-array object) carries chapters.
+  if (!subjectNode || Array.isArray(subjectNode)) return [];
+  return subjectNode.chapters ?? [];
 }

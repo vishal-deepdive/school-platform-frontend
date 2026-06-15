@@ -1,7 +1,7 @@
+import { useState } from "react";
 import { Activity, RefreshCw } from "lucide-react";
 import { formatDateTime } from "@/shared/lib/utils";
 import { useRecordingAuditLogs } from "@/features/recording/hooks/useRecordings";
-import { usePagination } from "@/shared/hooks/usePagination";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -12,14 +12,21 @@ import { Alert } from "@/shared/components/ui/Alert";
 const PAGE_SIZE = 20;
 
 export function RecordingAuditPage() {
+  const [offset, setOffset] = useState(0);
+
   const { data, isLoading, isError, refetch, isFetching } =
-    useRecordingAuditLogs();
+    useRecordingAuditLogs(PAGE_SIZE, offset);
 
   const total = data?.total ?? 0;
-  const { offset, currentPage, totalPages, hasNext, hasPrev, goNext, goPrev } =
-    usePagination(PAGE_SIZE, total);
+  const pagedLogs = data?.logs ?? [];
 
-  const pagedLogs = data?.logs.slice(offset, offset + PAGE_SIZE) ?? [];
+  // Server-driven pagination: the API returns only the current page.
+  const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const hasNext = offset + PAGE_SIZE < total;
+  const hasPrev = offset > 0;
+  const goNext = () => setOffset((o) => o + PAGE_SIZE);
+  const goPrev = () => setOffset((o) => Math.max(0, o - PAGE_SIZE));
 
   if (isLoading) return <PageSpinner />;
   if (isError) return <Alert variant="error">Failed to load audit logs.</Alert>;

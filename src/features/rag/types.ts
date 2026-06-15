@@ -59,16 +59,32 @@ export type ContentStreamEvent =
   | { type: "error"; message: string };
 
 /**
+ * One subject node inside the hierarchy. `chapters` is the only fixed key;
+ * deeper levels (chapter → titles) keep dynamic string keys.
+ */
+export interface RagSubjectNode {
+  chapters?: string[];
+  [chapter: string]: { titles?: string[] } | string[] | undefined;
+}
+
+/**
+ * One class node inside the hierarchy. `subjects` is the only fixed key; the
+ * remaining keys are dynamic subject names mapping to {@link RagSubjectNode}.
+ */
+export interface RagClassNode {
+  subjects?: string[];
+  [subject: string]: RagSubjectNode | string[] | undefined;
+}
+
+/**
  * Nested knowledge-base hierarchy:
  *   hierarchy[className].subjects        → string[]
  *   hierarchy[className][subject].chapters → string[]
  *   hierarchy[className][subject][chapter].titles → string[]
- * Loosely typed because keys are dynamic (class / subject / chapter names).
+ * Keys below the fixed `subjects` / `chapters` levels are dynamic (class /
+ * subject / chapter names), so the dynamic levels are loosely typed.
  */
-export type RagHierarchy = Record<
-  string,
-  { subjects?: string[] } & Record<string, any>
->;
+export type RagHierarchy = Record<string, RagClassNode>;
 
 export interface RagMetadata {
   classes: string[];
@@ -86,9 +102,23 @@ export interface CascadingFiltersRequest {
   chapter_name?: string;
 }
 
+/**
+ * One aggregated row in the audit counts. The backend labels the bucket with
+ * one of these keys depending on the grouping, and reports the chunk total as
+ * `count` (or `total`).
+ */
+export interface AuditCountRow {
+  book?: string;
+  class_level?: string;
+  subject?: string;
+  name?: string;
+  count?: number;
+  total?: number;
+}
+
 export interface AuditCounts {
-  by_class: unknown[];
-  by_subject: unknown[];
+  by_class: AuditCountRow[];
+  by_subject: AuditCountRow[];
 }
 
 export interface AuditMissingFields {

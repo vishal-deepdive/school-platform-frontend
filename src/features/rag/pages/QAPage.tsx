@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
   MessageSquare,
+  RotateCcw,
   Send,
   SlidersHorizontal,
   Square,
@@ -12,6 +13,7 @@ import { qaSchema } from "@/features/rag/schema";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { ChatMessageBubble } from "@/features/rag/components/ChatMessageBubble";
+import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
@@ -40,42 +42,18 @@ export function QAPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // Batches incoming tokens and flushes them to the store at most once per
-  // animation frame, so a fast stream doesn't trigger a re-render per token.
-  const pendingRef = useRef<{ id: string; text: string } | null>(null);
-  const rafRef = useRef<number | null>(null);
-
-  const flushPending = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    if (pendingRef.current) {
-      const { id, text } = pendingRef.current;
-      pendingRef.current = null;
-      appendToMessage(id, text);
-    }
-  }, [appendToMessage]);
-
-  const queueToken = useCallback(
-    (id: string, token: string) => {
-      if (pendingRef.current?.id === id) {
-        pendingRef.current.text += token;
-      } else {
-        flushPending();
-        pendingRef.current = { id, text: token };
-      }
-      if (rafRef.current === null) {
-        rafRef.current = requestAnimationFrame(() => {
-          rafRef.current = null;
-          flushPending();
-        });
-      }
-    },
-    [flushPending],
+  // Only one assistant message streams at a time; the batcher flushes batched
+  // tokens to whichever message id is currently active.
+  const activeIdRef = useRef<string | null>(null);
+  const { push: queueToken, flush: flushPending } = useStreamBatcher(
+    useCallback(
+      (chunk: string) => {
+        const id = activeIdRef.current;
+        if (id) appendToMessage(id, chunk);
+      },
+      [appendToMessage],
+    ),
   );
-
-  useEffect(() => () => flushPending(), [flushPending]);
 
   // Auto-resize the textarea up to MAX_TEXTAREA_HEIGHT.
   useEffect(() => {
@@ -106,19 +84,12 @@ export function QAPage() {
     setAutoScroll(true);
   };
 
-  const handleSend = async () => {
-    if (isStreaming) return;
-    const result = qaSchema.safeParse({ query: input.trim() });
-    if (!result.success) {
-      toast.error(result.error.issues[0]?.message ?? "Invalid input");
-      return;
-    }
-    const query = result.data.query;
-    setInput("");
-
-    const assistantId = `${Date.now()}-a`;
+  const runQuery = async (query: string) => {
+    const baseId = Date.now();
+    const assistantId = `${baseId}-a`;
+    activeIdRef.current = assistantId;
     appendChatMessages([
-      { id: `${Date.now()}-u`, role: "user", content: query },
+      { id: `${baseId}-u`, role: "user", content: query },
       { id: assistantId, role: "assistant", content: "", sources: [] },
     ]);
     setAutoScroll(true);
@@ -130,7 +101,7 @@ export function QAPage() {
     try {
       for await (const event of ragApi.qaStream({ query, filters }, controller.signal)) {
         if (event.type === "token") {
-          queueToken(assistantId, event.content);
+          queueToken(event.content);
         } else if (event.type === "done") {
           flushPending();
           setMessageSources(assistantId, event.sources);
@@ -146,10 +117,33 @@ export function QAPage() {
       }
     } finally {
       flushPending();
+      activeIdRef.current = null;
       setQaStreaming(false);
       abortRef.current = null;
     }
   };
+
+  const handleSend = async () => {
+    if (isStreaming) return;
+    const result = qaSchema.safeParse({ query: input.trim() });
+    if (!result.success) {
+      toast.error(result.error.issues[0]?.message ?? "Invalid input");
+      return;
+    }
+    setInput("");
+    await runQuery(result.data.query);
+  };
+
+  // Re-run the most recent question after a failed answer.
+  const handleRetry = () => {
+    if (isStreaming) return;
+    const lastUser = [...chat].reverse().find((m) => m.role === "user");
+    if (lastUser) void runQuery(lastUser.content);
+  };
+
+  const lastMessage = chat[chat.length - 1];
+  const canRetry =
+    !isStreaming && lastMessage?.role === "assistant" && !!lastMessage.isError;
 
   const handleStop = () => abortRef.current?.abort();
 
@@ -266,6 +260,19 @@ export function QAPage() {
         </div>
 
         <div className="border-t border-border p-3">
+          {canRetry && (
+            <div className="mb-2 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                onClick={handleRetry}
+              >
+                Retry last question
+              </Button>
+            </div>
+          )}
           <div className="flex items-end gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
             <textarea
               ref={textareaRef}

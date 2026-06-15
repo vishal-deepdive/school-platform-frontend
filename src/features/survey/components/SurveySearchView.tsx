@@ -2,7 +2,13 @@ import { useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Search, BarChart2, MessageSquare, Sparkles } from "lucide-react";
+import {
+  Search,
+  BarChart2,
+  MessageSquare,
+  Sparkles,
+  SearchX,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import ReactMarkdown from "react-markdown";
 import {
@@ -15,6 +21,7 @@ import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import type {
   SearchResponse,
   SearchIntent,
@@ -61,10 +68,13 @@ export function SurveySearchView() {
     staleTime: 5 * 60_000,
   });
 
-  const classOptions: SelectOption[] = surveyStatus?.by_class?.map((c) => ({
-    value: String((c as any).class),
-    label: `${(c as any).class}`,
-  })) ?? [];
+  const classOptions: SelectOption[] =
+    surveyStatus?.by_class?.map((c) => {
+      const cls = c as Record<string, unknown>;
+      const name = String(cls.class ?? cls.class_name ?? "");
+      return { value: name, label: name };
+    }) ?? [];
+  const noClasses = classOptions.length === 0;
 
   const {
     register,
@@ -98,6 +108,12 @@ export function SurveySearchView() {
   const loading = isPending || isSubmitting;
   const feedbackCol = watch("feedback_column");
 
+  const resultCount =
+    result?.retrieved_rows.count ??
+    result?.retrieved_rows.data?.length ??
+    0;
+  const hasNoResults = !!result && resultCount === 0;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -128,7 +144,15 @@ export function SurveySearchView() {
               <Select
                 label="Class Name"
                 options={classOptions}
-                placeholder="Select a class..."
+                placeholder={
+                  noClasses ? "No classes available" : "Select a class..."
+                }
+                hint={
+                  noClasses
+                    ? "No survey data has been imported yet, so there are no classes to search."
+                    : undefined
+                }
+                disabled={noClasses}
                 {...register("class_name")}
               />
             </div>
@@ -183,12 +207,7 @@ export function SurveySearchView() {
               {intentLabels[result.intent]}
             </Badge>
             {result.sql_query && <Badge variant="default">SQL Generated</Badge>}
-            <Badge variant="info">
-              {result.retrieved_rows.count ??
-                result.retrieved_rows.data?.length ??
-                0}{" "}
-              results
-            </Badge>
+            <Badge variant="info">{resultCount} results</Badge>
           </div>
 
           <Card>
@@ -226,6 +245,14 @@ export function SurveySearchView() {
                 {result.sql_query}
               </pre>
             </Card>
+          )}
+
+          {hasNoResults && (
+            <EmptyState
+              icon={<SearchX className="h-12 w-12" />}
+              title="No matching feedback found"
+              description="Try a different class, feedback column, or rephrase your query."
+            />
           )}
 
           {result.retrieved_rows.data &&

@@ -54,11 +54,20 @@ export async function* streamSSE<T = unknown>(
       const rawEvent = buffer.slice(0, sepIndex);
       buffer = buffer.slice(sepIndex + 2);
 
-      const dataLine = rawEvent
+      // Per the SSE spec an event may carry multiple `data:` lines which are
+      // concatenated with newlines. Collect them all (tolerating an optional
+      // space after the colon), then parse once.
+      const dataPayload = rawEvent
         .split("\n")
-        .find((line) => line.startsWith("data: "));
-      if (dataLine) {
-        yield JSON.parse(dataLine.slice("data: ".length)) as T;
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(line.startsWith("data: ") ? 6 : 5))
+        .join("\n");
+      if (dataPayload) {
+        try {
+          yield JSON.parse(dataPayload) as T;
+        } catch {
+          // Skip a malformed frame instead of aborting the entire stream.
+        }
       }
       sepIndex = buffer.indexOf("\n\n");
     }

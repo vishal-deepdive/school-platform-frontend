@@ -127,7 +127,7 @@ export function SearchRecordingsPage() {
       <MarkdownPreviewModal
         open={!!preview.previewId}
         onClose={preview.close}
-        markdown={preview.markdown}
+        result={preview.result}
       />
     </div>
   );

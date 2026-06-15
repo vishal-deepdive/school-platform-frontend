@@ -1,7 +1,7 @@
 import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Download } from "lucide-react";
+import { Search, Download, CalendarX } from "lucide-react";
 import { toIndianDate, downloadBlob } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { statusLabel, statusVariant } from "@/features/attendance/lib/status";
 
 interface DateFilters {
@@ -121,7 +122,17 @@ export function AttendanceDateView() {
       {dateError && (
         <Alert variant="error">Failed to fetch attendance records.</Alert>
       )}
-      {dateData && (
+      {dateData && (dateData.data as AttendanceRow[]).length === 0 && (
+        <div className="mt-6">
+          <EmptyState
+            icon={<CalendarX className="h-10 w-10" />}
+            title="No records for this date"
+            description="No attendance has been marked for the selected class, section, and date. Try a different date or mark attendance first."
+          />
+        </div>
+      )}
+
+      {dateData && (dateData.data as AttendanceRow[]).length > 0 && (
         <div className="mt-6">
           <p className="text-sm text-muted-foreground mb-3">
             {dateData.total_records} record(s) on {dateData.date}

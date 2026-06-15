@@ -1,7 +1,7 @@
 import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, AlertTriangle } from "lucide-react";
+import { Search, AlertTriangle, CalendarX } from "lucide-react";
 import { toIndianDate } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { statusTextClass } from "@/features/attendance/lib/status";
 import type { AttendanceRangeStudent } from "@/features/attendance/types";
 
@@ -108,7 +109,17 @@ export function AttendanceRangeView() {
         <Alert variant="error">Failed to fetch attendance range.</Alert>
       )}
 
-      {rangeData && (
+      {rangeData && (!rangeData.data || rangeData.data.length === 0) && (
+        <div className="mt-6">
+          <EmptyState
+            icon={<CalendarX className="h-10 w-10" />}
+            title="No students enrolled"
+            description="No attendance records were found for the selected class, section, and date range. Enroll students and mark attendance to populate this view."
+          />
+        </div>
+      )}
+
+      {rangeData && rangeData.data && rangeData.data.length > 0 && (
         <div className="mt-6 space-y-4">
           <p className="text-sm text-muted-foreground">
             {rangeData.total_students} student(s) ·{" "}

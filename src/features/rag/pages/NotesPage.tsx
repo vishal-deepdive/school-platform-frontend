@@ -1,4 +1,5 @@
-import { StickyNote, Download } from "lucide-react";
+import { useState } from "react";
+import { StickyNote, Download, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
@@ -6,6 +7,7 @@ import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { Alert } from "@/shared/components/ui/Alert";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 
@@ -17,8 +19,12 @@ export function NotesPage() {
   const appendResult = useRagUiStore((s) => s.appendNotesResult);
   const { push: queueToken, flush: flushPending } = useStreamBatcher(appendResult);
 
+  // Holds the error from the last failed run so we can offer a retry.
+  const [error, setError] = useState<string | null>(null);
+
   const generate = async () => {
     setResult("");
+    setError(null);
     setPending(true);
     try {
       for await (const event of ragApi.generateNotesStream({ filters })) {
@@ -26,6 +32,7 @@ export function NotesPage() {
           queueToken(event.content);
         } else if (event.type === "error") {
           flushPending();
+          setError(event.message);
           toast.error(event.message);
         } else if (event.type === "done") {
           flushPending();
@@ -34,7 +41,9 @@ export function NotesPage() {
       }
     } catch (err) {
       flushPending();
-      toast.error(getErrorMessage(err));
+      const message = getErrorMessage(err);
+      setError(message);
+      toast.error(message);
     } finally {
       flushPending();
       setPending(false);
@@ -72,7 +81,24 @@ export function NotesPage() {
 
         {(result !== null || isPending) && (
           <div className="lg:col-span-2">
-            {result !== null ? (
+            {error && !isPending ? (
+              <Card>
+                <Alert variant="error" title="Generation failed">
+                  {error}
+                </Alert>
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<RotateCcw className="h-4 w-4" />}
+                    onClick={() => generate()}
+                    disabled={!canGenerate}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </Card>
+            ) : result !== null ? (
               <Card>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">

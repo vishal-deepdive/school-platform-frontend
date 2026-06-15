@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Plus, Trash2, RefreshCw, FileText } from "lucide-react";
+import { Plus, Trash2, RefreshCw, FileText, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
@@ -10,8 +10,11 @@ import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Pagination } from "@/shared/components/ui/Pagination";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
 import { SUBJECT_OPTIONS, RAG_OTHER_SUBJECT } from "@/features/rag/constants";
+import { useAuthStore } from "@/features/auth/store/auth";
 import {
   useRagDocuments,
   useRagClassLevels,
@@ -22,6 +25,15 @@ import {
 } from "@/features/rag/hooks/useRag";
 
 const TERMINAL_STATUSES = new Set(["completed", "failed"]);
+const PAGE_SIZE = 50;
+
+const STATUS_FILTER_OPTIONS = [
+  { value: "", label: "All statuses" },
+  { value: "completed", label: "Completed" },
+  { value: "processing", label: "Processing" },
+  { value: "pending", label: "Pending" },
+  { value: "failed", label: "Failed" },
+];
 
 const EMPTY_FORM = {
   class_level: "",
@@ -33,9 +45,18 @@ const EMPTY_FORM = {
 };
 
 export function RagDocumentsPage() {
+  const role = useAuthStore((s) => s.user?.role);
+  // Staff (admin/principal/teacher) may manage documents. Defense-in-depth on
+  // top of route gating: hide upload / delete / retry controls for anyone else.
+  const canManage =
+    role === "admin" || role === "principal" || role === "teacher";
+  const isAdmin = role === "admin";
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
+  const [statusFilter, setStatusFilter] = useState("");
+  const [offset, setOffset] = useState(0);
   // Tracks which row's delete/retry is in flight so only that row spins.
   const [pendingRow, setPendingRow] = useState<{
     id: string;
@@ -52,19 +73,34 @@ export function RagDocumentsPage() {
   ];
 
   // Auto-refresh while any document is still being ingested.
-  const { data, isLoading, refetch, isFetching } = useRagDocuments(
-    { limit: 50, offset: 0 },
-    {
-      refetchInterval: (query) => {
-        const items = query.state.data?.items ?? [];
-        const stillWorking = items.some(
-          (d: { status: string }) =>
-            !TERMINAL_STATUSES.has(d.status.toLowerCase()),
-        );
-        return stillWorking ? 4000 : false;
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useRagDocuments(
+      {
+        limit: PAGE_SIZE,
+        offset,
+        ...(statusFilter && { status: statusFilter }),
       },
-    },
-  );
+      {
+        refetchInterval: (query) => {
+          const items = query.state.data?.items ?? [];
+          const stillWorking = items.some(
+            (d: { status: string }) =>
+              !TERMINAL_STATUSES.has(d.status.toLowerCase()),
+          );
+          return stillWorking ? 4000 : false;
+        },
+      },
+    );
+
+  const total = data?.total ?? 0;
+  const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const hasNext = offset + PAGE_SIZE < total;
+  const hasPrev = offset > 0;
+
+  // GET /documents now requires a rag_access grant; surface a clean message
+  // instead of the generic "failed to load" error on a 403.
+  const isForbidden = isError && isAxiosError(error) && error.response?.status === 403;
 
   const { mutate: uploadDoc, isPending: isUploading } = useUploadRagDocument();
   const { mutate: deleteDoc } = useDeleteRagDocument();
@@ -167,6 +203,11 @@ export function RagDocumentsPage() {
     });
   };
 
+  const handleStatusFilter = (value: string) => {
+    setStatusFilter(value);
+    setOffset(0);
+  };
+
   const getStatusBadge = (status: string, error?: string) => {
     switch (status.toLowerCase()) {
       case "completed":
@@ -184,15 +225,35 @@ export function RagDocumentsPage() {
     }
   };
 
+  if (isForbidden) {
+    return (
+      <EmptyState
+        icon={<Lock className="h-12 w-12" />}
+        title="No access to the document library"
+        description="Your account doesn't have a knowledge-base access grant yet. Ask an admin to enable RAG access for you."
+      />
+    );
+  }
+
+  const items = data?.items ?? [];
+  const colSpan = canManage ? 4 : 3;
+
   return (
     <div className="space-y-6">
       <Card padding="none">
         <CardHeader
           title="Documents"
-          description={`${data?.total ?? 0} document(s) in the knowledge base`}
+          description={`${total} document(s) in the knowledge base`}
           className="px-6 pt-6"
           action={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="w-40">
+                <Select
+                  options={STATUS_FILTER_OPTIONS}
+                  value={statusFilter}
+                  onChange={(e) => handleStatusFilter(e.target.value)}
+                />
+              </div>
               <Button
                 variant="outline"
                 size="sm"
@@ -202,78 +263,120 @@ export function RagDocumentsPage() {
               >
                 Refresh
               </Button>
-              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
-                Upload Document
-              </Button>
+              {canManage && (
+                <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+                  Upload Document
+                </Button>
+              )}
             </div>
           }
         />
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Class / Chapter</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-background divide-y divide-border">
-              {isLoading ? (
-                <tr><td colSpan={4} className="px-6 py-4 text-center text-sm text-muted-foreground">Loading documents...</td></tr>
-              ) : data?.items?.length === 0 ? (
-                <tr><td colSpan={4} className="px-6 py-4 text-center text-sm text-muted-foreground">No documents found.</td></tr>
-              ) : (
-                data?.items?.map((doc) => (
-                  <tr key={doc.id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <FileText className="h-5 w-5 text-muted-foreground mr-2" />
-                        <div>
-                          <div className="text-sm font-medium text-foreground">{doc.original_filename}</div>
-                          <div className="text-xs text-muted-foreground">{(doc.file_size / 1024).toFixed(1)} KB • {doc.parser}</div>
+        {isError ? (
+          <div className="px-6 pb-8 pt-2">
+            <p className="text-center text-sm text-destructive">
+              Failed to load documents. {getErrorMessage(error)}
+            </p>
+          </div>
+        ) : !isLoading && items.length === 0 ? (
+          <div className="px-6 pb-8 pt-2">
+            <EmptyState
+              icon={<FileText className="h-12 w-12" />}
+              title={statusFilter ? "No matching documents" : "No documents yet"}
+              description={
+                statusFilter
+                  ? "No documents match this status filter. Try a different status."
+                  : canManage
+                    ? "Upload a textbook document to start building your knowledge base."
+                    : "The knowledge base is empty. Ask a teacher or admin to upload textbooks."
+              }
+              action={
+                canManage && !statusFilter ? (
+                  <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+                    Upload Document
+                  </Button>
+                ) : undefined
+              }
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Class / Chapter</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  {canManage && (
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="bg-background divide-y divide-border">
+                {isLoading ? (
+                  <tr><td colSpan={colSpan} className="px-6 py-4 text-center text-sm text-muted-foreground">Loading documents...</td></tr>
+                ) : (
+                  items.map((doc) => (
+                    <tr key={doc.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <FileText className="h-5 w-5 text-muted-foreground mr-2" />
+                          <div>
+                            <div className="text-sm font-medium text-foreground">{doc.original_filename}</div>
+                            <div className="text-xs text-muted-foreground">{(doc.file_size / 1024).toFixed(1)} KB • {doc.parser}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-foreground">{doc.class_level}, {doc.subject}</div>
-                      <div className="text-xs text-muted-foreground">Ch {doc.chapter_number}: {doc.chapter_name}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(doc.status, doc.error)}
-                      {doc.status.toLowerCase() === 'failed' && doc.error && (
-                        <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={doc.error}>{doc.error}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-foreground">{doc.class_level}, {doc.subject}</div>
+                        <div className="text-xs text-muted-foreground">Ch {doc.chapter_number}: {doc.chapter_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(doc.status, doc.error)}
+                        {doc.status.toLowerCase() === 'failed' && doc.error && (
+                          <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={doc.error}>{doc.error}</div>
+                        )}
+                      </td>
+                      {canManage && (
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {doc.status.toLowerCase() === "failed" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRetry(doc.id)}
+                              loading={pendingRow?.id === doc.id && pendingRow.action === "retry"}
+                              className="text-primary hover:text-primary/80 mr-2"
+                            >
+                              Retry
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(doc.id)}
+                            loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
+                            className="text-destructive hover:text-destructive/80"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {doc.status.toLowerCase() === "failed" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRetry(doc.id)}
-                          loading={pendingRow?.id === doc.id && pendingRow.action === "retry"}
-                          className="text-primary hover:text-primary/80 mr-2"
-                        >
-                          Retry
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(doc.id)}
-                        loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
-                        className="text-destructive hover:text-destructive/80"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
+
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        hasNext={hasNext}
+        hasPrev={hasPrev}
+        onNext={() => setOffset((o) => o + PAGE_SIZE)}
+        onPrev={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
+      />
 
       <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title="Upload Document">
         <form onSubmit={handleUpload} className="space-y-4">
@@ -310,7 +413,9 @@ export function RagDocumentsPage() {
             <Input label="Chapter Number" required value={formData.chapter_number} onChange={(e) => setFormData({ ...formData, chapter_number: e.target.value })} />
             <Input label="Chapter Name" required value={formData.chapter_name} onChange={(e) => setFormData({ ...formData, chapter_name: e.target.value })} />
           </div>
-          <Input label="School ID (Optional - Admin Only)" placeholder="Leave empty for global content" value={formData.school_id} onChange={(e) => setFormData({ ...formData, school_id: e.target.value })} />
+          {isAdmin && (
+            <Input label="School ID (Optional)" placeholder="Leave empty for global content" value={formData.school_id} onChange={(e) => setFormData({ ...formData, school_id: e.target.value })} />
+          )}
 
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>

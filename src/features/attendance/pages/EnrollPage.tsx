@@ -1,9 +1,9 @@
 import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UserPlus, CheckCircle2 } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   enrollSchema,
@@ -22,16 +22,23 @@ import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Modal } from "@/shared/components/ui/Modal";
 import type { EnrollResponse } from "@/features/attendance/types";
 
 export function EnrollPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
+  const queryClient = useQueryClient();
   const [mode, setMode] = useState("new");
   const [files, setFiles] = useState<File[]>([]);
   const [result, setResult] = useState<EnrollResponse | null>(null);
   const [schoolId, setSchoolId] = useState<string | undefined>(
     isAdmin ? undefined : user?.school_id ?? undefined,
+  );
+  // Holds the validated form data while the destructive "replace" mode awaits
+  // an explicit confirmation before the enrollment is actually mutated.
+  const [pendingReplace, setPendingReplace] = useState<EnrollFormData | null>(
+    null,
   );
 
   const {
@@ -93,18 +100,16 @@ export function EnrollPage() {
     },
     onSuccess: (data) => {
       setResult(data);
+      // Enrollment changes the roster, so date/range/stats views are now stale.
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
       toast.success(`Enrolled ${data.enrolled_students.length} student(s)`);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const onSubmit = (data: EnrollFormData) => {
+  const runEnroll = (data: EnrollFormData) => {
     if (!files[0]) {
       toast.error("Please select a ZIP file");
-      return;
-    }
-    if (isAdmin && !data.school_name) {
-      toast.error("Please select a school");
       return;
     }
     const params: Record<string, string> = {
@@ -115,6 +120,31 @@ export function EnrollPage() {
       ...(data.subject && { subject: data.subject }),
     };
     mutate({ file: files[0], params });
+  };
+
+  const onSubmit = (data: EnrollFormData) => {
+    if (!files[0]) {
+      toast.error("Please select a ZIP file");
+      return;
+    }
+    if (isAdmin && !data.school_name) {
+      toast.error("Please select a school");
+      return;
+    }
+    // "Batch with Replacement" permanently deletes students who are not in the
+    // uploaded ZIP (and their attendance). Gate it behind an explicit confirm.
+    if (mode === "replace") {
+      setPendingReplace(data);
+      return;
+    }
+    runEnroll(data);
+  };
+
+  const confirmReplace = () => {
+    if (!pendingReplace) return;
+    const data = pendingReplace;
+    setPendingReplace(null);
+    runEnroll(data);
   };
 
   return (
@@ -264,6 +294,51 @@ export function EnrollPage() {
           </div>
         )}
       </div>
+
+      <Modal
+        open={pendingReplace !== null}
+        onClose={() => setPendingReplace(null)}
+        title="Confirm Batch Replacement"
+        size="md"
+      >
+        <div className="space-y-4">
+          <Alert variant="error" title="This action is destructive">
+            <p className="text-sm">
+              Replacing the batch for{" "}
+              <span className="font-semibold">
+                {pendingReplace?.class_name
+                  ? `Class ${pendingReplace.class_name}${
+                      pendingReplace.section
+                        ? `-${pendingReplace.section}`
+                        : ""
+                    }`
+                  : "the selected class"}
+              </span>{" "}
+              (session{" "}
+              <span className="font-semibold">{pendingReplace?.session}</span>)
+              will <span className="font-semibold">permanently delete</span>{" "}
+              every enrolled student who is not present in the uploaded ZIP,
+              along with all of their attendance records. This cannot be undone.
+            </p>
+          </Alert>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => setPendingReplace(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={isPending}
+              onClick={confirmReplace}
+              icon={<AlertTriangle className="h-4 w-4" />}
+            >
+              Replace Batch
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

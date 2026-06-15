@@ -1,3 +1,4 @@
+import { isAxiosError } from "axios";
 import { multipartClient, apiClient } from "@/shared/api/client";
 import type {
   JobResponse,
@@ -6,18 +7,51 @@ import type {
   AuditLogsListResponse,
   DeleteRecordingResponse,
   SearchResponse,
+  MarkdownResult,
+  ResultSection,
 } from "@/features/recording/types";
-import { buildQueryString } from "@/shared/lib/utils";
+import { buildQueryString, getErrorMessage } from "@/shared/lib/utils";
 
 const BASE = "/api/v1/recording";
 
+/**
+ * Maps a markdown-endpoint response (or error) to a discriminated state. The
+ * endpoints now answer 404 (no result) / 409 (still generating) instead of a
+ * 200 carrying an error string, so we must never feed those bodies to the
+ * markdown renderer.
+ */
+async function fetchMarkdown(url: string): Promise<MarkdownResult> {
+  try {
+    const r = await apiClient.get<string>(url);
+    return { state: "ready", markdown: r.data };
+  } catch (err) {
+    if (isAxiosError(err)) {
+      if (err.response?.status === 404) return { state: "not_found" };
+      if (err.response?.status === 409) return { state: "generating" };
+    }
+    return { state: "error", message: getErrorMessage(err) };
+  }
+}
+
 export const recordingApi = {
-  processAudio: (file: File, params: Record<string, string>) => {
+  processAudio: (
+    file: File,
+    params: Record<string, string>,
+    onUploadProgress?: (percent: number) => void,
+  ) => {
     const form = new FormData();
     form.append("audio_file", file);
     Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
     return multipartClient
-      .post<JobResponse>(`${BASE}/process`, form)
+      .post<JobResponse>(`${BASE}/process`, form, {
+        onUploadProgress: onUploadProgress
+          ? (e) => {
+              if (e.total) {
+                onUploadProgress(Math.round((e.loaded / e.total) * 100));
+              }
+            }
+          : undefined,
+      })
       .then((r) => r.data);
   },
 
@@ -26,10 +60,8 @@ export const recordingApi = {
       .get<JobStatusResponse>(`${BASE}/status/${jobId}`)
       .then((r) => r.data),
 
-  getResultMarkdown: (jobId: string) =>
-    apiClient
-      .get<string>(`${BASE}/result/${jobId}/markdown`)
-      .then((r) => r.data),
+  getResultMarkdown: (jobId: string): Promise<MarkdownResult> =>
+    fetchMarkdown(`${BASE}/result/${jobId}/markdown`),
 
   listRecordings: (params: Record<string, string | number>) =>
     apiClient
@@ -38,10 +70,8 @@ export const recordingApi = {
       )
       .then((r) => r.data),
 
-  getRecordingMarkdown: (recordId: string) =>
-    apiClient
-      .get<string>(`${BASE}/recordings/${recordId}/markdown`)
-      .then((r) => r.data),
+  getRecordingMarkdown: (recordId: string): Promise<MarkdownResult> =>
+    fetchMarkdown(`${BASE}/recordings/${recordId}/markdown`),
 
   deleteRecording: (recordId: string) =>
     apiClient
@@ -82,8 +112,6 @@ export const recordingApi = {
     return r.data;
   },
 
-  getResultSection: (jobId: string, section: string) =>
-    apiClient
-      .get<string>(`${BASE}/result/${jobId}/section/${section}`)
-      .then((r) => r.data),
+  getResultSection: (jobId: string, section: ResultSection): Promise<MarkdownResult> =>
+    fetchMarkdown(`${BASE}/result/${jobId}/section/${section}`),
 };

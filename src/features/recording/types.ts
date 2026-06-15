@@ -9,6 +9,14 @@ export interface JobResponse {
   job_id: string;
   status: JobStatus;
   message: string;
+  /**
+   * Set by the backend when an identical audio file has already been
+   * processed; the existing result can be shown immediately instead of
+   * polling a freshly-queued job.
+   */
+  deduplicated?: boolean;
+  /** Present on a deduplicated response so we can fetch the prior result. */
+  record_id?: string;
 }
 
 export interface JobStatusResponse {
@@ -16,7 +24,16 @@ export interface JobStatusResponse {
   status: JobStatus;
   progress?: string;
   error?: string;
+  /**
+   * NOTE: the backend no longer returns the generated content here — `result`
+   * is always null. Fetch the markdown via GET /result/{job_id}/markdown once
+   * `status === "completed"`.
+   */
   result?: unknown;
+  /** Position in the processing queue while pending (1-based). */
+  queue_position?: number;
+  /** Estimated seconds until processing completes. */
+  eta_seconds?: number;
 }
 
 export interface Recording {
@@ -83,3 +100,24 @@ export interface SearchResponse {
   results: SearchResultItem[];
   total: number;
 }
+
+/**
+ * Outcome of fetching generated markdown. The markdown endpoints now return
+ * 404 (no result on record) and 409 (still generating) instead of a 200 with
+ * a plain-text error body, so callers must branch on the state rather than
+ * rendering whatever string comes back.
+ */
+export type MarkdownResult =
+  | { state: "ready"; markdown: string }
+  | { state: "generating" }
+  | { state: "not_found" }
+  | { state: "error"; message: string };
+
+/** Sections of a generated result, gated by role on the backend. */
+export type ResultSection =
+  | "notes"
+  | "practice"
+  | "resources"
+  | "actions"
+  | "feedback"
+  | "misconceptions";
