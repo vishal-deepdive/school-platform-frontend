@@ -15,9 +15,13 @@ import { recordingApi } from "@/features/recording/api/recording";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
+import { Select } from "@/shared/components/ui/Select";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
+import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import type { JobStatus } from "@/features/recording/types";
 
 const statusConfig: Record<
@@ -57,9 +61,13 @@ const statusConfig: Record<
 
 export function UploadRecordingPage() {
   const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
   const [file, setFile] = useState<File[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
+  const [schoolId, setSchoolId] = useState<string | undefined>(
+    isAdmin ? undefined : user?.school_id ?? undefined,
+  );
   const [params, setParams] = useState({
     school_name: "",
     class_name: "",
@@ -67,6 +75,26 @@ export function UploadRecordingPage() {
     subject: "",
     recording_subject: "",
   });
+
+  const {
+    options: schoolOptions,
+    setQuery: setSchoolQuery,
+    isSearching: schoolsLoading,
+  } = useSchoolSearch();
+  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
+  const sectionOptions = params.class_name
+    ? getSectionOptions(params.class_name)
+    : [];
+
+  const handleSchoolChange = (id: string) => {
+    setSchoolId(id);
+    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
+    setParams((p) => ({ ...p, school_name: name, class_name: "", section: "" }));
+  };
+
+  const handleClassChange = (className: string) => {
+    setParams((p) => ({ ...p, class_name: className, section: "" }));
+  };
 
   const { mutate: upload, isPending: uploading } = useMutation({
     mutationFn: ({ f, p }: { f: File; p: Record<string, string> }) =>
@@ -116,32 +144,44 @@ export function UploadRecordingPage() {
           <CardHeader title="Recording Details" />
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
-              {user?.role === "admin" && (
-                <Input
-                  label="School Name"
-                  placeholder="Delhi Public School"
-                  value={params.school_name}
+              {isAdmin && (
+                <SearchableSelect
+                  label="School"
+                  placeholder="Select school..."
+                  options={schoolOptions}
+                  value={schoolId}
+                  onChange={handleSchoolChange}
+                  onSearchChange={setSchoolQuery}
+                  isLoading={schoolsLoading}
+                />
+              )}
+              <Select
+                label="Class"
+                placeholder={schoolId ? "Select class" : "Select a school first"}
+                options={classNameOptions}
+                value={params.class_name}
+                onChange={(e) => handleClassChange(e.target.value)}
+              />
+              {sectionOptions.length > 0 ? (
+                <Select
+                  label="Section (optional)"
+                  placeholder="Select section"
+                  options={sectionOptions}
+                  value={params.section}
                   onChange={(e) =>
-                    setParams((p) => ({ ...p, school_name: e.target.value }))
+                    setParams((p) => ({ ...p, section: e.target.value }))
+                  }
+                />
+              ) : (
+                <Input
+                  label="Section (optional)"
+                  placeholder="A"
+                  value={params.section}
+                  onChange={(e) =>
+                    setParams((p) => ({ ...p, section: e.target.value }))
                   }
                 />
               )}
-              <Input
-                label="Class"
-                placeholder="10"
-                value={params.class_name}
-                onChange={(e) =>
-                  setParams((p) => ({ ...p, class_name: e.target.value }))
-                }
-              />
-              <Input
-                label="Section (optional)"
-                placeholder="A"
-                value={params.section}
-                onChange={(e) =>
-                  setParams((p) => ({ ...p, section: e.target.value }))
-                }
-              />
               <Input
                 label="Subject (optional)"
                 placeholder="Mathematics"

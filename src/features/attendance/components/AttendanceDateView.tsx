@@ -10,6 +10,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
+import { statusLabel, statusVariant } from "@/features/attendance/lib/status";
 
 interface DateFilters {
   school_name: string;
@@ -160,12 +161,8 @@ export function AttendanceDateView() {
                     <td className="px-4 py-3">{String(row.section ?? "—")}</td>
                     <td className="px-4 py-3">{String(row.subject ?? "—")}</td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          row.attendance_record === "P" ? "success" : "danger"
-                        }
-                      >
-                        {row.attendance_record === "P" ? "Present" : "Absent"}
+                      <Badge variant={statusVariant(String(row.attendance_record))}>
+                        {statusLabel(String(row.attendance_record))}
                       </Badge>
                     </td>
                     <td className="px-4 py-3">{String(row.time ?? "—")}</td>
