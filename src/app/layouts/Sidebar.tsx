@@ -2,10 +2,31 @@ import { useState, useEffect, useMemo } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { roleCanAccess } from "@/shared/lib/permissions";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { navItems, adminNavItems, type NavItem } from "./navConfig";
 import { UserProfileMenu } from "./UserProfileMenu";
 import { MobileSidebarItem } from "./MobileSidebarItem";
+import type { UserRole } from "@/features/auth/types";
+
+/**
+ * Filter nav items by the user's role. A leaf item is kept only if the user may
+ * access its href; a parent group is kept only if at least one child survives.
+ * Keeps the sidebar in sync with the route guards (both read ROUTE_ROLES).
+ */
+function filterNavByRole(items: NavItem[], role?: UserRole | null): NavItem[] {
+  return items
+    .map((item) => {
+      if (item.children && item.children.length > 0) {
+        const children = item.children.filter((c) =>
+          c.href ? roleCanAccess(c.href, role) : true,
+        );
+        return children.length > 0 ? { ...item, children } : null;
+      }
+      return !item.href || roleCanAccess(item.href, role) ? item : null;
+    })
+    .filter((i): i is NavItem => i !== null);
+}
 
 interface SidebarProps {
   mobile?: boolean;
@@ -19,8 +40,9 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   const navigate = useNavigate();
 
   const allItems = useMemo(() => {
-    return [...navItems, ...(isAdmin ? adminNavItems : [])];
-  }, [isAdmin]);
+    const base = [...navItems, ...(isAdmin ? adminNavItems : [])];
+    return filterNavByRole(base, user?.role);
+  }, [isAdmin, user?.role]);
 
   const [activeCategory, setActiveCategory] = useState<NavItem | null>(null);
 

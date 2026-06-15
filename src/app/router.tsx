@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { RoleRoute } from "./routes/RoleRoute";
 import {
   LoginPage,
   RegisterPage,
@@ -81,22 +82,22 @@ export const router = createBrowserRouter([
             path: "/attendance",
             element: <AttendancePage />,
             children: [
-              { index: true, element: <Navigate to="enroll" replace /> },
-              { path: "enroll", element: <EnrollPage /> },
-              { path: "mark", element: <MarkAttendancePage /> },
-              { path: "view", element: <ViewAttendancePage /> },
-              { path: "stats", element: <AttendanceStatsPage /> },
+              { index: true, element: <Navigate to="view" replace /> },
+              { path: "enroll", element: <RoleRoute><EnrollPage /></RoleRoute> },
+              { path: "mark", element: <RoleRoute><MarkAttendancePage /></RoleRoute> },
+              { path: "view", element: <RoleRoute><ViewAttendancePage /></RoleRoute> },
+              { path: "stats", element: <RoleRoute><AttendanceStatsPage /></RoleRoute> },
             ],
           },
           {
             path: "/recording",
             element: <RecordingPage />,
             children: [
-              { index: true, element: <Navigate to="upload" replace /> },
-              { path: "upload", element: <UploadRecordingPage /> },
-              { path: "list", element: <RecordingsListPage /> },
-              { path: "search", element: <SearchRecordingsPage /> },
-              { path: "audit", element: <RecordingAuditPage /> },
+              { index: true, element: <Navigate to="list" replace /> },
+              { path: "upload", element: <RoleRoute><UploadRecordingPage /></RoleRoute> },
+              { path: "list", element: <RoleRoute><RecordingsListPage /></RoleRoute> },
+              { path: "search", element: <RoleRoute><SearchRecordingsPage /></RoleRoute> },
+              { path: "audit", element: <RoleRoute><RecordingAuditPage /></RoleRoute> },
             ],
           },
           {
@@ -104,32 +105,58 @@ export const router = createBrowserRouter([
             element: <RagPage />,
             children: [
               { index: true, element: <Navigate to="qa" replace /> },
-              { path: "qa", element: <QAPage /> },
-              { path: "questions", element: <QuestionsPage /> },
-              { path: "notes", element: <NotesPage /> },
-              { path: "audit", element: <RagAuditPage /> },
-              { path: "documents", element: <RagDocumentsPage /> },
+              { path: "qa", element: <RoleRoute><QAPage /></RoleRoute> },
+              { path: "questions", element: <RoleRoute><QuestionsPage /></RoleRoute> },
+              { path: "notes", element: <RoleRoute><NotesPage /></RoleRoute> },
+              { path: "audit", element: <RoleRoute><RagAuditPage /></RoleRoute> },
+              { path: "documents", element: <RoleRoute><RagDocumentsPage /></RoleRoute> },
             ],
           },
           {
             path: "/survey",
-            element: <SurveyPage />,
+            element: (
+              <RoleRoute allow={["admin", "principal", "teacher"]}>
+                <SurveyPage />
+              </RoleRoute>
+            ),
             children: [
               { index: true, element: <SurveyDashboardPage /> },
               { path: "search", element: <SurveySearchPage /> },
-              { path: "data", element: <SurveyDataPage /> },
+              {
+                path: "data",
+                element: (
+                  <RoleRoute allow={["admin", "principal"]}>
+                    <SurveyDataPage />
+                  </RoleRoute>
+                ),
+              },
             ],
           },
-          // ── Admin routes ─────────────────────────────────────────────────
+          // ── Admin routes (platform admin only) ───────────────────────────
           {
             path: "/admin/onboarding",
-            element: <OnboardingApplicationsPage />,
+            element: (
+              <RoleRoute allow={["admin"]}>
+                <OnboardingApplicationsPage />
+              </RoleRoute>
+            ),
           },
           {
             path: "/admin/onboarding/:applicationId",
-            element: <ApplicationDetailPage />,
+            element: (
+              <RoleRoute allow={["admin"]}>
+                <ApplicationDetailPage />
+              </RoleRoute>
+            ),
           },
-          { path: "/admin/admins", element: <AdminManagementPage /> },
+          {
+            path: "/admin/admins",
+            element: (
+              <RoleRoute allow={["admin"]}>
+                <AdminManagementPage />
+              </RoleRoute>
+            ),
+          },
         ],
       },
     ],
