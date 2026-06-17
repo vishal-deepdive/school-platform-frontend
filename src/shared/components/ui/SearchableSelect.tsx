@@ -61,7 +61,18 @@ export function SearchableSelect({
             opt.sublabel.toLowerCase().includes(searchQuery.toLowerCase())),
       );
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const [cachedSelectedOption, setCachedSelectedOption] = useState<SearchableSelectOption | null>(null);
+
+  useEffect(() => {
+    const found = options.find((opt) => opt.value === value);
+    if (found) {
+      setCachedSelectedOption(found);
+    } else if (!value) {
+      setCachedSelectedOption(null);
+    }
+  }, [options, value]);
+
+  const selectedOption = options.find((opt) => opt.value === value) || cachedSelectedOption;
 
   const handleSelect = (val: string) => {
     onChange(val);
