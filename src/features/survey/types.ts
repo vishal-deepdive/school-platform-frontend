@@ -22,12 +22,24 @@ export interface SearchRequest {
   filters?: Record<string, unknown>;
 }
 
+export interface SimilarityScore {
+  roll_number: string | null;
+  school_name: string | null;
+  similarity: number;
+}
+
+/**
+ * Per-row similarity summary for QUAL/MIXED searches, or a sentinel string
+ * (e.g. "N/A (quantitative query)") when the search had no qualitative phase.
+ */
+export type SimilarityScores = SimilarityScore[] | string;
+
 export interface RetrievedRows {
   type: string;
   data?: Record<string, unknown>[];
   sample_size?: number;
   count?: number;
-  similarity_scores?: number[];
+  similarity_scores?: SimilarityScores;
   quantitative?: Record<string, unknown>;
   qualitative?: Record<string, unknown>;
 }
@@ -40,7 +52,8 @@ export interface SearchResponse {
   chart_info: Record<string, unknown>;
   retrieved_rows: RetrievedRows;
   numbers_for_graph: Record<string, unknown>;
-  sql_query?: string;
+  // null for non-admin callers (only admins receive the generated SQL string).
+  sql_query?: string | null;
 }
 
 export interface SummarySheet {
@@ -56,6 +69,8 @@ export interface DatabaseChange {
   change: number;
 }
 
+export type EmbeddingStatus = "completed" | "processing" | "pending" | string;
+
 export interface LoadRecentResponse {
   status: string;
   timestamp: string;
@@ -63,6 +78,26 @@ export interface LoadRecentResponse {
   database_change: DatabaseChange;
   added_records: unknown[];
   skipped_records: unknown[];
+  embedding_status: EmbeddingStatus;
+  job_id?: string | null;
+}
+
+export type SyncJobStatus =
+  | "inserting"
+  | "embedding"
+  | "done"
+  | "failed"
+  | string;
+
+export interface SyncJobStatusResponse {
+  job_id: string;
+  status: SyncJobStatus;
+  started_at: string;
+  completed_at?: string | null;
+  rows_inserted: number;
+  rows_skipped: number;
+  rows_embedded: number;
+  error?: string | null;
 }
 
 export interface SurveyDeleteResponse {
@@ -73,8 +108,14 @@ export interface SurveyDeleteResponse {
   filters?: Record<string, unknown>;
 }
 
+export interface ChartFile {
+  filename: string;
+  size_bytes: number;
+  created_at: string;
+}
+
 export interface ChartsListResponse {
   status: string;
   total_charts: number;
-  charts: string[];
+  charts: ChartFile[];
 }

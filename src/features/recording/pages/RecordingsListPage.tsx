@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
-import { usePagination } from "@/shared/hooks/usePagination";
+import { useAuthStore } from "@/features/auth/store/auth";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
+import { Pagination } from "@/shared/components/ui/Pagination";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
 import {
@@ -20,62 +21,79 @@ import { RecordingListItem } from "@/features/recording/components/RecordingList
 const PAGE_SIZE = 10;
 
 export function RecordingsListPage() {
+  const role = useAuthStore((s) => s.user?.role);
+  // Delete + retry are principal/admin only on the backend; hide them for
+  // everyone else (teachers get read/preview/download, students/parents consume).
+  const canManage = role === "admin" || role === "principal";
+  // Upload is teacher/principal/admin only; students/parents are consume-only.
+  const canUpload =
+    role === "admin" || role === "principal" || role === "teacher";
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const { data, isLoading, isError, refetch, isFetching } = useRecordingsList();
+  const [offset, setOffset] = useState(0);
+
+  const { data, isLoading, isError, refetch, isFetching } = useRecordingsList(
+    PAGE_SIZE,
+    offset,
+  );
   const preview = useRecordingPreview();
   const { mutate: deleteRec, isPending: deleting } = useDeleteRecording();
   const { mutate: retryRec, isPending: retrying } = useRetryRecording();
   const { mutate: download } = useDownloadRecording();
 
   const total = data?.total ?? 0;
-  const { offset, currentPage, totalPages, hasNext, hasPrev, goNext, goPrev } =
-    usePagination(PAGE_SIZE, total);
+  const pagedRecordings = data?.recordings ?? [];
 
-  const pagedRecordings =
-    data?.recordings.slice(offset, offset + PAGE_SIZE) ?? [];
+  // Server-driven pagination: the API returns only the current page, so we
+  // derive page info from the reported total and step `offset` by PAGE_SIZE.
+  const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+  const hasNext = offset + PAGE_SIZE < total;
+  const hasPrev = offset > 0;
+  const goNext = () => setOffset((o) => o + PAGE_SIZE);
+  const goPrev = () => setOffset((o) => Math.max(0, o - PAGE_SIZE));
 
   if (isLoading) return <PageSpinner />;
   if (isError) return <Alert variant="error">Failed to load recordings.</Alert>;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Recordings</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            {total} recording(s) total
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          loading={isFetching}
-          icon={<RefreshCw className="h-4 w-4" />}
-        >
-          Refresh
-        </Button>
-      </div>
-
       <Card padding="none">
-        <CardHeader title="All Recordings" className="px-6 pt-6" />
-        {pagedRecordings.length === 0 ? (
-          <div className="px-6 pb-8 text-center text-sm text-gray-400">
-            No recordings yet.{" "}
-            <Link
-              to="/recording/upload"
-              className="text-indigo-600 hover:underline"
+        <CardHeader
+          title="All Recordings"
+          description={`${total} recording(s) total`}
+          className="px-6 pt-6"
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              loading={isFetching}
+              icon={<RefreshCw className="h-4 w-4" />}
             >
-              Upload your first recording.
-            </Link>
+              Refresh
+            </Button>
+          }
+        />
+        {pagedRecordings.length === 0 ? (
+          <div className="px-6 pb-8 text-center text-sm text-muted-foreground">
+            No recordings yet.{" "}
+            {canUpload && (
+              <Link
+                to="/recording/upload"
+                className="text-primary hover:underline"
+              >
+                Upload your first recording.
+              </Link>
+            )}
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {pagedRecordings.map((rec) => (
               <RecordingListItem
                 key={rec.id}
                 recording={rec}
+                canManage={canManage}
                 onPreview={preview.open}
                 onDownload={download}
                 onRetry={retryRec}
@@ -87,34 +105,19 @@ export function RecordingsListPage() {
         )}
       </Card>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasPrev}
-            onClick={goPrev}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-gray-500">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!hasNext}
-            onClick={goNext}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        hasNext={hasNext}
+        hasPrev={hasPrev}
+        onNext={goNext}
+        onPrev={goPrev}
+      />
 
       <MarkdownPreviewModal
         open={!!preview.previewId}
         onClose={preview.close}
-        markdown={preview.markdown}
+        result={preview.result}
       />
 
       <Modal
@@ -123,7 +126,7 @@ export function RecordingsListPage() {
         title="Delete Recording"
         size="sm"
       >
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted-foreground">
           Are you sure you want to delete this recording? This action cannot be
           undone.
         </p>

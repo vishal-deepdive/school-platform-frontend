@@ -1,4 +1,4 @@
-export type AttendanceStatus = "P" | "A";
+export type AttendanceStatus = "P" | "A" | "L" | "E" | "H";
 
 export interface EnrolledStudent {
   roll_no: string;
@@ -20,6 +20,7 @@ export interface EnrollResponse {
   subject: string | null;
   endpoint: string;
   skipped?: SkippedEntry[];
+  removed_count?: number | null;
 }
 
 export interface UpdatedStudent {
@@ -62,6 +63,19 @@ export interface MarkAttendanceResponse {
   absent_students: AttendanceRecord[];
 }
 
+export interface CorrectAttendanceResponse {
+  school_name: string;
+  class_name: string;
+  section: string;
+  subject: string | null;
+  session: string;
+  roll_no: string;
+  name: string | null;
+  status: AttendanceStatus;
+  date: string;
+  time: string;
+}
+
 export interface AttendanceDateResponse {
   total_records: number;
   date: string;
@@ -70,16 +84,30 @@ export interface AttendanceDateResponse {
 }
 
 export interface AttendanceRangeStudent {
+  school: string;
+  roll_number: string;
   name: string;
-  roll_no: string;
+  class: string;
+  subject: string;
+  section: string;
+  total_days: number;
+  total_present: number;
+  total_absent: number;
   attendance_percentage: number;
-  dates: Record<string, AttendanceStatus>;
-  below_75_percent: boolean;
+  below_75_percent: "Yes" | "No";
+  // Dynamic per-date columns keyed by DD-MM-YYYY, valued "P" | "A" | "-"
+  [date: string]: string | number;
+}
+
+export interface AttendanceDateRange {
+  start_date: string;
+  end_date: string;
+  total_days: number;
 }
 
 export interface AttendanceRangeResponse {
   total_students: number;
-  date_range: string;
+  date_range: AttendanceDateRange;
   dates: string[];
   school_name: string;
   data: AttendanceRangeStudent[];
@@ -104,9 +132,32 @@ export interface ChangeLogResponse {
   data: ChangeLogEntry[];
 }
 
+export interface EnrollmentStatsSubject {
+  subject: string;
+  count: number;
+}
+
+export interface EnrollmentStatsSection {
+  section: string;
+  total: number;
+  by_subject: EnrollmentStatsSubject[];
+}
+
+export interface EnrollmentStatsClass {
+  class_name: string;
+  total: number;
+  by_section: EnrollmentStatsSection[];
+}
+
+export interface EnrollmentStatsSchool {
+  school_name: string;
+  total: number;
+  by_class: EnrollmentStatsClass[];
+}
+
 export interface EnrollmentStatsResponse {
   total_students: number;
-  by_school: Record<string, unknown>[];
+  by_school: EnrollmentStatsSchool[];
 }
 
 export interface DeleteResponse {

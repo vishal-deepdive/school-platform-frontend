@@ -24,17 +24,14 @@ export interface QASource {
   similarity?: string;
 }
 
-export interface QAResponse {
-  answer: string;
-  sources: QASource[];
-}
-
 /** A single message in the Q&A chat transcript. */
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
   sources?: QASource[];
+  /** Set when streaming ended with an `{"type": "error"}` event — content holds the error message. */
+  isError?: boolean;
 }
 
 export interface QuestionsRequest {
@@ -49,8 +46,34 @@ export interface NotesRequest {
   filters: RagFilters;
 }
 
-export interface ContentResponse {
-  content: string;
+/** Streaming events for POST /qa/stream. */
+export type QAStreamEvent =
+  | { type: "token"; content: string }
+  | { type: "done"; sources: QASource[] }
+  | { type: "error"; message: string };
+
+/** Streaming events for POST /questions/stream and POST /notes/stream. */
+export type ContentStreamEvent =
+  | { type: "token"; content: string }
+  | { type: "done" }
+  | { type: "error"; message: string };
+
+/**
+ * One subject node inside the hierarchy. `chapters` is the only fixed key;
+ * deeper levels (chapter → titles) keep dynamic string keys.
+ */
+export interface RagSubjectNode {
+  chapters?: string[];
+  [chapter: string]: { titles?: string[] } | string[] | undefined;
+}
+
+/**
+ * One class node inside the hierarchy. `subjects` is the only fixed key; the
+ * remaining keys are dynamic subject names mapping to {@link RagSubjectNode}.
+ */
+export interface RagClassNode {
+  subjects?: string[];
+  [subject: string]: RagSubjectNode | string[] | undefined;
 }
 
 /**
@@ -58,12 +81,10 @@ export interface ContentResponse {
  *   hierarchy[className].subjects        → string[]
  *   hierarchy[className][subject].chapters → string[]
  *   hierarchy[className][subject][chapter].titles → string[]
- * Loosely typed because keys are dynamic (class / subject / chapter names).
+ * Keys below the fixed `subjects` / `chapters` levels are dynamic (class /
+ * subject / chapter names), so the dynamic levels are loosely typed.
  */
-export type RagHierarchy = Record<
-  string,
-  { subjects?: string[] } & Record<string, any>
->;
+export type RagHierarchy = Record<string, RagClassNode>;
 
 export interface RagMetadata {
   classes: string[];
@@ -81,9 +102,23 @@ export interface CascadingFiltersRequest {
   chapter_name?: string;
 }
 
+/**
+ * One aggregated row in the audit counts. The backend labels the bucket with
+ * one of these keys depending on the grouping, and reports the chunk total as
+ * `count` (or `total`).
+ */
+export interface AuditCountRow {
+  book?: string;
+  class_level?: string;
+  subject?: string;
+  name?: string;
+  count?: number;
+  total?: number;
+}
+
 export interface AuditCounts {
-  by_class: unknown[];
-  by_subject: unknown[];
+  by_class: AuditCountRow[];
+  by_subject: AuditCountRow[];
 }
 
 export interface AuditMissingFields {

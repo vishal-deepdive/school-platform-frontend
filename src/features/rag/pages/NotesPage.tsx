@@ -1,27 +1,54 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { StickyNote, Download } from "lucide-react";
+import { StickyNote, Download, RotateCcw } from "lucide-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
+import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
-import type { RagFilters } from "@/features/rag/types";
+import { Alert } from "@/shared/components/ui/Alert";
+import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
+import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 
 export function NotesPage() {
-  const [filters, setFilters] = useState<RagFilters>({});
-  const [result, setResult] = useState<string | null>(null);
+  const { filters, result, isPending } = useRagUiStore((s) => s.notes);
+  const setFilters = useRagUiStore((s) => s.setNotesFilters);
+  const setPending = useRagUiStore((s) => s.setNotesPending);
+  const setResult = useRagUiStore((s) => s.setNotesResult);
+  const appendResult = useRagUiStore((s) => s.appendNotesResult);
+  const { push: queueToken, flush: flushPending } = useStreamBatcher(appendResult);
 
-  const { mutate: generate, isPending } = useMutation({
-    mutationFn: () => ragApi.generateNotes({ filters }),
-    onSuccess: (data) => {
-      setResult(data.content);
-      toast.success("Lecture notes generated!");
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
+  // Holds the error from the last failed run so we can offer a retry.
+  const [error, setError] = useState<string | null>(null);
+
+  const generate = async () => {
+    setResult("");
+    setError(null);
+    setPending(true);
+    try {
+      for await (const event of ragApi.generateNotesStream({ filters })) {
+        if (event.type === "token") {
+          queueToken(event.content);
+        } else if (event.type === "error") {
+          flushPending();
+          setError(event.message);
+          toast.error(event.message);
+        } else if (event.type === "done") {
+          flushPending();
+          toast.success("Lecture notes generated!");
+        }
+      }
+    } catch (err) {
+      flushPending();
+      const message = getErrorMessage(err);
+      setError(message);
+      toast.error(message);
+    } finally {
+      flushPending();
+      setPending(false);
+    }
+  };
 
   const canGenerate =
     !!filters.class_level &&
@@ -30,17 +57,8 @@ export function NotesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Generate Lecture Notes
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Create comprehensive study notes from textbook chapters.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
+      <div className={`grid grid-cols-1 gap-6 ${(result !== null || isPending) ? "lg:grid-cols-3" : ""}`}>
+        <Card className={(result !== null || isPending) ? "lg:col-span-1" : "w-full"}>
           <CardHeader title="Select Content" />
           <div className="space-y-4">
             <RagFilterPanel filters={filters} onChange={setFilters} />
@@ -54,53 +72,75 @@ export function NotesPage() {
               {isPending ? "Generating…" : "Generate Notes"}
             </Button>
             {!canGenerate && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground">
                 Select a class, subject, and chapter to continue.
               </p>
             )}
           </div>
         </Card>
 
-        <div className="lg:col-span-2">
-          {result ? (
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <StickyNote className="h-5 w-5 text-indigo-600" />
-                  <h3 className="font-semibold text-gray-900">Lecture Notes</h3>
+        {(result !== null || isPending) && (
+          <div className="lg:col-span-2">
+            {error && !isPending ? (
+              <Card>
+                <Alert variant="error" title="Generation failed">
+                  {error}
+                </Alert>
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<RotateCcw className="h-4 w-4" />}
+                    onClick={() => generate()}
+                    disabled={!canGenerate}
+                  >
+                    Retry
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={<Download className="h-4 w-4" />}
-                  onClick={() =>
-                    downloadFile(
-                      result,
-                      `notes-${filters.chapter_name?.[0] ?? "chapter"}.md`,
-                    )
-                  }
-                >
-                  Download
-                </Button>
-              </div>
-              <div className="prose prose-sm max-w-none overflow-y-auto max-h-[65vh] rounded-lg bg-gray-50 p-4">
-                <ReactMarkdown>{result}</ReactMarkdown>
-              </div>
-            </Card>
-          ) : (
-            <div className="flex h-full min-h-64 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-200 p-16 text-center">
-              <StickyNote className="h-12 w-12 text-gray-300" />
-              <div>
-                <p className="font-semibold text-gray-500">
-                  No notes generated yet
-                </p>
-                <p className="mt-1 text-sm text-gray-400">
-                  Select a book and chapter, then generate.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+              </Card>
+            ) : result !== null ? (
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <StickyNote className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">Lecture Notes</h3>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Download className="h-4 w-4" />}
+                    onClick={() =>
+                      downloadFile(
+                        result,
+                        `notes-${filters.chapter_name?.[0] ?? "chapter"}.md`,
+                      )
+                    }
+                  >
+                    Download
+                  </Button>
+                </div>
+                <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/40 p-4">
+                  {isPending ? (
+                    <pre className="whitespace-pre-wrap break-words font-sans text-sm text-foreground">
+                      {result}
+                    </pre>
+                  ) : (
+                    <MarkdownRenderer content={result} />
+                  )}
+                </div>
+              </Card>
+            ) : (
+              <Card className="h-full flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4 py-12 text-muted-foreground">
+                  <div className="animate-spin">
+                    <StickyNote className="h-8 w-8" />
+                  </div>
+                  <p>Generating your notes...</p>
+                </div>
+              </Card>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import type {
   SearchRequest,
   SearchResponse,
   LoadRecentResponse,
+  SyncJobStatusResponse,
   SurveyDeleteResponse,
   ChartsListResponse,
 } from "@/features/survey/types";
@@ -18,6 +19,11 @@ export const surveyApi = {
   loadRecent: () =>
     apiClient
       .post<LoadRecentResponse>(`${BASE}/load-recent`)
+      .then((r) => r.data),
+
+  getSyncStatus: (jobId: string) =>
+    apiClient
+      .get<SyncJobStatusResponse>(`${BASE}/sync-status/${jobId}`)
       .then((r) => r.data),
 
   search: (data: SearchRequest) =>
@@ -42,10 +48,17 @@ export const surveyApi = {
       })
       .then((r) => r.data),
 
-  deleteByClass: (class_name: string, subject_group?: string) =>
+  deleteByClass: (
+    class_name: string,
+    opts?: { subject_group?: string; school_name?: string },
+  ) =>
     apiClient
       .delete<SurveyDeleteResponse>(`${BASE}/delete/by-class`, {
-        data: { class_name, subject_group },
+        data: {
+          class_name,
+          subject_group: opts?.subject_group,
+          school_name: opts?.school_name,
+        },
       })
       .then((r) => r.data),
 };

@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { useAuthStore } from "@/features/auth/store/auth";
 import { Tabs } from "@/shared/components/ui/Tabs";
 import {
   AttendanceDateView,
   AttendanceRangeView,
+  SelfAttendanceView,
 } from "@/features/attendance/components";
 
 const viewTabs = [
@@ -10,18 +12,24 @@ const viewTabs = [
   { id: "range", label: "Date Range" },
 ];
 
+const STAFF_ROLES = ["admin", "principal", "teacher"];
+
 export function ViewAttendancePage() {
+  const role = useAuthStore((s) => s.user?.role);
+  const isStaff = !!role && STAFF_ROLES.includes(role);
   const [tab, setTab] = useState("date");
+
+  // Students/parents get a focused self-view instead of the staff filter tabs.
+  if (!isStaff) {
+    return (
+      <div className="space-y-6">
+        <SelfAttendanceView />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">View Attendance</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Query attendance records by date or date range.
-        </p>
-      </div>
-
       <Tabs
         tabs={viewTabs}
         active={tab}

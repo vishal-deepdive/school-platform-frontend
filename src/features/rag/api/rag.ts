@@ -1,10 +1,11 @@
 import { apiClient } from "@/shared/api/client";
+import { streamSSE } from "@/shared/api/streaming";
 import type {
   QARequest,
-  QAResponse,
+  QAStreamEvent,
   QuestionsRequest,
   NotesRequest,
-  ContentResponse,
+  ContentStreamEvent,
   RagMetadata,
   RagAuditResponse,
   RagDeleteResponse,
@@ -29,16 +30,17 @@ export const ragApi = {
   refreshMetadata: () =>
     apiClient.post(`${BASE}/metadata/refresh`).then((r) => r.data),
 
-  qa: (data: QARequest) =>
-    apiClient.post<QAResponse>(`${BASE}/qa`, data).then((r) => r.data),
+  /** Streaming Q&A — yields {type:"token"|"done"|"error", ...} events. */
+  qaStream: (data: QARequest, signal?: AbortSignal) =>
+    streamSSE<QAStreamEvent>(`${BASE}/qa/stream`, data, signal),
 
-  generateQuestions: (data: QuestionsRequest) =>
-    apiClient
-      .post<ContentResponse>(`${BASE}/questions`, data)
-      .then((r) => r.data),
+  /** Streaming question generation — yields {type:"token"|"done"|"error", ...} events. */
+  generateQuestionsStream: (data: QuestionsRequest, signal?: AbortSignal) =>
+    streamSSE<ContentStreamEvent>(`${BASE}/questions/stream`, data, signal),
 
-  generateNotes: (data: NotesRequest) =>
-    apiClient.post<ContentResponse>(`${BASE}/notes`, data).then((r) => r.data),
+  /** Streaming notes generation — yields {type:"token"|"done"|"error", ...} events. */
+  generateNotesStream: (data: NotesRequest, signal?: AbortSignal) =>
+    streamSSE<ContentStreamEvent>(`${BASE}/notes/stream`, data, signal),
 
   deleteChunks: (filters: RagFilters) =>
     apiClient

@@ -1,10 +1,5 @@
-import {
-  useMutation,
-  useQuery,
-  type UseMutationOptions,
-} from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ragApi } from "@/features/rag/api/rag";
-import type { QARequest, QAResponse } from "@/features/rag/types";
 
 export const ragKeys = {
   all: ["rag"] as const,
@@ -28,15 +23,6 @@ export function useRagClassLevels() {
     queryKey: ragKeys.classLevels(),
     queryFn: () => ragApi.getClassLevels(),
     staleTime: 30 * 60_000,
-  });
-}
-
-export function useRagQa(
-  options?: UseMutationOptions<QAResponse, unknown, QARequest>,
-) {
-  return useMutation({
-    mutationFn: (data: QARequest) => ragApi.qa(data),
-    ...options,
   });
 }
 

@@ -78,6 +78,24 @@ export function toIndianDate(date: Date): string {
   return `${d}-${m}-${y}`;
 }
 
+/** Converts an HTML date input value (YYYY-MM-DD) to DD-MM-YYYY. */
+export function isoToIndianDate(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}-${m}-${y}`;
+}
+
+/** Converts DD-MM-YYYY to an HTML date input value (YYYY-MM-DD). */
+export function indianDateToIso(indian: string): string {
+  const [d, m, y] = indian.split("-");
+  return `${y}-${m}-${d}`;
+}
+
+/** True if the given HTML date input value (YYYY-MM-DD) falls on a Sunday. */
+export function isSunday(iso: string): boolean {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d).getDay() === 0;
+}
+
 /** Triggers a browser download of a text/blob file without opening a new tab. */
 export function downloadFile(
   content: string,
@@ -99,4 +117,19 @@ export function downloadBlob(blob: Blob, filename: string): void {
   document.body.removeChild(a);
   // Revoke after a tick so the browser has time to start the download
   setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+/**
+ * Sorts class levels in descending order:
+ * "Class 12" -> "Class 1" -> "Nursery"
+ */
+export function sortClassesDescending(classes: string[]): string[] {
+  const getWeight = (c: string) => {
+    const lower = c.toLowerCase();
+    if (lower.includes("nursery") || lower.includes("kg")) return 0;
+    const match = c.match(/\d+/);
+    if (match) return parseInt(match[0], 10);
+    return -1;
+  };
+  return [...classes].sort((a, b) => getWeight(b) - getWeight(a));
 }

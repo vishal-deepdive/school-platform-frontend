@@ -5,8 +5,10 @@ export const markAttendanceSchema = z.object({
   class_name: z.string().min(1, "Class is required"),
   section: z.string().min(1, "Section is required"),
   subject: z.string().optional(),
-  threshold: z.number().min(0).max(1).default(0.3),
+  threshold: z.number().min(0).max(1).default(0.4),
   session: z.string().optional(),
+  attendance_date: z.string().optional(),
+  allow_holiday: z.boolean().default(false),
 });
 
 export const enrollSchema = z.object({
@@ -17,5 +19,18 @@ export const enrollSchema = z.object({
   subject: z.string().optional(),
 });
 
+export const correctAttendanceSchema = z.object({
+  school_name: z.string().optional(),
+  class_name: z.string().min(1, "Class is required"),
+  section: z.string().min(1, "Section is required"),
+  subject: z.string().optional(),
+  session: z.string().optional(),
+  roll_no: z.string().min(1, "Roll number is required"),
+  status: z.enum(["P", "A", "L", "E", "H"]),
+  attendance_date: z.string().optional(),
+  allow_holiday: z.boolean().default(false),
+});
+
 export type MarkAttendanceFormData = z.infer<typeof markAttendanceSchema>;
 export type EnrollFormData = z.infer<typeof enrollSchema>;
+export type CorrectAttendanceFormData = z.infer<typeof correctAttendanceSchema>;

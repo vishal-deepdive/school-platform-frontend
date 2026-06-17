@@ -15,9 +15,13 @@ import { recordingApi } from "@/features/recording/api/recording";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
+import { Select } from "@/shared/components/ui/Select";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
+import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import type { JobStatus } from "@/features/recording/types";
 
 const statusConfig: Record<
@@ -55,11 +59,26 @@ const statusConfig: Record<
   },
 };
 
+/** Formats an ETA in seconds as a short human-readable string. */
+function formatEta(seconds: number): string {
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
+  const mins = Math.round(seconds / 60);
+  return `${mins} min${mins === 1 ? "" : "s"}`;
+}
+
 export function UploadRecordingPage() {
   const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
   const [file, setFile] = useState<File[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  // When a re-upload is deduplicated the job is already complete on the
+  // backend, so we skip status polling and fetch the existing result directly.
+  const [deduplicated, setDeduplicated] = useState(false);
+  const [schoolId, setSchoolId] = useState<string | undefined>(
+    isAdmin ? undefined : user?.school_id ?? undefined,
+  );
   const [params, setParams] = useState({
     school_name: "",
     class_name: "",
@@ -68,12 +87,40 @@ export function UploadRecordingPage() {
     recording_subject: "",
   });
 
+  const {
+    options: schoolOptions,
+    setQuery: setSchoolQuery,
+    isSearching: schoolsLoading,
+  } = useSchoolSearch();
+  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
+  const sectionOptions = params.class_name
+    ? getSectionOptions(params.class_name)
+    : [];
+
+  const handleSchoolChange = (id: string) => {
+    setSchoolId(id);
+    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
+    setParams((p) => ({ ...p, school_name: name, class_name: "", section: "" }));
+  };
+
+  const handleClassChange = (className: string) => {
+    setParams((p) => ({ ...p, class_name: className, section: "" }));
+  };
+
   const { mutate: upload, isPending: uploading } = useMutation({
     mutationFn: ({ f, p }: { f: File; p: Record<string, string> }) =>
-      recordingApi.processAudio(f, p),
+      recordingApi.processAudio(f, p, setUploadProgress),
     onSuccess: (data) => {
       setJobId(data.job_id);
-      toast.success("Upload successful! Processing your recording…");
+      if (data.deduplicated) {
+        // Identical audio was already processed — surface the existing result
+        // immediately instead of fake-polling a job that is already done.
+        setDeduplicated(true);
+        toast.success("This recording was already processed — loading notes…");
+      } else {
+        setDeduplicated(false);
+        toast.success("Upload successful! Processing your recording…");
+      }
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -81,21 +128,24 @@ export function UploadRecordingPage() {
   const { data: jobStatus } = useQuery({
     queryKey: ["job", jobId],
     queryFn: () => recordingApi.getJobStatus(jobId!),
-    enabled: !!jobId,
+    // Skip polling entirely for deduplicated jobs — they're already complete.
+    enabled: !!jobId && !deduplicated,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       return status === "pending" || status === "processing" ? 3000 : false;
     },
   });
 
+  const isComplete = deduplicated || jobStatus?.status === "completed";
+
   useEffect(() => {
-    if (jobStatus?.status === "completed" && jobId && !markdown) {
-      recordingApi
-        .getResultMarkdown(jobId)
-        .then(setMarkdown)
-        .catch(() => {});
+    if (isComplete && jobId && !markdown) {
+      recordingApi.getResultMarkdown(jobId).then((res) => {
+        if (res.state === "ready") setMarkdown(res.markdown);
+        else if (res.state === "error") toast.error(res.message);
+      });
     }
-  }, [jobStatus?.status, jobId, markdown]);
+  }, [isComplete, jobId, markdown]);
 
   const handleUpload = () => {
     if (!file[0]) {
@@ -106,52 +156,59 @@ export function UploadRecordingPage() {
       toast.error("School name and class are required");
       return;
     }
+    // Reset any prior result so the new upload starts from a clean slate.
+    setJobId(null);
+    setMarkdown(null);
+    setDeduplicated(false);
+    setUploadProgress(0);
     upload({ f: file[0], p: params });
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Upload Lecture Recording
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Upload audio to generate transcripts, notes, summaries, and exam
-          questions.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className={`grid grid-cols-1 gap-6 ${(jobId && (jobStatus || deduplicated)) ? "lg:grid-cols-2" : ""}`}>
         <Card>
           <CardHeader title="Recording Details" />
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4">
-              {user?.role === "admin" && (
-                <Input
-                  label="School Name"
-                  placeholder="Delhi Public School"
-                  value={params.school_name}
+              {isAdmin && (
+                <SearchableSelect
+                  label="School"
+                  placeholder="Select school..."
+                  options={schoolOptions}
+                  value={schoolId}
+                  onChange={handleSchoolChange}
+                  onSearchChange={setSchoolQuery}
+                  isLoading={schoolsLoading}
+                />
+              )}
+              <Select
+                label="Class"
+                placeholder={schoolId ? "Select class" : "Select a school first"}
+                options={classNameOptions}
+                value={params.class_name}
+                onChange={(e) => handleClassChange(e.target.value)}
+              />
+              {sectionOptions.length > 0 ? (
+                <Select
+                  label="Section (optional)"
+                  placeholder="Select section"
+                  options={sectionOptions}
+                  value={params.section}
                   onChange={(e) =>
-                    setParams((p) => ({ ...p, school_name: e.target.value }))
+                    setParams((p) => ({ ...p, section: e.target.value }))
+                  }
+                />
+              ) : (
+                <Input
+                  label="Section (optional)"
+                  placeholder="A"
+                  value={params.section}
+                  onChange={(e) =>
+                    setParams((p) => ({ ...p, section: e.target.value }))
                   }
                 />
               )}
-              <Input
-                label="Class"
-                placeholder="10"
-                value={params.class_name}
-                onChange={(e) =>
-                  setParams((p) => ({ ...p, class_name: e.target.value }))
-                }
-              />
-              <Input
-                label="Section (optional)"
-                placeholder="A"
-                value={params.section}
-                onChange={(e) =>
-                  setParams((p) => ({ ...p, section: e.target.value }))
-                }
-              />
               <Input
                 label="Subject (optional)"
                 placeholder="Mathematics"
@@ -175,18 +232,33 @@ export function UploadRecordingPage() {
             </div>
 
             <FileUpload
-              label="Audio File"
-              accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/*"
-              maxSize={500 * 1024 * 1024}
+              label="Audio or Video File"
+              accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/*,video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
+              maxSize={200 * 1024 * 1024}
               onChange={setFile}
-              hint="MP3, WAV, M4A. Max 500 MB."
+              hint="MP3, WAV, M4A, MP4, MOV, MKV, WebM. Max 200 MB."
             />
+
+            {uploading && (
+              <div className="space-y-1">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-200"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Uploading… {uploadProgress}%
+                </p>
+              </div>
+            )}
 
             <Button
               onClick={handleUpload}
               loading={uploading}
               disabled={
                 !!jobId &&
+                !deduplicated &&
                 (jobStatus?.status === "pending" ||
                   jobStatus?.status === "processing")
               }
@@ -198,10 +270,13 @@ export function UploadRecordingPage() {
         </Card>
 
         {jobId &&
-          jobStatus &&
+          (jobStatus || deduplicated) &&
           (() => {
-            const config =
-              statusConfig[jobStatus.status] ?? statusConfig.pending;
+            // A deduplicated job is already complete on the backend.
+            const status: JobStatus = deduplicated
+              ? "completed"
+              : jobStatus!.status;
+            const config = statusConfig[status] ?? statusConfig.pending;
             return (
               <Card>
                 <CardHeader title="Processing Status" />
@@ -210,37 +285,56 @@ export function UploadRecordingPage() {
                     {config.icon}
                     <div>
                       <Badge variant={config.color}>{config.label}</Badge>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Job ID: {jobId}
                       </p>
                     </div>
                   </div>
 
-                  {jobStatus.progress && (
-                    <p className="text-sm text-gray-600">
-                      {jobStatus.progress}
-                    </p>
-                  )}
-
-                  {jobStatus.status === "processing" && (
-                    <div className="rounded-lg bg-blue-50 p-4">
-                      <p className="text-sm text-blue-700">
-                        AI is transcribing and generating study materials. This
-                        may take 1–3 minutes.
+                  {deduplicated && (
+                    <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        An identical recording was already processed. Showing
+                        the existing study materials.
                       </p>
                     </div>
                   )}
 
-                  {jobStatus.status === "failed" && (
-                    <div className="rounded-lg bg-red-50 p-4">
-                      <p className="text-sm text-red-700">
+                  {jobStatus?.progress && (
+                    <p className="text-sm text-muted-foreground">
+                      {jobStatus.progress}
+                    </p>
+                  )}
+
+                  {jobStatus?.status === "pending" &&
+                    jobStatus.queue_position != null && (
+                      <p className="text-sm text-muted-foreground">
+                        Position {jobStatus.queue_position} in queue.
+                      </p>
+                    )}
+
+                  {(jobStatus?.status === "pending" ||
+                    jobStatus?.status === "processing") && (
+                    <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        AI is transcribing and generating study materials.
+                        {jobStatus.eta_seconds != null
+                          ? ` Estimated time remaining: ${formatEta(jobStatus.eta_seconds)}.`
+                          : " This may take a few minutes."}
+                      </p>
+                    </div>
+                  )}
+
+                  {jobStatus?.status === "failed" && (
+                    <div className="rounded-lg bg-red-50 dark:bg-red-950/30 p-4">
+                      <p className="text-sm text-red-700 dark:text-red-300">
                         {jobStatus.error ?? "Processing failed."}
                       </p>
                     </div>
                   )}
 
-                  {jobStatus.status === "completed" && !markdown && (
-                    <p className="text-sm text-gray-500">
+                  {status === "completed" && !markdown && (
+                    <p className="text-sm text-muted-foreground">
                       Loading study materials…
                     </p>
                   )}
@@ -254,8 +348,8 @@ export function UploadRecordingPage() {
         <Card>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-indigo-600" />
-              <h3 className="font-semibold text-gray-900">
+              <FileText className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">
                 Generated Study Materials
               </h3>
             </div>
@@ -269,7 +363,7 @@ export function UploadRecordingPage() {
               Download .md
             </Button>
           </div>
-          <div className="prose prose-sm max-w-none overflow-y-auto max-h-[60vh] rounded-lg bg-gray-50 p-4">
+          <div className="prose prose-sm dark:prose-invert max-w-none overflow-y-auto max-h-[60vh] rounded-lg bg-muted/40 p-4">
             <ReactMarkdown>{markdown}</ReactMarkdown>
           </div>
         </Card>

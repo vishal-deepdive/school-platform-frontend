@@ -63,7 +63,7 @@ export function AuthLayout() {
         {/* Desktop Branding Top Left */}
         <Link
           to="/"
-          className="absolute top-5 left-5 flex items-center z-20 bg-white backdrop-blur-md px-4 py-1.5 rounded-full border border-border/50 shadow-sm"
+          className="absolute top-5 left-5 flex items-center z-20 bg-white dark:bg-slate-900 backdrop-blur-md px-4 py-1.5 rounded-full border border-border/50 shadow-sm"
         >
           <img
             src={logoImg}
@@ -94,7 +94,7 @@ export function AuthLayout() {
       <div className="flex flex-col p-6 md:p-12 bg-background relative h-full overflow-y-auto overflow-x-hidden scrollbar-thin">
         <div className="w-full max-w-md mx-auto relative flex flex-col my-auto py-8 gap-5 items-center">
           {/* Mobile Branding */}
-          <div className="w-fit flex items-center md:hidden justify-center z-20 bg-white backdrop-blur-md px-4 py-1.5 rounded-full border border-border/50 shadow-sm">
+          <div className="w-fit flex items-center md:hidden justify-center z-20 bg-white dark:bg-slate-900 backdrop-blur-md px-4 py-1.5 rounded-full border border-border/50 shadow-sm">
             <img
               src={logoImg}
               alt="DeepDive Logo"

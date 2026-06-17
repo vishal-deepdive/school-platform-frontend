@@ -15,6 +15,7 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { surveyApi } from "@/features/survey/api/survey";
 import { Card, StatCard } from "@/shared/components/ui/Card";
 import { Badge } from "@/shared/components/ui/Badge";
+import { PageHeader } from "@/shared/components/ui/PageHeader";
 
 const quickLinks = [
   {
@@ -22,42 +23,42 @@ const quickLinks = [
     desc: "Upload face photos to register students for attendance",
     href: "/attendance/enroll",
     icon: <Users className="h-6 w-6" />,
-    color: "text-indigo-600 bg-indigo-50",
+    color: "text-primary bg-primary/10",
   },
   {
     title: "Mark Attendance",
     desc: "Upload classroom photos to auto-mark attendance",
     href: "/attendance/mark",
     icon: <UserCheck className="h-6 w-6" />,
-    color: "text-green-600 bg-green-50",
+    color: "text-green-600 dark:text-green-400 bg-green-500/10",
   },
   {
     title: "Upload Recording",
     desc: "Convert lecture audio into notes, questions, and summaries",
     href: "/recording/upload",
     icon: <Mic2 className="h-6 w-6" />,
-    color: "text-purple-600 bg-purple-50",
+    color: "text-purple-600 dark:text-purple-400 bg-purple-500/10",
   },
   {
     title: "Ask a Question",
     desc: "Query your textbooks with AI-powered semantic search",
     href: "/rag/qa",
     icon: <BookOpen className="h-6 w-6" />,
-    color: "text-blue-600 bg-blue-50",
+    color: "text-blue-600 dark:text-blue-400 bg-blue-500/10",
   },
   {
     title: "Survey Analytics",
     desc: "Explore student feedback with AI-powered search",
     href: "/survey/search",
     icon: <BarChart2 className="h-6 w-6" />,
-    color: "text-amber-600 bg-amber-50",
+    color: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
   },
   {
     title: "Attendance Trends",
     desc: "View attendance history and low-attendance alerts",
     href: "/attendance/view",
     icon: <TrendingUp className="h-6 w-6" />,
-    color: "text-red-600 bg-red-50",
+    color: "text-destructive bg-destructive/10",
   },
 ];
 
@@ -85,27 +86,10 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            {greeting}, {user?.full_name?.split(" ")[0] ?? "there"} 👋
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Here's what's happening on your platform today.
-          </p>
-        </div>
-        <Badge
-          variant={
-            user?.role === "admin"
-              ? "purple"
-              : user?.role === "teacher"
-                ? "info"
-                : "default"
-          }
-        >
-          {user?.role}
-        </Badge>
-      </div>
+      <PageHeader
+        title={`${greeting}, ${user?.full_name?.split(" ")[0] ?? "there"} 👋`}
+        description="Here's what's happening on your platform today."
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -135,7 +119,7 @@ export function DashboardPage() {
       </div>
 
       <div>
-        <h2 className="mb-4 text-base font-semibold text-gray-900">
+        <h2 className="mb-4 text-base font-semibold text-foreground">
           Quick Actions
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -150,13 +134,13 @@ export function DashboardPage() {
                   {link.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{link.title}</p>
-                  <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+                  <p className="font-semibold text-foreground">{link.title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
                     {link.desc}
                   </p>
                   <Link
                     to={link.href}
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-500 group-hover:gap-2 transition-all"
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 group-hover:gap-2 transition-all"
                   >
                     Get started <ArrowRight className="h-3 w-3" />
                   </Link>
@@ -170,34 +154,26 @@ export function DashboardPage() {
       {stats?.by_school && stats.by_school.length > 0 && (
         <Card padding="md">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-base font-semibold text-foreground">
               Enrollment by School
             </h2>
             <Link
               to="/attendance/stats"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-500 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
             >
               View all <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-border">
             {stats.by_school.slice(0, 5).map((school, i) => (
               <div
-                key={String(
-                  (school as Record<string, unknown>).school_name ?? i,
-                )}
+                key={school.school_name || i}
                 className="flex items-center justify-between py-3"
               >
-                <p className="text-sm text-gray-700">
-                  {String(
-                    (school as Record<string, unknown>).school_name ??
-                      "Unknown",
-                  )}
+                <p className="text-sm text-foreground">
+                  {school.school_name || "Unknown"}
                 </p>
-                <Badge variant="info">
-                  {String((school as Record<string, unknown>).total ?? 0)}{" "}
-                  students
-                </Badge>
+                <Badge variant="info">{school.total} students</Badge>
               </div>
             ))}
           </div>

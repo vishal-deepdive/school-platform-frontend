@@ -6,6 +6,10 @@ import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
+import type {
+  EnrollmentStatsClass,
+  EnrollmentStatsSchool,
+} from "@/features/attendance/types";
 
 export function AttendanceStatsPage() {
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
@@ -20,26 +24,6 @@ export function AttendanceStatsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
-            Enrollment Statistics
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Overview of student enrollments across schools.
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          loading={isFetching}
-          icon={<RefreshCw className="h-4 w-4" />}
-        >
-          Refresh
-        </Button>
-      </div>
-
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           label="Total Students"
@@ -66,56 +50,78 @@ export function AttendanceStatsPage() {
       </div>
 
       <Card padding="none">
-        <CardHeader title="Breakdown by School" className="px-6 pt-6" />
-        <div className="divide-y divide-gray-100">
-          {data?.by_school?.map((school, i) => {
-            const s = school as Record<string, unknown>;
-            const classes = s.classes as Record<string, unknown>[] | undefined;
-            return (
-              <div key={i} className="px-6 py-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="font-semibold text-gray-900">
-                      {String(s.school_name ?? "—")}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Session: {String(s.session ?? "—")}
-                    </p>
-                  </div>
-                  <Badge variant="indigo">
-                    {String(s.total ?? 0)} students
-                  </Badge>
-                </div>
-
-                {classes && classes.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {classes.map((cls, j) => {
-                      const c = cls as Record<string, unknown>;
-                      return (
-                        <div
-                          key={j}
-                          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs"
-                        >
-                          <span className="font-medium text-gray-700">
-                            Class {String(c.class_name ?? "?")}
-                          </span>
-                          {!!c.section && (
-                            <span className="text-gray-500">
-                              {" "}
-                              - Sec {String(c.section)}
-                            </span>
-                          )}
-                          <span className="ml-2 text-indigo-600 font-semibold">
-                            {String(c.total ?? 0)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+        <CardHeader
+          title="Breakdown by School"
+          className="px-6 pt-6"
+          action={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              loading={isFetching}
+              icon={<RefreshCw className="h-4 w-4" />}
+            >
+              Refresh
+            </Button>
+          }
+        />
+        <div className="divide-y divide-border">
+          {data?.by_school?.map((school: EnrollmentStatsSchool) => (
+            <div key={school.school_name} className="px-6 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-semibold text-foreground">
+                  {school.school_name}
+                </p>
+                <Badge variant="indigo">{school.total} students</Badge>
               </div>
-            );
-          })}
+
+              {school.by_class.length > 0 && (
+                <div className="space-y-2">
+                  {school.by_class.map((cls: EnrollmentStatsClass) => (
+                    <div
+                      key={cls.class_name}
+                      className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-foreground">
+                          Class {cls.class_name}
+                        </span>
+                        <span className="text-primary font-semibold">
+                          {cls.total}
+                        </span>
+                      </div>
+                      {cls.by_section.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {cls.by_section.map((sec) => (
+                            <span
+                              key={sec.section}
+                              className="rounded border border-border bg-background px-2 py-0.5 text-muted-foreground"
+                            >
+                              Sec {sec.section}: {sec.total}
+                              {sec.by_subject.length > 0 &&
+                                sec.by_subject[0].subject !== "No Subject" && (
+                                  <span className="text-muted-foreground/70">
+                                    {" "}
+                                    (
+                                    {sec.by_subject
+                                      .map(
+                                        (sub) =>
+                                          `${sub.subject}: ${sub.count}`,
+                                      )
+                                      .join(", ")}
+                                    )
+                                  </span>
+                                )}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </Card>
     </div>

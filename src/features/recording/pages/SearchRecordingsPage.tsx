@@ -30,18 +30,10 @@ export function SearchRecordingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Search Notes</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Search through all generated study materials and transcriptions using
-          natural language.
-        </p>
-      </div>
-
       <Card>
         <form onSubmit={handleSearch} className="flex gap-3 p-6">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
               value={query}
@@ -58,7 +50,7 @@ export function SearchRecordingsPage() {
 
       {submittedQuery && (
         <div className="space-y-4">
-          <h2 className="text-lg font-medium text-gray-900">
+          <h2 className="text-lg font-medium text-foreground">
             Results for &quot;{submittedQuery}&quot;
           </h2>
 
@@ -75,16 +67,16 @@ export function SearchRecordingsPage() {
               {data?.results.map((result) => (
                 <Card
                   key={result.id}
-                  className="hover:border-indigo-200 transition-colors"
+                  className="hover:border-primary/30 transition-colors"
                 >
                   <div className="flex items-start justify-between p-5">
                     <div className="flex gap-4">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-indigo-50 mt-1">
-                        <FileText className="h-5 w-5 text-indigo-600" />
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 mt-1">
+                        <FileText className="h-5 w-5 text-primary" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-gray-900">
+                          <h3 className="font-medium text-foreground">
                             Class {result.class}{" "}
                             {result.section ? `- ${result.section}` : ""}
                           </h3>
@@ -94,7 +86,7 @@ export function SearchRecordingsPage() {
                                 result.similarity > 0.8 ? "success" : "default"
                               }
                             >
-                              {(result.similarity * 100).toFixed(0)}% Match
+                              {Math.max(0, result.similarity * 100).toFixed(0)}% Match
                             </Badge>
                           )}
                         </div>
@@ -109,7 +101,7 @@ export function SearchRecordingsPage() {
                             </Badge>
                           )}
                           {result.date && (
-                            <span className="text-xs text-gray-500 flex items-center">
+                            <span className="text-xs text-muted-foreground flex items-center">
                               {formatDate(result.date)}
                             </span>
                           )}
@@ -135,7 +127,7 @@ export function SearchRecordingsPage() {
       <MarkdownPreviewModal
         open={!!preview.previewId}
         onClose={preview.close}
-        markdown={preview.markdown}
+        result={preview.result}
       />
     </div>
   );

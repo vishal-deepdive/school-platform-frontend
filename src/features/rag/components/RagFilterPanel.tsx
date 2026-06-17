@@ -1,5 +1,6 @@
 import { Select } from "@/shared/components/ui/Select";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { sortClassesDescending } from "@/shared/lib/utils";
 import { useRagClassLevels, useRagMetadata } from "@/features/rag/hooks/useRag";
 import {
   subjectsForClass,
@@ -40,7 +41,7 @@ export function RagFilterPanel({
   const { data: classData, isLoading: classesLoading } = useRagClassLevels();
   const { data: meta } = useRagMetadata();
 
-  const classValues = classData?.class_levels ?? [];
+  const classValues = sortClassesDescending(classData?.class_levels ?? []);
   const subjectValues = subjectsForClass(meta, filters.class_level);
   const chapterValues = chaptersForClassSubject(
     meta,

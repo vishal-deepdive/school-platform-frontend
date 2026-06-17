@@ -19,11 +19,11 @@ function InfoRow({
   value?: string | number | null;
 }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-slate-100 last:border-0">
-      <dt className="text-sm font-medium text-slate-500 sm:w-52 shrink-0">
+    <div className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-border last:border-0">
+      <dt className="text-sm font-medium text-muted-foreground sm:w-52 shrink-0">
         {label}
       </dt>
-      <dd className="mt-1 sm:mt-0 text-sm text-slate-900">{value ?? "—"}</dd>
+      <dd className="mt-1 sm:mt-0 text-sm text-foreground">{value ?? "—"}</dd>
     </div>
   );
 }
@@ -98,21 +98,21 @@ export function ApplicationDetailPage() {
         <div>
           <Link
             to="/admin/onboarding"
-            className="text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             ← Back to applications
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">
+          <h1 className="mt-2 text-2xl font-bold text-foreground">
             {app.school_name}
           </h1>
           <div className="mt-2 flex items-center gap-3">
             <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${APPLICATION_STATUS_COLORS[app.onboarding_status] ?? "bg-slate-100 text-slate-600"}`}
+              className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${APPLICATION_STATUS_COLORS[app.onboarding_status] ?? "bg-muted text-muted-foreground"}`}
             >
               {APPLICATION_STATUS_LABELS[app.onboarding_status] ??
                 app.onboarding_status}
             </span>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-muted-foreground/70">
               ID: {app.application_id}
             </span>
           </div>
@@ -122,7 +122,7 @@ export function ApplicationDetailPage() {
           {canReject && (
             <button
               onClick={() => setShowRejectModal(true)}
-              className="px-4 py-2 rounded-lg border border-red-300 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors"
+              className="px-4 py-2 rounded-lg border border-destructive/40 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
             >
               Reject
             </button>
@@ -149,8 +149,8 @@ export function ApplicationDetailPage() {
       )}
 
       {/* School identity */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">
+      <section className="rounded-xl border border-border bg-background p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">
           School Identity
         </h2>
         <dl>
@@ -173,8 +173,8 @@ export function ApplicationDetailPage() {
       </section>
 
       {/* Contact & address */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">
+      <section className="rounded-xl border border-border bg-background p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">
           Contact &amp; Address
         </h2>
         <dl>
@@ -197,8 +197,8 @@ export function ApplicationDetailPage() {
       </section>
 
       {/* Academic details */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">
+      <section className="rounded-xl border border-border bg-background p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">
           Academic Details
         </h2>
         <dl>
@@ -223,8 +223,8 @@ export function ApplicationDetailPage() {
       </section>
 
       {/* Principal account */}
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900 mb-4">
+      <section className="rounded-xl border border-border bg-background p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">
           Principal Account
         </h2>
         <dl>
@@ -235,15 +235,15 @@ export function ApplicationDetailPage() {
 
       {/* Certificate */}
       {app.certificate_url && (
-        <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-slate-900 mb-4">
+        <section className="rounded-xl border border-border bg-background p-6 shadow-sm">
+          <h2 className="text-base font-semibold text-foreground mb-4">
             Registration Certificate
           </h2>
           <a
             href={app.certificate_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition-colors"
           >
             📄 View Certificate
           </a>
@@ -257,7 +257,7 @@ export function ApplicationDetailPage() {
         title="Reject Application"
         size="sm"
       >
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Optionally provide a reason — it will be shown to the applicant.
         </p>
         <textarea
@@ -265,7 +265,7 @@ export function ApplicationDetailPage() {
           onChange={(e) => setRejectionReason(e.target.value)}
           placeholder="Reason for rejection (optional)…"
           rows={4}
-          className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
+          className="mt-3 w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
         />
         {rejectMutation.isError && (
           <Alert variant="error" className="mt-3">
@@ -275,14 +275,14 @@ export function ApplicationDetailPage() {
         <div className="flex justify-end gap-3 mt-4">
           <button
             onClick={() => setShowRejectModal(false)}
-            className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+            className="px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => rejectMutation.mutate()}
             disabled={rejectMutation.isPending}
-            className="px-4 py-2 rounded-lg bg-red-600 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60 transition-colors"
+            className="px-4 py-2 rounded-lg bg-destructive text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60 transition-colors"
           >
             {rejectMutation.isPending ? "Rejecting…" : "Confirm Rejection"}
           </button>

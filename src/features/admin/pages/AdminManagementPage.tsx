@@ -38,34 +38,34 @@ function AdminRow({
   const canRemove = !isSelf && !isMyCreator;
 
   return (
-    <tr className="hover:bg-slate-50 transition-colors">
+    <tr className="hover:bg-muted/50 transition-colors">
       <td className="px-6 py-4">
-        <p className="font-medium text-slate-900">{admin.full_name || "—"}</p>
-        <p className="text-xs text-slate-500">{admin.email}</p>
+        <p className="font-medium text-foreground">{admin.full_name || "—"}</p>
+        <p className="text-xs text-muted-foreground">{admin.email}</p>
       </td>
-      <td className="px-6 py-4 text-sm text-slate-600">
+      <td className="px-6 py-4 text-sm text-muted-foreground">
         {admin.created_by_name ? (
           <div>
             <p>{admin.created_by_name}</p>
-            <p className="text-xs text-slate-400">{admin.created_by_email}</p>
+            <p className="text-xs text-muted-foreground/70">{admin.created_by_email}</p>
           </div>
         ) : (
-          <span className="text-slate-400 italic">Bootstrap admin</span>
+          <span className="text-muted-foreground/70 italic">Bootstrap admin</span>
         )}
       </td>
-      <td className="px-6 py-4 text-sm text-slate-500">
+      <td className="px-6 py-4 text-sm text-muted-foreground">
         {admin.created_at ? formatDate(admin.created_at) : "—"}
       </td>
       <td className="px-6 py-4 text-right">
-        {isSelf && <span className="text-xs text-slate-400 italic">You</span>}
+        {isSelf && <span className="text-xs text-muted-foreground/70 italic">You</span>}
         {isMyCreator && !isSelf && (
-          <span className="text-xs text-slate-400 italic">Your creator</span>
+          <span className="text-xs text-muted-foreground/70 italic">Your creator</span>
         )}
         {canRemove && (
           <button
             onClick={() => onRemove(admin.id)}
             disabled={removing}
-            className="text-sm font-medium text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+            className="text-sm font-medium text-destructive hover:text-destructive/80 disabled:opacity-50 transition-colors"
           >
             Remove
           </button>
@@ -133,16 +133,16 @@ export function AdminManagementPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Admin Management
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">
             Manage platform admin accounts
           </p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+          className="px-4 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
           + Add Admin
         </button>
@@ -154,17 +154,17 @@ export function AdminManagementPage() {
       {isLoading && <PageSpinner />}
 
       {!isLoading && admins && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
+        <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Admin
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Created By
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Added On
                 </th>
                 <th className="relative px-6 py-3">
@@ -172,7 +172,7 @@ export function AdminManagementPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
+            <tbody className="divide-y divide-border bg-background">
               {admins.map((admin) => (
                 <AdminRow
                   key={admin.id}
@@ -203,46 +203,46 @@ export function AdminManagementPage() {
           className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Full Name{" "}
-              <span className="text-slate-400 font-normal">(optional)</span>
+              <span className="text-muted-foreground font-normal">(optional)</span>
             </label>
             <input
               {...register("full_name")}
               placeholder="Jane Doe"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Email <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Email <span className="text-destructive">*</span>
             </label>
             <input
               {...register("email")}
               type="email"
               placeholder="admin@example.com"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {errors.email && (
-              <p className="mt-1 text-xs text-red-600">
+              <p className="mt-1 text-xs text-destructive">
                 {errors.email.message}
               </p>
             )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Password <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-foreground mb-1">
+              Password <span className="text-destructive">*</span>
             </label>
             <input
               {...register("password")}
               type="password"
               placeholder="Min 8 chars, mixed case + number + symbol"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {errors.password && (
-              <p className="mt-1 text-xs text-red-600">
+              <p className="mt-1 text-xs text-destructive">
                 {errors.password.message}
               </p>
             )}
@@ -261,14 +261,14 @@ export function AdminManagementPage() {
                 setShowAddModal(false);
                 reset();
               }}
-              className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={createMutation.isPending}
-              className="px-4 py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+              className="px-4 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
             >
               {createMutation.isPending ? "Creating…" : "Create Admin"}
             </button>

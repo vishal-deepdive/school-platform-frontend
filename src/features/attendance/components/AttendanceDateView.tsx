@@ -1,7 +1,7 @@
 import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Download } from "lucide-react";
+import { Search, Download, CalendarX } from "lucide-react";
 import { toIndianDate, downloadBlob } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
@@ -10,6 +10,8 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { statusLabel, statusVariant } from "@/features/attendance/lib/status";
 
 interface DateFilters {
   school_name: string;
@@ -47,10 +49,10 @@ export function AttendanceDateView() {
 
   const handleExportCSV = async () => {
     if (!queryDate || (user?.role === "admin" && !queryDate.school_name)) return;
-    const blob = await attendanceApi.viewStudents(
+    const blob = await attendanceApi.exportAttendanceOnDate(
       queryDate as unknown as Record<string, string>,
     );
-    downloadBlob(blob, `students-${queryDate.school_name}.csv`);
+    downloadBlob(blob, `attendance-${queryDate.date}.csv`);
   };
 
   return (
@@ -120,14 +122,24 @@ export function AttendanceDateView() {
       {dateError && (
         <Alert variant="error">Failed to fetch attendance records.</Alert>
       )}
-      {dateData && (
+      {dateData && (dateData.data as AttendanceRow[]).length === 0 && (
         <div className="mt-6">
-          <p className="text-sm text-gray-500 mb-3">
+          <EmptyState
+            icon={<CalendarX className="h-10 w-10" />}
+            title="No records for this date"
+            description="No attendance has been marked for the selected class, section, and date. Try a different date or mark attendance first."
+          />
+        </div>
+      )}
+
+      {dateData && (dateData.data as AttendanceRow[]).length > 0 && (
+        <div className="mt-6">
+          <p className="text-sm text-muted-foreground mb-3">
             {dateData.total_records} record(s) on {dateData.date}
           </p>
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/50">
                 <tr>
                   {[
                     "Roll No",
@@ -140,16 +152,16 @@ export function AttendanceDateView() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500"
+                      className="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground"
                     >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 bg-white">
+              <tbody className="divide-y divide-border bg-background">
                 {(dateData.data as AttendanceRow[]).map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50">
+                  <tr key={i} className="hover:bg-muted/50">
                     <td className="px-4 py-3">
                       {String(row.roll_number ?? row.roll_no ?? "—")}
                     </td>
@@ -160,12 +172,8 @@ export function AttendanceDateView() {
                     <td className="px-4 py-3">{String(row.section ?? "—")}</td>
                     <td className="px-4 py-3">{String(row.subject ?? "—")}</td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          row.attendance_record === "P" ? "success" : "danger"
-                        }
-                      >
-                        {row.attendance_record === "P" ? "Present" : "Absent"}
+                      <Badge variant={statusVariant(String(row.attendance_record))}>
+                        {statusLabel(String(row.attendance_record))}
                       </Badge>
                     </td>
                     <td className="px-4 py-3">{String(row.time ?? "—")}</td>

@@ -2,6 +2,7 @@ import { multipartClient, apiClient } from "@/shared/api/client";
 import type {
   EnrollResponse,
   MarkAttendanceResponse,
+  CorrectAttendanceResponse,
   AttendanceDateResponse,
   AttendanceRangeResponse,
   ChangeLogResponse,
@@ -62,6 +63,14 @@ export const attendanceApi = {
       .then((r) => r.data);
   },
 
+  correctAttendance: (params: Record<string, string>) => {
+    const form = new FormData();
+    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
+    return multipartClient
+      .post<CorrectAttendanceResponse>(`${BASE}/correct/`, form)
+      .then((r) => r.data);
+  },
+
   getEnrollmentStats: () =>
     apiClient
       .get<EnrollmentStatsResponse>(`${BASE}/enrollment-stats/`)
@@ -80,6 +89,14 @@ export const attendanceApi = {
         `${BASE}/view-attendance-on-date/${buildQueryString(params)}`,
       )
       .then((r) => r.data),
+
+  exportAttendanceOnDate: (params: Record<string, string>) =>
+    apiClient
+      .get(
+        `${BASE}/view-attendance-on-date/${buildQueryString({ ...params, format: "csv" })}`,
+        { responseType: "blob" },
+      )
+      .then((r) => r.data as Blob),
 
   getAttendanceRange: (params: Record<string, string>) =>
     apiClient

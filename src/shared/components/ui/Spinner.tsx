@@ -17,7 +17,7 @@ export function Spinner({
   return (
     <div role="status" className={cn("flex items-center gap-2", className)}>
       <Loader2
-        className={cn("animate-spin text-indigo-600", sizeClasses[size])}
+        className={cn("animate-spin text-primary", sizeClasses[size])}
       />
       <span className="sr-only">{label}</span>
     </div>
