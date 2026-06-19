@@ -51,6 +51,7 @@ import {
   OnboardingApplicationsPage,
   ApplicationDetailPage,
   AdminManagementPage,
+  PromptsPage,
 } from "@/features/admin";
 import { ParentApprovalsPage } from "@/features/parents";
 
@@ -155,6 +156,14 @@ export const router = createBrowserRouter([
             element: (
               <RoleRoute allow={["admin"]}>
                 <AdminManagementPage />
+              </RoleRoute>
+            ),
+          },
+          {
+            path: "/admin/prompts",
+            element: (
+              <RoleRoute allow={["admin"]}>
+                <PromptsPage />
               </RoleRoute>
             ),
           },

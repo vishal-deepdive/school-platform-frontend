@@ -18,15 +18,12 @@ function getStoredRefreshToken(): string | null {
   return useAuthStore.getState().refreshToken;
 }
 
-function handleRefreshFailure(err: unknown): void {
-  const isAuthError =
-    axios.isAxiosError(err) &&
-    err.response?.status != null &&
-    [401, 403].includes(err.response.status);
-  const isNoToken = err instanceof Error && err.message === "No refresh token";
-
-  if (isAuthError || isNoToken) {
-    useAuthStore.getState().logout();
+function handleRefreshFailure(_err: unknown): void {
+  // If the refresh request fails for ANY reason (401, 404, network error, etc.),
+  // the session is unrecoverable. We must log the user out so they can start fresh.
+  useAuthStore.getState().logout();
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
   }
 }
 
@@ -109,11 +106,12 @@ function withAuthInterceptors(client: AxiosInstance): AxiosInstance {
 
         // Dedicated axios instance with a short timeout prevents the browser
         // from hanging indefinitely when the backend is slow / unresponsive.
+        const normalizedBase = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
         const res = await axios.post<{
           access_token: string;
           refresh_token: string;
         }>(
-          `${BASE_URL}/api/v1/auth/refresh`,
+          `${normalizedBase}/api/v1/auth/refresh`,
           { refresh_token: refreshToken },
           { timeout: 10_000 },
         );
@@ -129,7 +127,7 @@ function withAuthInterceptors(client: AxiosInstance): AxiosInstance {
       } catch (refreshError) {
         processQueue(refreshError, null);
         handleRefreshFailure(refreshError);
-        return Promise.reject(refreshError);
+        return Promise.reject(new Error("Session expired. Please log in again."));
       } finally {
         refreshState.isRefreshing = false;
       }
