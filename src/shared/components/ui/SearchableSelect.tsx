@@ -75,6 +75,10 @@ export function SearchableSelect({
   const selectedOption = options.find((opt) => opt.value === value) || cachedSelectedOption;
 
   const handleSelect = (val: string) => {
+    const selected = options.find((opt) => opt.value === val);
+    if (selected) {
+      setCachedSelectedOption(selected);
+    }
     onChange(val);
     setIsOpen(false);
     setSearchQuery("");
