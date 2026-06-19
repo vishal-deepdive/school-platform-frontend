@@ -19,6 +19,7 @@ import {
   ClipboardList,
   UserCog,
   LayoutDashboard,
+  Wand2,
 } from "lucide-react";
 
 export interface NavItem {
@@ -138,11 +139,11 @@ export const navItems: NavItem[] = [
       },
     ],
   },
-  {
-    label: "Parent Approvals",
-    href: "/approvals/parents",
-    icon: <UserCheck className="h-5 w-5" />,
-  },
+  // {
+  //   label: "Parent Approvals",
+  //   href: "/approvals/parents",
+  //   icon: <UserCheck className="h-5 w-5" />,
+  // },
 ];
 
 export const adminNavItems: NavItem[] = [
@@ -159,6 +160,11 @@ export const adminNavItems: NavItem[] = [
         label: "Manage Admins",
         href: "/admin/admins",
         icon: <UserCog className="h-4 w-4" />,
+      },
+      {
+        label: "Prompts",
+        href: "/admin/prompts",
+        icon: <Wand2 className="h-4 w-4" />,
       },
     ],
   },

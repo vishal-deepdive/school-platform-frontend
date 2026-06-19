@@ -1,5 +1,6 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, Navigate } from "react-router-dom";
 import { Typewriter } from "@/shared/components/ui/auth-fuse";
+import { useAuthStore } from "@/features/auth/store/auth";
 import logoImg from "@/public/logo.png";
 import authImg from "@/public/auth.png";
 import registerImg from "@/public/register.png";
@@ -38,8 +39,22 @@ const onboardingContent = {
   },
 };
 
+const GUEST_ONLY_ROUTES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-otp",
+];
+
 export function AuthLayout() {
   const location = useLocation();
+  const { isAuthenticated } = useAuthStore();
+
+  if (isAuthenticated && GUEST_ONLY_ROUTES.includes(location.pathname)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const isSignIn =
     location.pathname.includes("login") || location.pathname === "/";
   const isOnboarding = location.pathname.includes("onboarding");

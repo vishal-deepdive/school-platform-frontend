@@ -16,6 +16,7 @@ export function useSchoolSearch(debounceMs = 500) {
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
+    // If user typed 1 character, wait until they type more
     if (debouncedQuery.length === 1) {
       setSchools([]);
       return;

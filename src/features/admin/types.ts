@@ -84,3 +84,74 @@ export interface ApproveApplicationResponse {
 export interface RejectApplicationRequest {
   rejection_reason?: string;
 }
+
+// ── Prompt management types ────────────────────────────────────────────────
+
+export type PromptRole = "system" | "user" | "assistant";
+
+export interface PromptMessage {
+  role: PromptRole;
+  content: string;
+}
+
+export interface PromptConfig {
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+  provider?: string;
+  json_mode?: boolean;
+  [key: string]: unknown;
+}
+
+export interface PromptSummary {
+  name: string;
+  module: string;
+  type: "chat" | "text";
+  variables: string[];
+  sentinels: string[];
+  config: PromptConfig;
+  current_version: number | null;
+  labels: string[];
+  is_fallback: boolean;
+}
+
+export interface PromptVersion {
+  version: number;
+  labels: string[];
+  config: PromptConfig;
+  commit_message: string | null;
+}
+
+export interface PromptDetail {
+  name: string;
+  module: string;
+  type: "chat" | "text";
+  variables: string[];
+  sentinels: string[];
+  messages: PromptMessage[] | null;
+  text: string | null;
+  config: PromptConfig;
+  current_version: number | null;
+  versions: PromptVersion[];
+  langfuse_enabled: boolean;
+  allowed_models: string[];
+}
+
+export interface PromptConfigPatch {
+  model?: string;
+  temperature?: number;
+  max_tokens?: number;
+}
+
+export interface SavePromptRequest {
+  messages?: PromptMessage[];
+  text?: string;
+  config: PromptConfigPatch;
+}
+
+export interface SavePromptResponse {
+  name: string;
+  version: number | null;
+  label: string;
+  message: string;
+}
