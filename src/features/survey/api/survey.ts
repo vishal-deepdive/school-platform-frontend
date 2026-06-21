@@ -1,4 +1,5 @@
 import { apiClient } from "@/shared/api/client";
+import { API_BASE_URL } from "@/shared/config/env";
 import type {
   SurveyStatusResponse,
   SearchRequest,
@@ -10,7 +11,6 @@ import type {
 } from "@/features/survey/types";
 
 const BASE = "/api/v1/survey";
-const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 export const surveyApi = {
   getStatus: () =>
@@ -32,7 +32,7 @@ export const surveyApi = {
   listCharts: () =>
     apiClient.get<ChartsListResponse>(`${BASE}/charts`).then((r) => r.data),
 
-  getChartUrl: (filename: string) => `${API_BASE}${BASE}/chart/${filename}`,
+  getChartUrl: (filename: string) => `${API_BASE_URL}${BASE}/chart/${filename}`,
 
   deleteByRollSchool: (roll_number: string, school_name: string) =>
     apiClient
