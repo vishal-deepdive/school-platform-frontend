@@ -120,13 +120,7 @@ export function NotesPage() {
                   </Button>
                 </div>
                 <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/40 p-4">
-                  {isPending ? (
-                    <pre className="whitespace-pre-wrap break-words font-sans text-sm text-foreground">
-                      {result}
-                    </pre>
-                  ) : (
-                    <MarkdownRenderer content={result} />
-                  )}
+                  <MarkdownRenderer content={result} streaming={isPending} />
                 </div>
               </Card>
             ) : (

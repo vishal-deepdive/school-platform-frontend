@@ -6,3 +6,4 @@ export * from "./pages/SurveyPage";
 export * from "./pages/SurveyDashboardPage";
 export * from "./pages/SurveyDataPage";
 export * from "./pages/SurveySearchPage";
+export * from "./pages/SurveySourcePage";

@@ -20,6 +20,7 @@ import {
   UserCog,
   LayoutDashboard,
   Wand2,
+  Link2,
 } from "lucide-react";
 
 export interface NavItem {
@@ -136,6 +137,11 @@ export const navItems: NavItem[] = [
         label: "Data Management",
         href: "/survey/data",
         icon: <Database className="h-4 w-4" />,
+      },
+      {
+        label: "Data Source",
+        href: "/survey/source",
+        icon: <Link2 className="h-4 w-4" />,
       },
     ],
   },

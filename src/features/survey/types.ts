@@ -108,6 +108,34 @@ export interface SurveyDeleteResponse {
   filters?: Record<string, unknown>;
 }
 
+/** A registered public Google Sheet that feeds a school's survey data. */
+export interface SurveySourceResponse {
+  status: string;
+  configured: boolean;
+  school_name?: string | null;
+  sheet_url?: string | null;
+  sheet_id?: string | null;
+  gid?: string | null;
+  label?: string | null;
+  column_map?: Record<string, string> | null;
+  last_synced_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface RegisterSourceRequest {
+  sheet_url: string;
+  /** Required for admins (the target school); ignored for principals. */
+  school_name?: string;
+  label?: string;
+  column_map?: Record<string, string>;
+}
+
+export interface SurveySourceDeleteResponse {
+  status: string;
+  message: string;
+  deleted: boolean;
+}
+
 export interface ChartFile {
   filename: string;
   size_bytes: number;
