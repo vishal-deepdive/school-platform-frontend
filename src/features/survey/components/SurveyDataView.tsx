@@ -42,8 +42,9 @@ export function SurveyDataView() {
 
   const classCounts = (surveyStatus?.by_class ?? []).map((c) => {
     const cls = c as Record<string, unknown>;
+    const rawName = String(cls.class ?? cls.class_name ?? "").trim();
     return {
-      name: String(cls.class ?? cls.class_name ?? ""),
+      name: rawName || "Unknown Class",
       count: asCount(cls.count) ?? 0,
     };
   });
