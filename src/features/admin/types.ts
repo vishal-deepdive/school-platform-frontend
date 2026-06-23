@@ -155,3 +155,12 @@ export interface SavePromptResponse {
   label: string;
   message: string;
 }
+
+export interface PromptRefreshResponse {
+  name: string;
+  version: number | null;
+  is_fallback: boolean;
+  /** "langfuse" | "fallback" | "local" | "client_unavailable" */
+  source: string;
+  label: string | null;
+}
