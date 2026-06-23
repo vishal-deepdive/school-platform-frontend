@@ -68,12 +68,13 @@ export function SurveySearchView() {
     staleTime: 5 * 60_000,
   });
 
-  const classOptions: SelectOption[] =
-    surveyStatus?.by_class?.map((c) => {
+  const classOptions: SelectOption[] = (surveyStatus?.by_class ?? [])
+    .map((c) => {
       const cls = c as Record<string, unknown>;
-      const name = String(cls.class ?? cls.class_name ?? "");
+      const name = String(cls.class ?? cls.class_name ?? "").trim();
       return { value: name, label: name };
-    }) ?? [];
+    })
+    .filter((opt) => opt.value.length > 0);
   const noClasses = classOptions.length === 0;
 
   const {

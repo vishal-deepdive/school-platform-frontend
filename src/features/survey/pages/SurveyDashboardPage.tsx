@@ -258,7 +258,7 @@ export function SurveyDashboardPage() {
                     className="flex items-center justify-between px-6 py-3"
                   >
                     <p className="text-sm text-foreground">
-                      {String(cls.class ?? cls.class_name ?? "—")}
+                      {String(cls.class ?? cls.class_name ?? "").trim() || "Unknown Class"}
                     </p>
                     <Badge variant="success">
                       {String(cls.count ?? 0)} responses
