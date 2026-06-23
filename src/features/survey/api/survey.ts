@@ -8,6 +8,9 @@ import type {
   SyncJobStatusResponse,
   SurveyDeleteResponse,
   ChartsListResponse,
+  SurveySourceResponse,
+  RegisterSourceRequest,
+  SurveySourceDeleteResponse,
 } from "@/features/survey/types";
 
 const BASE = "/api/v1/survey";
@@ -16,9 +19,26 @@ export const surveyApi = {
   getStatus: () =>
     apiClient.get<SurveyStatusResponse>(`${BASE}/status`).then((r) => r.data),
 
-  loadRecent: () =>
+  // schoolName is required only for admins (the school whose registered sheet
+  // to sync); principals omit it and sync their own school.
+  loadRecent: (schoolName?: string) =>
     apiClient
-      .post<LoadRecentResponse>(`${BASE}/load-recent`)
+      .post<LoadRecentResponse>(`${BASE}/load-recent`, undefined, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
+      .then((r) => r.data),
+
+  getSource: () =>
+    apiClient.get<SurveySourceResponse>(`${BASE}/source`).then((r) => r.data),
+
+  registerSource: (data: RegisterSourceRequest) =>
+    apiClient
+      .post<SurveySourceResponse>(`${BASE}/source`, data)
+      .then((r) => r.data),
+
+  deleteSource: () =>
+    apiClient
+      .delete<SurveySourceDeleteResponse>(`${BASE}/source`)
       .then((r) => r.data),
 
   getSyncStatus: (jobId: string) =>

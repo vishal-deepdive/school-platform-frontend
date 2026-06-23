@@ -57,18 +57,10 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
               <span>{message.content}</span>
             </p>
           ) : message.content ? (
-            isStreaming ? (
-              // Re-parsing Markdown on every batched token would make long
-              // answers (tables, math, code) increasingly expensive to render
-              // as they grow. Show plain text while streaming and switch to
-              // the full Markdown renderer once the message is complete.
-              <p className="whitespace-pre-wrap break-words">
-                {message.content}
-                <span className="ml-0.5 inline-block h-4 w-1.5 animate-pulse rounded-sm bg-current align-text-bottom opacity-70" />
-              </p>
-            ) : (
-              <MarkdownRenderer content={message.content} />
-            )
+            // Render Markdown live as it streams. The renderer defers the
+            // expensive bits while streaming (Mermaid diagrams show as code,
+            // syntax highlighting is skipped) so growing answers stay smooth.
+            <MarkdownRenderer content={message.content} streaming={isStreaming} />
           ) : isStreaming ? (
             <div className="flex gap-1 py-1">
               {[0, 1, 2].map((i) => (

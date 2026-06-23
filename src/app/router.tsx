@@ -41,6 +41,7 @@ import {
   SurveyDashboardPage,
   SurveySearchPage,
   SurveyDataPage,
+  SurveySourcePage,
 } from "@/features/survey";
 import {
   SchoolOnboardingPage,
@@ -129,6 +130,14 @@ export const router = createBrowserRouter([
                 element: (
                   <RoleRoute allow={["admin", "principal"]}>
                     <SurveyDataPage />
+                  </RoleRoute>
+                ),
+              },
+              {
+                path: "source",
+                element: (
+                  <RoleRoute allow={["admin", "principal"]}>
+                    <SurveySourcePage />
                   </RoleRoute>
                 ),
               },

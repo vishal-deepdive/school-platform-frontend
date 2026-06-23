@@ -1,23 +1,30 @@
 import { useCallback, useEffect, useRef } from "react";
 
+/** Cap Markdown re-renders at ~30fps — smooth for streaming text without
+ *  re-parsing the whole answer on every token. */
+const DEFAULT_INTERVAL_MS = 33;
+
 /**
  * Batches streamed text chunks and flushes the concatenated result via
- * `onFlush` at most once per animation frame.
+ * `onFlush` at most once per `intervalMs`.
  *
  * SSE token streams can emit dozens of chunks per second; without batching,
- * each chunk triggers a store update and a full re-render (including a
- * Markdown re-parse of the entire accumulated text), which makes the page
- * unresponsive as the content grows. Capping flushes to one per frame keeps
- * re-renders at a steady ~60fps regardless of token rate.
+ * each chunk triggers a store update and a full re-render (including a Markdown
+ * re-parse + KaTeX pass over the entire accumulated text), which makes the page
+ * unresponsive as the content grows. Coalescing flushes to a fixed cadence keeps
+ * re-renders steady and display-refresh-independent regardless of token rate.
  */
-export function useStreamBatcher(onFlush: (chunk: string) => void) {
+export function useStreamBatcher(
+  onFlush: (chunk: string) => void,
+  intervalMs: number = DEFAULT_INTERVAL_MS,
+) {
   const pendingRef = useRef("");
-  const rafRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flush = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
     }
     if (pendingRef.current) {
       const chunk = pendingRef.current;
@@ -29,14 +36,14 @@ export function useStreamBatcher(onFlush: (chunk: string) => void) {
   const push = useCallback(
     (chunk: string) => {
       pendingRef.current += chunk;
-      if (rafRef.current === null) {
-        rafRef.current = requestAnimationFrame(() => {
-          rafRef.current = null;
+      if (timerRef.current === null) {
+        timerRef.current = setTimeout(() => {
+          timerRef.current = null;
           flush();
-        });
+        }, intervalMs);
       }
     },
-    [flush],
+    [flush, intervalMs],
   );
 
   useEffect(() => () => flush(), [flush]);
