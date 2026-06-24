@@ -15,6 +15,7 @@ interface LiveResult {
   version: number | null;
   is_fallback: boolean;
   source: string;
+  reason: string | null;
   label: string | null;
   checked_at: string;
 }
@@ -35,9 +36,16 @@ function LiveBadge({ r }: { r: LiveResult }) {
   }
   if (r.source === "fallback" || r.is_fallback) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
-        <AlertTriangle className="h-4 w-4 shrink-0" />
-        Local fallback
+      <span className="flex flex-col gap-0.5">
+        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Local fallback
+        </span>
+        {r.reason && (
+          <span className="text-[11px] leading-snug text-amber-700/80 dark:text-amber-400/70">
+            {r.reason}
+          </span>
+        )}
       </span>
     );
   }
@@ -103,16 +111,34 @@ function PromptRow({
 
       {/* Langfuse-stored version (from list endpoint, reflects label in Langfuse) */}
       <td className="px-5 py-3.5">
-        {prompt.is_fallback ? (
-          <span className="text-xs text-muted-foreground italic">
-            not in Langfuse
-          </span>
-        ) : prompt.current_version !== null ? (
-          <span className="text-sm font-medium text-foreground">
-            v{prompt.current_version}
-          </span>
+        {prompt.current_version !== null ? (
+          // A version IS published. If is_fallback, the runtime still REJECTED it
+          // (e.g. failed integrity) — show the version with the reason so the
+          // admin knows their published edit isn't actually being served.
+          <div className="space-y-0.5">
+            <span
+              className={
+                prompt.is_fallback
+                  ? "inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400"
+                  : "text-sm font-medium text-foreground"
+              }
+            >
+              {prompt.is_fallback && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+              v{prompt.current_version}
+              {prompt.is_fallback && (
+                <span className="text-xs font-normal">(rejected)</span>
+              )}
+            </span>
+            {prompt.is_fallback && prompt.fallback_reason && (
+              <p className="text-[11px] leading-snug text-amber-700/80 dark:text-amber-400/70">
+                {prompt.fallback_reason}
+              </p>
+            )}
+          </div>
         ) : (
-          <span className="text-sm text-muted-foreground">—</span>
+          <span className="text-xs text-muted-foreground italic">
+            {prompt.fallback_reason ?? "not in Langfuse"}
+          </span>
         )}
       </td>
 
@@ -181,6 +207,7 @@ export function PromptsPage() {
             version: result.version,
             is_fallback: result.is_fallback,
             source: result.source,
+            reason: result.reason,
             label: result.label,
             checked_at: timestampNow(),
           },
@@ -214,6 +241,7 @@ export function PromptsPage() {
               version: result.version,
               is_fallback: result.is_fallback,
               source: result.source,
+              reason: result.reason,
               label: result.label,
               checked_at: timestampNow(),
             },

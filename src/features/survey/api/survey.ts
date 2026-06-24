@@ -11,6 +11,7 @@ import type {
   SurveySourceResponse,
   RegisterSourceRequest,
   SurveySourceDeleteResponse,
+  SyncMode,
 } from "@/features/survey/types";
 
 const BASE = "/api/v1/survey";
@@ -20,25 +21,36 @@ export const surveyApi = {
     apiClient.get<SurveyStatusResponse>(`${BASE}/status`).then((r) => r.data),
 
   // schoolName is required only for admins (the school whose registered sheet
-  // to sync); principals omit it and sync their own school.
-  loadRecent: (schoolName?: string) =>
+  // to sync); principals omit it and sync their own school. mode "replace" first
+  // clears the school's rows for the source's cycle, then re-imports.
+  loadRecent: (schoolName?: string, mode: SyncMode = "append") =>
     apiClient
       .post<LoadRecentResponse>(`${BASE}/load-recent`, undefined, {
-        params: schoolName ? { school_name: schoolName } : undefined,
+        params: {
+          ...(schoolName ? { school_name: schoolName } : {}),
+          mode,
+        },
       })
       .then((r) => r.data),
 
-  getSource: () =>
-    apiClient.get<SurveySourceResponse>(`${BASE}/source`).then((r) => r.data),
+  // schoolName lets an admin target a specific school's source; principals omit it.
+  getSource: (schoolName?: string) =>
+    apiClient
+      .get<SurveySourceResponse>(`${BASE}/source`, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
+      .then((r) => r.data),
 
   registerSource: (data: RegisterSourceRequest) =>
     apiClient
       .post<SurveySourceResponse>(`${BASE}/source`, data)
       .then((r) => r.data),
 
-  deleteSource: () =>
+  deleteSource: (schoolName?: string) =>
     apiClient
-      .delete<SurveySourceDeleteResponse>(`${BASE}/source`)
+      .delete<SurveySourceDeleteResponse>(`${BASE}/source`, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
       .then((r) => r.data),
 
   getSyncStatus: (jobId: string) =>

@@ -61,7 +61,11 @@ export interface SummarySheet {
   records_added: number;
   records_skipped: number;
   records_without_embeddings: number;
+  records_failed?: number;
+  rows_deleted?: number;
 }
+
+export type SyncMode = "append" | "replace";
 
 export interface DatabaseChange {
   before: number;
@@ -74,6 +78,8 @@ export type EmbeddingStatus = "completed" | "processing" | "pending" | string;
 export interface LoadRecentResponse {
   status: string;
   timestamp: string;
+  mode: SyncMode;
+  cycle: string;
   summary: SummarySheet;
   database_change: DatabaseChange;
   added_records: unknown[];
@@ -97,6 +103,8 @@ export interface SyncJobStatusResponse {
   rows_inserted: number;
   rows_skipped: number;
   rows_embedded: number;
+  rows_deleted?: number;
+  rows_failed?: number;
   error?: string | null;
 }
 
@@ -117,6 +125,8 @@ export interface SurveySourceResponse {
   sheet_id?: string | null;
   gid?: string | null;
   label?: string | null;
+  /** The survey term/period new imports are stamped with (dedup dimension). */
+  cycle?: string | null;
   column_map?: Record<string, string> | null;
   last_synced_at?: string | null;
   updated_at?: string | null;
@@ -127,6 +137,8 @@ export interface RegisterSourceRequest {
   /** Required for admins (the target school); ignored for principals. */
   school_name?: string;
   label?: string;
+  /** Survey term/period; bump to re-survey the same students next term. */
+  cycle?: string;
   column_map?: Record<string, string>;
 }
 
