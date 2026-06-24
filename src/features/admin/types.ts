@@ -113,6 +113,9 @@ export interface PromptSummary {
   current_version: number | null;
   labels: string[];
   is_fallback: boolean;
+  /** Why the runtime is/isn't serving the Langfuse version (e.g. an integrity
+   *  rejection of a UI edit). null when serving Langfuse cleanly. */
+  fallback_reason: string | null;
 }
 
 export interface PromptVersion {
@@ -162,5 +165,7 @@ export interface PromptRefreshResponse {
   is_fallback: boolean;
   /** "langfuse" | "fallback" | "local" | "client_unavailable" */
   source: string;
+  /** Human-readable explanation when not serving Langfuse. null when source == "langfuse". */
+  reason: string | null;
   label: string | null;
 }
