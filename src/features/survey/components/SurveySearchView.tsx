@@ -23,10 +23,14 @@ import {
   type SurveySearchFormData,
 } from "@/features/survey/schema";
 import { surveyApi } from "@/features/survey/api/survey";
+import { useAuthStore } from "@/features/auth/store/auth";
+import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
@@ -170,20 +174,15 @@ export function SurveySearchView() {
   const [copied, setCopied] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const { data: surveyStatus } = useQuery({
+  useQuery({
     queryKey: ["survey", "status"],
     queryFn: () => surveyApi.getStatus(),
-    staleTime: 5 * 60_000,
+    staleTime: 5 * 60000,
   });
 
-  const classOptions: SelectOption[] = (surveyStatus?.by_class ?? [])
-    .map((c) => {
-      const cls = c as Record<string, unknown>;
-      const name = String(cls.class ?? cls.class_name ?? "").trim();
-      return { value: name, label: name };
-    })
-    .filter((opt) => opt.value.length > 0);
-  const noClasses = classOptions.length === 0;
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === "admin";
+  const defaultSchoolId = user?.school_id ?? "";
 
   const {
     register,
@@ -194,11 +193,19 @@ export function SurveySearchView() {
   } = useForm<SurveySearchFormData>({
     resolver: zodResolver(surveySearchSchema),
     defaultValues: {
+      school_id: isAdmin ? "" : defaultSchoolId,
       class_name: "",
       feedback_column: "school_feedback",
       limit: 10,
     },
   });
+
+  const selectedSchoolId = watch("school_id");
+  const activeSchoolId = isAdmin ? selectedSchoolId : defaultSchoolId;
+
+  const { options: schoolOptions, setQuery: setSchoolQuery, isSearching: isSearchingSchools } = useSchoolSearch();
+  const { classNameOptions } = useClassOptions(activeSchoolId);
+  const noClasses = classNameOptions.length === 0;
 
   const appendInsight = useCallback(
     (chunk: string) => setInsight((prev) => prev + chunk),
@@ -233,12 +240,17 @@ export function SurveySearchView() {
       setCopied(false);
 
       try {
+        const schoolName = isAdmin
+          ? schoolOptions.find((s) => s.value === formData.school_id)?.label
+          : undefined;
+
         for await (const event of surveyApi.searchStream(
           {
             query: formData.query,
             class_name: formData.class_name,
             feedback_column: formData.feedback_column as FeedbackColumn,
             limit: formData.limit,
+            filters: schoolName ? { school_name: schoolName } : undefined,
           },
           controller.signal,
         )) {
@@ -305,17 +317,37 @@ export function SurveySearchView() {
           </div>
 
           {/* Filters row */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 items-start">
+            {isAdmin && (
+              <div className="sm:col-span-3">
+                <SearchableSelect
+                  label="School"
+                  placeholder="Select school..."
+                  searchPlaceholder="Search schools..."
+                  options={schoolOptions}
+                  isLoading={isSearchingSchools}
+                  onSearchChange={setSchoolQuery}
+                  value={selectedSchoolId}
+                  onChange={(val) => {
+                    setValue("school_id", val);
+                    setValue("class_name", ""); // reset class when school changes
+                  }}
+                  disabled={streaming}
+                />
+              </div>
+            )}
             <Select
               label="Class"
-              options={classOptions}
-              placeholder={noClasses ? "No data yet" : "Select class…"}
+              options={classNameOptions}
+              placeholder={noClasses ? "No classes available" : "Select class…"}
               hint={
-                noClasses
-                  ? "Import survey data first."
-                  : undefined
+                noClasses && activeSchoolId
+                  ? "No classes found for this school."
+                  : !activeSchoolId
+                    ? "Select a school first."
+                    : undefined
               }
-              disabled={noClasses || streaming}
+              disabled={noClasses || streaming || !activeSchoolId}
               {...register("class_name")}
             />
             <Select

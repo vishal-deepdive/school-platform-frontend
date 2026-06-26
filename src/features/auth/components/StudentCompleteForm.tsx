@@ -120,6 +120,7 @@ export function StudentCompleteForm({
         searchPlaceholder="Search classes..."
         options={classOptions}
         value={selectedClassCode}
+        disabled={!selectedSchoolId}
         onChange={(val) =>
           setValue("class_code", val, { shouldValidate: true })
         }

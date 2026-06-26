@@ -11,7 +11,10 @@ import type {
   SurveyDeleteResponse,
   ChartsListResponse,
   SurveySourceResponse,
+  SourceListResponse,
+  HeaderPreviewResponse,
   RegisterSourceRequest,
+  UpdateSourceRequest,
   SurveySourceDeleteResponse,
   SyncMode,
 } from "@/features/survey/types";
@@ -22,9 +25,67 @@ export const surveyApi = {
   getStatus: () =>
     apiClient.get<SurveyStatusResponse>(`${BASE}/status`).then((r) => r.data),
 
-  // schoolName is required only for admins (the school whose registered sheet
-  // to sync); principals omit it and sync their own school. mode "replace" first
-  // clears the school's rows for the source's cycle, then re-imports.
+  // ── Multi-source endpoints ──────────────────────────────────────────────
+
+  getSources: (schoolName?: string) =>
+    apiClient
+      .get<SourceListResponse>(`${BASE}/sources`, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
+      .then((r) => r.data),
+
+  getSourceById: (sourceId: string) =>
+    apiClient
+      .get<SurveySourceResponse>(`${BASE}/source/${sourceId}`)
+      .then((r) => r.data),
+
+  previewHeaders: (sheetUrl: string) =>
+    apiClient
+      .post<HeaderPreviewResponse>(`${BASE}/source/preview-headers`, {
+        sheet_url: sheetUrl,
+      })
+      .then((r) => r.data),
+
+  registerSource: (data: RegisterSourceRequest) =>
+    apiClient
+      .post<SurveySourceResponse>(`${BASE}/source`, data)
+      .then((r) => r.data),
+
+  updateSource: (sourceId: string, data: UpdateSourceRequest) =>
+    apiClient
+      .put<SurveySourceResponse>(`${BASE}/source/${sourceId}`, data)
+      .then((r) => r.data),
+
+  syncSource: (sourceId: string, mode: SyncMode = "append") =>
+    apiClient
+      .post<LoadRecentResponse>(
+        `${BASE}/source/${sourceId}/sync`,
+        undefined,
+        { params: { mode } },
+      )
+      .then((r) => r.data),
+
+  deleteSourceById: (sourceId: string) =>
+    apiClient
+      .delete<SurveySourceDeleteResponse>(`${BASE}/source/${sourceId}`)
+      .then((r) => r.data),
+
+  // ── Legacy endpoints (kept for backward compat) ────────────────────────
+
+  getSource: (schoolName?: string) =>
+    apiClient
+      .get<SurveySourceResponse>(`${BASE}/source`, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
+      .then((r) => r.data),
+
+  deleteSource: (schoolName?: string) =>
+    apiClient
+      .delete<SurveySourceDeleteResponse>(`${BASE}/source`, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
+      .then((r) => r.data),
+
   loadRecent: (schoolName?: string, mode: SyncMode = "append") =>
     apiClient
       .post<LoadRecentResponse>(`${BASE}/load-recent`, undefined, {
@@ -35,30 +96,12 @@ export const surveyApi = {
       })
       .then((r) => r.data),
 
-  // schoolName lets an admin target a specific school's source; principals omit it.
-  getSource: (schoolName?: string) =>
-    apiClient
-      .get<SurveySourceResponse>(`${BASE}/source`, {
-        params: schoolName ? { school_name: schoolName } : undefined,
-      })
-      .then((r) => r.data),
-
-  registerSource: (data: RegisterSourceRequest) =>
-    apiClient
-      .post<SurveySourceResponse>(`${BASE}/source`, data)
-      .then((r) => r.data),
-
-  deleteSource: (schoolName?: string) =>
-    apiClient
-      .delete<SurveySourceDeleteResponse>(`${BASE}/source`, {
-        params: schoolName ? { school_name: schoolName } : undefined,
-      })
-      .then((r) => r.data),
-
   getSyncStatus: (jobId: string) =>
     apiClient
       .get<SyncJobStatusResponse>(`${BASE}/sync-status/${jobId}`)
       .then((r) => r.data),
+
+  // ── Search ─────────────────────────────────────────────────────────────
 
   search: (data: SearchRequest) =>
     apiClient.post<SearchResponse>(`${BASE}/search`, data).then((r) => r.data),
@@ -66,13 +109,19 @@ export const surveyApi = {
   searchStream: (data: SearchRequest, signal?: AbortSignal) =>
     streamSSE<SearchStreamEvent>(`${BASE}/search/stream`, data, signal),
 
+  // ── Charts ─────────────────────────────────────────────────────────────
+
   listCharts: () =>
     apiClient.get<ChartsListResponse>(`${BASE}/charts`).then((r) => r.data),
 
   getChartUrl: (filename: string) => `${API_BASE_URL}${BASE}/chart/${filename}`,
 
   resolveChartUrl: (chartUrl: string) =>
-    chartUrl.startsWith("http") ? chartUrl : `${API_BASE_URL}${BASE}/chart/${chartUrl.split("/").pop()}`,
+    chartUrl.startsWith("http")
+      ? chartUrl
+      : `${API_BASE_URL}${BASE}/chart/${chartUrl.split("/").pop()}`,
+
+  // ── Delete ─────────────────────────────────────────────────────────────
 
   deleteByRollSchool: (roll_number: string, school_name: string) =>
     apiClient

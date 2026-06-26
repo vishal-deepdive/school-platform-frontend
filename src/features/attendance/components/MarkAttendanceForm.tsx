@@ -213,7 +213,7 @@ export function MarkAttendanceForm() {
             onSubmit={handleSubmit(onSubmit)}
             className="flex flex-col gap-4"
           >
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 items-start">
               {isAdmin && (
                 <SearchableSelect
                   label="School"
@@ -232,6 +232,7 @@ export function MarkAttendanceForm() {
                 }
                 options={classNameOptions}
                 error={errors.class_name?.message}
+                disabled={!schoolId}
                 {...register("class_name")}
               />
               {sectionOptions.length > 0 ? (

@@ -191,7 +191,7 @@ export function UploadRecordingPage() {
         <Card>
           <CardHeader title="Recording Details" />
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 items-start">
               {isAdmin && (
                 <SearchableSelect
                   label="School"
@@ -208,6 +208,7 @@ export function UploadRecordingPage() {
                 placeholder={schoolId ? "Select class" : "Select a school first"}
                 options={classNameOptions}
                 value={params.class_name}
+                disabled={!schoolId}
                 onChange={(e) => handleClassChange(e.target.value)}
               />
               {sectionOptions.length > 0 ? (

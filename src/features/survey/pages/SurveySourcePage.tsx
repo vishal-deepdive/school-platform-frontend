@@ -1,121 +1,716 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Link2,
+  Plus,
   RefreshCw,
   Trash2,
   CheckCircle2,
   ExternalLink,
   AlertTriangle,
+  ArrowRight,
+  ArrowLeft,
+  FileSpreadsheet,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { surveyApi } from "@/features/survey/api/survey";
-import type { SyncMode } from "@/features/survey/types";
+import type {
+  SourceItem,
+  SyncMode,
+  HeaderPreviewResponse,
+  SurveyType,
+} from "@/features/survey/types";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
+import { Select } from "@/shared/components/ui/Select";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Modal } from "@/shared/components/ui/Modal";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 
-/**
- * Data Source settings: register the public Google Sheet a school's survey
- * responses are imported from. Route is gated to admin/principal; admins must
- * additionally name the target school (principals are forced to their own).
- */
+const SURVEY_TYPE_OPTIONS = [
+  { value: "general", label: "General" },
+  { value: "academic", label: "Academic Feedback" },
+  { value: "facility", label: "Facility Survey" },
+  { value: "teacher_evaluation", label: "Teacher Evaluation" },
+];
+
+const SURVEY_TYPE_LABELS: Record<string, string> = {
+  general: "General",
+  academic: "Academic",
+  facility: "Facility",
+  teacher_evaluation: "Teacher Eval",
+};
+
+// ── Column Mapping Table ─────────────────────────────────────────────────────
+
+function ColumnMappingTable({
+  preview,
+  customMap,
+  onMapChange,
+}: {
+  preview: HeaderPreviewResponse;
+  customMap: Record<string, string>;
+  onMapChange: (map: Record<string, string>) => void;
+}) {
+  const usedCanonical = new Set([
+    ...Object.values(preview.auto_mapped),
+    ...Object.values(customMap),
+  ]);
+  const availableCanonical = preview.canonical_columns.filter(
+    (c) => !usedCanonical.has(c),
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Auto-mapped */}
+      {Object.keys(preview.auto_mapped).length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            Auto-matched ({Object.keys(preview.auto_mapped).length} columns)
+          </h4>
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
+                    Sheet Column
+                  </th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
+                    Maps To
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {Object.entries(preview.auto_mapped).map(([header, dbCol]) => (
+                  <tr key={header} className="hover:bg-muted/30">
+                    <td className="px-4 py-2 text-foreground truncate max-w-[300px]">
+                      {header}
+                    </td>
+                    <td className="px-4 py-2">
+                      <Badge variant="success">{dbCol}</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Unmapped */}
+      {preview.unmapped.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            Unmapped ({preview.unmapped.length} columns)
+          </h4>
+          <p className="text-xs text-muted-foreground mb-3">
+            These columns don't match the standard template. Map them to a
+            canonical field, or leave them unmapped — they'll be saved but
+            excluded from AI analytics.
+          </p>
+          <div className="rounded-lg border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
+                    Sheet Column
+                  </th>
+                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
+                    Map To
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {preview.unmapped.map((header) => (
+                  <tr key={header} className="hover:bg-muted/30">
+                    <td className="px-4 py-2 text-foreground truncate max-w-[300px]">
+                      {header}
+                    </td>
+                    <td className="px-4 py-2">
+                      <select
+                        value={customMap[header] ?? ""}
+                        onChange={(e) => {
+                          const next = { ...customMap };
+                          if (e.target.value) {
+                            next[header] = e.target.value;
+                          } else {
+                            delete next[header];
+                          }
+                          onMapChange(next);
+                        }}
+                        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground"
+                      >
+                        <option value="">— skip (save to extra) —</option>
+                        {availableCanonical.map((col) => (
+                          <option key={col} value={col}>
+                            {col}
+                          </option>
+                        ))}
+                        {customMap[header] && (
+                          <option value={customMap[header]}>
+                            {customMap[header]}
+                          </option>
+                        )}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Source Card ──────────────────────────────────────────────────────────────
+
+function SourceCard({
+  source,
+  onSync,
+  onDelete,
+  onToggleActive,
+  syncing,
+}: {
+  source: SourceItem;
+  onSync: (id: string, mode: SyncMode) => void;
+  onDelete: (id: string) => void;
+  onToggleActive: (id: string, active: boolean) => void;
+  syncing: boolean;
+}) {
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  return (
+    <>
+      <div
+        className={`rounded-xl border bg-background p-5 transition-all ${
+          source.is_active
+            ? "border-border shadow-sm"
+            : "border-border/50 opacity-60"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-3">
+            {/* Header row: badges */}
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={source.is_active ? "success" : "default"}>
+                {source.is_active ? (
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                ) : (
+                  <PowerOff className="mr-1 h-3 w-3" />
+                )}
+                {source.is_active ? "Active" : "Inactive"}
+              </Badge>
+              <Badge variant="info">
+                {SURVEY_TYPE_LABELS[source.survey_type] ?? source.survey_type}
+              </Badge>
+              {source.cycle && source.cycle !== "default" && (
+                <Badge variant="default">Term: {source.cycle}</Badge>
+              )}
+              {source.label && (
+                <span className="text-sm font-medium text-foreground">
+                  {source.label}
+                </span>
+              )}
+            </div>
+
+            {/* URL */}
+            <a
+              href={source.sheet_url ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 break-all text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="truncate max-w-md">
+                {source.sheet_url ?? "—"}
+              </span>
+            </a>
+
+            {/* Meta info */}
+            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+              <span>
+                Last synced:{" "}
+                {source.last_synced_at
+                  ? formatDateTime(source.last_synced_at)
+                  : "never"}
+              </span>
+              {source.headers_snapshot && (
+                <span>{source.headers_snapshot.length} columns</span>
+              )}
+              {source.column_map &&
+                Object.keys(source.column_map).length > 0 && (
+                  <span>
+                    {Object.keys(source.column_map).length} custom mappings
+                  </span>
+                )}
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        {source.is_active && (
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/50 pt-4">
+            <Button
+              size="sm"
+              onClick={() => onSync(source.id, "append")}
+              loading={syncing}
+              icon={<RefreshCw className="h-3.5 w-3.5" />}
+            >
+              Sync
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setConfirmReplace(true)}
+              disabled={syncing}
+              icon={<AlertTriangle className="h-3.5 w-3.5" />}
+            >
+              Replace
+            </Button>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onToggleActive(source.id, false)}
+              icon={<PowerOff className="h-3.5 w-3.5" />}
+            >
+              Deactivate
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmDelete(true)}
+              className="text-destructive hover:text-destructive"
+              icon={<Trash2 className="h-3.5 w-3.5" />}
+            >
+              Remove
+            </Button>
+          </div>
+        )}
+
+        {!source.is_active && (
+          <div className="mt-4 flex items-center gap-2 border-t border-border/50 pt-4">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onToggleActive(source.id, true)}
+              icon={<Power className="h-3.5 w-3.5" />}
+            >
+              Reactivate
+            </Button>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirmDelete(true)}
+              className="text-destructive hover:text-destructive"
+              icon={<Trash2 className="h-3.5 w-3.5" />}
+            >
+              Remove
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Replace confirmation */}
+      <Modal
+        open={confirmReplace}
+        onClose={() => setConfirmReplace(false)}
+        title="Replace All Data"
+        size="md"
+      >
+        <Alert variant="error" title="Destructive action">
+          This will DELETE all imported responses for &quot;
+          {source.school_name}&quot; in term &quot;
+          {source.cycle || "default"}&quot;, then re-import the entire sheet.
+          This cannot be undone.
+        </Alert>
+        <div className="mt-4 flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setConfirmReplace(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setConfirmReplace(false);
+              onSync(source.id, "replace");
+            }}
+          >
+            Replace All Data
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Delete confirmation */}
+      <Modal
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Remove Data Source"
+        size="md"
+      >
+        <p className="text-sm text-muted-foreground">
+          Remove this sheet registration? Already-imported survey rows will NOT
+          be deleted.
+        </p>
+        <div className="mt-4 flex justify-end gap-3">
+          <Button
+            variant="outline"
+            onClick={() => setConfirmDelete(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            onClick={() => {
+              setConfirmDelete(false);
+              onDelete(source.id);
+            }}
+          >
+            Remove
+          </Button>
+        </div>
+      </Modal>
+    </>
+  );
+}
+
+// ── Add Source Wizard ────────────────────────────────────────────────────────
+
+type WizardStep = "url" | "mapping" | "details";
+
+function AddSourceWizard({
+  open,
+  onClose,
+  schoolParam,
+}: {
+  open: boolean;
+  onClose: () => void;
+  schoolParam?: string;
+}) {
+  const qc = useQueryClient();
+  const [step, setStep] = useState<WizardStep>("url");
+  const [sheetUrl, setSheetUrl] = useState("");
+  const [preview, setPreview] = useState<HeaderPreviewResponse | null>(null);
+  const [customMap, setCustomMap] = useState<Record<string, string>>({});
+  const [label, setLabel] = useState("");
+  const [cycle, setCycle] = useState("");
+  const [surveyType, setSurveyType] = useState<SurveyType>("general");
+
+  const reset = () => {
+    setStep("url");
+    setSheetUrl("");
+    setPreview(null);
+    setCustomMap({});
+    setLabel("");
+    setCycle("");
+    setSurveyType("general");
+  };
+
+  const handleClose = () => {
+    reset();
+    onClose();
+  };
+
+  const { mutate: fetchPreview, isPending: loadingPreview } = useMutation({
+    mutationFn: () => surveyApi.previewHeaders(sheetUrl.trim()),
+    onSuccess: (data) => {
+      setPreview(data);
+      setStep("mapping");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const { mutate: register, isPending: registering } = useMutation({
+    mutationFn: () => {
+      const columnMap =
+        Object.keys(customMap).length > 0 ? customMap : undefined;
+      return surveyApi.registerSource({
+        sheet_url: sheetUrl.trim(),
+        label: label.trim() || undefined,
+        cycle: cycle.trim() || undefined,
+        survey_type: surveyType,
+        school_name: schoolParam,
+        column_map: columnMap,
+      });
+    },
+    onSuccess: () => {
+      toast.success("Source registered successfully.");
+      qc.invalidateQueries({ queryKey: ["survey"] });
+      handleClose();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const totalMapped = preview
+    ? Object.keys(preview.auto_mapped).length + Object.keys(customMap).length
+    : 0;
+  const totalHeaders = preview?.headers.length ?? 0;
+
+  return (
+    <Modal open={open} onClose={handleClose} title="Add Data Source" size="xl">
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 mb-6">
+        {(["url", "mapping", "details"] as WizardStep[]).map((s, i) => (
+          <div key={s} className="flex items-center gap-2">
+            {i > 0 && (
+              <div
+                className={`h-px w-8 ${step === s || (i === 1 && step === "details") || (i === 2 && step === "details") ? "bg-primary" : "bg-border"}`}
+              />
+            )}
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                step === s
+                  ? "bg-primary text-primary-foreground"
+                  : i < ["url", "mapping", "details"].indexOf(step)
+                    ? "bg-primary/20 text-primary"
+                    : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {i + 1}
+            </div>
+            <span
+              className={`text-sm font-medium ${step === s ? "text-foreground" : "text-muted-foreground"}`}
+            >
+              {s === "url"
+                ? "Sheet URL"
+                : s === "mapping"
+                  ? "Column Mapping"
+                  : "Details"}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: URL */}
+      {step === "url" && (
+        <div className="space-y-4">
+          <Input
+            label="Google Sheet URL"
+            placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+            value={sheetUrl}
+            onChange={(e) => setSheetUrl(e.target.value)}
+            hint="Paste the share URL. The sheet must be public (Anyone with the link can view)."
+            required
+          />
+          <div className="flex justify-end">
+            <Button
+              onClick={() => fetchPreview()}
+              loading={loadingPreview}
+              disabled={!sheetUrl.trim()}
+              icon={<ArrowRight className="h-4 w-4" />}
+            >
+              Fetch & Preview Columns
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Column Mapping */}
+      {step === "mapping" && preview && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {totalMapped}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-foreground">
+                {totalHeaders}
+              </span>{" "}
+              columns mapped to canonical fields
+            </p>
+            <Badge
+              variant={
+                preview.unmapped.length === 0 ? "success" : "warning"
+              }
+            >
+              {preview.unmapped.length === 0
+                ? "All mapped"
+                : `${preview.unmapped.length} unmapped`}
+            </Badge>
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto rounded-lg">
+            <ColumnMappingTable
+              preview={preview}
+              customMap={customMap}
+              onMapChange={setCustomMap}
+            />
+          </div>
+
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setStep("url")}
+              icon={<ArrowLeft className="h-4 w-4" />}
+            >
+              Back
+            </Button>
+            <Button
+              onClick={() => setStep("details")}
+              icon={<ArrowRight className="h-4 w-4" />}
+            >
+              Continue
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Details */}
+      {step === "details" && (
+        <div className="space-y-4">
+          <Input
+            label="Label"
+            placeholder="e.g. Academic Feedback Term 1 2025-26"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            hint="A descriptive name for this data source."
+          />
+          <Input
+            label="Term / Cycle"
+            placeholder="e.g. 2025-T1 (defaults to 'default')"
+            value={cycle}
+            onChange={(e) => setCycle(e.target.value)}
+            hint="Use a new value each term so the same students aren't skipped as duplicates."
+          />
+          <Select
+            label="Survey Type"
+            options={SURVEY_TYPE_OPTIONS}
+            value={surveyType}
+            onChange={(e) =>
+              setSurveyType(
+                (e.target as HTMLSelectElement).value as SurveyType,
+              )
+            }
+          />
+
+          {preview && (
+            <div className="rounded-lg bg-muted/30 border border-border p-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+                Summary
+              </p>
+              <div className="text-sm text-foreground space-y-0.5">
+                <p>
+                  {totalMapped} columns mapped, {preview.unmapped.length - Object.keys(customMap).length > 0 ? preview.unmapped.length - Object.keys(customMap).length : 0} saved
+                  to extra
+                </p>
+                <p className="text-muted-foreground truncate">
+                  Sheet: {sheetUrl.split("/d/")[1]?.split("/")[0]?.slice(0, 20) ?? sheetUrl.slice(0, 40)}...
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setStep("mapping")}
+              icon={<ArrowLeft className="h-4 w-4" />}
+            >
+              Back
+            </Button>
+            <Button
+              onClick={() => register()}
+              loading={registering}
+              icon={<Plus className="h-4 w-4" />}
+            >
+              Add Source
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+// ── Main Page ───────────────────────────────────────────────────────────────
+
 export function SurveySourcePage() {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === "admin";
 
-  const [sheetUrl, setSheetUrl] = useState("");
-  const [label, setLabel] = useState("");
-  const [cycle, setCycle] = useState("");
-  // Admins operate on a chosen school; principals are forced to their own, so
-  // this stays empty and is ignored by the API for them.
   const [adminSchool, setAdminSchool] = useState("");
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   const schoolParam = isAdmin ? adminSchool.trim() || undefined : undefined;
   const adminReady = !isAdmin || !!schoolParam;
 
-  const { data: source, isLoading } = useQuery({
-    queryKey: ["survey", "source", isAdmin ? adminSchool.trim() : "self"],
-    queryFn: () => surveyApi.getSource(schoolParam),
+  const { data: sourcesData, isLoading } = useQuery({
+    queryKey: ["survey", "sources", isAdmin ? adminSchool.trim() : "self"],
+    queryFn: () => surveyApi.getSources(schoolParam),
     enabled: adminReady,
   });
 
-  const { mutate: register, isPending: registering } = useMutation({
-    mutationFn: () =>
-      surveyApi.registerSource({
-        sheet_url: sheetUrl.trim(),
-        label: label.trim() || undefined,
-        cycle: cycle.trim() || undefined,
-        school_name: schoolParam,
-      }),
-    onSuccess: () => {
-      toast.success("Google Sheet registered.");
-      setSheetUrl("");
-      setLabel("");
-      setCycle("");
-      qc.invalidateQueries({ queryKey: ["survey", "source"] });
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
+  const sources = sourcesData?.sources ?? [];
+  const activeSources = sources.filter((s) => s.is_active);
+  const inactiveSources = sources.filter((s) => !s.is_active);
 
-  const { mutate: sync, isPending: syncing } = useMutation({
-    mutationFn: (mode: SyncMode) => surveyApi.loadRecent(schoolParam, mode),
+  const { mutate: syncSource, isPending: syncing } = useMutation({
+    mutationFn: ({ id, mode }: { id: string; mode: SyncMode }) =>
+      surveyApi.syncSource(id, mode),
     onSuccess: (res) => {
       const deleted = res.summary.rows_deleted ?? 0;
+      const drift = res.schema_drift;
       toast.success(
         `Sync (${res.mode}): +${res.summary.records_added} added, ` +
           `${res.summary.records_skipped} skipped` +
           (deleted ? `, ${deleted} replaced` : ""),
       );
-      qc.invalidateQueries({ queryKey: ["survey", "status"] });
-      qc.invalidateQueries({ queryKey: ["survey", "source"] });
+      if (drift) {
+        toast(
+          `Schema changed: ${drift.added.length} columns added, ${drift.removed.length} removed`,
+          { icon: "⚠️", duration: 6000 },
+        );
+      }
+      qc.invalidateQueries({ queryKey: ["survey"] });
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const { mutate: remove, isPending: removing } = useMutation({
-    mutationFn: () => surveyApi.deleteSource(schoolParam),
+  const { mutate: deleteSource } = useMutation({
+    mutationFn: (id: string) => surveyApi.deleteSourceById(id),
     onSuccess: () => {
-      toast.success("Data source removed.");
-      qc.invalidateQueries({ queryKey: ["survey", "source"] });
+      toast.success("Source removed.");
+      qc.invalidateQueries({ queryKey: ["survey"] });
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const handleSync = (mode: SyncMode) => {
-    if (mode === "replace") {
-      const where = source?.school_name ?? "this school";
-      const term = source?.cycle ?? "default";
-      const ok = window.confirm(
-        `Replace will DELETE all existing imported responses for "${where}" in ` +
-          `term "${term}", then re-import the sheet. This cannot be undone.\n\n` +
-          `Use this to swap datasets so analytics stop answering from the old ` +
-          `sheet. Continue?`,
-      );
-      if (!ok) return;
-    }
-    sync(mode);
-  };
+  const { mutate: toggleActive } = useMutation({
+    mutationFn: ({ id, active }: { id: string; active: boolean }) =>
+      surveyApi.updateSource(id, { is_active: active }),
+    onSuccess: (_res, { active }) => {
+      toast.success(active ? "Source reactivated." : "Source deactivated.");
+      qc.invalidateQueries({ queryKey: ["survey"] });
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
 
-  if (isLoading) return <PageSpinner />;
-
-  const configured = source?.configured;
-  const canSubmit = !!sheetUrl.trim() && adminReady;
+  if (isLoading && adminReady) return <PageSpinner />;
 
   return (
     <div className="space-y-6">
-      {/* ── Admin: choose the school ───────────────────────────────────── */}
+      {/* Admin school selector */}
       {isAdmin && (
         <Card>
           <CardHeader
             title="School"
-            description="Admins manage one school's data source at a time. Enter the exact registered school name."
+            description="Select the school to manage data sources for."
           />
           <Input
             label="School name"
@@ -125,7 +720,7 @@ export function SurveySourcePage() {
           />
           {!adminReady && (
             <p className="mt-2 text-sm text-muted-foreground">
-              Enter a school above to view or change its data source.
+              Enter a school above to manage its data sources.
             </p>
           )}
         </Card>
@@ -133,151 +728,102 @@ export function SurveySourcePage() {
 
       {adminReady && (
         <>
-          {/* ── Current source ─────────────────────────────────────────── */}
-          <Card>
-            <CardHeader
-              title="Current Data Source"
-              description="The public Google Sheet this school's survey responses are imported from."
-            />
-            {configured ? (
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="success">
-                    <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                    Connected
-                  </Badge>
-                  {source?.school_name && (
-                    <span className="text-sm text-muted-foreground">
-                      {source.school_name}
-                    </span>
-                  )}
-                  {source?.label && <Badge variant="info">{source.label}</Badge>}
-                  {source?.cycle && (
-                    <Badge variant="default">Term: {source.cycle}</Badge>
-                  )}
-                </div>
-
-                <a
-                  href={source?.sheet_url ?? "#"}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 break-all text-sm text-primary hover:underline"
-                >
-                  <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                  {source?.sheet_url}
-                </a>
-
-                <p className="text-xs text-muted-foreground">
-                  Last synced:{" "}
-                  {source?.last_synced_at
-                    ? formatDateTime(source.last_synced_at)
-                    : "never"}
-                </p>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    size="sm"
-                    onClick={() => handleSync("append")}
-                    loading={syncing}
-                    icon={<RefreshCw className="h-4 w-4" />}
-                  >
-                    Sync new responses
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleSync("replace")}
-                    loading={syncing}
-                    icon={<AlertTriangle className="h-4 w-4" />}
-                  >
-                    Replace all data
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => remove()}
-                    loading={removing}
-                    icon={<Trash2 className="h-4 w-4" />}
-                  >
-                    Remove
-                  </Button>
-                </div>
-
-                <Alert variant="info" title="Append vs Replace">
-                  <span className="text-sm">
-                    <strong>Sync new responses</strong> adds responses that aren't
-                    already imported for the current term.{" "}
-                    <strong>Replace all data</strong> deletes this term's existing
-                    responses first, then re-imports — use it when you switch to a
-                    different sheet so the AI stops answering from the old data. To
-                    start a NEW term and keep the old data, set a new "Term / cycle"
-                    below before syncing.
-                  </span>
-                </Alert>
-              </div>
-            ) : (
-              <Alert variant="info" title="No sheet connected">
-                Register a public Google Sheet below to start importing survey
-                responses for this school.
-              </Alert>
-            )}
-          </Card>
-
-          {/* ── Register / replace ───────────────────────────────────────── */}
-          <Card>
-            <CardHeader
-              title={configured ? "Replace Sheet" : "Connect a Google Sheet"}
-              description="In Google Sheets: Share → General access → 'Anyone with the link' → Viewer, then paste the URL here."
-            />
-            <form
-              className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (canSubmit) register();
-              }}
+          {/* Header + Add button */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">
+                Data Sources
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {sources.length === 0
+                  ? "No sheets connected yet."
+                  : `${activeSources.length} active source${activeSources.length !== 1 ? "s" : ""}` +
+                    (inactiveSources.length
+                      ? `, ${inactiveSources.length} inactive`
+                      : "")}
+              </p>
+            </div>
+            <Button
+              onClick={() => setWizardOpen(true)}
+              icon={<Plus className="h-4 w-4" />}
             >
-              <Input
-                label="Google Sheet URL"
-                placeholder="https://docs.google.com/spreadsheets/d/.../edit"
-                value={sheetUrl}
-                onChange={(e) => setSheetUrl(e.target.value)}
-                hint="The sheet must be public (Anyone with the link can view). We read it via the CSV export."
-                required
-              />
-              <Input
-                label="Label (optional)"
-                placeholder="e.g. Term 1 2025-26"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-              />
-              <Input
-                label="Term / cycle (optional)"
-                placeholder="e.g. 2025-T1 (defaults to 'default')"
-                value={cycle}
-                onChange={(e) => setCycle(e.target.value)}
-                hint="Tag for this survey round. Use a new value each term so the same students aren't skipped as duplicates next time."
-              />
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  loading={registering}
-                  disabled={!canSubmit}
-                  icon={<Link2 className="h-4 w-4" />}
-                >
-                  {configured ? "Replace Sheet" : "Connect Sheet"}
-                </Button>
-              </div>
-            </form>
-          </Card>
+              Add Source
+            </Button>
+          </div>
 
-          <Alert variant="warning" title="Schema tip">
-            Use the standard survey Google Form template so columns map
-            automatically. Extra or renamed columns are still imported and
-            preserved, but won't appear in AI analytics until they're mapped to
-            canonical fields.
-          </Alert>
+          {/* Empty state */}
+          {sources.length === 0 && (
+            <EmptyState
+              icon={<FileSpreadsheet className="h-12 w-12" />}
+              title="No data sources"
+              description="Connect a public Google Sheet to start importing survey responses. You can add multiple sheets for different terms or survey types."
+              action={
+                <Button
+                  onClick={() => setWizardOpen(true)}
+                  icon={<Plus className="h-4 w-4" />}
+                >
+                  Add Source
+                </Button>
+              }
+            />
+          )}
+
+          {/* Active sources */}
+          {activeSources.length > 0 && (
+            <div className="space-y-4">
+              {activeSources.map((source) => (
+                <SourceCard
+                  key={source.id}
+                  source={source}
+                  onSync={(id, mode) => syncSource({ id, mode })}
+                  onDelete={(id) => deleteSource(id)}
+                  onToggleActive={(id, active) =>
+                    toggleActive({ id, active })
+                  }
+                  syncing={syncing}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Inactive sources */}
+          {inactiveSources.length > 0 && (
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Inactive Sources
+              </h4>
+              {inactiveSources.map((source) => (
+                <SourceCard
+                  key={source.id}
+                  source={source}
+                  onSync={(id, mode) => syncSource({ id, mode })}
+                  onDelete={(id) => deleteSource(id)}
+                  onToggleActive={(id, active) =>
+                    toggleActive({ id, active })
+                  }
+                  syncing={syncing}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Info alert */}
+          {sources.length > 0 && (
+            <Alert variant="info" title="Multiple sources">
+              Each source can have its own term/cycle and survey type. Students
+              are deduplicated within the same (name, roll, school, cycle) — use
+              a new cycle value each term so the same students aren't skipped.
+            </Alert>
+          )}
         </>
       )}
+
+      {/* Add Source Wizard */}
+      <AddSourceWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        schoolParam={schoolParam}
+      />
     </div>
   );
 }

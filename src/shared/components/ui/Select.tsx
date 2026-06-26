@@ -107,6 +107,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (props.disabled) return;
+
       if (!isOpen) {
         if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown" || e.key === "ArrowUp") {
           e.preventDefault();
@@ -169,7 +171,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            className={cn("text-sm font-medium leading-none", props.disabled && "cursor-not-allowed opacity-70")}
           >
             {label}
           </label>
@@ -192,14 +194,15 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {/* Custom UI */}
         <div
           tabIndex={0}
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={() => !props.disabled && setIsOpen(!isOpen)}
           onKeyDown={handleKeyDown}
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer",
+            "flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer select-none",
             "text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200",
             "hover:border-primary/50 focus-visible:bg-accent focus-visible:outline-none",
             isOpen && "ring-2 ring-primary/20 border-primary",
             error && "border-destructive ring-0",
+            props.disabled && "opacity-50 cursor-not-allowed hover:border-input",
             className,
           )}
         >
