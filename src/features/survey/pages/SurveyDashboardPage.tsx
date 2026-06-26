@@ -32,7 +32,7 @@ export function SurveyDashboardPage() {
   const canSync = role === "admin" || role === "principal";
   const [syncJobId, setSyncJobId] = useState<string | null>(null);
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, error: statusError, refetch, isFetching } = useQuery({
     queryKey: ["survey", "status"],
     queryFn: () => surveyApi.getStatus(),
     staleTime: 2 * 60_000,
@@ -91,7 +91,7 @@ export function SurveyDashboardPage() {
 
   if (isLoading) return <PageSpinner />;
   if (isError)
-    return <Alert variant="error">Failed to load survey status.</Alert>;
+    return <Alert variant="error">{getErrorMessage(statusError) || "Failed to load survey status."}</Alert>;
 
   const embeddingFields = Object.entries(data?.embeddings ?? {});
   const hasData = (data?.total_records ?? 0) > 0;

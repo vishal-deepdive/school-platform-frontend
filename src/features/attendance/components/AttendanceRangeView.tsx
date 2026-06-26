@@ -2,7 +2,7 @@ import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, AlertTriangle, CalendarX } from "lucide-react";
-import { toIndianDate } from "@/shared/lib/utils";
+import { toIndianDate, getErrorMessage } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
@@ -39,6 +39,7 @@ export function AttendanceRangeView() {
     data: rangeData,
     isLoading: rangeLoading,
     isError: rangeError,
+    error: rangeQueryError,
   } = useQuery({
     queryKey: ["attendance", "range", queryRange],
     queryFn: () =>
@@ -106,7 +107,7 @@ export function AttendanceRangeView() {
 
       {rangeLoading && <PageSpinner />}
       {rangeError && (
-        <Alert variant="error">Failed to fetch attendance range.</Alert>
+        <Alert variant="error">{getErrorMessage(rangeQueryError) || "Failed to fetch attendance range."}</Alert>
       )}
 
       {rangeData && (!rangeData.data || rangeData.data.length === 0) && (

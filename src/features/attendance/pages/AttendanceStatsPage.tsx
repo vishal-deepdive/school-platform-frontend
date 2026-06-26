@@ -4,6 +4,7 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
+import { getErrorMessage } from "@/shared/lib/utils";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import type {
@@ -12,7 +13,7 @@ import type {
 } from "@/features/attendance/types";
 
 export function AttendanceStatsPage() {
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["attendance", "enrollment-stats"],
     queryFn: () => attendanceApi.getEnrollmentStats(),
     staleTime: 2 * 60_000,
@@ -20,7 +21,7 @@ export function AttendanceStatsPage() {
 
   if (isLoading) return <PageSpinner />;
   if (isError)
-    return <Alert variant="error">Failed to load enrollment statistics.</Alert>;
+    return <Alert variant="error">{getErrorMessage(error) || "Failed to load enrollment statistics."}</Alert>;
 
   return (
     <div className="space-y-6">

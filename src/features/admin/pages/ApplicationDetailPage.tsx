@@ -78,7 +78,7 @@ export function ApplicationDetailPage() {
   if (error || !app) {
     return (
       <Alert variant="error">
-        Application not found.{" "}
+        {getErrorMessage(error) || "Application not found."}{" "}
         <Link to="/admin/onboarding" className="underline">
           Back to list
         </Link>

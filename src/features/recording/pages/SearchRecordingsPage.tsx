@@ -6,7 +6,7 @@ import { Input } from "@/shared/components/ui/Input";
 import { Badge } from "@/shared/components/ui/Badge";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
-import { formatDate } from "@/shared/lib/utils";
+import { formatDate, getErrorMessage } from "@/shared/lib/utils";
 import {
   useSearchRecordings,
   useRecordingPreview,
@@ -18,7 +18,7 @@ export function SearchRecordingsPage() {
   const [submittedQuery, setSubmittedQuery] = useState("");
   const preview = useRecordingPreview();
 
-  const { data, isLoading, isError, isFetching } =
+  const { data, isLoading, isError, error, isFetching } =
     useSearchRecordings(submittedQuery);
 
   const handleSearch = (e: FormEvent) => {
@@ -57,7 +57,7 @@ export function SearchRecordingsPage() {
           {isLoading ? (
             <PageSpinner />
           ) : isError ? (
-            <Alert variant="error">An error occurred while searching.</Alert>
+            <Alert variant="error">{getErrorMessage(error) || "An error occurred while searching. Please try again."}</Alert>
           ) : data?.results.length === 0 ? (
             <Alert variant="info">
               No matching notes found for your query.

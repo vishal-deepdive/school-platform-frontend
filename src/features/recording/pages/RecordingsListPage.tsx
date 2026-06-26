@@ -8,6 +8,7 @@ import { Modal } from "@/shared/components/ui/Modal";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
+import { getErrorMessage } from "@/shared/lib/utils";
 import {
   useRecordingsList,
   useDeleteRecording,
@@ -32,7 +33,7 @@ export function RecordingsListPage() {
 
   const [offset, setOffset] = useState(0);
 
-  const { data, isLoading, isError, refetch, isFetching } = useRecordingsList(
+  const { data, isLoading, isError, error, refetch, isFetching } = useRecordingsList(
     PAGE_SIZE,
     offset,
   );
@@ -54,7 +55,7 @@ export function RecordingsListPage() {
   const goPrev = () => setOffset((o) => Math.max(0, o - PAGE_SIZE));
 
   if (isLoading) return <PageSpinner />;
-  if (isError) return <Alert variant="error">Failed to load recordings.</Alert>;
+  if (isError) return <Alert variant="error">{getErrorMessage(error) || "Failed to load recordings."}</Alert>;
 
   return (
     <div className="space-y-6">

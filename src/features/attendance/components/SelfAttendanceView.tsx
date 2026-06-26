@@ -2,7 +2,7 @@ import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, AlertTriangle, CalendarRange } from "lucide-react";
-import { toIndianDate } from "@/shared/lib/utils";
+import { toIndianDate, getErrorMessage } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
@@ -41,6 +41,7 @@ export function SelfAttendanceView() {
     data,
     isLoading,
     isError,
+    error: queryError,
   } = useQuery({
     queryKey: ["attendance", "self-range", query],
     queryFn: () =>
@@ -84,7 +85,7 @@ export function SelfAttendanceView() {
 
       {isLoading && <PageSpinner />}
       {isError && (
-        <Alert variant="error">Failed to load attendance records.</Alert>
+        <Alert variant="error">{getErrorMessage(queryError) || "Failed to load attendance records."}</Alert>
       )}
 
       {data && !me && (

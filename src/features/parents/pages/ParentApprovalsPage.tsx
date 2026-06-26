@@ -55,7 +55,7 @@ export function ParentApprovalsPage() {
         </p>
       </div>
 
-      {error && <Alert variant="error">Failed to load pending parents.</Alert>}
+      {error && <Alert variant="error">{getErrorMessage(error) || "Failed to load pending parents."}</Alert>}
 
       {isLoading && <PageSpinner />}
 
