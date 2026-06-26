@@ -1,9 +1,11 @@
 import { apiClient } from "@/shared/api/client";
+import { streamSSE } from "@/shared/api/streaming";
 import { API_BASE_URL } from "@/shared/config/env";
 import type {
   SurveyStatusResponse,
   SearchRequest,
   SearchResponse,
+  SearchStreamEvent,
   LoadRecentResponse,
   SyncJobStatusResponse,
   SurveyDeleteResponse,
@@ -61,10 +63,16 @@ export const surveyApi = {
   search: (data: SearchRequest) =>
     apiClient.post<SearchResponse>(`${BASE}/search`, data).then((r) => r.data),
 
+  searchStream: (data: SearchRequest, signal?: AbortSignal) =>
+    streamSSE<SearchStreamEvent>(`${BASE}/search/stream`, data, signal),
+
   listCharts: () =>
     apiClient.get<ChartsListResponse>(`${BASE}/charts`).then((r) => r.data),
 
   getChartUrl: (filename: string) => `${API_BASE_URL}${BASE}/chart/${filename}`,
+
+  resolveChartUrl: (chartUrl: string) =>
+    chartUrl.startsWith("http") ? chartUrl : `${API_BASE_URL}${BASE}/chart/${chartUrl.split("/").pop()}`,
 
   deleteByRollSchool: (roll_number: string, school_name: string) =>
     apiClient

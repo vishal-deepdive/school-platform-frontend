@@ -8,9 +8,10 @@ import {
   Clock,
   Loader2,
   FileText,
+  Copy,
+  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import ReactMarkdown from "react-markdown";
 import { recordingApi } from "@/features/recording/api/recording";
 import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
@@ -20,6 +21,7 @@ import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
+import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import type { JobStatus } from "@/features/recording/types";
@@ -58,6 +60,25 @@ const statusConfig: Record<
     icon: <XCircle className="h-4 w-4" />,
   },
 };
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      icon={copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+      onClick={() => {
+        navigator.clipboard.writeText(text).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 1500);
+        });
+      }}
+    >
+      {copied ? "Copied" : "Copy"}
+    </Button>
+  );
+}
 
 /** Formats an ETA in seconds as a short human-readable string. */
 function formatEta(seconds: number): string {
@@ -345,7 +366,7 @@ export function UploadRecordingPage() {
       </div>
 
       {markdown && (
-        <Card>
+        <Card className="relative group">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -353,18 +374,21 @@ export function UploadRecordingPage() {
                 Generated Study Materials
               </h3>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                downloadFile(markdown, `study-materials-${jobId}.md`)
-              }
-            >
-              Download .md
-            </Button>
+            <div className="flex items-center gap-2">
+              <CopyButton text={markdown} />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  downloadFile(markdown, `study-materials-${jobId}.md`)
+                }
+              >
+                Download .md
+              </Button>
+            </div>
           </div>
-          <div className="prose prose-sm dark:prose-invert max-w-none overflow-y-auto max-h-[60vh] rounded-lg bg-muted/40 p-4">
-            <ReactMarkdown>{markdown}</ReactMarkdown>
+          <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/30 p-5">
+            <MarkdownRenderer content={markdown} />
           </div>
         </Card>
       )}

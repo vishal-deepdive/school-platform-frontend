@@ -22,39 +22,55 @@ export interface SearchRequest {
   filters?: Record<string, unknown>;
 }
 
-export interface SimilarityScore {
-  roll_number: string | null;
-  school_name: string | null;
-  similarity: number;
-}
-
-/**
- * Per-row similarity summary for QUAL/MIXED searches, or a sentinel string
- * (e.g. "N/A (quantitative query)") when the search had no qualitative phase.
- */
-export type SimilarityScores = SimilarityScore[] | string;
-
-export interface RetrievedRows {
+export interface SearchData {
   type: string;
-  data?: Record<string, unknown>[];
+  results?: Record<string, unknown>[];
   sample_size?: number;
   count?: number;
-  similarity_scores?: SimilarityScores;
-  quantitative?: Record<string, unknown>;
-  qualitative?: Record<string, unknown>;
+  quantitative?: { results: Record<string, unknown>[]; sample_size: number };
+  qualitative?: { count: number; results: Record<string, unknown>[] };
 }
 
 export interface SearchResponse {
   status: string;
   intent: SearchIntent;
-  final_response: string;
-  chart_url?: string;
-  chart_info: Record<string, unknown>;
-  retrieved_rows: RetrievedRows;
-  numbers_for_graph: Record<string, unknown>;
-  // null for non-admin callers (only admins receive the generated SQL string).
+  insight: string;
+  chart_url?: string | null;
+  data: SearchData;
+  sql_query?: string | null;
+  prompt_debug?: Record<string, unknown>[];
+}
+
+// ── SSE stream events from POST /search/stream ────────────────────────────
+
+export interface SearchStreamMeta {
+  type: "meta";
+  intent: SearchIntent;
+  chart_url?: string | null;
+  data: SearchData;
   sql_query?: string | null;
 }
+
+export interface SearchStreamToken {
+  type: "token";
+  content: string;
+}
+
+export interface SearchStreamDone {
+  type: "done";
+  prompt_debug?: Record<string, unknown>[];
+}
+
+export interface SearchStreamError {
+  type: "error";
+  message: string;
+}
+
+export type SearchStreamEvent =
+  | SearchStreamMeta
+  | SearchStreamToken
+  | SearchStreamDone
+  | SearchStreamError;
 
 export interface SummarySheet {
   total_rows_in_sheet: number;

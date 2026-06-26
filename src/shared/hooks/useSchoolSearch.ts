@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { authApi } from "@/features/auth/api/auth";
 import { useDebounce } from "./useDebounce";
+import { formatClassName, getClassNameWeight } from "@/shared/lib/utils";
 import type { SearchableSelectOption } from "@/shared/components/ui/SearchableSelect";
 import type {
   SchoolSearchItem,
@@ -78,11 +79,17 @@ export function useSchoolClasses(schoolId: string | undefined) {
     };
   }, [schoolId]);
 
-  const options: SearchableSelectOption[] = classes.map((c) => ({
-    label: c.class_name,
-    value: c.code,
-    sublabel: c.section ? `Section ${c.section}` : undefined,
-  }));
+  const options: SearchableSelectOption[] = classes
+    .map((c) => ({
+      label: formatClassName(c.class_name),
+      value: c.code,
+      sublabel: c.section ? `Section ${c.section}` : undefined,
+    }))
+    .sort((a, b) => {
+      const weightDiff = getClassNameWeight(b.label) - getClassNameWeight(a.label);
+      if (weightDiff !== 0) return weightDiff;
+      return a.label.localeCompare(b.label);
+    });
 
   return { options, isLoading };
 }
