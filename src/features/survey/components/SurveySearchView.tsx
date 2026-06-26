@@ -25,7 +25,7 @@ import {
 import { surveyApi } from "@/features/survey/api/survey";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
