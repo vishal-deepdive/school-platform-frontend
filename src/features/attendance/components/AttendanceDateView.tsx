@@ -2,7 +2,7 @@ import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Download, CalendarX } from "lucide-react";
-import { toIndianDate, downloadBlob } from "@/shared/lib/utils";
+import { toIndianDate, downloadBlob, getErrorMessage } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
@@ -38,6 +38,7 @@ export function AttendanceDateView() {
     data: dateData,
     isLoading: dateLoading,
     isError: dateError,
+    error: dateQueryError,
   } = useQuery({
     queryKey: ["attendance", "date", queryDate],
     queryFn: () =>
@@ -120,7 +121,7 @@ export function AttendanceDateView() {
 
       {dateLoading && <PageSpinner />}
       {dateError && (
-        <Alert variant="error">Failed to fetch attendance records.</Alert>
+        <Alert variant="error">{getErrorMessage(dateQueryError) || "Failed to fetch attendance records."}</Alert>
       )}
       {dateData && (dateData.data as AttendanceRow[]).length === 0 && (
         <div className="mt-6">

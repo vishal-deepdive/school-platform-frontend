@@ -183,7 +183,8 @@ export function PromptsPage() {
   const {
     data: prompts,
     isLoading,
-    error,
+    isError: promptsError,
+    error: promptsQueryError,
   } = useQuery({
     queryKey: ["admin", "prompts"],
     queryFn: () => promptsApi.list(),
@@ -308,9 +309,9 @@ export function PromptsPage() {
       )}
 
       {isLoading && <PageSpinner />}
-      {error && <Alert variant="error">Failed to load prompts.</Alert>}
+      {promptsError && <Alert variant="error">{getErrorMessage(promptsQueryError) || "Failed to load prompts."}</Alert>}
 
-      {!isLoading && prompts && (
+      {!isLoading && !promptsError && prompts && (
         <div className="space-y-6">
           {Object.entries(grouped).map(([module, rows]) => (
             <div

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Activity, RefreshCw } from "lucide-react";
-import { formatDateTime } from "@/shared/lib/utils";
+import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useRecordingAuditLogs } from "@/features/recording/hooks/useRecordings";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
@@ -14,7 +14,7 @@ const PAGE_SIZE = 20;
 export function RecordingAuditPage() {
   const [offset, setOffset] = useState(0);
 
-  const { data, isLoading, isError, refetch, isFetching } =
+  const { data, isLoading, isError, error, refetch, isFetching } =
     useRecordingAuditLogs(PAGE_SIZE, offset);
 
   const total = data?.total ?? 0;
@@ -29,7 +29,7 @@ export function RecordingAuditPage() {
   const goPrev = () => setOffset((o) => Math.max(0, o - PAGE_SIZE));
 
   if (isLoading) return <PageSpinner />;
-  if (isError) return <Alert variant="error">Failed to load audit logs.</Alert>;
+  if (isError) return <Alert variant="error">{getErrorMessage(error) || "Failed to load audit logs."}</Alert>;
 
   return (
     <div className="space-y-6">

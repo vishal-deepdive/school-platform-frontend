@@ -20,6 +20,7 @@ export interface SearchableSelectProps {
   className?: string;
   isLoading?: boolean;
   onSearchChange?: (query: string) => void;
+  disabled?: boolean;
 }
 
 export function SearchableSelect({
@@ -34,6 +35,7 @@ export function SearchableSelect({
   className,
   isLoading = false,
   onSearchChange,
+  disabled = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -95,18 +97,19 @@ export function SearchableSelect({
       )}
 
       <div
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
           "flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer",
           "text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200 select-none",
           "hover:border-primary/50 focus-visible:bg-accent focus-visible:outline-none",
           isOpen && "ring-2 ring-primary/20 border-primary",
           error && "border-destructive ring-0",
+          disabled && "opacity-50 cursor-not-allowed hover:border-input"
         )}
       >
         <span
           className={cn(
-            "truncate",
+            "truncate flex-1 text-left min-w-0 mr-2",
             !selectedOption && "text-muted-foreground/70",
           )}
         >

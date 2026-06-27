@@ -85,7 +85,8 @@ export function AdminManagementPage() {
   const {
     data: admins,
     isLoading,
-    error,
+    isError: adminsError,
+    error: adminsQueryError,
   } = useQuery({
     queryKey: ["admins"],
     queryFn: () => adminApi.listAdmins(),
@@ -149,11 +150,11 @@ export function AdminManagementPage() {
       </div>
 
       {removeError && <Alert variant="error">{removeError}</Alert>}
-      {error && <Alert variant="error">Failed to load admins.</Alert>}
+      {adminsError && <Alert variant="error">{getErrorMessage(adminsQueryError) || "Failed to load admins."}</Alert>}
 
       {isLoading && <PageSpinner />}
 
-      {!isLoading && admins && (
+      {!isLoading && !adminsError && admins && (
         <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-muted/50">

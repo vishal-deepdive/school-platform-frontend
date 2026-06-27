@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi } from "@/features/admin/api/admin";
-import { formatDate } from "@/shared/lib/utils";
+import { formatDate, getErrorMessage } from "@/shared/lib/utils";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import type { OnboardingStatus } from "@/features/admin/types";
 import {
@@ -102,7 +102,7 @@ export function OnboardingApplicationsPage() {
 
       {error && (
         <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-destructive text-sm">
-          Failed to load applications. Please try again.
+          {getErrorMessage(error) || "Failed to load applications. Please try again."}
         </div>
       )}
 

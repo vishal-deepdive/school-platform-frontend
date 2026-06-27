@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { authApi } from "@/features/auth/api/auth";
-import { sortClassesDescending } from "@/shared/lib/utils";
+import { sortClassesDescending, formatClassName } from "@/shared/lib/utils";
 import type { ClassCodeItem } from "@/features/auth/types";
 import type { SelectOption } from "@/shared/types/common";
 
@@ -42,7 +42,7 @@ export function useClassOptions(schoolId: string | undefined) {
     const names = Array.from(new Set(classes.map((c) => c.class_name)));
     return sortClassesDescending(names).map((name) => ({
       value: name,
-      label: name,
+      label: formatClassName(name),
     }));
   }, [classes]);
 

@@ -22,39 +22,55 @@ export interface SearchRequest {
   filters?: Record<string, unknown>;
 }
 
-export interface SimilarityScore {
-  roll_number: string | null;
-  school_name: string | null;
-  similarity: number;
-}
-
-/**
- * Per-row similarity summary for QUAL/MIXED searches, or a sentinel string
- * (e.g. "N/A (quantitative query)") when the search had no qualitative phase.
- */
-export type SimilarityScores = SimilarityScore[] | string;
-
-export interface RetrievedRows {
+export interface SearchData {
   type: string;
-  data?: Record<string, unknown>[];
+  results?: Record<string, unknown>[];
   sample_size?: number;
   count?: number;
-  similarity_scores?: SimilarityScores;
-  quantitative?: Record<string, unknown>;
-  qualitative?: Record<string, unknown>;
+  quantitative?: { results: Record<string, unknown>[]; sample_size: number };
+  qualitative?: { count: number; results: Record<string, unknown>[] };
 }
 
 export interface SearchResponse {
   status: string;
   intent: SearchIntent;
-  final_response: string;
-  chart_url?: string;
-  chart_info: Record<string, unknown>;
-  retrieved_rows: RetrievedRows;
-  numbers_for_graph: Record<string, unknown>;
-  // null for non-admin callers (only admins receive the generated SQL string).
+  insight: string;
+  chart_url?: string | null;
+  data: SearchData;
+  sql_query?: string | null;
+  prompt_debug?: Record<string, unknown>[];
+}
+
+// ── SSE stream events from POST /search/stream ────────────────────────────
+
+export interface SearchStreamMeta {
+  type: "meta";
+  intent: SearchIntent;
+  chart_url?: string | null;
+  data: SearchData;
   sql_query?: string | null;
 }
+
+export interface SearchStreamToken {
+  type: "token";
+  content: string;
+}
+
+export interface SearchStreamDone {
+  type: "done";
+  prompt_debug?: Record<string, unknown>[];
+}
+
+export interface SearchStreamError {
+  type: "error";
+  message: string;
+}
+
+export type SearchStreamEvent =
+  | SearchStreamMeta
+  | SearchStreamToken
+  | SearchStreamDone
+  | SearchStreamError;
 
 export interface SummarySheet {
   total_rows_in_sheet: number;
@@ -75,6 +91,12 @@ export interface DatabaseChange {
 
 export type EmbeddingStatus = "completed" | "processing" | "pending" | string;
 
+export interface SchemaDrift {
+  added: string[];
+  removed: string[];
+  unchanged: number;
+}
+
 export interface LoadRecentResponse {
   status: string;
   timestamp: string;
@@ -86,6 +108,7 @@ export interface LoadRecentResponse {
   skipped_records: unknown[];
   embedding_status: EmbeddingStatus;
   job_id?: string | null;
+  schema_drift?: SchemaDrift | null;
 }
 
 export type SyncJobStatus =
@@ -116,30 +139,74 @@ export interface SurveyDeleteResponse {
   filters?: Record<string, unknown>;
 }
 
-/** A registered public Google Sheet that feeds a school's survey data. */
-export interface SurveySourceResponse {
-  status: string;
-  configured: boolean;
+// ── Source types (multi-source) ────────────────────────────────────────────
+
+export type SurveyType = "general" | "academic" | "facility" | "teacher_evaluation" | string;
+
+/** A single registered Google Sheet source. */
+export interface SourceItem {
+  id: string;
   school_name?: string | null;
   sheet_url?: string | null;
   sheet_id?: string | null;
   gid?: string | null;
   label?: string | null;
-  /** The survey term/period new imports are stamped with (dedup dimension). */
+  cycle?: string | null;
+  survey_type: SurveyType;
+  is_active: boolean;
+  column_map?: Record<string, string> | null;
+  headers_snapshot?: string[] | null;
+  last_synced_at?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+}
+
+export interface SurveySourceResponse {
+  status: string;
+  configured: boolean;
+  source?: SourceItem | null;
+  school_name?: string | null;
+  sheet_url?: string | null;
+  sheet_id?: string | null;
+  gid?: string | null;
+  label?: string | null;
   cycle?: string | null;
   column_map?: Record<string, string> | null;
   last_synced_at?: string | null;
   updated_at?: string | null;
 }
 
+export interface SourceListResponse {
+  status: string;
+  sources: SourceItem[];
+  school_name?: string | null;
+}
+
+export interface HeaderPreviewResponse {
+  status: string;
+  sheet_id: string;
+  gid: string;
+  headers: string[];
+  auto_mapped: Record<string, string>;
+  unmapped: string[];
+  canonical_columns: string[];
+}
+
 export interface RegisterSourceRequest {
   sheet_url: string;
-  /** Required for admins (the target school); ignored for principals. */
   school_name?: string;
   label?: string;
-  /** Survey term/period; bump to re-survey the same students next term. */
   cycle?: string;
+  survey_type?: SurveyType;
   column_map?: Record<string, string>;
+}
+
+export interface UpdateSourceRequest {
+  label?: string;
+  cycle?: string;
+  survey_type?: SurveyType;
+  column_map?: Record<string, string>;
+  is_active?: boolean;
 }
 
 export interface SurveySourceDeleteResponse {

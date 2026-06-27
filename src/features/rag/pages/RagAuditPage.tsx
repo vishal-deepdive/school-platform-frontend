@@ -18,7 +18,7 @@ export function RagAuditPage() {
   const canRebuild = role === "admin" || role === "principal";
   const [isRebuilding, setIsRebuilding] = useState(false);
 
-  const { data, isLoading, isError, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["rag", "audit"],
     queryFn: () => ragApi.getAudit(),
     staleTime: 2 * 60_000,
@@ -39,7 +39,7 @@ export function RagAuditPage() {
 
   if (isLoading) return <PageSpinner />;
   if (isError)
-    return <Alert variant="error">Failed to load RAG audit data.</Alert>;
+    return <Alert variant="error">{getErrorMessage(error) || "Failed to load RAG audit data."}</Alert>;
 
   const isEmpty = (data?.total_chunks ?? 0) === 0;
   const hasMissingMetadata =

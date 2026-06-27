@@ -39,25 +39,47 @@ export function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+const _STATUS_FALLBACKS: Record<number, string> = {
+  400: "Invalid request. Please check your input and try again.",
+  401: "Your session has expired. Please log in again.",
+  403: "You don't have permission to perform this action.",
+  404: "The requested resource was not found.",
+  408: "The request timed out. Please try again.",
+  409: "This action conflicts with existing data.",
+  413: "The file or data you're trying to upload is too large.",
+  422: "Please check your input — some fields may be missing or invalid.",
+  429: "Too many attempts. Please wait a moment and try again.",
+  500: "Something went wrong on our end. Please try again later.",
+  503: "The service is temporarily unavailable. Please try again later.",
+};
+
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "response" in error) {
-    const axiosError = error as { response?: { data?: { detail?: unknown } } };
+    const axiosError = error as {
+      response?: { status?: number; data?: { detail?: unknown } };
+    };
     const detail = axiosError.response?.data?.detail;
+    const status = axiosError.response?.status;
 
-    if (typeof detail === "string") {
+    if (typeof detail === "string" && detail.trim()) {
       return detail;
     }
-    if (Array.isArray(detail)) {
-      // Handle FastAPI validation error format
-      return detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+    if (Array.isArray(detail) && detail.length > 0) {
+      // FastAPI validation error array format
+      return detail.map((d: any) => d.msg || JSON.stringify(d)).join("; ");
     }
     if (detail && typeof detail === "object") {
       return (detail as any).msg || JSON.stringify(detail);
     }
-    return "An unexpected error occurred";
+
+    // Fall back to status-code-specific message when backend sends no detail
+    if (status && _STATUS_FALLBACKS[status]) {
+      return _STATUS_FALLBACKS[status];
+    }
+    return "Something went wrong. Please try again.";
   }
   if (error instanceof Error) return error.message;
-  return "An unexpected error occurred";
+  return "Something went wrong. Please try again.";
 }
 
 export function buildQueryString(params: Record<string, unknown>): string {
@@ -120,16 +142,31 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
+ * Standardizes a class name, e.g., removing spaces before 'th', 'st', 'nd', 'rd'.
+ * "10 th" -> "10th", "1 st" -> "1st"
+ */
+export function formatClassName(name: string): string {
+  return name.trim().replace(/(\d+)\s+(th|st|nd|rd)\b/i, "$1$2");
+}
+
+/** Returns a numeric weight for sorting class names. */
+export function getClassNameWeight(c: string): number {
+  const lower = c.toLowerCase();
+  if (lower.includes("nursery") || lower.includes("kg") || lower.includes("lkg") || lower.includes("ukg")) return 0;
+  const match = c.match(/\d+/);
+  if (match) return parseInt(match[0], 10);
+  return -1;
+}
+
+/**
  * Sorts class levels in descending order:
  * "Class 12" -> "Class 1" -> "Nursery"
  */
 export function sortClassesDescending(classes: string[]): string[] {
-  const getWeight = (c: string) => {
-    const lower = c.toLowerCase();
-    if (lower.includes("nursery") || lower.includes("kg")) return 0;
-    const match = c.match(/\d+/);
-    if (match) return parseInt(match[0], 10);
-    return -1;
-  };
-  return [...classes].sort((a, b) => getWeight(b) - getWeight(a));
+  return [...classes].sort((a, b) => {
+    const weightDiff = getClassNameWeight(b) - getClassNameWeight(a);
+    if (weightDiff !== 0) return weightDiff;
+    // fallback to alphabetical if weights are the same
+    return a.localeCompare(b);
+  });
 }
