@@ -32,14 +32,13 @@ export function SearchRecordingsPage() {
     <div className="space-y-6">
       <Card>
         <form onSubmit={handleSearch} className="flex gap-3 p-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+          <div className="flex-1">
             <Input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="E.g., What did we learn about mitochondria?"
-              className="pl-10"
+              leftIcon={<Search className="h-4 w-4 text-muted-foreground" />}
             />
           </div>
           <Button type="submit" disabled={query.length < 2 || isFetching}>
@@ -58,7 +57,7 @@ export function SearchRecordingsPage() {
             <PageSpinner />
           ) : isError ? (
             <Alert variant="error">{getErrorMessage(error) || "An error occurred while searching. Please try again."}</Alert>
-          ) : data?.results.length === 0 ? (
+          ) : data?.results?.length === 0 ? (
             <Alert variant="info">
               No matching notes found for your query.
             </Alert>
@@ -96,7 +95,7 @@ export function SearchRecordingsPage() {
                             <Badge variant="info">{result.subject}</Badge>
                           )}
                           {result.recording_subject && (
-                            <Badge variant="purple">
+                            <Badge variant="info">
                               {result.recording_subject}
                             </Badge>
                           )}

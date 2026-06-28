@@ -137,7 +137,14 @@ function ColumnMappingTable({
                       {header}
                     </td>
                     <td className="px-4 py-2">
-                      <select
+                      <Select
+                        options={[
+                          { value: "", label: "— skip (save to extra) —" },
+                          ...availableCanonical.map((col) => ({ value: col, label: col })),
+                          ...(customMap[header]
+                            ? [{ value: customMap[header], label: customMap[header] }]
+                            : []),
+                        ]}
                         value={customMap[header] ?? ""}
                         onChange={(e) => {
                           const next = { ...customMap };
@@ -148,20 +155,7 @@ function ColumnMappingTable({
                           }
                           onMapChange(next);
                         }}
-                        className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground"
-                      >
-                        <option value="">— skip (save to extra) —</option>
-                        {availableCanonical.map((col) => (
-                          <option key={col} value={col}>
-                            {col}
-                          </option>
-                        ))}
-                        {customMap[header] && (
-                          <option value={customMap[header]}>
-                            {customMap[header]}
-                          </option>
-                        )}
-                      </select>
+                      />
                     </td>
                   </tr>
                 ))}

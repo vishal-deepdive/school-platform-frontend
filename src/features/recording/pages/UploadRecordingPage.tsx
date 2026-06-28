@@ -24,7 +24,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
-import type { JobStatus } from "@/features/recording/types";
+import type { JobStatus, JobStatusResponse } from "@/features/recording/types";
 
 const statusConfig: Record<
   JobStatus,
@@ -85,6 +85,74 @@ function formatEta(seconds: number): string {
   if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
   const mins = Math.round(seconds / 60);
   return `${mins} min${mins === 1 ? "" : "s"}`;
+}
+
+interface JobStatusCardProps {
+  jobId: string;
+  jobStatus?: JobStatusResponse;
+  deduplicated: boolean;
+  markdown: string | null;
+}
+
+function JobStatusCard({ jobId, jobStatus, deduplicated, markdown }: JobStatusCardProps) {
+  const effectiveStatus: JobStatus = deduplicated ? "completed" : jobStatus!.status;
+  const config = statusConfig[effectiveStatus] ?? statusConfig.pending;
+
+  return (
+    <Card>
+      <CardHeader title="Processing Status" />
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          {config.icon}
+          <div>
+            <Badge variant={config.color}>{config.label}</Badge>
+            <p className="text-xs text-muted-foreground mt-1">Job ID: {jobId}</p>
+          </div>
+        </div>
+
+        {deduplicated && (
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              An identical recording was already processed. Showing the existing study materials.
+            </p>
+          </div>
+        )}
+
+        {jobStatus?.progress && (
+          <p className="text-sm text-muted-foreground">{jobStatus.progress}</p>
+        )}
+
+        {jobStatus?.status === "pending" && jobStatus.queue_position != null && (
+          <p className="text-sm text-muted-foreground">
+            Position {jobStatus.queue_position} in queue.
+          </p>
+        )}
+
+        {(jobStatus?.status === "pending" || jobStatus?.status === "processing") && (
+          <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              AI is transcribing and generating study materials.
+              {jobStatus.eta_seconds != null
+                ? ` Estimated time remaining: ${formatEta(jobStatus.eta_seconds)}.`
+                : " This may take a few minutes."}
+            </p>
+          </div>
+        )}
+
+        {jobStatus?.status === "failed" && (
+          <div className="rounded-lg bg-red-50 dark:bg-red-950/30 p-4">
+            <p className="text-sm text-red-700 dark:text-red-300">
+              {jobStatus.error ?? "Processing failed."}
+            </p>
+          </div>
+        )}
+
+        {effectiveStatus === "completed" && !markdown && (
+          <p className="text-sm text-muted-foreground">Loading study materials…</p>
+        )}
+      </div>
+    </Card>
+  );
 }
 
 export function UploadRecordingPage() {
@@ -291,79 +359,14 @@ export function UploadRecordingPage() {
           </div>
         </Card>
 
-        {jobId &&
-          (jobStatus || deduplicated) &&
-          (() => {
-            // A deduplicated job is already complete on the backend.
-            const status: JobStatus = deduplicated
-              ? "completed"
-              : jobStatus!.status;
-            const config = statusConfig[status] ?? statusConfig.pending;
-            return (
-              <Card>
-                <CardHeader title="Processing Status" />
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    {config.icon}
-                    <div>
-                      <Badge variant={config.color}>{config.label}</Badge>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Job ID: {jobId}
-                      </p>
-                    </div>
-                  </div>
-
-                  {deduplicated && (
-                    <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
-                      <p className="text-sm text-blue-700 dark:text-blue-300">
-                        An identical recording was already processed. Showing
-                        the existing study materials.
-                      </p>
-                    </div>
-                  )}
-
-                  {jobStatus?.progress && (
-                    <p className="text-sm text-muted-foreground">
-                      {jobStatus.progress}
-                    </p>
-                  )}
-
-                  {jobStatus?.status === "pending" &&
-                    jobStatus.queue_position != null && (
-                      <p className="text-sm text-muted-foreground">
-                        Position {jobStatus.queue_position} in queue.
-                      </p>
-                    )}
-
-                  {(jobStatus?.status === "pending" ||
-                    jobStatus?.status === "processing") && (
-                    <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
-                      <p className="text-sm text-blue-700 dark:text-blue-300">
-                        AI is transcribing and generating study materials.
-                        {jobStatus.eta_seconds != null
-                          ? ` Estimated time remaining: ${formatEta(jobStatus.eta_seconds)}.`
-                          : " This may take a few minutes."}
-                      </p>
-                    </div>
-                  )}
-
-                  {jobStatus?.status === "failed" && (
-                    <div className="rounded-lg bg-red-50 dark:bg-red-950/30 p-4">
-                      <p className="text-sm text-red-700 dark:text-red-300">
-                        {jobStatus.error ?? "Processing failed."}
-                      </p>
-                    </div>
-                  )}
-
-                  {status === "completed" && !markdown && (
-                    <p className="text-sm text-muted-foreground">
-                      Loading study materials…
-                    </p>
-                  )}
-                </div>
-              </Card>
-            );
-          })()}
+        {jobId && (jobStatus || deduplicated) && (
+          <JobStatusCard
+            jobId={jobId}
+            jobStatus={jobStatus}
+            deduplicated={deduplicated}
+            markdown={markdown}
+          />
+        )}
       </div>
 
       {markdown && (
