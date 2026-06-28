@@ -8,6 +8,7 @@ import React, {
 import { cn } from "@/shared/lib/utils";
 import type { SelectOption } from "@/shared/types/common";
 import { ChevronDown } from "lucide-react";
+import { useClickOutside } from "@/shared/hooks/useClickOutside";
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -33,19 +34,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
-    useEffect(() => {
-      function handleClickOutside(event: MouseEvent) {
-        if (
-          dropdownRef.current &&
-          !dropdownRef.current.contains(event.target as Node)
-        ) {
-          setIsOpen(false);
-        }
-      }
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    useClickOutside(dropdownRef, () => setIsOpen(false));
 
     useEffect(() => {
       if (isOpen) {

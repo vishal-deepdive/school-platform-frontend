@@ -156,6 +156,7 @@ export const CodeBlock = memo(function CodeBlock({
           onClick={handleCopy}
           className={cn(
             "flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             isDark
               ? "text-slate-400 hover:bg-white/10 hover:text-slate-200"
               : "text-slate-500 hover:bg-black/5 hover:text-slate-800",

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -27,11 +27,17 @@ export function Modal({
   size = "md",
   className,
 }: ModalProps) {
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
     const handleKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", handleKey);
+      document.body.style.overflow = "";
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -51,17 +57,18 @@ export function Modal({
         )}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between border-b border-border/50 px-6 py-4 shrink-0">
           <h3
-            id="modal-title"
+            id={titleId}
             className="text-base font-semibold text-foreground tracking-tight"
           >
             {title}
           </h3>
           <button
             onClick={onClose}
+            aria-label="Close"
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <X className="h-5 w-5" />
