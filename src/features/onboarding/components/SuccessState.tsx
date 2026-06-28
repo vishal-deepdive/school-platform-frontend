@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Check, Copy, MailCheck } from "lucide-react";
 import toast from "react-hot-toast";
+import { Button } from "@/shared/components/ui/Button";
 import { AuthButton } from "@/shared/components/ui/auth-fuse";
 import type { OnboardingApplicationResponse } from "@/features/onboarding/types";
 
@@ -51,18 +52,15 @@ export function SuccessState({
           <code className="flex-1 text-sm font-mono text-foreground break-all">
             {response.application_id}
           </code>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={copyId}
-            className="flex-shrink-0 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Copy application ID"
-          >
-            {copied ? (
-              <Check className="h-4 w-4 text-green-600" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-          </button>
+            className="flex-shrink-0 p-1.5"
+            icon={copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+          />
         </div>
       </div>
 

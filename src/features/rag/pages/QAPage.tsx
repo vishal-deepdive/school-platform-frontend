@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowDown,
+  BookOpen,
+  Lightbulb,
+  List,
   MessageSquare,
   RotateCcw,
   Send,
+  Sparkles,
   SlidersHorizontal,
   Square,
   Trash2,
@@ -23,6 +27,25 @@ import type { RagFilters } from "@/features/rag/types";
 
 const MAX_TEXTAREA_HEIGHT = 160;
 const AUTO_SCROLL_THRESHOLD = 96;
+
+interface SuggestedQuery {
+  label: string;
+  query: string;
+  icon: React.ReactNode;
+}
+
+const CHAPTER_ACTIONS: SuggestedQuery[] = [
+  { label: "Summarize this chapter", query: "Summarize this chapter", icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { label: "Key concepts", query: "What are the key concepts in this chapter?", icon: <Lightbulb className="h-3.5 w-3.5" /> },
+  { label: "Important topics", query: "List the important topics covered in this chapter", icon: <List className="h-3.5 w-3.5" /> },
+  { label: "Key definitions", query: "What are the important definitions in this chapter?", icon: <Sparkles className="h-3.5 w-3.5" /> },
+];
+
+const STARTER_SUGGESTIONS: SuggestedQuery[] = [
+  { label: "What is this subject about?", query: "What is this subject about?", icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { label: "Explain the first topic", query: "Explain the first topic in this textbook", icon: <Lightbulb className="h-3.5 w-3.5" /> },
+  { label: "Key formulas", query: "What are the key formulas?", icon: <Sparkles className="h-3.5 w-3.5" /> },
+];
 
 export function QAPage() {
   const { chat, filters, isStreaming } = useRagUiStore((s) => s.qa);
@@ -80,7 +103,7 @@ export function QAPage() {
 
   const scrollToBottom = () => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     setAutoScroll(true);
   };
 
@@ -158,6 +181,14 @@ export function QAPage() {
     (k) => filters[k as keyof RagFilters],
   );
 
+  const hasChapter = !!filters.chapter_name?.length;
+  const suggestions = hasChapter ? CHAPTER_ACTIONS : STARTER_SUGGESTIONS;
+
+  const handleQuickAction = (query: string) => {
+    if (isStreaming) return;
+    void runQuery(query);
+  };
+
   const filterPanel = (
     <div className="space-y-3">
       <RagFilterPanel filters={filters} onChange={setFilters} />
@@ -176,15 +207,15 @@ export function QAPage() {
 
   return (
     <div className="flex h-full gap-4 overflow-hidden">
-      <div className="hidden lg:block w-64 flex-shrink-0">
-        <Card className="h-full overflow-y-auto" padding="md">
+      <div className="hidden lg:block w-64 flex-shrink-0 min-w-0">
+        <Card className="h-full overflow-y-auto overflow-x-hidden" padding="md">
           <CardHeader title="Filter content" />
           {filterPanel}
         </Card>
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <div className="flex items-center justify-between px-4 py-2.5">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <MessageSquare className="h-4 w-4 text-primary" />
             Ask the textbook
@@ -223,17 +254,34 @@ export function QAPage() {
             className="scrollbar-thin h-full overflow-y-auto p-4 space-y-4"
           >
             {chat.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-                  <MessageSquare className="h-8 w-8 text-primary" />
+              <div className="flex h-full flex-col items-center justify-center gap-4 text-center px-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
+                  <MessageSquare className="h-7 w-7 text-primary" />
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">
                     Ask anything about your textbooks
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Answers include citations from relevant chapters and pages.
+                  <p className="mt-1 text-sm text-muted-foreground max-w-md">
+                    {hasChapter
+                      ? "Ask a question or try one of these."
+                      : "Select a chapter from filters for summaries, or ask any question below."}
                   </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+                  {suggestions.map((s) => (
+                    <Button
+                      key={s.label}
+                      type="button"
+                      variant="outline"
+                      icon={s.icon}
+                      onClick={() => handleQuickAction(s.query)}
+                      disabled={isStreaming}
+                      className="text-muted-foreground shadow-sm hover:bg-primary/5 hover:border-primary/50"
+                    >
+                      {s.label}
+                    </Button>
+                  ))}
                 </div>
               </div>
             ) : (
@@ -248,18 +296,20 @@ export function QAPage() {
           </div>
 
           {!autoScroll && chat.length > 0 && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={scrollToBottom}
-              className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-accent hover:text-foreground"
+              className="absolute bottom-4 right-4 h-9 w-9 rounded-full p-0 shadow-md text-muted-foreground"
               aria-label="Scroll to latest message"
             >
               <ArrowDown className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
 
-        <div className="border-t border-border p-3">
+        <div className="p-3">
           {canRetry && (
             <div className="mb-2 flex justify-center">
               <Button
@@ -273,7 +323,24 @@ export function QAPage() {
               </Button>
             </div>
           )}
-          <div className="flex items-end gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+          {chat.length > 0 && !isStreaming && !canRetry && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <Button
+                  key={s.label}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={s.icon}
+                  onClick={() => handleQuickAction(s.query)}
+                  className="rounded-full text-muted-foreground hover:border-primary/50"
+                >
+                  {s.label}
+                </Button>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
             <textarea
               ref={textareaRef}
               value={input}
@@ -302,7 +369,7 @@ export function QAPage() {
                 onClick={() => void handleSend()}
                 disabled={!input.trim()}
               >
-                Send
+                Ask
               </Button>
             )}
           </div>

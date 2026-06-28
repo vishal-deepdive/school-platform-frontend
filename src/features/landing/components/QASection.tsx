@@ -56,7 +56,7 @@ export function QASection() {
             const isOpen = openIndex === index;
             return (
               <motion.div
-                key={index}
+                key={faq.question}
                 variants={fadeUp}
                 className={`overflow-hidden rounded-2xl border transition-colors duration-300 ${
                   isOpen
@@ -66,7 +66,7 @@ export function QASection() {
               >
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : index)}
-                  className="flex w-full items-center justify-between gap-4 bg-card px-6 py-5 text-left transition hover:bg-accent hover:text-accent-foreground focus:outline-none"
+                  className="flex w-full items-center justify-between gap-4 bg-card px-6 py-5 text-left transition hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                   aria-expanded={isOpen}
                 >
                   <span className="font-medium text-card-foreground">

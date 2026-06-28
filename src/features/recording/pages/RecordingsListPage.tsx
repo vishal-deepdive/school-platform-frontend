@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, FileVideo } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
+import { canManageRecordings, canUploadRecordings } from "@/shared/lib/permissions";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
@@ -23,12 +25,8 @@ const PAGE_SIZE = 10;
 
 export function RecordingsListPage() {
   const role = useAuthStore((s) => s.user?.role);
-  // Delete + retry are principal/admin only on the backend; hide them for
-  // everyone else (teachers get read/preview/download, students/parents consume).
-  const canManage = role === "admin" || role === "principal";
-  // Upload is teacher/principal/admin only; students/parents are consume-only.
-  const canUpload =
-    role === "admin" || role === "principal" || role === "teacher";
+  const canManage = canManageRecordings(role);
+  const canUpload = canUploadRecordings(role);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const [offset, setOffset] = useState(0);
@@ -64,6 +62,7 @@ export function RecordingsListPage() {
           title="All Recordings"
           description={`${total} recording(s) total`}
           className="px-6 pt-6"
+          bordered
           action={
             <Button
               variant="outline"
@@ -77,17 +76,22 @@ export function RecordingsListPage() {
           }
         />
         {pagedRecordings.length === 0 ? (
-          <div className="px-6 pb-8 text-center text-sm text-muted-foreground">
-            No recordings yet.{" "}
-            {canUpload && (
-              <Link
-                to="/recording/upload"
-                className="text-primary hover:underline"
-              >
-                Upload your first recording.
-              </Link>
-            )}
-          </div>
+          <EmptyState
+            className="py-10 border-0 rounded-none"
+            icon={<FileVideo className="h-10 w-10" />}
+            title="No recordings yet"
+            description="Recordings will appear here once they have been uploaded and processed."
+            action={
+              canUpload ? (
+                <Link
+                  to="/recording/upload"
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Upload your first recording →
+                </Link>
+              ) : undefined
+            }
+          />
         ) : (
           <div className="divide-y divide-border">
             {pagedRecordings.map((rec) => (

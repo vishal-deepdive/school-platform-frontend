@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { AuthInput, AuthButton } from "@/shared/components/ui/auth-fuse";
+import { Button } from "@/shared/components/ui/Button";
 
 export function VerifyOnboardingOtpPage() {
   const location = useLocation();
@@ -125,14 +126,17 @@ export function VerifyOnboardingOtpPage() {
         </div>
 
         <div className="text-center mt-2">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={handleResend}
             disabled={isResending || isVerifying || !applicationId.trim()}
-            className="text-sm font-semibold text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
+            loading={isResending}
+            className="text-primary hover:text-primary/80 hover:bg-transparent"
           >
-            {isResending ? "Resending..." : "Didn't receive a code? Resend"}
-          </button>
+            Didn&apos;t receive a code? Resend
+          </Button>
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-2">

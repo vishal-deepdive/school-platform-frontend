@@ -23,46 +23,30 @@ import {
   type SurveySearchFormData,
 } from "@/features/survey/schema";
 import { surveyApi } from "@/features/survey/api/survey";
-import { useAuthStore } from "@/features/auth/store/auth";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
-import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
-import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Table } from "@/shared/components/ui/Table";
+import { SurveyChart } from "./SurveyChart";
 import type {
   SearchIntent,
   SearchData,
-  FeedbackColumn,
+  ChartData,
 } from "@/features/survey/types";
-import type { SelectOption } from "@/shared/types/common";
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const feedbackOptions: SelectOption[] = [
-  { value: "teacher_feedback", label: "Teacher Feedback" },
-  { value: "school_feedback", label: "School Feedback" },
-  { value: "school_suggestions", label: "School Suggestions" },
-];
-
-const limitOptions: SelectOption[] = [5, 10, 20, 50].map((n) => ({
-  value: String(n),
-  label: `${n} results`,
-}));
-
 const intentConfig: Record<
   SearchIntent,
-  { color: "info" | "success" | "purple"; label: string; icon: string }
+  { color: "info" | "success" | "purple"; label: string }
 > = {
-  QUANT: { color: "info", label: "Quantitative", icon: "📊" },
-  QUAL: { color: "success", label: "Qualitative", icon: "💬" },
-  MIXED: { color: "purple", label: "Mixed Analysis", icon: "🔄" },
+  QUANT: { color: "info", label: "Quantitative" },
+  QUAL: { color: "success", label: "Qualitative" },
+  MIXED: { color: "purple", label: "Mixed Analysis" },
 };
 
 const exampleQueries = [
@@ -166,6 +150,7 @@ export function SurveySearchView() {
   const [insight, setInsight] = useState("");
   const [intent, setIntent] = useState<SearchIntent | null>(null);
   const [chartUrl, setChartUrl] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
   const [data, setData] = useState<SearchData | null>(null);
   const [sqlQuery, setSqlQuery] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -180,32 +165,14 @@ export function SurveySearchView() {
     staleTime: 5 * 60000,
   });
 
-  const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === "admin";
-  const defaultSchoolId = user?.school_id ?? "";
-
   const {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { isSubmitting },
   } = useForm<SurveySearchFormData>({
     resolver: zodResolver(surveySearchSchema),
-    defaultValues: {
-      school_id: isAdmin ? "" : defaultSchoolId,
-      class_name: "",
-      feedback_column: "school_feedback",
-      limit: 10,
-    },
   });
-
-  const selectedSchoolId = watch("school_id");
-  const activeSchoolId = isAdmin ? selectedSchoolId : defaultSchoolId;
-
-  const { options: schoolOptions, setQuery: setSchoolQuery, isSearching: isSearchingSchools } = useSchoolSearch();
-  const { classNameOptions } = useClassOptions(activeSchoolId);
-  const noClasses = classNameOptions.length === 0;
 
   const appendInsight = useCallback(
     (chunk: string) => setInsight((prev) => prev + chunk),
@@ -232,6 +199,7 @@ export function SurveySearchView() {
       setInsight("");
       setIntent(null);
       setChartUrl(null);
+      setChartData(null);
       setData(null);
       setSqlQuery(null);
       setError(null);
@@ -240,23 +208,14 @@ export function SurveySearchView() {
       setCopied(false);
 
       try {
-        const schoolName = isAdmin
-          ? schoolOptions.find((s) => s.value === formData.school_id)?.label
-          : undefined;
-
         for await (const event of surveyApi.searchStream(
-          {
-            query: formData.query,
-            class_name: formData.class_name,
-            feedback_column: formData.feedback_column as FeedbackColumn,
-            limit: formData.limit,
-            filters: schoolName ? { school_name: schoolName } : undefined,
-          },
+          { query: formData.query },
           controller.signal,
         )) {
           if (event.type === "meta") {
             setIntent(event.intent);
             setChartUrl(event.chart_url ?? null);
+            setChartData(event.chart_data ?? null);
             setData(event.data);
             setSqlQuery(event.sql_query ?? null);
           } else if (event.type === "token") {
@@ -284,7 +243,6 @@ export function SurveySearchView() {
     [queueToken, flushPending],
   );
 
-  const feedbackCol = watch("feedback_column");
   const hasResult = intent !== null;
   const dataRows = data ? getDataRows(data) : [];
   const sampleSize = data ? getSampleSize(data) : null;
@@ -296,109 +254,54 @@ export function SurveySearchView() {
       <Card>
         <CardHeader
           title="AI Survey Copilot"
-          description="Ask questions about student feedback in natural language. The AI analyzes your data and provides actionable insights."
+          description="Ask any question about student feedback in natural language. The AI analyzes your data and provides actionable insights."
         />
 
         <form onSubmit={handleSubmit(runSearch)} className="space-y-4">
-          {/* Query input */}
-          <div>
-            <label className="text-sm font-medium text-foreground block mb-1.5">
-              Your question
-            </label>
-            <div className="relative">
-              <input
-                {...register("query")}
-                placeholder="e.g. How satisfied are students with teacher support in class 10?"
-                disabled={streaming}
-                className="w-full rounded-lg border border-border bg-background text-foreground pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 placeholder:text-muted-foreground/60"
-              />
-              <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-
-          {/* Filters row */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 items-start">
-            {isAdmin && (
-              <div className="sm:col-span-3">
-                <SearchableSelect
-                  label="School"
-                  placeholder="Select school..."
-                  searchPlaceholder="Search schools..."
-                  options={schoolOptions}
-                  isLoading={isSearchingSchools}
-                  onSearchChange={setSchoolQuery}
-                  value={selectedSchoolId}
-                  onChange={(val) => {
-                    setValue("school_id", val);
-                    setValue("class_name", ""); // reset class when school changes
-                  }}
-                  disabled={streaming}
-                />
-              </div>
-            )}
-            <Select
-              label="Class"
-              options={classNameOptions}
-              placeholder={noClasses ? "No classes available" : "Select class…"}
-              hint={
-                noClasses && activeSchoolId
-                  ? "No classes found for this school."
-                  : !activeSchoolId
-                    ? "Select a school first."
-                    : undefined
-              }
-              disabled={noClasses || streaming || !activeSchoolId}
-              {...register("class_name")}
-            />
-            <Select
-              label="Feedback type"
-              options={feedbackOptions}
-              value={feedbackCol}
+          <div className="relative">
+            <input
+              {...register("query")}
+              placeholder="e.g. How satisfied are students with teacher support in class 10?"
               disabled={streaming}
-              {...register("feedback_column")}
+              className="w-full rounded-lg border border-border bg-background text-foreground pl-10 pr-28 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 placeholder:text-muted-foreground/60"
             />
-            <Select
-              label="Max results"
-              options={limitOptions}
-              disabled={streaming}
-              {...register("limit", { valueAsNumber: true })}
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex items-center justify-between gap-4 pt-1">
-            <div className="flex flex-wrap gap-1.5">
-              {exampleQueries.map((q) => (
-                <button
-                  key={q}
+            <Search className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
+            <div className="absolute right-2 top-2.5 flex items-center gap-2">
+              {streaming ? (
+                <Button
                   type="button"
-                  disabled={streaming}
-                  onClick={() => setValue("query", q)}
-                  className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                  variant="outline"
+                  size="sm"
+                  icon={<StopCircle className="h-4 w-4" />}
+                  onClick={() => abortRef.current?.abort()}
                 >
-                  {q}
-                </button>
-              ))}
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="sm"
+                  loading={isSubmitting}
+                  icon={<Sparkles className="h-4 w-4" />}
+                >
+                  Analyze
+                </Button>
+              )}
             </div>
-            {streaming ? (
-              <Button
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {exampleQueries.map((q) => (
+              <button
+                key={q}
                 type="button"
-                variant="outline"
-                size="sm"
-                icon={<StopCircle className="h-4 w-4" />}
-                onClick={() => abortRef.current?.abort()}
+                disabled={streaming}
+                onClick={() => setValue("query", q)}
+                className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary transition-colors disabled:opacity-40 disabled:pointer-events-none"
               >
-                Stop
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                loading={isSubmitting}
-                icon={<Sparkles className="h-4 w-4" />}
-              >
-                Analyze
-              </Button>
-            )}
+                {q}
+              </button>
+            ))}
           </div>
         </form>
       </Card>
@@ -478,8 +381,21 @@ export function SurveySearchView() {
             )}
           </Card>
 
-          {/* ── Chart ─────────────────────────────────────────────── */}
-          {chartUrl && (
+          {/* ── Interactive chart (Recharts) ──────────────────────── */}
+          {chartData && (
+            <Card>
+              <div className="flex items-center gap-2 mb-3">
+                <BarChart2 className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">
+                  Visualization
+                </h3>
+              </div>
+              <SurveyChart data={chartData} />
+            </Card>
+          )}
+
+          {/* ── PNG chart fallback ────────────────────────────────── */}
+          {!chartData && chartUrl && (
             <Card>
               <div className="flex items-center gap-2 mb-3">
                 <BarChart2 className="h-4 w-4 text-primary" />
@@ -530,7 +446,7 @@ export function SurveySearchView() {
             <EmptyState
               icon={<SearchX className="h-12 w-12" />}
               title="No matching data found"
-              description="Try a different class, feedback type, or rephrase your question."
+              description="Try rephrasing your question or asking about a different topic."
             />
           )}
         </div>

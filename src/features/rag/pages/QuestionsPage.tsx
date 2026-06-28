@@ -1,17 +1,16 @@
 import { useState } from "react";
-import { HelpCircle, Download, RotateCcw } from "lucide-react";
+import { HelpCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
+import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
-import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
+import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
-import { Alert } from "@/shared/components/ui/Alert";
-import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 import type { QuestionType, Difficulty } from "@/features/rag/types";
 import type { SelectOption } from "@/shared/types/common";
@@ -55,7 +54,7 @@ export function QuestionsPage() {
         filters,
         q_type: qType,
         difficulty,
-        num_questions: numQuestions,
+        num_questions: numQuestions ?? 10,
         ...(marks != null && { marks }),
       })) {
         if (event.type === "token") {
@@ -113,14 +112,23 @@ export function QuestionsPage() {
             <Input
               label="Number of Questions"
               type="number"
-              min={1}
-              max={25}
-              value={numQuestions}
+              min={2}
+              max={100}
+              value={numQuestions ?? ""}
               onChange={(e) => {
-                const n = parseInt(e.target.value) || 1;
-                setConfig({ numQuestions: Math.min(25, Math.max(1, n)) });
+                const val = e.target.value;
+                if (val === "") {
+                  setConfig({ numQuestions: undefined });
+                } else {
+                  const n = parseInt(val);
+                  setConfig({ numQuestions: isNaN(n) ? undefined : n });
+                }
               }}
-              hint="Up to 25 per batch"
+              onBlur={() => {
+                const val = numQuestions ?? 10;
+                setConfig({ numQuestions: Math.min(100, Math.max(2, val)) });
+              }}
+              hint="Between 2 and 100 per batch"
             />
             {qType === "BRIEF" && (
               <Input
@@ -130,11 +138,20 @@ export function QuestionsPage() {
                 max={100}
                 placeholder="e.g. 5"
                 value={marks ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    marks: e.target.value ? parseInt(e.target.value) : undefined,
-                  })
-                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setConfig({ marks: undefined });
+                  } else {
+                    const n = parseInt(val);
+                    setConfig({ marks: isNaN(n) ? undefined : n });
+                  }
+                }}
+                onBlur={() => {
+                  if (marks !== undefined) {
+                    setConfig({ marks: Math.min(100, Math.max(1, marks)) });
+                  }
+                }}
               />
             )}
 
@@ -159,61 +176,23 @@ export function QuestionsPage() {
 
         {(result !== null || isPending) && (
           <div className="lg:col-span-2">
-            {error && !isPending ? (
-              <Card>
-                <Alert variant="error" title="Generation failed">
-                  {error}
-                </Alert>
-                <div className="mt-4 flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<RotateCcw className="h-4 w-4" />}
-                    onClick={() => generate()}
-                    disabled={!canGenerate}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              </Card>
-            ) : result !== null ? (
-              <Card>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <HelpCircle className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-foreground">
-                      Generated Questions
-                    </h3>
-                    <Badge variant={difficultyBadge[difficulty]}>
-                      {difficulty}
-                    </Badge>
-                    <Badge variant="info">{qType}</Badge>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<Download className="h-4 w-4" />}
-                    onClick={() =>
-                      downloadFile(result, `questions-${qType}-${difficulty}.md`)
-                    }
-                  >
-                    Download
-                  </Button>
-                </div>
-                <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/40 p-4">
-                  <MarkdownRenderer content={result} streaming={isPending} />
-                </div>
-              </Card>
-            ) : (
-              <Card className="h-full flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4 py-12 text-muted-foreground">
-                  <div className="animate-spin">
-                    <HelpCircle className="h-8 w-8" />
-                  </div>
-                  <p>Generating your questions...</p>
-                </div>
-              </Card>
-            )}
+            <StreamingResultPanel
+              error={error}
+              isPending={isPending}
+              result={result}
+              canRetry={canGenerate}
+              onRetry={() => generate()}
+              Icon={HelpCircle}
+              title="Generated Questions"
+              pendingMessage="Generating your questions..."
+              actions={
+                <>
+                  <Badge variant={difficultyBadge[difficulty]}>{difficulty}</Badge>
+                  <Badge variant="info">{qType}</Badge>
+                </>
+              }
+              filename={`questions-${qType}-${difficulty}.md`}
+            />
           </div>
         )}
       </div>

@@ -42,13 +42,21 @@ export const onboardingApi = {
 
   /**
    * Resend the verification OTP email.
+   *
+   * `captchaToken` is only sent when present — the backend only requires it when
+   * CAPTCHA is enabled server-side, so local dev (captcha off) is unaffected.
    */
-  resendOtp: (applicationId: string) =>
-    apiClient
+  resendOtp: (applicationId: string, captchaToken?: string) => {
+    const body = new URLSearchParams();
+    if (captchaToken) body.append("captcha_token", captchaToken);
+    return apiClient
       .post<{
         message: string;
-      }>(`${BASE}/${encodeURIComponent(applicationId)}/resend-otp`)
-      .then((r) => r.data),
+      }>(`${BASE}/${encodeURIComponent(applicationId)}/resend-otp`, body, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      })
+      .then((r) => r.data);
+  },
 
   /**
    * Fetch pincode details via backend proxy

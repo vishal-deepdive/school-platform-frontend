@@ -279,7 +279,7 @@ export function MarkAttendanceForm() {
                     <div className="flex items-center gap-3">
                       <input
                         type="range"
-                        min={0.1}
+                        min={0.35}
                         max={0.9}
                         step={0.05}
                         value={field.value}
@@ -295,7 +295,8 @@ export function MarkAttendanceForm() {
                   )}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Higher = stricter matching
+                  Higher = stricter matching. The server enforces a minimum of
+                  0.35 regardless of the value sent.
                 </p>
               </div>
             </div>

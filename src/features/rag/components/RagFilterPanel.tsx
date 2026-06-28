@@ -1,5 +1,4 @@
 import { Select } from "@/shared/components/ui/Select";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { sortClassesDescending } from "@/shared/lib/utils";
 import { useRagClassLevels, useRagMetadata } from "@/features/rag/hooks/useRag";
 import {
@@ -62,7 +61,15 @@ export function RagFilterPanel({
       title: undefined,
     });
 
-  if (classesLoading) return <PageSpinner />;
+  if (classesLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-[62px] animate-pulse rounded-lg bg-muted/60" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

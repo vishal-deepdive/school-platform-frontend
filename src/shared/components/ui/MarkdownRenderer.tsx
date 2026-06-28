@@ -1,8 +1,17 @@
-import { memo, useMemo, type ComponentProps } from "react";
+// Side-effect import: patches KaTeX globally to support \ce{} chemistry notation.
+import "katex/contrib/mhchem";
+import { memo, useMemo, Children, type ComponentProps } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import {
+  Info,
+  Lightbulb,
+  Zap,
+  AlertTriangle,
+  AlertOctagon,
+} from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { CodeBlock } from "./markdown/CodeBlock";
 import { MermaidDiagram } from "./markdown/MermaidDiagram";
@@ -12,26 +21,30 @@ interface MarkdownRendererProps {
   content: string;
   className?: string;
   /**
-   * True while the message is still streaming. In this mode we render Markdown
-   * live (so the user sees formatted output, not raw syntax) but defer the two
-   * expensive operations until the response is complete: Mermaid diagrams
-   * (partial source throws) render as a code block, and code highlighting is
-   * skipped so a growing block isn't re-tokenised every frame.
+   * True while the message is still streaming. Defers Mermaid diagrams and
+   * syntax highlighting so a growing block isn't re-tokenised every frame.
    */
   streaming?: boolean;
 }
 
-/**
- * Builds the element-renderer map. Created per `streaming` value (memoised by
- * the caller) so its identity stays stable across token flushes — react-markdown
- * re-parses whenever the `components` reference changes.
- */
+// ── GitHub-style callouts (> [!NOTE], > [!WARNING], …) ──────────────────────
+
+const CALLOUT_MAP: Record<
+  string,
+  { label: string; Icon: React.ElementType; border: string; bg: string; iconCls: string; titleCls: string }
+> = {
+  NOTE:      { label: "Note",      Icon: Info,         border: "border-blue-400/50",    bg: "bg-blue-50/70 dark:bg-blue-500/10",    iconCls: "text-blue-500",                         titleCls: "text-blue-700 dark:text-blue-300" },
+  TIP:       { label: "Tip",       Icon: Lightbulb,    border: "border-emerald-400/50", bg: "bg-emerald-50/70 dark:bg-emerald-500/10", iconCls: "text-emerald-500",                    titleCls: "text-emerald-700 dark:text-emerald-300" },
+  IMPORTANT: { label: "Important", Icon: Zap,          border: "border-primary/50",     bg: "bg-primary/5",                          iconCls: "text-primary",                          titleCls: "text-primary" },
+  WARNING:   { label: "Warning",   Icon: AlertTriangle, border: "border-amber-400/50",  bg: "bg-amber-50/70 dark:bg-amber-500/10",   iconCls: "text-amber-500",                        titleCls: "text-amber-700 dark:text-amber-300" },
+  CAUTION:   { label: "Caution",   Icon: AlertOctagon,  border: "border-red-400/50",    bg: "bg-red-50/70 dark:bg-red-500/10",       iconCls: "text-destructive",                      titleCls: "text-destructive" },
+};
+
+// ── Component map factory ────────────────────────────────────────────────────
+
 function createComponents(streaming: boolean): Components {
   return {
-    // react-markdown v9 dropped the `inline` flag, so we distinguish a fenced
-    // block from inline code by a `language-*` class or a newline. Block code
-    // routes to the rich CodeBlock (or a Mermaid diagram); inline code keeps the
-    // lightweight prose styling.
+    // ── Code ──────────────────────────────────────────────────────────────
     code({ node: _node, className, children, ...props }) {
       const match = /language-(\w+)/.exec(className ?? "");
       const text = String(children ?? "");
@@ -48,29 +61,96 @@ function createComponents(streaming: boolean): Components {
       const language = match?.[1]?.toLowerCase();
       const value = text.replace(/\n$/, "");
 
-      // Render the diagram only once the source is complete; while streaming a
-      // partial diagram would just error, so show its source as code instead.
       if (language === "mermaid" && !streaming) {
         return <MermaidDiagram chart={value} />;
       }
       return <CodeBlock language={language} value={value} highlight={!streaming} />;
     },
 
-    // CodeBlock / MermaidDiagram render their own container, so unwrap the
-    // default <pre> to avoid a block element nested inside it.
+    // Unwrap the default <pre> — CodeBlock / MermaidDiagram render their own.
     pre({ children }) {
       return <>{children}</>;
     },
 
-    // Wrap tables so wide ones scroll horizontally instead of overflowing.
+    // ── Blockquote — plain or GitHub-style callout ─────────────────────
+    blockquote({ children, node }) {
+      // Inspect the raw HAST node to detect > [!TYPE] callout syntax.
+      const firstP = (node as { children?: { type: string; tagName?: string; children?: { type: string; value?: string }[] }[] })
+        ?.children?.find((c) => c.type === "element" && c.tagName === "p");
+      const firstText = firstP?.children
+        ?.map((c) => (c.type === "text" ? (c.value ?? "") : ""))
+        .join("") ?? "";
+      const match = /^\[!(\w+)\]/.exec(firstText.trim());
+
+      if (match) {
+        const cfg = CALLOUT_MAP[match[1].toUpperCase()];
+        if (cfg) {
+          const { Icon, label, border, bg, iconCls, titleCls } = cfg;
+          // Slice off the first child (<p>[!TYPE]…</p>) from the rendered body.
+          const body = Children.toArray(children).slice(1);
+          return (
+            <div
+              className={cn(
+                "not-prose my-4 rounded-lg border-l-4 p-4",
+                border,
+                bg,
+              )}
+            >
+              <p className={cn("mb-1.5 flex items-center gap-1.5 text-sm font-semibold", titleCls)}>
+                <Icon className={cn("h-4 w-4 shrink-0", iconCls)} />
+                {label}
+              </p>
+              <div className="space-y-1 text-sm text-foreground [&>p]:my-0">
+                {body}
+              </div>
+            </div>
+          );
+        }
+      }
+
+      return (
+        <blockquote className="my-4 border-l-4 border-primary/30 pl-4 italic text-muted-foreground">
+          {children}
+        </blockquote>
+      );
+    },
+
+    // ── Tables ────────────────────────────────────────────────────────────
     table({ children }) {
       return (
-        <div className="my-3 overflow-x-auto rounded-lg border border-border">
+        <div className="my-4 overflow-x-auto rounded-lg border border-border">
           <table className="!my-0 w-full border-collapse text-sm">{children}</table>
         </div>
       );
     },
 
+    thead({ children }) {
+      return (
+        <thead className="bg-muted/60 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {children}
+        </thead>
+      );
+    },
+
+    tbody({ children }) {
+      return <tbody className="divide-y divide-border bg-background">{children}</tbody>;
+    },
+
+    tr({ children }) {
+      return <tr className="transition-colors hover:bg-muted/30">{children}</tr>;
+    },
+
+    th({ children }) {
+      return (
+        <th className="px-4 py-2.5 font-semibold text-muted-foreground">{children}</th>
+      );
+    },
+
+    td({ children }) {
+      return <td className="px-4 py-2.5 text-foreground">{children}</td>;
+    },
+
+    // ── Links ────────────────────────────────────────────────────────────
     a({ href, children }) {
       return (
         <a
@@ -84,6 +164,7 @@ function createComponents(streaming: boolean): Components {
       );
     },
 
+    // ── Images ───────────────────────────────────────────────────────────
     img({ src, alt }) {
       return (
         <img
@@ -97,23 +178,32 @@ function createComponents(streaming: boolean): Components {
   };
 }
 
+// ── Plugin arrays — module-level constants so identity is stable ─────────────
+
 type ReactMarkdownProps = ComponentProps<typeof ReactMarkdown>;
 const REMARK_PLUGINS: ReactMarkdownProps["remarkPlugins"] = [remarkGfm, remarkMath];
-// `throwOnError: false` keeps a single malformed formula (common in streamed
-// physics/math output) from blanking the whole message — KaTeX renders the bad
-// snippet in red instead of throwing.
 const REHYPE_PLUGINS: ReactMarkdownProps["rehypePlugins"] = [
-  [rehypeKatex, { throwOnError: false, strict: false }],
+  // throwOnError: false — a single malformed formula renders red instead of
+  // blanking the whole message. trust: true — enables macros that require it.
+  [rehypeKatex, { throwOnError: false, strict: false, trust: true }],
 ];
+
+// ── Renderer ─────────────────────────────────────────────────────────────────
 
 /**
  * Shared Markdown renderer for AI-generated content (Q&A answers, notes,
- * questions, recordings). Handles GFM tables, LaTeX math ($...$ / $$...$$ as
- * well as \(...\) / \[...\]), syntax-highlighted code blocks, and Mermaid
- * diagrams, styled through Tailwind Typography's `prose` classes.
+ * questions, recordings). Handles:
  *
- * rehype-raw is intentionally NOT used — raw HTML in model output (which can be
- * influenced by uploaded documents) would otherwise be rendered as-is.
+ * - GFM: tables, task lists, strikethrough, footnotes, autolinks
+ * - LaTeX math: $…$, $$…$$, \(…\), \[…\], \begin{align}…\end{align}, etc.
+ * - Chemistry: \ce{H2SO4}, \ce{2H2 + O2 -> 2H2O} (mhchem extension)
+ * - Syntax-highlighted code blocks (Prism, lazy-loaded)
+ * - Mermaid diagrams (deferred until streaming ends)
+ * - GitHub-style callouts: > [!NOTE], > [!WARNING], > [!TIP], etc.
+ * - Safe links and lazy-loaded images
+ *
+ * rehype-raw is intentionally NOT used — raw HTML in model output (which can
+ * be influenced by uploaded documents) would otherwise be rendered as-is.
  */
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
@@ -124,7 +214,15 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   const components = useMemo(() => createComponents(streaming), [streaming]);
 
   return (
-    <div className={cn("prose prose-sm dark:prose-invert max-w-none break-words", className)}>
+    <div
+      className={cn(
+        "prose prose-sm dark:prose-invert max-w-none break-words",
+        "prose-headings:scroll-mt-4",
+        "prose-code:before:content-none prose-code:after:content-none",
+        "prose-blockquote:not-italic prose-blockquote:border-primary/30",
+        className,
+      )}
+    >
       <ReactMarkdown
         remarkPlugins={REMARK_PLUGINS}
         rehypePlugins={REHYPE_PLUGINS}

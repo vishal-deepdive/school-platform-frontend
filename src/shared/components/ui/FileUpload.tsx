@@ -83,7 +83,10 @@ export function FileUpload({
       )}
 
       <div
+        role="button"
+        tabIndex={0}
         onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && inputRef.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
           setDragOver(true);
@@ -136,7 +139,7 @@ export function FileUpload({
         <ul className="flex flex-col gap-2">
           {files.map((f, i) => (
             <li
-              key={i}
+              key={f.name + f.size}
               className="flex items-center gap-3 rounded-lg border border-border/50 bg-background/50 backdrop-blur-sm px-3 py-2 transition-colors hover:bg-accent/30"
             >
               <FileIcon className="h-4 w-4 flex-shrink-0 text-primary" />

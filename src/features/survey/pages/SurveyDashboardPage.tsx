@@ -283,7 +283,7 @@ export function SurveyDashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {data?.by_school && data.by_school.length > 0 && (
           <Card padding="none">
-            <CardHeader title="Responses by School" className="px-6 pt-6" />
+            <CardHeader title="Responses by School" className="px-6 pt-6" bordered />
             <div className="divide-y divide-border pb-2">
               {data.by_school.map((s, i) => {
                 const school = s as Record<string, unknown>;
@@ -307,7 +307,7 @@ export function SurveyDashboardPage() {
 
         {data?.by_class && data.by_class.length > 0 && (
           <Card padding="none">
-            <CardHeader title="Responses by Class" className="px-6 pt-6" />
+            <CardHeader title="Responses by Class" className="px-6 pt-6" bordered />
             <div className="divide-y divide-border pb-2">
               {data.by_class.map((c, i) => {
                 const cls = c as Record<string, unknown>;

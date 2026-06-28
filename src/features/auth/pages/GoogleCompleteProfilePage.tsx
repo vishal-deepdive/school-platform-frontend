@@ -305,7 +305,7 @@ export function GoogleCompleteProfilePage() {
               aria-selected={isActive}
               aria-controls={`tabpanel-complete-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all duration-300 ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive
                   ? "text-primary bg-background shadow-sm border border-border/50"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50"

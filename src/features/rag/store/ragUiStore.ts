@@ -31,7 +31,7 @@ interface QuestionsState {
   filters: RagFilters;
   qType: QuestionType;
   difficulty: Difficulty;
-  numQuestions: number;
+  numQuestions?: number;
   marks?: number;
   result: string | null;
   isPending: boolean;

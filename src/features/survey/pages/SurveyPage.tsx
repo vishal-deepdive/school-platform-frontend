@@ -33,19 +33,12 @@ const sourceTab: TabRoute = {
   to: "/survey/source",
 };
 
-const descriptions: Record<string, string> = {
-  dashboard: "Student feedback overview across schools and classes.",
-  search: "Ask questions about student feedback in natural language.",
-  data: "Delete survey records by roll number, school, or class.",
-  source: "Connect the public Google Sheet your survey responses come from.",
-};
-
 export function SurveyPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canManageSource = role === "admin" || role === "principal";
   const tabs = canManageSource ? [...baseTabs, sourceTab] : baseTabs;
 
   return (
-    <ModulePageLayout title="Survey Analytics" tabs={tabs} descriptions={descriptions} />
+    <ModulePageLayout tabs={tabs} />
   );
 }

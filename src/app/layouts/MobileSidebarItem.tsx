@@ -20,7 +20,7 @@ export function MobileSidebarItem({ item, onClose }: MobileSidebarItemProps) {
     return (
       <NavLink
         to={item.href}
-        end={item.href === "/"}
+        end={item.end !== undefined ? item.end : item.href === "/"}
         onClick={onClose}
         className={({ isActive }) =>
           cn(
@@ -64,7 +64,7 @@ export function MobileSidebarItem({ item, onClose }: MobileSidebarItemProps) {
               key={i}
               to={child.href || "#"}
               onClick={onClose}
-              end={child.href === "/"}
+              end={child.end !== undefined ? child.end : child.href === "/"}
               className={({ isActive }) =>
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",

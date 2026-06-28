@@ -67,25 +67,37 @@ export async function* streamSSE<T = unknown>(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    // Normalise CRLF on the whole buffer (not just this chunk) so events split
-    // reliably on a blank line even when a "\r\n" lands across a chunk boundary.
-    buffer = (buffer + decoder.decode(value, { stream: true })).replace(/\r\n/g, "\n");
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      // Decode only the new chunk and normalise CRLF within it.
+      // If a "\r\n" straddles a chunk boundary (the "\r" was the last byte of
+      // the previous chunk and "\n" is the first byte here), remove the
+      // dangling "\r" that was already appended to the buffer.
+      let chunk = decoder.decode(value, { stream: true });
+      if (buffer.endsWith("\r") && chunk.startsWith("\n")) {
+        buffer = buffer.slice(0, -1);
+      }
+      buffer += chunk.replace(/\r\n/g, "\n");
 
-    let sepIndex = buffer.indexOf("\n\n");
-    while (sepIndex !== -1) {
-      const event = parseEvent<T>(buffer.slice(0, sepIndex));
-      buffer = buffer.slice(sepIndex + 2);
-      if (event !== undefined) yield event;
-      sepIndex = buffer.indexOf("\n\n");
+      let sepIndex = buffer.indexOf("\n\n");
+      while (sepIndex !== -1) {
+        const event = parseEvent<T>(buffer.slice(0, sepIndex));
+        buffer = buffer.slice(sepIndex + 2);
+        if (event !== undefined) yield event;
+        sepIndex = buffer.indexOf("\n\n");
+      }
     }
-  }
 
-  // The server may close the stream right after the final event without a
-  // trailing blank line — flush any complete event still sitting in the buffer.
-  buffer += decoder.decode().replace(/\r\n/g, "\n");
-  const tail = parseEvent<T>(buffer);
-  if (tail !== undefined) yield tail;
+    // The server may close the stream right after the final event without a
+    // trailing blank line — flush any complete event still sitting in the buffer.
+    buffer += decoder.decode().replace(/\r\n/g, "\n");
+    const tail = parseEvent<T>(buffer);
+    if (tail !== undefined) yield tail;
+  } finally {
+    // Release the reader lock on every exit path: normal completion, thrown
+    // error, AbortSignal, or the consumer abandoning the generator early.
+    reader.cancel().catch(() => {});
+  }
 }

@@ -85,7 +85,7 @@ export const MermaidDiagram = memo(function MermaidDiagram({ chart }: MermaidDia
         <button
           type="button"
           onClick={() => setShowSource((s) => !s)}
-          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Code2 className="h-3.5 w-3.5" />
           {showSource ? "Diagram" : "Source"}

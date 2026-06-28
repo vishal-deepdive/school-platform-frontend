@@ -16,10 +16,18 @@ export interface SurveyStatusResponse {
 
 export interface SearchRequest {
   query: string;
-  class_name: string;
-  feedback_column: FeedbackColumn;
-  limit: number;
+  class_name?: string;
+  feedback_column?: FeedbackColumn;
+  limit?: number;
   filters?: Record<string, unknown>;
+}
+
+export interface ChartData {
+  type: "bar" | "horizontal_bar" | "pie" | "scatter";
+  title: string;
+  x_key: string;
+  y_keys: string[];
+  data: Record<string, unknown>[];
 }
 
 export interface SearchData {
@@ -36,6 +44,7 @@ export interface SearchResponse {
   intent: SearchIntent;
   insight: string;
   chart_url?: string | null;
+  chart_data?: ChartData | null;
   data: SearchData;
   sql_query?: string | null;
   prompt_debug?: Record<string, unknown>[];
@@ -47,6 +56,7 @@ export interface SearchStreamMeta {
   type: "meta";
   intent: SearchIntent;
   chart_url?: string | null;
+  chart_data?: ChartData | null;
   data: SearchData;
   sql_query?: string | null;
 }

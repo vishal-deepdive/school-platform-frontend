@@ -1,21 +1,104 @@
 import { memo, useState } from "react";
-import { BookOpen, Bot, Check, Copy, User, AlertTriangle } from "lucide-react";
+import {
+  Bot,
+  Check,
+  ChevronDown,
+  Copy,
+  FileText,
+  User,
+  AlertTriangle,
+} from "lucide-react";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
+import { Button } from "@/shared/components/ui/Button";
 import { cn } from "@/shared/lib/utils";
-import type { ChatMessage } from "@/features/rag/types";
+import type { ChatMessage, QASource } from "@/features/rag/types";
+
+const PREVIEW_COUNT = 3;
+
+function SourceCard({ src, index }: { src: QASource; index: number }) {
+  const label =
+    src.chapter_name || src.title || src.file || "Source";
+  const subtitle = [src.title && src.chapter_name ? src.title : null, src.page ? `p. ${src.page}` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="group/card flex min-w-[140px] max-w-[200px] flex-col gap-1 rounded-lg border border-border bg-background p-2.5 text-xs shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5">
+      <div className="flex items-start gap-2">
+        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+          {index + 1}
+        </span>
+        <span className="line-clamp-2 font-medium leading-snug text-foreground">
+          {label}
+        </span>
+      </div>
+      {subtitle && (
+        <span className="line-clamp-1 pl-7 text-muted-foreground">{subtitle}</span>
+      )}
+      {src.similarity && (
+        <span className="pl-7 text-[10px] font-medium text-primary">
+          {src.similarity} match
+        </span>
+      )}
+    </div>
+  );
+}
+
+function SourcesPanel({ sources }: { sources: QASource[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = sources.length > PREVIEW_COUNT;
+  const visible = expanded ? sources : sources.slice(0, PREVIEW_COUNT);
+
+  return (
+    <div className="mt-3 space-y-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => setExpanded((v) => !v)}
+        icon={<FileText className="h-3.5 w-3.5 text-primary" />}
+        className="h-auto px-0 py-0 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-transparent"
+      >
+        {sources.length} source{sources.length > 1 ? "s" : ""}
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 transition-transform",
+            expanded && "rotate-180",
+          )}
+        />
+      </Button>
+
+      <div
+        className={cn(
+          "flex gap-2 overflow-x-auto pb-1 scrollbar-thin",
+          expanded ? "flex-wrap" : "flex-nowrap",
+        )}
+      >
+        {visible.map((src, i) => (
+          <SourceCard key={i} src={src} index={i} />
+        ))}
+
+        {!expanded && hasMore && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setExpanded(true)}
+            className="min-w-[100px] rounded-lg border-dashed text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground"
+          >
+            +{sources.length - PREVIEW_COUNT} more
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
-  /** True while this specific message is still receiving tokens. */
   isStreaming?: boolean;
 }
 
-/**
- * Renders one chat turn (user or assistant). Memoized so that appending
- * tokens to the in-progress assistant message — which replaces the `chat`
- * array reference on every flush — doesn't re-render every prior bubble
- * (their message objects stay referentially stable across that update).
- */
 export const ChatMessageBubble = memo(function ChatMessageBubble({
   message,
   isStreaming,
@@ -57,9 +140,6 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
               <span>{message.content}</span>
             </p>
           ) : message.content ? (
-            // Render Markdown live as it streams. The renderer defers the
-            // expensive bits while streaming (Mermaid diagrams show as code,
-            // syntax highlighting is skipped) so growing answers stay smooth.
             <MarkdownRenderer content={message.content} streaming={isStreaming} />
           ) : isStreaming ? (
             <div className="flex gap-1 py-1">
@@ -75,33 +155,20 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         </div>
 
         {message.sources && message.sources.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {message.sources.map((src, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground"
-              >
-                <BookOpen className="h-3 w-3 text-primary" />
-                {src.chapter_name && <span>{src.chapter_name}</span>}
-                {src.title && <span>· {src.title}</span>}
-                {src.page && <span>· p.{src.page}</span>}
-                {src.similarity && (
-                  <span className="font-medium text-primary">{src.similarity}</span>
-                )}
-              </span>
-            ))}
-          </div>
+          <SourcesPanel sources={message.sources} />
         )}
 
         {!isUser && !message.isError && message.content && !isStreaming && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={handleCopy}
-            className="mt-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            icon={copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            className="mt-1 px-1.5 py-0.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
           >
-            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
             {copied ? "Copied" : "Copy"}
-          </button>
+          </Button>
         )}
       </div>
 

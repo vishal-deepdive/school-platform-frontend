@@ -3,12 +3,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Plus } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { emailField, passwordField } from "@/shared/lib/validators";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Alert } from "@/shared/components/ui/Alert";
+import { Button } from "@/shared/components/ui/Button";
+import { Input } from "@/shared/components/ui/Input";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import type { AdminUser } from "@/features/admin/types";
 
@@ -62,13 +65,15 @@ function AdminRow({
           <span className="text-xs text-muted-foreground/70 italic">Your creator</span>
         )}
         {canRemove && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onRemove(admin.id)}
             disabled={removing}
-            className="text-sm font-medium text-destructive hover:text-destructive/80 disabled:opacity-50 transition-colors"
+            className="text-destructive hover:text-destructive/80"
           >
             Remove
-          </button>
+          </Button>
         )}
       </td>
     </tr>
@@ -141,12 +146,9 @@ export function AdminManagementPage() {
             Manage platform admin accounts
           </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          + Add Admin
-        </button>
+        <Button icon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
+          Add Admin
+        </Button>
       </div>
 
       {removeError && <Alert variant="error">{removeError}</Alert>}
@@ -203,51 +205,28 @@ export function AdminManagementPage() {
           onSubmit={handleSubmit((data) => createMutation.mutate(data))}
           className="space-y-4"
         >
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Full Name{" "}
-              <span className="text-muted-foreground font-normal">(optional)</span>
-            </label>
-            <input
-              {...register("full_name")}
-              placeholder="Jane Doe"
-              className="w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
+          <Input
+            label="Full Name"
+            placeholder="Jane Doe"
+            hint="Optional"
+            {...register("full_name")}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Email <span className="text-destructive">*</span>
-            </label>
-            <input
-              {...register("email")}
-              type="email"
-              placeholder="admin@example.com"
-              className="w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            {errors.email && (
-              <p className="mt-1 text-xs text-destructive">
-                {errors.email.message}
-              </p>
-            )}
-          </div>
+          <Input
+            label="Email"
+            type="email"
+            placeholder="admin@example.com"
+            error={errors.email?.message}
+            {...register("email")}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">
-              Password <span className="text-destructive">*</span>
-            </label>
-            <input
-              {...register("password")}
-              type="password"
-              placeholder="Min 8 chars, mixed case + number + symbol"
-              className="w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            {errors.password && (
-              <p className="mt-1 text-xs text-destructive">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
+          <Input
+            label="Password"
+            type="password"
+            placeholder="Min 8 chars, mixed case + number + symbol"
+            error={errors.password?.message}
+            {...register("password")}
+          />
 
           {createMutation.isError && (
             <Alert variant="error">
@@ -256,23 +235,19 @@ export function AdminManagementPage() {
           )}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button
+            <Button
+              variant="outline"
               type="button"
               onClick={() => {
                 setShowAddModal(false);
                 reset();
               }}
-              className="px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={createMutation.isPending}
-              className="px-4 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors"
-            >
-              {createMutation.isPending ? "Creating…" : "Create Admin"}
-            </button>
+            </Button>
+            <Button type="submit" loading={createMutation.isPending}>
+              Create Admin
+            </Button>
           </div>
         </form>
       </Modal>

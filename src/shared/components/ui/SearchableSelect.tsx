@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, ChevronDown, Check, Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { useClickOutside } from "@/shared/hooks/useClickOutside";
 
 export interface SearchableSelectOption {
   label: string;
@@ -41,18 +42,7 @@ export function SearchableSelect({
   const [searchQuery, setSearchQuery] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  useClickOutside(dropdownRef, () => setIsOpen(false));
 
   const filteredOptions = onSearchChange
     ? options
