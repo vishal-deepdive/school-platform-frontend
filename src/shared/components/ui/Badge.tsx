@@ -6,9 +6,9 @@ export type BadgeVariant =
   | "warning"
   | "danger"
   | "info"
+  | "primary"
   | "purple"
-  | "indigo"
-  | "primary";
+  | "indigo";
 
 interface BadgeProps {
   children: React.ReactNode;
@@ -25,9 +25,8 @@ const variantClasses: Record<BadgeVariant, string> = {
     "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
   danger: "bg-destructive/10 text-destructive border border-destructive/20",
   info: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20",
-  // Legacy aliases
-  purple: "bg-primary/10 text-primary border border-primary/20",
-  indigo: "bg-primary/10 text-primary border border-primary/20",
+  purple: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20",
+  indigo: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20",
 };
 
 export function Badge({

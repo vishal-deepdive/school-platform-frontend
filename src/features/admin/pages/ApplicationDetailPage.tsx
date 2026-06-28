@@ -5,10 +5,13 @@ import { adminApi } from "@/features/admin/api/admin";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Alert } from "@/shared/components/ui/Alert";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
+import { Textarea } from "@/shared/components/ui/Textarea";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import {
   APPLICATION_STATUS_LABELS,
-  APPLICATION_STATUS_COLORS,
+  APPLICATION_STATUS_BADGE_VARIANTS,
 } from "@/features/admin/constants";
 
 function InfoRow({
@@ -106,12 +109,12 @@ export function ApplicationDetailPage() {
             {app.school_name}
           </h1>
           <div className="mt-2 flex items-center gap-3">
-            <span
-              className={`inline-flex rounded-full border px-3 py-1 text-xs font-medium ${APPLICATION_STATUS_COLORS[app.onboarding_status] ?? "bg-muted text-muted-foreground"}`}
+            <Badge
+              variant={APPLICATION_STATUS_BADGE_VARIANTS[app.onboarding_status] ?? "default"}
             >
               {APPLICATION_STATUS_LABELS[app.onboarding_status] ??
                 app.onboarding_status}
-            </span>
+            </Badge>
             <span className="text-xs text-muted-foreground/70">
               ID: {app.application_id}
             </span>
@@ -120,21 +123,22 @@ export function ApplicationDetailPage() {
 
         <div className="flex gap-3">
           {canReject && (
-            <button
+            <Button
+              variant="outline"
               onClick={() => setShowRejectModal(true)}
-              className="px-4 py-2 rounded-lg border border-destructive/40 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
               Reject
-            </button>
+            </Button>
           )}
           {canApprove && (
-            <button
+            <Button
               onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending}
-              className="px-4 py-2 rounded-lg bg-green-600 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60 transition-colors"
+              loading={approveMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
             >
-              {approveMutation.isPending ? "Approving…" : "Approve"}
-            </button>
+              Approve
+            </Button>
           )}
         </div>
       </div>
@@ -260,12 +264,12 @@ export function ApplicationDetailPage() {
         <p className="text-sm text-muted-foreground">
           Optionally provide a reason — it will be shown to the applicant.
         </p>
-        <textarea
+        <Textarea
           value={rejectionReason}
           onChange={(e) => setRejectionReason(e.target.value)}
           placeholder="Reason for rejection (optional)…"
           rows={4}
-          className="mt-3 w-full rounded-lg border border-input bg-background text-foreground px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+          className="mt-3"
         />
         {rejectMutation.isError && (
           <Alert variant="error" className="mt-3">
@@ -273,19 +277,16 @@ export function ApplicationDetailPage() {
           </Alert>
         )}
         <div className="flex justify-end gap-3 mt-4">
-          <button
-            onClick={() => setShowRejectModal(false)}
-            className="px-4 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
-          >
+          <Button variant="outline" onClick={() => setShowRejectModal(false)}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger"
             onClick={() => rejectMutation.mutate()}
-            disabled={rejectMutation.isPending}
-            className="px-4 py-2 rounded-lg bg-destructive text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-60 transition-colors"
+            loading={rejectMutation.isPending}
           >
-            {rejectMutation.isPending ? "Rejecting…" : "Confirm Rejection"}
-          </button>
+            Confirm Rejection
+          </Button>
         </div>
       </Modal>
     </div>
