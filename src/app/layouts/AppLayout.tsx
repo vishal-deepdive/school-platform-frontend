@@ -27,7 +27,7 @@ export function AppLayout() {
 
       <div className={cn("flex flex-1 flex-col overflow-hidden")}>
         <Header onMenuToggle={() => setSidebarOpen((p) => !p)} />
-        <main className="flex-1 overflow-y-auto px-4 md:p-6">
+        <main className="flex-1 overflow-y-auto px-4 md:pt-4 md:py-2 md:px-5">
           <Outlet />
         </main>
       </div>

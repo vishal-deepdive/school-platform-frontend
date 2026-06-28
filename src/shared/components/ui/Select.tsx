@@ -30,7 +30,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const optionsRef = useRef<(HTMLDivElement | null)[]>([]);
 
     const [searchQuery, setSearchQuery] = useState("");
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
     useEffect(() => {
@@ -207,6 +207,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           )}
         >
           <span
+            title={displayValue || undefined}
             className={cn(
               "truncate flex-1 text-left min-w-0 mr-2",
               !displayValue && "text-muted-foreground/70",
@@ -224,13 +225,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
 
         {/* Dropdown Menu */}
         {isOpen && (
-          <div className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 py-1 max-h-60 overflow-y-auto scrollbar-thin">
+          <div className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 py-1 max-h-60 overflow-y-auto overflow-x-hidden scrollbar-thin">
             {options.map((opt, index) => (
               <div
                 key={opt.value}
                 ref={(el) => { optionsRef.current[index] = el; }}
+                title={opt.label}
                 className={cn(
-                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors truncate",
+                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors",
                   "hover:bg-accent hover:text-accent-foreground",
                   focusedIndex === index && "bg-accent text-accent-foreground",
                   internalRef.current?.value === opt.value &&
@@ -238,7 +240,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 )}
                 onClick={() => handleSelect(opt.value, opt.label)}
               >
-                {opt.label}
+                <span className="truncate">{opt.label}</span>
               </div>
             ))}
           </div>
