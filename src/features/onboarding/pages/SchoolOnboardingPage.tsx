@@ -117,6 +117,14 @@ export function SchoolOnboardingPage() {
     useState<OnboardingApplicationResponse | null>(null);
   const [principalEmail, setPrincipalEmail] = useState("");
 
+  // Anti-abuse CAPTCHA token. Only sent to the backend when present; the backend
+  // only *requires* it when CAPTCHA is enabled server-side, so local dev (captcha
+  // off) is unaffected.
+  // TODO: mount the provider widget (reCAPTCHA / hCaptcha / Turnstile) on step 5
+  // and call setCaptchaToken(token) from its onVerify callback. Until a provider
+  // is configured this stays null and the field is simply omitted.
+  const [captchaToken] = useState<string | null>(null);
+
   const handleNext = useCallback(
     async (e?: React.MouseEvent) => {
       if (e) e.preventDefault();
@@ -201,6 +209,9 @@ export function SchoolOnboardingPage() {
       fd.append("principal_name", data.principal_name);
       fd.append("principal_email", data.principal_email);
       fd.append("principal_password", data.principal_password);
+
+      // Anti-abuse CAPTCHA — only sent when a token was obtained from a widget.
+      if (captchaToken) fd.append("captcha_token", captchaToken);
 
       const response = await onboardingApi.apply(fd);
       setPrincipalEmail(data.principal_email);

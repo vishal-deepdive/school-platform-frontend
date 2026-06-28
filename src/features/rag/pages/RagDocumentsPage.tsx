@@ -15,6 +15,7 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
 import { SUBJECT_OPTIONS, RAG_OTHER_SUBJECT } from "@/features/rag/constants";
 import { useAuthStore } from "@/features/auth/store/auth";
+import { isStaff } from "@/shared/lib/permissions";
 import {
   useRagDocuments,
   useRagClassLevels,
@@ -46,10 +47,7 @@ const EMPTY_FORM = {
 
 export function RagDocumentsPage() {
   const role = useAuthStore((s) => s.user?.role);
-  // Staff (admin/principal/teacher) may manage documents. Defense-in-depth on
-  // top of route gating: hide upload / delete / retry controls for anyone else.
-  const canManage =
-    role === "admin" || role === "principal" || role === "teacher";
+  const canManage = isStaff(role);
   const isAdmin = role === "admin";
 
   const [isModalOpen, setIsModalOpen] = useState(false);

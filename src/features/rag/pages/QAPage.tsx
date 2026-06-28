@@ -103,7 +103,7 @@ export function QAPage() {
 
   const scrollToBottom = () => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     setAutoScroll(true);
   };
 
@@ -270,16 +270,17 @@ export function QAPage() {
                 </div>
                 <div className="flex flex-wrap justify-center gap-2 max-w-lg">
                   {suggestions.map((s) => (
-                    <button
+                    <Button
                       key={s.label}
                       type="button"
+                      variant="outline"
+                      icon={s.icon}
                       onClick={() => handleQuickAction(s.query)}
                       disabled={isStreaming}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground shadow-sm transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-foreground disabled:opacity-50"
+                      className="text-muted-foreground shadow-sm hover:bg-primary/5 hover:border-primary/50"
                     >
-                      {s.icon}
                       {s.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -295,14 +296,16 @@ export function QAPage() {
           </div>
 
           {!autoScroll && chat.length > 0 && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={scrollToBottom}
-              className="absolute bottom-4 right-4 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md transition-colors hover:bg-accent hover:text-foreground"
+              className="absolute bottom-4 right-4 h-9 w-9 rounded-full p-0 shadow-md text-muted-foreground"
               aria-label="Scroll to latest message"
             >
               <ArrowDown className="h-4 w-4" />
-            </button>
+            </Button>
           )}
         </div>
 
@@ -323,15 +326,17 @@ export function QAPage() {
           {chat.length > 0 && !isStreaming && !canRetry && (
             <div className="mb-2 flex flex-wrap gap-1.5">
               {suggestions.map((s) => (
-                <button
+                <Button
                   key={s.label}
                   type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={s.icon}
                   onClick={() => handleQuickAction(s.query)}
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                  className="rounded-full text-muted-foreground hover:border-primary/50"
                 >
-                  {s.icon}
                   {s.label}
-                </button>
+                </Button>
               ))}
             </div>
           )}

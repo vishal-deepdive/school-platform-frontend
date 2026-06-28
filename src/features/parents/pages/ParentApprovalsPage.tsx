@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { Alert } from "@/shared/components/ui/Alert";
+import { Button } from "@/shared/components/ui/Button";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import type { PendingParentItem } from "@/features/auth/types";
@@ -111,20 +112,22 @@ export function ParentApprovalsPage() {
                       {p.requested_at ? formatDate(p.requested_at) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                      <button
+                      <Button
+                        size="sm"
                         disabled={busy}
                         onClick={() => approve.mutate(p.parent_id)}
-                        className="px-3 py-1.5 rounded-lg bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                       >
                         Approve
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         disabled={busy}
                         onClick={() => reject.mutate(p.parent_id)}
-                        className="px-3 py-1.5 rounded-lg border border-destructive/40 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50 transition-colors"
+                        className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
                       >
                         Reject
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 );
