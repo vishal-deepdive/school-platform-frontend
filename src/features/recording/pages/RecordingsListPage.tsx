@@ -64,6 +64,7 @@ export function RecordingsListPage() {
           title="All Recordings"
           description={`${total} recording(s) total`}
           className="px-6 pt-6"
+          bordered
           action={
             <Button
               variant="outline"
