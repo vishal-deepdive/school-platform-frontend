@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { X } from "lucide-react";
+import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { roleCanAccess } from "@/shared/lib/permissions";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -45,6 +45,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   }, [isAdmin, user?.role]);
 
   const [activeCategory, setActiveCategory] = useState<NavItem | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Sync active category with current route (Desktop mainly)
   useEffect(() => {
@@ -73,6 +74,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
 
   const handleCategoryClick = (item: NavItem) => {
     setActiveCategory(item);
+    setIsCollapsed(false);
     if (item.href && !item.children) {
       navigate(item.href);
       if (mobile && onClose) onClose();
@@ -129,7 +131,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
     activeCategory?.children && activeCategory.children.length > 0;
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
       {/* Primary Sidebar (Icons only) */}
       <aside className="relative z-20 flex h-full w-16 flex-col items-center border-r border-border bg-background py-4 shadow-sm">
         {/* Logo */}
@@ -175,19 +177,37 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
         </div>
       </aside>
 
+      {/* Collapse/Expand Floating Button (rendered when collapsed and category has children) */}
+      {isCollapsed && hasSecondary && (
+        <button
+          onClick={() => setIsCollapsed(false)}
+          className="absolute left-[52px] top-[24px] z-30 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-md hover:bg-accent hover:text-foreground transition-all duration-200 cursor-pointer"
+          title="Expand sidebar"
+        >
+          <ChevronRight className="h-3.5 w-3.5" />
+        </button>
+      )}
+
       {/* Secondary Sidebar (Context Menu) */}
       <aside
         className={cn(
           "z-10 h-full border-r border-border bg-muted/40 transition-all duration-300 ease-in-out overflow-hidden",
-          hasSecondary ? "w-60" : "w-0 border-r-0",
+          hasSecondary && !isCollapsed ? "w-60" : "w-0 border-r-0",
         )}
       >
         {hasSecondary && (
           <div className="flex h-full w-60 flex-col">
-            <div className="flex h-[72px] shrink-0 items-center px-5">
+            <div className="flex h-[72px] shrink-0 items-center justify-between px-5">
               <h2 className="text-base font-semibold text-foreground tracking-tight">
                 {activeCategory?.label}
               </h2>
+              <button
+                onClick={() => setIsCollapsed(true)}
+                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200"
+                title="Collapse sidebar"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto px-3 pb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <nav className="space-y-1">
@@ -195,7 +215,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                   <NavLink
                     key={i}
                     to={child.href || "#"}
-                    end={child.href === "/"}
+                    end={child.end !== undefined ? child.end : child.href === "/"}
                     className={({ isActive }) =>
                       cn(
                         "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",

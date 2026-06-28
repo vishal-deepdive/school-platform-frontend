@@ -28,16 +28,8 @@ const tabs: TabRoute[] = [
   },
 ];
 
-const descriptions: Record<string, string> = {
-  upload:
-    "Upload a lecture recording to generate a transcript, notes, and exam questions.",
-  list: "Browse, preview, and manage your generated lecture recordings.",
-  search: "Search through generated transcripts, notes, and questions.",
-  audit: "Activity log of recording uploads and processing.",
-};
-
 export function RecordingPage() {
   return (
-    <ModulePageLayout title="Recording" tabs={tabs} descriptions={descriptions} />
+    <ModulePageLayout tabs={tabs} />
   );
 }

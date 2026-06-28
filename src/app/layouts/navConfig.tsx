@@ -28,6 +28,7 @@ export interface NavItem {
   href?: string;
   icon: React.ReactNode;
   children?: NavItem[];
+  end?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -127,6 +128,7 @@ export const navItems: NavItem[] = [
         label: "Dashboard",
         href: "/survey",
         icon: <BarChart2 className="h-4 w-4" />,
+        end: true,
       },
       {
         label: "AI Search",
