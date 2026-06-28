@@ -61,3 +61,17 @@ export function roleCanAccess(path: string, role?: UserRole | null): boolean {
   if (!allowed) return true;
   return allowed.includes(role);
 }
+
+export const STAFF_ROLES: UserRole[] = ["admin", "principal", "teacher"];
+
+export function isStaff(role?: UserRole | null): boolean {
+  return !!role && STAFF_ROLES.includes(role);
+}
+
+export function canManageRecordings(role?: UserRole | null): boolean {
+  return role === "admin" || role === "principal";
+}
+
+export function canUploadRecordings(role?: UserRole | null): boolean {
+  return role === "admin" || role === "principal" || role === "teacher";
+}
