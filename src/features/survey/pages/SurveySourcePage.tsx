@@ -32,6 +32,8 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
+import { authApi } from "@/features/auth/api/auth";
 
 const SURVEY_TYPE_OPTIONS = [
   { value: "general", label: "General" },
@@ -647,6 +649,18 @@ export function SurveySourcePage() {
   const [adminSchool, setAdminSchool] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
 
+  const { data: schoolsData, isLoading: isLoadingSchools } = useQuery({
+    queryKey: ["schools", "list"],
+    queryFn: () => authApi.searchSchools(""),
+    enabled: isAdmin,
+  });
+
+  const schoolOptions = (schoolsData ?? []).map((s) => ({
+    label: s.name,
+    value: s.name,
+    sublabel: [s.address, s.city, s.state, s.pin_code].filter(Boolean).join(", "),
+  }));
+
   const schoolParam = isAdmin ? adminSchool.trim() || undefined : undefined;
   const adminReady = !isAdmin || !!schoolParam;
 
@@ -712,15 +726,18 @@ export function SurveySourcePage() {
             title="School"
             description="Select the school to manage data sources for."
           />
-          <Input
+          <SearchableSelect
             label="School name"
-            placeholder="Exact registered school name"
+            placeholder="Select a school..."
+            searchPlaceholder="Search schools..."
+            options={schoolOptions}
+            isLoading={isLoadingSchools}
             value={adminSchool}
-            onChange={(e) => setAdminSchool(e.target.value)}
+            onChange={setAdminSchool}
           />
           {!adminReady && (
             <p className="mt-2 text-sm text-muted-foreground">
-              Enter a school above to manage its data sources.
+              Select a school above to manage its data sources.
             </p>
           )}
         </Card>

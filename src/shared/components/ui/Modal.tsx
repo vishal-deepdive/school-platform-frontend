@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
@@ -35,15 +36,15 @@ export function Modal({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
-        className="absolute inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300"
+        className="absolute inset-0 bg-slate-900/15 dark:bg-slate-950/40 backdrop-blur-[1.5px] transition-opacity duration-300"
         onClick={onClose}
       />
       <div
         className={cn(
-          "relative z-10 w-full rounded-xl bg-background border border-border/50 shadow-2xl shadow-black/20",
+          "relative z-10 w-full max-h-[calc(100vh-2rem)] flex flex-col rounded-xl bg-background border border-border/50 shadow-2xl shadow-black/20",
           "animate-in fade-in zoom-in-95 duration-200",
           sizeClasses[size],
           className,
@@ -52,7 +53,7 @@ export function Modal({
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        <div className="flex items-center justify-between border-b border-border/50 px-6 py-4">
+        <div className="flex items-center justify-between border-b border-border/50 px-6 py-4 shrink-0">
           <h3
             id="modal-title"
             className="text-base font-semibold text-foreground tracking-tight"
@@ -66,8 +67,12 @@ export function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="p-6 text-foreground">{children}</div>
+        <div className="p-6 text-foreground overflow-y-auto min-h-0 flex-1 scrollbar-custom">
+          {children}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
+
