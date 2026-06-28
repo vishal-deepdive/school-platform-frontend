@@ -55,7 +55,7 @@ export function QuestionsPage() {
         filters,
         q_type: qType,
         difficulty,
-        num_questions: numQuestions,
+        num_questions: numQuestions ?? 10,
         ...(marks != null && { marks }),
       })) {
         if (event.type === "token") {
@@ -113,14 +113,23 @@ export function QuestionsPage() {
             <Input
               label="Number of Questions"
               type="number"
-              min={1}
-              max={25}
-              value={numQuestions}
+              min={2}
+              max={100}
+              value={numQuestions ?? ""}
               onChange={(e) => {
-                const n = parseInt(e.target.value) || 1;
-                setConfig({ numQuestions: Math.min(25, Math.max(1, n)) });
+                const val = e.target.value;
+                if (val === "") {
+                  setConfig({ numQuestions: undefined });
+                } else {
+                  const n = parseInt(val);
+                  setConfig({ numQuestions: isNaN(n) ? undefined : n });
+                }
               }}
-              hint="Up to 25 per batch"
+              onBlur={() => {
+                const val = numQuestions ?? 10;
+                setConfig({ numQuestions: Math.min(100, Math.max(2, val)) });
+              }}
+              hint="Between 2 and 100 per batch"
             />
             {qType === "BRIEF" && (
               <Input
@@ -130,11 +139,20 @@ export function QuestionsPage() {
                 max={100}
                 placeholder="e.g. 5"
                 value={marks ?? ""}
-                onChange={(e) =>
-                  setConfig({
-                    marks: e.target.value ? parseInt(e.target.value) : undefined,
-                  })
-                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setConfig({ marks: undefined });
+                  } else {
+                    const n = parseInt(val);
+                    setConfig({ marks: isNaN(n) ? undefined : n });
+                  }
+                }}
+                onBlur={() => {
+                  if (marks !== undefined) {
+                    setConfig({ marks: Math.min(100, Math.max(1, marks)) });
+                  }
+                }}
               />
             )}
 

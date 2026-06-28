@@ -126,11 +126,12 @@ export function DashboardPage() {
           {quickLinks.map((link) => (
             <Card
               key={link.href}
-              className="group hover:shadow-md transition-shadow"
+              className="group overflow-hidden"
               padding="md"
+              hoverable
             >
               <div className="flex items-start gap-4">
-                <div className={`flex-shrink-0 rounded-lg p-2.5 ${link.color}`}>
+                <div className={`flex-shrink-0 rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110 ${link.color}`}>
                   {link.icon}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -140,9 +141,9 @@ export function DashboardPage() {
                   </p>
                   <Link
                     to={link.href}
-                    className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 group-hover:gap-2 transition-all"
+                    className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 group-hover:gap-2 transition-all"
                   >
-                    Get started <ArrowRight className="h-3 w-3" />
+                    Get started <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </div>
               </div>

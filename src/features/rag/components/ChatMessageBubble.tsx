@@ -1,21 +1,102 @@
 import { memo, useState } from "react";
-import { BookOpen, Bot, Check, Copy, User, AlertTriangle } from "lucide-react";
+import {
+  BookOpen,
+  Bot,
+  Check,
+  ChevronDown,
+  Copy,
+  FileText,
+  User,
+  AlertTriangle,
+} from "lucide-react";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { cn } from "@/shared/lib/utils";
-import type { ChatMessage } from "@/features/rag/types";
+import type { ChatMessage, QASource } from "@/features/rag/types";
+
+const PREVIEW_COUNT = 3;
+
+function SourceCard({ src, index }: { src: QASource; index: number }) {
+  const label =
+    src.chapter_name || src.title || src.file || "Source";
+  const subtitle = [src.title && src.chapter_name ? src.title : null, src.page ? `p. ${src.page}` : null]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="group/card flex min-w-[140px] max-w-[200px] flex-col gap-1 rounded-lg border border-border bg-background p-2.5 text-xs shadow-sm transition-colors hover:border-primary/40 hover:bg-primary/5">
+      <div className="flex items-start gap-2">
+        <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+          {index + 1}
+        </span>
+        <span className="line-clamp-2 font-medium leading-snug text-foreground">
+          {label}
+        </span>
+      </div>
+      {subtitle && (
+        <span className="line-clamp-1 pl-7 text-muted-foreground">{subtitle}</span>
+      )}
+      {src.similarity && (
+        <span className="pl-7 text-[10px] font-medium text-primary">
+          {src.similarity} match
+        </span>
+      )}
+    </div>
+  );
+}
+
+function SourcesPanel({ sources }: { sources: QASource[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasMore = sources.length > PREVIEW_COUNT;
+  const visible = expanded ? sources : sources.slice(0, PREVIEW_COUNT);
+
+  return (
+    <div className="mt-3 space-y-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <FileText className="h-3.5 w-3.5 text-primary" />
+        <span>
+          {sources.length} source{sources.length > 1 ? "s" : ""}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-3 w-3 transition-transform",
+            expanded && "rotate-180",
+          )}
+        />
+      </button>
+
+      <div
+        className={cn(
+          "flex gap-2 overflow-x-auto pb-1 scrollbar-thin",
+          expanded ? "flex-wrap" : "flex-nowrap",
+        )}
+      >
+        {visible.map((src, i) => (
+          <SourceCard key={i} src={src} index={i} />
+        ))}
+
+        {!expanded && hasMore && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="flex min-w-[100px] items-center justify-center rounded-lg border border-dashed border-border bg-background px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            +{sources.length - PREVIEW_COUNT} more
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface ChatMessageBubbleProps {
   message: ChatMessage;
-  /** True while this specific message is still receiving tokens. */
   isStreaming?: boolean;
 }
 
-/**
- * Renders one chat turn (user or assistant). Memoized so that appending
- * tokens to the in-progress assistant message — which replaces the `chat`
- * array reference on every flush — doesn't re-render every prior bubble
- * (their message objects stay referentially stable across that update).
- */
 export const ChatMessageBubble = memo(function ChatMessageBubble({
   message,
   isStreaming,
@@ -57,9 +138,6 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
               <span>{message.content}</span>
             </p>
           ) : message.content ? (
-            // Render Markdown live as it streams. The renderer defers the
-            // expensive bits while streaming (Mermaid diagrams show as code,
-            // syntax highlighting is skipped) so growing answers stay smooth.
             <MarkdownRenderer content={message.content} streaming={isStreaming} />
           ) : isStreaming ? (
             <div className="flex gap-1 py-1">
@@ -75,22 +153,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         </div>
 
         {message.sources && message.sources.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {message.sources.map((src, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-xs text-muted-foreground"
-              >
-                <BookOpen className="h-3 w-3 text-primary" />
-                {src.chapter_name && <span>{src.chapter_name}</span>}
-                {src.title && <span>· {src.title}</span>}
-                {src.page && <span>· p.{src.page}</span>}
-                {src.similarity && (
-                  <span className="font-medium text-primary">{src.similarity}</span>
-                )}
-              </span>
-            ))}
-          </div>
+          <SourcesPanel sources={message.sources} />
         )}
 
         {!isUser && !message.isError && message.content && !isStreaming && (
