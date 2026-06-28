@@ -5,7 +5,8 @@ export const markAttendanceSchema = z.object({
   class_name: z.string().min(1, "Class is required"),
   section: z.string().min(1, "Section is required"),
   subject: z.string().optional(),
-  threshold: z.number().min(0).max(1).default(0.4),
+  // Server clamps the effective threshold up to a 0.35 floor; mirror that here.
+  threshold: z.number().min(0.35).max(1).default(0.4),
   session: z.string().optional(),
   attendance_date: z.string().optional(),
   allow_holiday: z.boolean().default(false),

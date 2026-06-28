@@ -89,6 +89,9 @@ export const authApi = {
     apiClient
       .get<GoogleAuthUrlResponse>(`${BASE}/oauth/google`, {
         params: { t: Date.now() },
+        // The server sets an HttpOnly state-binding cookie (CSRF defence) on this
+        // response; withCredentials lets the browser store and later return it.
+        withCredentials: true,
       })
       .then((r) => r.data),
 
@@ -97,6 +100,9 @@ export const authApi = {
     apiClient
       .get<GoogleCallbackResponse>(`${BASE}/oauth/google/callback`, {
         params: { code, state },
+        // Send the state-binding cookie set during googleLogin so the backend
+        // can verify this is the same browser that initiated the flow.
+        withCredentials: true,
       })
       .then((r) => r.data),
 
