@@ -13,6 +13,7 @@ import { getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { decodeJwt, buildUserFromJwt } from "@/shared/lib/jwt";
 import { AuthInput, AuthSubmitButton } from "@/shared/components/ui/auth-fuse";
+import { Button } from "@/shared/components/ui/Button";
 import { useOtpCooldown } from "../hooks/useOtpCooldown";
 
 export interface VerifyOtpFormProps {
@@ -153,18 +154,17 @@ export function VerifyOtpForm({
       </div>
 
       <div className="text-center mt-2">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={onResend}
           disabled={isResending || isSubmitting || isCoolingDown}
-          className="text-sm font-semibold text-primary hover:text-primary/80 disabled:opacity-50 transition-colors"
+          loading={isResending}
+          className="text-primary hover:text-primary/80 hover:bg-transparent"
         >
-          {isResending
-            ? "Resending..."
-            : isCoolingDown
-              ? `Resend in ${timeLeft}s`
-              : "Didn't receive a code? Resend"}
-        </button>
+          {isCoolingDown ? `Resend in ${timeLeft}s` : "Didn't receive a code? Resend"}
+        </Button>
       </div>
 
       <p className="text-center text-sm text-muted-foreground mt-2">

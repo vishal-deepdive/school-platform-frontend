@@ -11,11 +11,12 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
+import { canManageRecordings } from "@/shared/lib/permissions";
 
 export function RagAuditPage() {
   const queryClient = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
-  const canRebuild = role === "admin" || role === "principal";
+  const canRebuild = canManageRecordings(role);
   const [isRebuilding, setIsRebuilding] = useState(false);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({

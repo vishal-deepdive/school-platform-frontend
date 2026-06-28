@@ -140,7 +140,7 @@ export function RegisterPage() {
               aria-selected={isActive}
               aria-controls={`tabpanel-register-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all duration-300 relative ${
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all duration-300 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive
                   ? "text-primary bg-background shadow-sm border border-border/50"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50"

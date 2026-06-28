@@ -5,6 +5,7 @@ import * as LabelPrimitive from "@radix-ui/react-label";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Eye, EyeOff, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { useClickOutside } from "@/shared/hooks/useClickOutside";
 
 // ─── Label ────────────────────────────────────────────────────────────────────
 
@@ -179,19 +180,7 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
     const internalRef = React.useRef<HTMLSelectElement | null>(null);
     const dropdownRef = React.useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-      function handleClickOutside(event: MouseEvent) {
-        if (
-          dropdownRef.current &&
-          !dropdownRef.current.contains(event.target as Node)
-        ) {
-          setIsOpen(false);
-        }
-      }
-      document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    useClickOutside(dropdownRef, () => setIsOpen(false));
 
     const setRefs = React.useCallback(
       (node: HTMLSelectElement) => {

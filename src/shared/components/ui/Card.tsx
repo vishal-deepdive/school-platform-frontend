@@ -101,17 +101,18 @@ interface StatCardProps {
   description?: string;
 }
 
+const _PRIMARY = "from-primary/20 to-primary/5 text-primary border-primary/10";
+const _GREEN   = "from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400 border-green-500/10";
+const _AMBER   = "from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/10";
+const _RED     = "from-destructive/20 to-destructive/5 text-destructive border-destructive/10";
+const _BLUE    = "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/10";
+
 const statColors = {
-  primary: "from-primary/20 to-primary/5 text-primary border-primary/10",
-  success: "from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400 border-green-500/10",
-  warning: "from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/10",
-  danger: "from-destructive/20 to-destructive/5 text-destructive border-destructive/10",
-  info: "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/10",
-  indigo: "from-primary/20 to-primary/5 text-primary border-primary/10",
-  green: "from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400 border-green-500/10",
-  amber: "from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/10",
-  red: "from-destructive/20 to-destructive/5 text-destructive border-destructive/10",
-  blue: "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/10",
+  primary: _PRIMARY, indigo: _PRIMARY,
+  success: _GREEN,   green:  _GREEN,
+  warning: _AMBER,   amber:  _AMBER,
+  danger:  _RED,     red:    _RED,
+  info:    _BLUE,    blue:   _BLUE,
 };
 
 export function StatCard({
