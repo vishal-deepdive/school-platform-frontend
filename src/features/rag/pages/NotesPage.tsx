@@ -1,14 +1,13 @@
 import { useState } from "react";
-import { StickyNote, Download, RotateCcw } from "lucide-react";
+import { StickyNote } from "lucide-react";
 import toast from "react-hot-toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
+import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
-import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
+import { getErrorMessage } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
-import { Alert } from "@/shared/components/ui/Alert";
-import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 
 export function NotesPage() {
@@ -81,58 +80,17 @@ export function NotesPage() {
 
         {(result !== null || isPending) && (
           <div className="lg:col-span-2">
-            {error && !isPending ? (
-              <Card>
-                <Alert variant="error" title="Generation failed">
-                  {error}
-                </Alert>
-                <div className="mt-4 flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<RotateCcw className="h-4 w-4" />}
-                    onClick={() => generate()}
-                    disabled={!canGenerate}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              </Card>
-            ) : result !== null ? (
-              <Card>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <StickyNote className="h-5 w-5 text-primary" />
-                    <h3 className="font-semibold text-foreground">Lecture Notes</h3>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    icon={<Download className="h-4 w-4" />}
-                    onClick={() =>
-                      downloadFile(
-                        result,
-                        `notes-${filters.chapter_name?.[0] ?? "chapter"}.md`,
-                      )
-                    }
-                  >
-                    Download
-                  </Button>
-                </div>
-                <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/40 p-4">
-                  <MarkdownRenderer content={result} streaming={isPending} />
-                </div>
-              </Card>
-            ) : (
-              <Card className="h-full flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4 py-12 text-muted-foreground">
-                  <div className="animate-spin">
-                    <StickyNote className="h-8 w-8" />
-                  </div>
-                  <p>Generating your notes...</p>
-                </div>
-              </Card>
-            )}
+            <StreamingResultPanel
+              error={error}
+              isPending={isPending}
+              result={result}
+              canRetry={canGenerate}
+              onRetry={() => generate()}
+              Icon={StickyNote}
+              title="Lecture Notes"
+              pendingMessage="Generating your notes..."
+              filename={`notes-${filters.chapter_name?.[0] ?? "chapter"}.md`}
+            />
           </div>
         )}
       </div>

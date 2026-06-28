@@ -1,6 +1,5 @@
 import { memo, useState } from "react";
 import {
-  BookOpen,
   Bot,
   Check,
   ChevronDown,
@@ -10,6 +9,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
+import { Button } from "@/shared/components/ui/Button";
 import { cn } from "@/shared/lib/utils";
 import type { ChatMessage, QASource } from "@/features/rag/types";
 
@@ -51,22 +51,22 @@ function SourcesPanel({ sources }: { sources: QASource[] }) {
 
   return (
     <div className="mt-3 space-y-2">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => setExpanded((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        icon={<FileText className="h-3.5 w-3.5 text-primary" />}
+        className="h-auto px-0 py-0 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-transparent"
       >
-        <FileText className="h-3.5 w-3.5 text-primary" />
-        <span>
-          {sources.length} source{sources.length > 1 ? "s" : ""}
-        </span>
+        {sources.length} source{sources.length > 1 ? "s" : ""}
         <ChevronDown
           className={cn(
             "h-3 w-3 transition-transform",
             expanded && "rotate-180",
           )}
         />
-      </button>
+      </Button>
 
       <div
         className={cn(
@@ -79,13 +79,15 @@ function SourcesPanel({ sources }: { sources: QASource[] }) {
         ))}
 
         {!expanded && hasMore && (
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setExpanded(true)}
-            className="flex min-w-[100px] items-center justify-center rounded-lg border border-dashed border-border bg-background px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            className="min-w-[100px] rounded-lg border-dashed text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground"
           >
             +{sources.length - PREVIEW_COUNT} more
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -157,14 +159,16 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         )}
 
         {!isUser && !message.isError && message.content && !isStreaming && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={handleCopy}
-            className="mt-1 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
+            icon={copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            className="mt-1 px-1.5 py-0.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
           >
-            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
             {copied ? "Copied" : "Copy"}
-          </button>
+          </Button>
         )}
       </div>
 
