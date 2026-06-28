@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { Search } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import { formatDate, getErrorMessage } from "@/shared/lib/utils";
 import { useDebounce } from "@/shared/hooks/useDebounce";
+import { Alert } from "@/shared/components/ui/Alert";
+import { Button } from "@/shared/components/ui/Button";
+import { Input } from "@/shared/components/ui/Input";
 import type { OnboardingStatus } from "@/features/admin/types";
+import { Badge } from "@/shared/components/ui/Badge";
 import {
   APPLICATION_STATUS_LABELS,
-  APPLICATION_STATUS_COLORS,
+  APPLICATION_STATUS_BADGE_VARIANTS,
 } from "@/features/admin/constants";
 
 const FILTER_OPTIONS: { value: string; label: string }[] = [
@@ -59,23 +64,10 @@ export function OnboardingApplicationsPage() {
           </p>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <svg
-              className="h-5 w-5 text-muted-foreground"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </div>
-          <input
+        <div className="w-full sm:w-72">
+          <Input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-input rounded-md leading-5 bg-background text-foreground placeholder-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm transition duration-150 ease-in-out"
+            leftIcon={<Search className="h-4 w-4 text-muted-foreground" />}
             placeholder="Search by school or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -86,24 +78,22 @@ export function OnboardingApplicationsPage() {
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
         {FILTER_OPTIONS.map((opt) => (
-          <button
+          <Button
             key={opt.value}
+            variant={statusFilter === opt.value ? "primary" : "outline"}
+            size="sm"
             onClick={() => setStatusFilter(opt.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-              statusFilter === opt.value
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                : "bg-background border border-border text-muted-foreground hover:bg-muted/50"
-            }`}
+            className="rounded-full"
           >
             {opt.label}
-          </button>
+          </Button>
         ))}
       </div>
 
       {error && (
-        <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4 text-destructive text-sm">
+        <Alert variant="error">
           {getErrorMessage(error) || "Failed to load applications. Please try again."}
-        </div>
+        </Alert>
       )}
 
       <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
@@ -184,15 +174,11 @@ export function OnboardingApplicationsPage() {
                     {app.city}, {app.state}
                   </td>
                   <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${APPLICATION_STATUS_COLORS[app.onboarding_status as OnboardingStatus]}`}
+                    <Badge
+                      variant={APPLICATION_STATUS_BADGE_VARIANTS[app.onboarding_status as OnboardingStatus] ?? "default"}
                     >
-                      {
-                        APPLICATION_STATUS_LABELS[
-                          app.onboarding_status as OnboardingStatus
-                        ]
-                      }
-                    </span>
+                      {APPLICATION_STATUS_LABELS[app.onboarding_status as OnboardingStatus] ?? app.onboarding_status}
+                    </Badge>
                   </td>
                   <td className="px-6 py-4 text-sm text-muted-foreground">
                     {app.applied_at ? formatDate(app.applied_at) : "—"}
@@ -219,22 +205,20 @@ export function OnboardingApplicationsPage() {
                 Showing page {page}
               </span>
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 border border-border rounded-md text-sm font-medium bg-background text-foreground hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Previous
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => setPage((p) => p + 1)}
-                  disabled={
-                    applications.length < PAGE_LIMIT || isPlaceholderData
-                  }
-                  className="px-4 py-2 border border-border rounded-md text-sm font-medium bg-background text-foreground hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  disabled={applications.length < PAGE_LIMIT || isPlaceholderData}
                 >
                   Next
-                </button>
+                </Button>
               </div>
             </div>
           )}

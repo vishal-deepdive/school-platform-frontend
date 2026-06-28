@@ -11,6 +11,8 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { PageSpinner } from "@/shared/components/ui/Spinner";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { Table } from "@/shared/components/ui/Table";
+import type { Column } from "@/shared/components/ui/Table";
 import { statusLabel, statusVariant } from "@/features/attendance/lib/status";
 
 interface DateFilters {
@@ -22,6 +24,24 @@ interface DateFilters {
 }
 
 type AttendanceRow = Record<string, unknown>;
+
+const DATE_COLUMNS: Column<AttendanceRow>[] = [
+  { key: "roll_number", header: "Roll No", render: (row) => String(row.roll_number ?? row.roll_no ?? "—") },
+  { key: "name", header: "Name", render: (row) => String(row.name ?? "—") },
+  { key: "class_name", header: "Class", render: (row) => String(row.class_name ?? row.class ?? "—") },
+  { key: "section", header: "Section", render: (row) => String(row.section ?? "—") },
+  { key: "subject", header: "Subject", render: (row) => String(row.subject ?? "—") },
+  {
+    key: "attendance_record",
+    header: "Status",
+    render: (row) => (
+      <Badge variant={statusVariant(String(row.attendance_record))}>
+        {statusLabel(String(row.attendance_record))}
+      </Badge>
+    ),
+  },
+  { key: "time", header: "Time", render: (row) => String(row.time ?? "—") },
+];
 
 export function AttendanceDateView() {
   const { user } = useAuthStore();
@@ -138,51 +158,7 @@ export function AttendanceDateView() {
           <p className="text-sm text-muted-foreground mb-3">
             {dateData.total_records} record(s) on {dateData.date}
           </p>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="min-w-full divide-y divide-border text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  {[
-                    "Roll No",
-                    "Name",
-                    "Class",
-                    "Section",
-                    "Subject",
-                    "Status",
-                    "Time",
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold uppercase text-muted-foreground"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border bg-background">
-                {(dateData.data as AttendanceRow[]).map((row, i) => (
-                  <tr key={i} className="hover:bg-muted/50">
-                    <td className="px-4 py-3">
-                      {String(row.roll_number ?? row.roll_no ?? "—")}
-                    </td>
-                    <td className="px-4 py-3">{String(row.name ?? "—")}</td>
-                    <td className="px-4 py-3">
-                      {String(row.class_name ?? row.class ?? "—")}
-                    </td>
-                    <td className="px-4 py-3">{String(row.section ?? "—")}</td>
-                    <td className="px-4 py-3">{String(row.subject ?? "—")}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant={statusVariant(String(row.attendance_record))}>
-                        {statusLabel(String(row.attendance_record))}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3">{String(row.time ?? "—")}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table columns={DATE_COLUMNS} data={dateData.data as AttendanceRow[]} />
         </div>
       )}
     </Card>
