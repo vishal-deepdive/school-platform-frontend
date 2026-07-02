@@ -1,4 +1,4 @@
-import { Menu } from "lucide-react";
+import { Menu, Search } from "lucide-react";
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -12,15 +12,24 @@ export function Header({ onMenuToggle }: HeaderProps) {
           src="/favicon.png"
           alt="DeepDive Logo"
           className="h-8 w-8 object-contain"
-        />s
+        />
       </div>
-      <button
-        onClick={onMenuToggle}
-        className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-        aria-label="Toggle menu"
-      >
-        <Menu className="h-6 w-6" />
-      </button>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
+          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          aria-label="Search pages and actions"
+        >
+          <Search className="h-5 w-5" />
+        </button>
+        <button
+          onClick={onMenuToggle}
+          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          aria-label="Toggle menu"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
+      </div>
     </header>
   );
 }
