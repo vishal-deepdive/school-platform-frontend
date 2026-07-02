@@ -7,14 +7,14 @@ export interface Column<T> {
   className?: string;
 }
 
-interface TableProps<T extends Record<string, unknown>> {
+interface TableProps<T extends object> {
   columns: Column<T>[];
   data: T[];
   emptyMessage?: string;
   className?: string;
 }
 
-export function Table<T extends Record<string, unknown>>({
+export function Table<T extends object>({
   columns,
   data,
   emptyMessage = "No data found.",
@@ -65,7 +65,9 @@ export function Table<T extends Record<string, unknown>>({
                       col.className,
                     )}
                   >
-                    {col.render ? col.render(row) : String(row[col.key] ?? "—")}
+                    {col.render
+                      ? col.render(row)
+                      : String((row as Record<string, unknown>)[col.key] ?? "—")}
                   </td>
                 ))}
               </tr>
