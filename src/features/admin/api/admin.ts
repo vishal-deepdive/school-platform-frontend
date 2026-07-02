@@ -1,4 +1,4 @@
-import { apiClient } from "@/shared/api/client";
+import { apiClient, multipartClient } from "@/shared/api/client";
 import type {
   AdminUser,
   CreateAdminRequest,
@@ -6,6 +6,9 @@ import type {
   OnboardingApplicationDetail,
   ApproveApplicationResponse,
   RejectApplicationRequest,
+  RequestChangesRequest,
+  SchoolSetupStatus,
+  BulkImportResult,
 } from "@/features/admin/types";
 
 const ADMIN_BASE = "/api/v1/admin";
@@ -68,4 +71,33 @@ export const adminApi = {
         message: string;
       }>(`${ADMIN_BASE}/onboarding/applications/${encodeURIComponent(applicationId)}/reject`, body)
       .then((r) => r.data),
+
+  requestApplicationChanges: (applicationId: string, body: RequestChangesRequest) =>
+    apiClient
+      .post<{
+        message: string;
+      }>(`${ADMIN_BASE}/onboarding/applications/${encodeURIComponent(applicationId)}/request-changes`, body)
+      .then((r) => r.data),
+
+  // ── Post-approval setup checklist ─────────────────────────────────────────
+
+  getSetupStatus: (schoolId: string) =>
+    apiClient
+      .get<SchoolSetupStatus>(
+        `${ADMIN_BASE}/schools/${encodeURIComponent(schoolId)}/setup-status`,
+      )
+      .then((r) => r.data),
+
+  // ── Bulk student roster import (CSV) ──────────────────────────────────────
+
+  bulkImportStudents: (schoolId: string, file: File) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    return multipartClient
+      .post<BulkImportResult>(
+        `${ADMIN_BASE}/schools/${encodeURIComponent(schoolId)}/students/bulk`,
+        fd,
+      )
+      .then((r) => r.data);
+  },
 };

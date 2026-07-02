@@ -17,9 +17,14 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/dashboard": ["admin", "principal", "teacher", "student", "parent", "viewer"],
 
   // Attendance
+  "/attendance/dashboard": ["admin", "principal", "teacher"],
   "/attendance/enroll": ["admin", "principal", "teacher"],
+  "/attendance/roll-call": ["admin", "principal", "teacher"],
   "/attendance/mark": ["admin", "principal", "teacher"],
   "/attendance/view": ["admin", "principal", "teacher", "student", "parent"],
+  "/attendance/leave": ["admin", "principal", "teacher", "student", "parent"],
+  "/attendance/holidays": ["admin", "principal"],
+  "/attendance/manage": ["admin", "principal"],
   "/attendance/stats": ["admin", "principal", "teacher"],
 
   // Recording
