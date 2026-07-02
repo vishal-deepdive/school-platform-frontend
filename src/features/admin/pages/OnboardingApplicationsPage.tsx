@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
+import { Search, Inbox } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { formatDate, getErrorMessage } from "@/shared/lib/utils";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -19,6 +20,7 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: "", label: "All" },
   { value: "email_verified", label: "Needs Review" },
   { value: "pending_verification", label: "Pending Verification" },
+  { value: "changes_requested", label: "Changes Requested" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
 ];
@@ -144,11 +146,17 @@ export function OnboardingApplicationsPage() {
               ))
             ) : applications?.length === 0 ? (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-6 py-12 text-center text-muted-foreground border-dashed"
-                >
-                  No applications found for this filter.
+                <td colSpan={6} className="px-6 py-10">
+                  <EmptyState
+                    className="border-0 py-6"
+                    icon={<Inbox className="h-10 w-10" />}
+                    title="No applications here"
+                    description={
+                      searchTerm
+                        ? `No results for “${searchTerm}”. Try a different search.`
+                        : "Nothing matches this filter yet. New applications appear under “Needs Review” once a school verifies its email."
+                    }
+                  />
                 </td>
               </tr>
             ) : (

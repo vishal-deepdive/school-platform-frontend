@@ -26,7 +26,29 @@ import type {
 
 const BASE = "/api/v1/auth";
 
+export interface CreateInviteResult {
+  invite_id: string;
+  role: string;
+  invite_token: string;
+  invite_url: string;
+  email: string | null;
+  expires_at: string;
+}
+
 export const authApi = {
+  /**
+   * Create a time-limited invite for a teacher or co-principal. The school is
+   * derived from the caller's JWT. Requires a principal/admin session.
+   */
+  createInvite: (data: {
+    email?: string;
+    role: "teacher" | "principal";
+    expires_hours?: number;
+  }) =>
+    apiClient
+      .post<CreateInviteResult>(`${BASE}/invite`, data)
+      .then((r) => r.data),
+
   register: (data: RegisterRequest) =>
     apiClient
       .post<RegisterResponse>(`${BASE}/register`, data)
