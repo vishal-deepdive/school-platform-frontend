@@ -2,6 +2,9 @@ import { multipartClient, apiClient } from "@/shared/api/client";
 import type {
   EnrollResponse,
   MarkAttendanceResponse,
+  ManualMarkRequest,
+  ManualMarkResponse,
+  RosterResponse,
   CorrectAttendanceResponse,
   AttendanceDateResponse,
   AttendanceRangeResponse,
@@ -9,6 +12,16 @@ import type {
   EnrollmentStatsResponse,
   DeleteResponse,
   UpdateEmbeddingResponse,
+  HolidayListResponse,
+  HolidayCreateResponse,
+  HolidayCreateRequest,
+  LeaveListResponse,
+  LeaveCreateResponse,
+  LeaveCreateRequest,
+  LeaveReviewResponse,
+  LeaveReviewRequest,
+  DashboardResponse,
+  AnalyticsResponse,
 } from "@/features/attendance/types";
 import { buildQueryString } from "@/shared/lib/utils";
 
@@ -71,6 +84,58 @@ export const attendanceApi = {
       .then((r) => r.data);
   },
 
+  getRoster: (params: Record<string, string>) =>
+    apiClient
+      .get<RosterResponse>(`${BASE}/roster/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  markManual: (body: ManualMarkRequest) =>
+    apiClient
+      .post<ManualMarkResponse>(`${BASE}/mark-attendance-manual/`, body)
+      .then((r) => r.data),
+
+  getDashboard: (params: Record<string, string>) =>
+    apiClient
+      .get<DashboardResponse>(`${BASE}/dashboard/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  getAnalytics: (params: Record<string, string> = {}) =>
+    apiClient
+      .get<AnalyticsResponse>(`${BASE}/analytics/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  // ── Holidays ──
+  listHolidays: (params: Record<string, string>) =>
+    apiClient
+      .get<HolidayListResponse>(`${BASE}/holidays/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  addHolidays: (body: HolidayCreateRequest) =>
+    apiClient
+      .post<HolidayCreateResponse>(`${BASE}/holidays/`, body)
+      .then((r) => r.data),
+
+  deleteHoliday: (params: Record<string, string>) =>
+    apiClient
+      .delete<{ message: string }>(`${BASE}/holidays/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  // ── Leave ──
+  createLeave: (body: LeaveCreateRequest) =>
+    apiClient
+      .post<LeaveCreateResponse>(`${BASE}/leave/`, body)
+      .then((r) => r.data),
+
+  listLeave: (params: Record<string, string>) =>
+    apiClient
+      .get<LeaveListResponse>(`${BASE}/leave/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  reviewLeave: (leaveId: number, body: LeaveReviewRequest) =>
+    apiClient
+      .post<LeaveReviewResponse>(`${BASE}/leave/${leaveId}/review/`, body)
+      .then((r) => r.data),
+
   getEnrollmentStats: () =>
     apiClient
       .get<EnrollmentStatsResponse>(`${BASE}/enrollment-stats/`)
@@ -104,6 +169,14 @@ export const attendanceApi = {
         `${BASE}/view-attendance-range/${buildQueryString(params)}`,
       )
       .then((r) => r.data),
+
+  exportAttendanceRange: (params: Record<string, string>) =>
+    apiClient
+      .get(
+        `${BASE}/view-attendance-range/${buildQueryString({ ...params, format: "csv" })}`,
+        { responseType: "blob" },
+      )
+      .then((r) => r.data as Blob),
 
   getChangeLog: (params: Record<string, string>) =>
     apiClient

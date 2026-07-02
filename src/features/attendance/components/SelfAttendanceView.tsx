@@ -148,8 +148,8 @@ export function SelfAttendanceView() {
             </p>
             <div className="flex flex-wrap gap-2">
               {data.dates && data.dates.length > 0 ? (
-                data.dates.map((d: string) => {
-                  const status = String(me[d] ?? "-");
+                data.dates.map((d: string, i: number) => {
+                  const status = me.cells[i] ?? "-";
                   return (
                     <div
                       key={d}
