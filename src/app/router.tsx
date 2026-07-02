@@ -18,8 +18,13 @@ import {
   AttendancePage,
   EnrollPage,
   MarkAttendancePage,
+  RollCallPage,
   ViewAttendancePage,
   AttendanceStatsPage,
+  AttendanceDashboardPage,
+  HolidaysPage,
+  LeavePage,
+  ManageStudentsPage,
 } from "@/features/attendance";
 import {
   RecordingPage,
@@ -53,6 +58,7 @@ import {
   ApplicationDetailPage,
   AdminManagementPage,
   PromptsPage,
+  StudentImportPage,
 } from "@/features/admin";
 import { ParentApprovalsPage } from "@/features/parents";
 
@@ -86,9 +92,14 @@ export const router = createBrowserRouter([
             element: <AttendancePage />,
             children: [
               { index: true, element: <Navigate to="view" replace /> },
+              { path: "dashboard", element: <RoleRoute><AttendanceDashboardPage /></RoleRoute> },
               { path: "enroll", element: <RoleRoute><EnrollPage /></RoleRoute> },
+              { path: "roll-call", element: <RoleRoute><RollCallPage /></RoleRoute> },
               { path: "mark", element: <RoleRoute><MarkAttendancePage /></RoleRoute> },
               { path: "view", element: <RoleRoute><ViewAttendancePage /></RoleRoute> },
+              { path: "leave", element: <RoleRoute><LeavePage /></RoleRoute> },
+              { path: "holidays", element: <RoleRoute><HolidaysPage /></RoleRoute> },
+              { path: "manage", element: <RoleRoute><ManageStudentsPage /></RoleRoute> },
               { path: "stats", element: <RoleRoute><AttendanceStatsPage /></RoleRoute> },
             ],
           },
@@ -142,6 +153,15 @@ export const router = createBrowserRouter([
                 ),
               },
             ],
+          },
+          // ── Roster management (principal / admin) ────────────────────────
+          {
+            path: "/students/import",
+            element: (
+              <RoleRoute allow={["admin", "principal"]}>
+                <StudentImportPage />
+              </RoleRoute>
+            ),
           },
           // ── Admin routes (platform admin only) ───────────────────────────
           {

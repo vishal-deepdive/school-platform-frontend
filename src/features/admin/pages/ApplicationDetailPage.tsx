@@ -38,6 +38,8 @@ export function ApplicationDetailPage() {
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [showChangesModal, setShowChangesModal] = useState(false);
+  const [changesMessage, setChangesMessage] = useState("");
 
   const {
     data: app,
@@ -76,6 +78,18 @@ export function ApplicationDetailPage() {
     },
   });
 
+  const requestChangesMutation = useMutation({
+    mutationFn: () =>
+      adminApi.requestApplicationChanges(applicationId!, {
+        message: changesMessage,
+      }),
+    onSuccess: () => {
+      invalidateAll();
+      setShowChangesModal(false);
+      setChangesMessage("");
+    },
+  });
+
   if (isLoading) return <PageSpinner />;
 
   if (error || !app) {
@@ -89,10 +103,13 @@ export function ApplicationDetailPage() {
     );
   }
 
-  const canApprove = app.onboarding_status === "email_verified";
+  const canApprove =
+    app.onboarding_status === "email_verified" ||
+    app.onboarding_status === "changes_requested";
   const canReject =
     app.onboarding_status !== "approved" &&
     app.onboarding_status !== "rejected";
+  const canRequestChanges = canReject; // same guard: anything non-terminal
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -131,6 +148,15 @@ export function ApplicationDetailPage() {
               Reject
             </Button>
           )}
+          {canRequestChanges && (
+            <Button
+              variant="outline"
+              onClick={() => setShowChangesModal(true)}
+              className="border-purple-400/40 text-purple-600 hover:bg-purple-500/10 hover:text-purple-600"
+            >
+              Request Changes
+            </Button>
+          )}
           {canApprove && (
             <Button
               onClick={() => approveMutation.mutate()}
@@ -149,6 +175,11 @@ export function ApplicationDetailPage() {
       {app.rejection_reason && (
         <Alert variant="error" title="Rejection reason">
           {app.rejection_reason}
+        </Alert>
+      )}
+      {app.admin_message && app.onboarding_status === "changes_requested" && (
+        <Alert variant="warning" title="Changes requested — waiting on applicant">
+          {app.admin_message}
         </Alert>
       )}
 
@@ -172,7 +203,14 @@ export function ApplicationDetailPage() {
             }
           />
           <InfoRow label="Established Year" value={app.established_year} />
-          <InfoRow label="UDISE Code" value={app.udise_code} />
+          <InfoRow
+            label="UDISE Code"
+            value={
+              app.udise_code
+                ? `${app.udise_code}${app.udise_verified ? "  ✓ verified" : "  (unverified)"}`
+                : undefined
+            }
+          />
         </dl>
       </section>
 
@@ -234,15 +272,25 @@ export function ApplicationDetailPage() {
         <dl>
           <InfoRow label="Name" value={app.principal_name} />
           <InfoRow label="Email" value={app.principal_email} />
+          {app.filled_by_email &&
+            app.filled_by_email !== app.principal_email && (
+              <InfoRow label="Form filled by" value={app.filled_by_email} />
+            )}
         </dl>
       </section>
 
       {/* Certificate */}
-      {app.certificate_url && (
-        <section className="rounded-xl border border-border bg-background p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-foreground mb-4">
-            Registration Certificate
-          </h2>
+      <section className="rounded-xl border border-border bg-background p-6 shadow-sm">
+        <h2 className="text-base font-semibold text-foreground mb-4">
+          Registration Certificate
+        </h2>
+        {app.certificate_status === "upload_failed" ? (
+          <Alert variant="error" title="Certificate upload failed">
+            The applicant attached a certificate but it failed to store (a system
+            issue — not the school&apos;s fault). Ask them to re-upload before
+            approving, rather than rejecting.
+          </Alert>
+        ) : app.certificate_url ? (
           <a
             href={app.certificate_url}
             target="_blank"
@@ -251,8 +299,12 @@ export function ApplicationDetailPage() {
           >
             📄 View Certificate
           </a>
-        </section>
-      )}
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            No certificate was provided (optional at submission).
+          </p>
+        )}
+      </section>
 
       {/* Reject modal */}
       <Modal
@@ -286,6 +338,44 @@ export function ApplicationDetailPage() {
             loading={rejectMutation.isPending}
           >
             Confirm Rejection
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Request-changes modal */}
+      <Modal
+        open={showChangesModal}
+        onClose={() => setShowChangesModal(false)}
+        title="Request Changes"
+        size="sm"
+      >
+        <p className="text-sm text-muted-foreground">
+          The application stays open under the same ID — the applicant edits and
+          resubmits instead of starting over. Describe what needs to change.
+        </p>
+        <Textarea
+          value={changesMessage}
+          onChange={(e) => setChangesMessage(e.target.value)}
+          placeholder="e.g. The uploaded certificate is illegible — please re-upload a clearer scan."
+          rows={4}
+          className="mt-3"
+        />
+        {requestChangesMutation.isError && (
+          <Alert variant="error" className="mt-3">
+            {getErrorMessage(requestChangesMutation.error)}
+          </Alert>
+        )}
+        <div className="flex justify-end gap-3 mt-4">
+          <Button variant="outline" onClick={() => setShowChangesModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => requestChangesMutation.mutate()}
+            loading={requestChangesMutation.isPending}
+            disabled={changesMessage.trim().length < 3}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            Send Request
           </Button>
         </div>
       </Modal>
