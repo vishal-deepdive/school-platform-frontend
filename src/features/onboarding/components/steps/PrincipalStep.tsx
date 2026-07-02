@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AuthInput, AuthPasswordInput } from "@/shared/components/ui/auth-fuse";
+import { AuthInput } from "@/shared/components/ui/auth-fuse";
 import { TermsCheckbox } from "@/shared/components/common/TermsCheckbox";
 import type { StepPropsExtra } from "./types";
 
@@ -8,10 +8,11 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
     <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
       <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Create the{" "}
+          This is the{" "}
           <strong className="text-foreground">principal account</strong> for the
-          person submitting this application. Once approved by the admin, use
-          these credentials to manage the school.
+          person who will manage the school. Once an admin approves your
+          application, we&apos;ll email a one-time code to set your password — no
+          password is needed now.
         </p>
       </div>
 
@@ -34,21 +35,14 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
         {...register("principal_email")}
       />
 
-      <AuthPasswordInput
-        label="Password *"
-        autoComplete="new-password"
-        placeholder="Create a strong password"
-        error={errors.principal_password?.message}
-        hint="Min 8 chars — uppercase, lowercase, number & special character"
-        {...register("principal_password")}
-      />
-
-      <AuthPasswordInput
-        label="Confirm Password *"
-        autoComplete="new-password"
-        placeholder="Repeat your password"
-        error={errors.confirm_password?.message}
-        {...register("confirm_password")}
+      <AuthInput
+        label="Your email (if filling on the principal's behalf)"
+        type="email"
+        autoComplete="email"
+        placeholder="office@yourschool.edu.in (optional)"
+        error={errors.filled_by_email?.message}
+        hint="Leave blank if you are the principal"
+        {...register("filled_by_email")}
       />
 
       <TermsCheckbox

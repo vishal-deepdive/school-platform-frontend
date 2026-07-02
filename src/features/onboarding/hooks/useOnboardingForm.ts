@@ -47,16 +47,23 @@ export function useOnboardingForm() {
   });
 
   const saveTimerRef = useRef<number | null>(null);
+  // Autosave indicator state: "idle" until first edit, "saving" while debouncing,
+  // "saved" once the write lands. Drives the "Saved" badge in the wizard header.
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
 
   // Debounced persist — batches rapid keystrokes into one write per 400 ms
   useEffect(() => {
     const subscription = methods.watch((value) => {
+      setSaveState("saving");
       if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(() => {
         sessionStorage.setItem(
           SESSION_KEYS.ONBOARDING_FORM,
           JSON.stringify(value),
         );
+        setSaveState("saved");
       }, 400);
     });
     return () => {
@@ -76,5 +83,5 @@ export function useOnboardingForm() {
     [],
   );
 
-  return { methods, currentStep, setCurrentStep };
+  return { methods, currentStep, setCurrentStep, saveState };
 }
