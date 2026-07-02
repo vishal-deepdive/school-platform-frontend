@@ -20,6 +20,8 @@ export interface SearchRequest {
   feedback_column?: FeedbackColumn;
   limit?: number;
   filters?: Record<string, unknown>;
+  /** Restrict the search to these survey source (sheet) ids. */
+  source_ids?: string[];
 }
 
 export interface ChartData {

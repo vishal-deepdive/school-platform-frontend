@@ -89,12 +89,16 @@ export const AuthInput = React.forwardRef<
   }
 >(({ className, type, label, error, hint, ...props }, ref) => {
   const id = useId();
+  const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
   return (
     <div className="grid gap-2 w-full">
       {label && <Label htmlFor={id}>{label}</Label>}
       <input
         id={id}
         type={type}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : hint ? hintId : undefined}
         className={cn(
           "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-shadow placeholder:text-muted-foreground/70 focus-visible:bg-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
           error && "border-destructive focus-visible:ring-destructive",
@@ -104,9 +108,13 @@ export const AuthInput = React.forwardRef<
         {...props}
       />
       {hint && !error && (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p id={hintId} className="text-xs text-muted-foreground">{hint}</p>
       )}
-      {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-xs text-destructive font-medium">
+          {error}
+        </p>
+      )}
     </div>
   );
 });
@@ -125,6 +133,8 @@ export const AuthPasswordInput = React.forwardRef<
   PasswordInputProps
 >(({ className, label, error, hint, ...props }, ref) => {
   const id = useId();
+  const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -134,6 +144,8 @@ export const AuthPasswordInput = React.forwardRef<
         <input
           id={id}
           type={showPassword ? "text" : "password"}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
           className={cn(
             "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-shadow placeholder:text-muted-foreground/70 focus-visible:bg-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 pe-10",
             error && "border-destructive focus-visible:ring-destructive",
@@ -156,9 +168,13 @@ export const AuthPasswordInput = React.forwardRef<
         </button>
       </div>
       {hint && !error && (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p id={hintId} className="text-xs text-muted-foreground">{hint}</p>
       )}
-      {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-xs text-destructive font-medium">
+          {error}
+        </p>
+      )}
     </div>
   );
 });
@@ -175,6 +191,8 @@ export interface AuthSelectProps extends React.SelectHTMLAttributes<HTMLSelectEl
 export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
   ({ label, error, hint, children, className, ...props }, ref) => {
     const id = useId();
+    const errorId = `${id}-error`;
+    const hintId = `${id}-hint`;
     const [isOpen, setIsOpen] = useState(false);
     const [displayValue, setDisplayValue] = useState("");
     const internalRef = React.useRef<HTMLSelectElement | null>(null);
@@ -247,7 +265,14 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
         )}
 
         {/* Hidden native select for form integration */}
-        <select id={id} className="hidden" ref={setRefs} {...props}>
+        <select
+          id={id}
+          className="hidden"
+          ref={setRefs}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
+          {...props}
+        >
           {children}
         </select>
 
@@ -256,6 +281,8 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
           role="combobox"
           aria-expanded={isOpen}
           aria-haspopup="listbox"
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : hint ? hintId : undefined}
           onClick={() => setIsOpen((o) => !o)}
           className={cn(
             "flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer",
@@ -308,10 +335,12 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
         )}
 
         {hint && !error && (
-          <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
+          <p id={hintId} className="text-xs text-muted-foreground mt-0.5">{hint}</p>
         )}
         {error && (
-          <p className="text-xs text-destructive font-medium mt-0.5">{error}</p>
+          <p id={errorId} role="alert" className="text-xs text-destructive font-medium mt-0.5">
+            {error}
+          </p>
         )}
       </div>
     );
