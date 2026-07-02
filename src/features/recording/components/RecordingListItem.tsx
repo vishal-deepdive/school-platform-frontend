@@ -9,7 +9,7 @@ interface RecordingListItemProps {
   /** Retry + delete are principal/admin only; hidden when false. */
   canManage: boolean;
   onPreview: (id: string) => void;
-  onDownload: (jobId: string) => void;
+  onDownload: (rec: Recording) => void;
   onRetry: (id: string) => void;
   onDelete: (id: string) => void;
   retrying: boolean;
@@ -31,8 +31,16 @@ export function RecordingListItem({
         <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">
-          {rec.audio_filename}
+        <p className="text-sm font-medium text-foreground truncate" title={rec.audio_filename}>
+          {(() => {
+            const ext = rec.audio_filename.split('.').pop() || 'mp3';
+            const className = String(rec.class || "class").trim().replace(/[^a-zA-Z0-9]/g, '_');
+            const subject = String(rec.subject || "subject").trim().replace(/[^a-zA-Z0-9]/g, '_');
+            const chapter = String(rec.recording_subject || "chapter").trim().replace(/[^a-zA-Z0-9]/g, '_');
+            let base = `${className}_${subject}_${chapter}`.replace(/_+/g, '_').replace(/^_|_$/g, '');
+            if (!base) base = `recording-${rec.id}`;
+            return `${base}.${ext}`;
+          })()}
         </p>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <Badge>{rec.school_name}</Badge>
@@ -51,7 +59,7 @@ export function RecordingListItem({
             variant="ghost"
             size="sm"
             icon={<Download className="h-4 w-4" />}
-            onClick={() => onDownload(rec.job_id!)}
+            onClick={() => onDownload(rec)}
             title="Download Notes"
           >
             Download

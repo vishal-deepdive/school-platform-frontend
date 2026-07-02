@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { recordingApi } from "@/features/recording/api/recording";
 import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
-import type { MarkdownResult } from "@/features/recording/types";
+import type { MarkdownResult, Recording } from "@/features/recording/types";
 
 /**
  * Centralised React Query keys for the recording feature. Using a factory keeps
@@ -72,9 +72,15 @@ export function useRetryRecording() {
 
 export function useDownloadRecording() {
   return useMutation({
-    mutationFn: (jobId: string) => recordingApi.downloadResult(jobId, "md"),
-    onSuccess: (blob: Blob, jobId) =>
-      downloadBlob(blob, `recording-notes-${jobId}.md`),
+    mutationFn: (rec: Recording) => recordingApi.downloadResult(rec.job_id!, "pdf"),
+    onSuccess: (blob: Blob, rec: Recording) => {
+      const className = String(rec.class || "class").trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const subject = String(rec.subject || "subject").trim().replace(/[^a-zA-Z0-9]/g, '_');
+      const chapter = String(rec.recording_subject || "chapter").trim().replace(/[^a-zA-Z0-9]/g, '_');
+      let base = `${className}_${subject}_${chapter}`.replace(/_+/g, '_').replace(/^_|_$/g, '');
+      if (!base) base = `recording-${rec.job_id}`;
+      downloadBlob(blob, `${base}.pdf`);
+    },
     onError: () => toast.error("Failed to download notes"),
   });
 }
