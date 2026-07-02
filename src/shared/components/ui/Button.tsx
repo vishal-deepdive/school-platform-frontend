@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/shared/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -10,6 +11,12 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size;
   loading?: boolean;
   icon?: React.ReactNode;
+  /**
+   * Render as the child element (e.g. a react-router <Link>) instead of a
+   * <button>, keeping button styling. When set, `loading`/`icon` are ignored
+   * because the child owns its content.
+   */
+  asChild?: boolean;
 }
 
 const variantClasses: Record<Variant, string> = {
@@ -41,31 +48,45 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       children,
       className,
       disabled,
+      asChild = false,
       ...props
     },
     ref,
-  ) => (
-    <button
-      ref={ref}
-      disabled={disabled || loading}
-      className={cn(
-        "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        "active:scale-[0.98]",
-        "disabled:cursor-not-allowed disabled:active:scale-100",
-        variantClasses[variant],
-        sizeClasses[size],
-        className,
-      )}
-      {...props}
-    >
-      {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : icon ? (
-        <span className="flex-shrink-0">{icon}</span>
-      ) : null}
-      {children}
-    </button>
-  ),
+  ) => {
+    const classes = cn(
+      "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      "active:scale-[0.98]",
+      "disabled:cursor-not-allowed disabled:active:scale-100",
+      variantClasses[variant],
+      sizeClasses[size],
+      className,
+    );
+
+    if (asChild) {
+      // Child (e.g. <Link>) owns its content; Slot merges classes/props onto it.
+      return (
+        <Slot ref={ref} className={classes} {...props}>
+          {children}
+        </Slot>
+      );
+    }
+
+    return (
+      <button
+        ref={ref}
+        disabled={disabled || loading}
+        className={classes}
+        {...props}
+      >
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : icon ? (
+          <span className="flex-shrink-0">{icon}</span>
+        ) : null}
+        {children}
+      </button>
+    );
+  },
 );
 Button.displayName = "Button";

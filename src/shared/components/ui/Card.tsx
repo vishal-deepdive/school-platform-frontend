@@ -98,7 +98,7 @@ interface StatCardProps {
     | "red"
     | "blue";
   className?: string;
-  description?: string;
+  description?: React.ReactNode;
 }
 
 const _PRIMARY = "from-primary/20 to-primary/5 text-primary border-primary/10";
