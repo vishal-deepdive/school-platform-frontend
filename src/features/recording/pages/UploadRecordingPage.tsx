@@ -13,7 +13,11 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { recordingApi } from "@/features/recording/api/recording";
-import { optimizeAudioForUpload } from "@/features/recording/lib/optimizeAudio";
+import {
+  optimizeAudioForUpload,
+  MAX_UPLOAD_BYTES,
+  type OptimizeProgress,
+} from "@/features/recording/lib/optimizeAudio";
 import { getErrorMessage, downloadFile, formatFileSize } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
@@ -165,7 +169,10 @@ export function UploadRecordingPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   // Client-side audio optimization runs before the upload request starts.
   const [optimizing, setOptimizing] = useState(false);
-  const [optimizeStage, setOptimizeStage] = useState("");
+  const [optimizeProgress, setOptimizeProgress] = useState<OptimizeProgress>({
+    stage: "",
+    percent: null,
+  });
   // When a re-upload is deduplicated the job is already complete on the
   // backend, so we skip status polling and fetch the existing result directly.
   const [deduplicated, setDeduplicated] = useState(false);
@@ -259,10 +266,13 @@ export function UploadRecordingPage() {
     // bandwidth with no transcription-quality loss. Best-effort: on any failure
     // optimizeAudioForUpload returns the original file untouched.
     let toUpload = file[0];
+    let withinLimit = true;
     setOptimizing(true);
+    setOptimizeProgress({ stage: "Preparing…", percent: null });
     try {
-      const res = await optimizeAudioForUpload(file[0], setOptimizeStage);
+      const res = await optimizeAudioForUpload(file[0], setOptimizeProgress);
       toUpload = res.file;
+      withinLimit = res.withinUploadLimit;
       if (res.optimized) {
         const saved = Math.round(
           (1 - res.outputBytes / res.originalBytes) * 100,
@@ -275,7 +285,18 @@ export function UploadRecordingPage() {
       }
     } finally {
       setOptimizing(false);
-      setOptimizeStage("");
+      setOptimizeProgress({ stage: "", percent: null });
+    }
+
+    // Enforce the server's hard limit up front so the user gets an instant,
+    // actionable error instead of a 413 after a long upload.
+    if (!withinLimit) {
+      toast.error(
+        `This recording is ${formatFileSize(toUpload.size)} after optimization, ` +
+          `over the ${formatFileSize(MAX_UPLOAD_BYTES)} limit. ` +
+          `Please upload a shorter recording or split it into parts.`,
+      );
+      return;
     }
 
     upload({ f: toUpload, p: params });
@@ -358,9 +379,28 @@ export function UploadRecordingPage() {
             />
 
             {optimizing && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>{optimizeStage || "Optimizing audio…"}</span>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>{optimizeProgress.stage || "Optimizing audio…"}</span>
+                  {optimizeProgress.percent != null && (
+                    <span className="ml-auto tabular-nums">
+                      {optimizeProgress.percent}%
+                    </span>
+                  )}
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                  {optimizeProgress.percent != null ? (
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-200"
+                      style={{ width: `${optimizeProgress.percent}%` }}
+                    />
+                  ) : (
+                    // Indeterminate stage (reading/decoding have no measurable
+                    // progress) — an animated sliver keeps the user informed.
+                    <div className="h-full w-1/3 animate-pulse rounded-full bg-primary/70" />
+                  )}
+                </div>
               </div>
             )}
 
