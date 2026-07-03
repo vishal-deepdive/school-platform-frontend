@@ -16,6 +16,8 @@ export interface SurveyStatusResponse {
 
 export interface SearchRequest {
   query: string;
+  /** School to scope the search to. Required for admins; ignored for other roles. */
+  school_name?: string;
   class_name?: string;
   feedback_column?: FeedbackColumn;
   limit?: number;

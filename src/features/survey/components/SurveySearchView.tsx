@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/features/auth/store/auth";
+import { authApi } from "@/features/auth/api/auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -32,12 +33,14 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Table } from "@/shared/components/ui/Table";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { SurveyChart } from "./SurveyChart";
 import { SheetSelector } from "./SheetSelector";
 import type {
   SearchIntent,
   SearchData,
   ChartData,
+  SourceItem,
 } from "@/features/survey/types";
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -160,10 +163,58 @@ export function SurveySearchView() {
   const [showSql, setShowSql] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+  const [availableSheetIds, setAvailableSheetIds] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  // Re-seed the selection with every sheet whenever the underlying sheet SET
+  // changes (initial load, or admin switching school), so the default is always
+  // "All sheets" checked. A background refetch that returns the same set leaves
+  // the user's own choices untouched.
+  const seededKeyRef = useRef<string>("");
 
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === "admin";
+
+  // ── Admin school scoping ──────────────────────────────────────────────────
+  // Admins search one school at a time and may only pick sheets within it.
+  const [adminSchool, setAdminSchool] = useState("");
+  const { data: schoolsData, isLoading: isLoadingSchools } = useQuery({
+    queryKey: ["schools", "list"],
+    queryFn: () => authApi.searchSchools(""),
+    enabled: isAdmin,
+  });
+  const schoolOptions = useMemo(
+    () =>
+      (schoolsData ?? []).map((s) => ({
+        label: s.name,
+        value: s.name,
+        sublabel: [s.address, s.city, s.state, s.pin_code]
+          .filter(Boolean)
+          .join(", "),
+      })),
+    [schoolsData],
+  );
+  // The school scope sent to the backend / used to list sheets. Non-admins are
+  // always locked to their own school (undefined → backend uses own school).
+  const schoolParam = isAdmin ? adminSchool.trim() || undefined : undefined;
+  const adminReady = !isAdmin || !!schoolParam;
+
+  // Switching school drops the previous school's selection; it re-seeds to "all"
+  // once the new school's sheets load.
+  useEffect(() => {
+    seededKeyRef.current = "";
+    setSelectedSourceIds([]);
+    setAvailableSheetIds([]);
+  }, [schoolParam]);
+
+  const handleSheetsLoaded = useCallback((sheets: SourceItem[]) => {
+    const ids = sheets.map((s) => s.id);
+    setAvailableSheetIds(ids);
+    const key = [...ids].sort().join(",");
+    if (key !== seededKeyRef.current) {
+      seededKeyRef.current = key;
+      setSelectedSourceIds(ids); // default: all sheets selected
+    }
+  }, []);
 
   useQuery({
     queryKey: ["survey", "status"],
@@ -197,6 +248,25 @@ export function SurveySearchView() {
 
   const runSearch = useCallback(
     async (formData: SurveySearchFormData) => {
+      // Admins must pick a school before searching.
+      if (isAdmin && !schoolParam) {
+        toast.error("Please select a school to search.");
+        return;
+      }
+      // A sheet must be picked before searching. Selecting nothing (vs. "All
+      // sheets", which ticks every box) is ambiguous, so we block it up front.
+      if (selectedSourceIds.length === 0) {
+        toast.error("Please select at least one sheet to search.");
+        return;
+      }
+
+      // "All sheets" (every available box ticked) sends NO per-sheet filter, so
+      // the search covers the whole school scope — including any legacy rows not
+      // yet attributed to a sheet. A partial selection sends explicit ids.
+      const allSelected =
+        availableSheetIds.length > 0 &&
+        availableSheetIds.every((id) => selectedSourceIds.includes(id));
+
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
@@ -217,10 +287,10 @@ export function SurveySearchView() {
         for await (const event of surveyApi.searchStream(
           {
             query: formData.query,
-            // Empty selection = "All sheets" → omit the filter entirely so the
-            // backend searches every accessible row (including legacy rows that
-            // predate sheet-sources and have a NULL source_id).
-            source_ids: selectedSourceIds.length ? selectedSourceIds : undefined,
+            school_name: schoolParam,
+            // "All sheets" → omit the filter (search everything in scope);
+            // otherwise pin the explicit selection.
+            source_ids: allSelected ? undefined : selectedSourceIds,
           },
           controller.signal,
         )) {
@@ -253,7 +323,14 @@ export function SurveySearchView() {
         abortRef.current = null;
       }
     },
-    [queueToken, flushPending, selectedSourceIds],
+    [
+      queueToken,
+      flushPending,
+      selectedSourceIds,
+      availableSheetIds,
+      isAdmin,
+      schoolParam,
+    ],
   );
 
   const hasResult = intent !== null;
@@ -271,18 +348,39 @@ export function SurveySearchView() {
         />
 
         <form onSubmit={handleSubmit(runSearch)} className="space-y-4">
-          <SheetSelector
-            value={selectedSourceIds}
-            onChange={setSelectedSourceIds}
-            disabled={streaming}
-            showSchoolName={isAdmin}
-          />
+          {isAdmin && (
+            <SearchableSelect
+              label="School"
+              placeholder="Select a school..."
+              searchPlaceholder="Search schools..."
+              options={schoolOptions}
+              isLoading={isLoadingSchools}
+              value={adminSchool}
+              onChange={setAdminSchool}
+              disabled={streaming}
+            />
+          )}
+
+          {adminReady ? (
+            <SheetSelector
+              value={selectedSourceIds}
+              onChange={setSelectedSourceIds}
+              disabled={streaming}
+              schoolName={schoolParam}
+              showSchoolName={false}
+              onSheetsLoaded={handleSheetsLoaded}
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Select a school above to choose its sheets and search.
+            </p>
+          )}
 
           <div className="relative">
             <input
               {...register("query")}
               placeholder="e.g. How satisfied are students with teacher support in class 10?"
-              disabled={streaming}
+              disabled={streaming || !adminReady}
               className="w-full rounded-lg border border-border bg-background text-foreground pl-10 pr-28 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 placeholder:text-muted-foreground/60"
             />
             <Search className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
@@ -302,6 +400,7 @@ export function SurveySearchView() {
                   type="submit"
                   size="sm"
                   loading={isSubmitting}
+                  disabled={!adminReady}
                   icon={<Sparkles className="h-4 w-4" />}
                 >
                   Analyze
@@ -315,7 +414,7 @@ export function SurveySearchView() {
               <button
                 key={q}
                 type="button"
-                disabled={streaming}
+                disabled={streaming || !adminReady}
                 onClick={() => setValue("query", q)}
                 className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary transition-colors disabled:opacity-40 disabled:pointer-events-none"
               >
