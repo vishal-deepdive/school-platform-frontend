@@ -86,11 +86,11 @@ function CopyButton({ text }: { text: string }) {
 }
 
 /** Formats an ETA in seconds as a short human-readable string. */
-function formatEta(seconds: number): string {
-  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
-  const mins = Math.round(seconds / 60);
-  return `${mins} min${mins === 1 ? "" : "s"}`;
-}
+// function formatEta(seconds: number): string {
+//   if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
+//   const mins = Math.round(seconds / 60);
+//   return `${mins} min${mins === 1 ? "" : "s"}`;
+// }
 
 interface JobStatusCardProps {
   jobId: string;
