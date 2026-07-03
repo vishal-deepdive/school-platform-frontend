@@ -137,9 +137,9 @@ function JobStatusCard({ jobId, jobStatus, deduplicated, markdown }: JobStatusCa
           <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
             <p className="text-sm text-blue-700 dark:text-blue-300">
               AI is transcribing and generating study materials.
-              {jobStatus.eta_seconds != null
+              {/* {jobStatus.eta_seconds != null
                 ? ` Estimated time remaining: ${formatEta(jobStatus.eta_seconds)}.`
-                : " This may take a few minutes."}
+                : " This may take a few minutes."} */}
             </p>
           </div>
         )}
