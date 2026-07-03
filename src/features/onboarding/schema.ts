@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  passwordField,
-  termsField,
-  preprocessOptional,
-} from "@/shared/lib/validators";
+import { termsField, preprocessOptional } from "@/shared/lib/validators";
 import { INDIAN_STATES } from "./constants";
 
 const _boardValues = [
@@ -21,6 +17,7 @@ const _typeValues = [
   "aided",
   "international",
   "autonomous",
+  "other",
 ] as const;
 
 const _currentYear = new Date().getFullYear();
@@ -43,6 +40,10 @@ const _step1Base = z.object({
   school_type: z.enum(_typeValues, {
     errorMap: () => ({ message: "Please select a school type" }),
   }),
+  other_school_type: z.preprocess(
+    preprocessOptional,
+    z.string().max(100, "School type is too long").optional(),
+  ),
   established_year: z.preprocess(
     preprocessOptional,
     z
@@ -132,6 +133,8 @@ const _step3Base = z.object({
   ),
 });
 
+// No password is collected during onboarding — the principal sets their own
+// via a one-time code emailed on approval. Step 5 captures identity + consent only.
 const _step5Base = z.object({
   principal_name: z
     .string()
@@ -143,16 +146,22 @@ const _step5Base = z.object({
     .trim()
     .toLowerCase()
     .email("Invalid principal email address"),
-  principal_password: passwordField.describe(
-    "Must contain uppercase, lowercase, number, and special character",
+  // Optional: filled in when office staff apply on behalf of the principal.
+  filled_by_email: z.preprocess(
+    preprocessOptional,
+    z.string().trim().toLowerCase().email("Invalid email address").optional(),
   ),
-  confirm_password: z.string().min(1, "Please confirm your password"),
   terms: termsField,
 });
 
 // Shared superRefine logic extracted to avoid duplication
 function _refineStep1(
-  data: { board: string; other_board?: string },
+  data: {
+    board: string;
+    other_board?: string;
+    school_type: string;
+    other_school_type?: string;
+  },
   ctx: z.RefinementCtx,
 ) {
   if (
@@ -163,6 +172,16 @@ function _refineStep1(
       code: z.ZodIssueCode.custom,
       message: "Please specify your curriculum board",
       path: ["other_board"],
+    });
+  }
+  if (
+    data.school_type === "other" &&
+    (!data.other_school_type || data.other_school_type.trim() === "")
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please specify your school type",
+      path: ["other_school_type"],
     });
   }
 }
@@ -212,10 +231,7 @@ export const onboardingStep3Schema = _step3Base
     path: ["classes_to"],
   });
 
-export const onboardingStep5Schema = _step5Base.refine(
-  (d) => d.principal_password === d.confirm_password,
-  { message: "Passwords do not match", path: ["confirm_password"] },
-);
+export const onboardingStep5Schema = _step5Base;
 
 // ── Combined schema — built by merging step bases to avoid field duplication ──
 
@@ -226,10 +242,6 @@ export const schoolOnboardingSchema = _step1Base
   .superRefine((data, ctx) => {
     _refineStep1(data, ctx);
     _refineStep3Medium(data, ctx);
-  })
-  .refine((d) => d.principal_password === d.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
   })
   .refine(_refineClassRange, {
     message: "Starting class must be ≤ ending class",

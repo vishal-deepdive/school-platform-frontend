@@ -5,7 +5,23 @@
       "PowerShell(Get-ChildItem -Path \"D:\\\\DeepDive\\\\frontend\" -Recurse -File | ForEach-Object { $_.FullName } | Sort-Object)",
       "Bash(npx tsc *)",
       "Bash(npx vite *)",
-      "Bash(node -e \"console.log\\(require\\('./node_modules/zod/package.json'\\).version\\)\")"
+      "Bash(node -e \"console.log\\(require\\('./node_modules/zod/package.json'\\).version\\)\")",
+      "Bash(file /d/DeepDive/school_platform/app/modules/attendance/schemas*)",
+      "Skill(dataviz)",
+      "Read(//c/Users/VISHAL~1/AppData/Local/Temp/claude/bundled-skills/2.1.198/fcce4cdcd7626c2e7a92e9cc4f156702/dataviz/**)",
+      "Bash(node scripts/validate_palette.js \"#135CB0\" --mode light)",
+      "Bash(node scripts/validate_palette.js \"#3392FF\" --mode dark)",
+      "Bash(venv/Scripts/python.exe -c ' *)",
+      "Bash(venv/Scripts/python.exe -)",
+      "Bash(venv/Scripts/python.exe -m alembic current)",
+      "Bash(venv/Scripts/python.exe -m alembic heads)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npm run *)",
+      "Bash(venv/Scripts/python.exe -m uvicorn app.main:app --port 8000)",
+      "Bash(venv/Scripts/python.exe scripts/seed_test_demo_school.py)",
+      "Bash(python -c ' *)",
+      "Bash(curl -s -o /dev/null -w \"SPA: %{http_code}\\\\n\" http://localhost:5173/ --max-time 5)",
+      "Bash(npx eslint *)"
     ]
   }
 }

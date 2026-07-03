@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { CommandPalette } from "./CommandPalette";
 import { cn } from "@/shared/lib/utils";
 
 export function AppLayout() {
@@ -9,6 +10,7 @@ export function AppLayout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-muted/30">
+      <CommandPalette />
       <div className="hidden md:flex md:flex-shrink-0">
         <Sidebar />
       </div>

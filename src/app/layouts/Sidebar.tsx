@@ -191,7 +191,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       {/* Secondary Sidebar (Context Menu) */}
       <aside
         className={cn(
-          "z-10 h-full border-r border-border bg-muted/40 transition-all duration-300 ease-in-out overflow-hidden",
+          "z-10 h-full border-r border-border bg-muted/10 transition-all duration-300 ease-in-out overflow-hidden",
           hasSecondary && !isCollapsed ? "w-60" : "w-0 border-r-0",
         )}
       >

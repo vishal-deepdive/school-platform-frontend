@@ -7,3 +7,4 @@ export * from "./pages/AdminManagementPage";
 export * from "./pages/ApplicationDetailPage";
 export * from "./pages/OnboardingApplicationsPage";
 export * from "./pages/PromptsPage";
+export * from "./pages/StudentImportPage";

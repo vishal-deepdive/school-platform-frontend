@@ -24,6 +24,7 @@ export interface CreateAdminRequest {
 export type OnboardingStatus =
   | "pending_verification"
   | "email_verified"
+  | "changes_requested"
   | "approved"
   | "rejected";
 
@@ -62,11 +63,15 @@ export interface OnboardingApplicationDetail {
   classes_from: string | null;
   classes_to: string | null;
   udise_code: string | null;
+  udise_verified: boolean;
   certificate_url: string | null;
+  certificate_status: "not_provided" | "uploaded" | "upload_failed";
   principal_name: string;
   principal_email: string;
+  filled_by_email: string | null;
   onboarding_status: OnboardingStatus;
   rejection_reason: string | null;
+  admin_message: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
   applied_at: string | null;
@@ -81,8 +86,27 @@ export interface ApproveApplicationResponse {
   message: string;
 }
 
+export interface SchoolSetupStatus {
+  school_id: string;
+  teachers: number;
+  principals: number;
+  class_codes: number;
+  students: number;
+  recordings: number;
+}
+
+export interface BulkImportResult {
+  created: number;
+  skipped: number;
+  errors: { row: number; reason: string }[];
+}
+
 export interface RejectApplicationRequest {
   rejection_reason?: string;
+}
+
+export interface RequestChangesRequest {
+  message: string;
 }
 
 // ── Prompt management types ────────────────────────────────────────────────

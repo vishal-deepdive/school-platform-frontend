@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { recordingApi } from "@/features/recording/api/recording";
-import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
+import { optimizeAudioForUpload } from "@/features/recording/lib/optimizeAudio";
+import { getErrorMessage, downloadFile, formatFileSize } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
@@ -162,6 +163,9 @@ export function UploadRecordingPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  // Client-side audio optimization runs before the upload request starts.
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizeStage, setOptimizeStage] = useState("");
   // When a re-upload is deduplicated the job is already complete on the
   // backend, so we skip status polling and fetch the existing result directly.
   const [deduplicated, setDeduplicated] = useState(false);
@@ -236,7 +240,7 @@ export function UploadRecordingPage() {
     }
   }, [isComplete, jobId, markdown]);
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (!file[0]) {
       toast.error("Please select an audio file");
       return;
@@ -250,7 +254,31 @@ export function UploadRecordingPage() {
     setMarkdown(null);
     setDeduplicated(false);
     setUploadProgress(0);
-    upload({ f: file[0], p: params });
+
+    // Down-convert to 16 kHz mono WAV (the STT target) before uploading — cuts
+    // bandwidth with no transcription-quality loss. Best-effort: on any failure
+    // optimizeAudioForUpload returns the original file untouched.
+    let toUpload = file[0];
+    setOptimizing(true);
+    try {
+      const res = await optimizeAudioForUpload(file[0], setOptimizeStage);
+      toUpload = res.file;
+      if (res.optimized) {
+        const saved = Math.round(
+          (1 - res.outputBytes / res.originalBytes) * 100,
+        );
+        toast.success(
+          `Optimized for upload — ${saved}% smaller (${formatFileSize(
+            res.originalBytes,
+          )} → ${formatFileSize(res.outputBytes)})`,
+        );
+      }
+    } finally {
+      setOptimizing(false);
+      setOptimizeStage("");
+    }
+
+    upload({ f: toUpload, p: params });
   };
 
   return (
@@ -324,10 +352,17 @@ export function UploadRecordingPage() {
             <FileUpload
               label="Audio or Video File"
               accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/*,video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
-              maxSize={200 * 1024 * 1024}
+              maxSize={1024 * 1024 * 1024}
               onChange={setFile}
-              hint="MP3, WAV, M4A, MP4, MOV, MKV, WebM. Max 200 MB."
+              hint="MP3, WAV, M4A, MP4, MOV, MKV, WebM. Max 1 GB. Large files are optimized in your browser before upload."
             />
+
+            {optimizing && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>{optimizeStage || "Optimizing audio…"}</span>
+              </div>
+            )}
 
             {uploading && (
               <div className="space-y-1">
@@ -345,7 +380,7 @@ export function UploadRecordingPage() {
 
             <Button
               onClick={handleUpload}
-              loading={uploading}
+              loading={optimizing || uploading}
               disabled={
                 !!jobId &&
                 !deduplicated &&
@@ -354,7 +389,11 @@ export function UploadRecordingPage() {
               }
               icon={<Mic2 className="h-4 w-4" />}
             >
-              {uploading ? "Uploading…" : "Process Recording"}
+              {optimizing
+                ? "Optimizing…"
+                : uploading
+                  ? "Uploading…"
+                  : "Process Recording"}
             </Button>
           </div>
         </Card>

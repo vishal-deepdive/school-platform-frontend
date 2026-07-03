@@ -13,6 +13,7 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import {
   STATUS_OPTIONS,
   statusLabel,
@@ -31,6 +32,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
+import { DatePicker } from "@/shared/components/ui/DatePicker";
 import type {
   MarkAttendanceResponse,
   AttendanceRecord,
@@ -98,8 +100,16 @@ export function MarkAttendanceForm() {
 
   const selectedClass = watch("class_name");
   const attendanceDate = watch("attendance_date");
+  const watchedSchoolName = watch("school_name");
+  const watchedSession = watch("session");
   const sectionOptions = selectedClass ? getSectionOptions(selectedClass) : [];
   const dateIsSunday = attendanceDate ? isSunday(attendanceDate) : false;
+
+  const holidays = useHolidayDates({
+    session: watchedSession || "2025-26",
+    schoolName: watchedSchoolName || undefined,
+    enabled: !isAdmin || !!watchedSchoolName,
+  });
 
   // Reset class/section whenever the selected school changes
   useEffect(() => {
@@ -187,7 +197,9 @@ export function MarkAttendanceForm() {
       school_name: data.school_name || "",
       class_name: data.class_name,
       section: data.section,
-      threshold: String(data.threshold),
+      // Only admins may tune the match threshold; the server ignores it for
+      // everyone else and applies the fixed platform default (0.35).
+      ...(isAdmin && { threshold: String(data.threshold) }),
       ...(data.subject && { subject: data.subject }),
       ...(data.session && { session: data.session }),
       ...(data.attendance_date && {
@@ -261,44 +273,56 @@ export function MarkAttendanceForm() {
                 options={SESSION_OPTIONS}
                 {...register("session")}
               />
-              <Input
-                type="date"
-                label="Date"
-                max={todayIso()}
-                error={errors.attendance_date?.message}
-                {...register("attendance_date")}
+              <Controller
+                control={control}
+                name="attendance_date"
+                render={({ field }) => (
+                  <DatePicker
+                    label="Date"
+                    max={todayIso()}
+                    value={field.value}
+                    onChange={(iso) => field.onChange(iso ?? todayIso())}
+                    error={errors.attendance_date?.message}
+                    fadeSundays
+                    holidays={holidays}
+                  />
+                )}
               />
-              <div className="flex flex-col gap-1">
-                <label className="text-sm font-medium text-foreground">
-                  Similarity Threshold
-                </label>
-                <Controller
-                  control={control}
-                  name="threshold"
-                  render={({ field }) => (
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={0.35}
-                        max={0.9}
-                        step={0.05}
-                        value={field.value}
-                        onChange={(e) =>
-                          field.onChange(parseFloat(e.target.value))
-                        }
-                        className="flex-1"
-                      />
-                      <span className="w-12 text-sm font-medium text-foreground">
-                        {field.value.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Higher = stricter matching. The server enforces a minimum of
-                  0.35 regardless of the value sent.
-                </p>
-              </div>
+              {/* Face-match threshold is an admin-only tuning knob. Non-admin
+                  staff run at the fixed platform default enforced by the server. */}
+              {isAdmin && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-medium text-foreground">
+                    Similarity Threshold
+                  </label>
+                  <Controller
+                    control={control}
+                    name="threshold"
+                    render={({ field }) => (
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={0.35}
+                          max={0.9}
+                          step={0.05}
+                          value={field.value}
+                          onChange={(e) =>
+                            field.onChange(parseFloat(e.target.value))
+                          }
+                          className="flex-1"
+                        />
+                        <span className="w-12 text-sm font-medium text-foreground">
+                          {field.value.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Higher = stricter matching. The server enforces a minimum of
+                    0.35 regardless of the value sent.
+                  </p>
+                </div>
+              )}
             </div>
 
             {dateIsSunday && (
@@ -390,7 +414,10 @@ export function MarkAttendanceForm() {
             <table className="min-w-full divide-y divide-border/50">
               <thead className="bg-muted/50">
                 <tr>
-                  {["Roll No", "Name", "Confidence", "Status"].map((h) => (
+                  {(isAdmin
+                    ? ["Roll No", "Name", "Confidence", "Status"]
+                    : ["Roll No", "Name", "Status"]
+                  ).map((h) => (
                     <th
                       key={h}
                       className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
@@ -404,7 +431,7 @@ export function MarkAttendanceForm() {
                 {allRecords.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={isAdmin ? 4 : 3}
                       className="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
                       No attendance records found.
@@ -422,11 +449,13 @@ export function MarkAttendanceForm() {
                       <td className="px-4 py-3 text-sm text-foreground">
                         {r.name}
                       </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {r.similarity != null
-                          ? `${(r.similarity * 100).toFixed(1)}%`
-                          : "—"}
-                      </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3 text-sm text-foreground">
+                          {r.similarity != null
+                            ? `${(r.similarity * 100).toFixed(1)}%`
+                            : "—"}
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-sm text-foreground">
                         <div className="flex items-center gap-2">
                           <Badge variant={statusVariant(r.status)}>

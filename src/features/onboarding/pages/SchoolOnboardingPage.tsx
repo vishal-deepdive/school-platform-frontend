@@ -6,8 +6,8 @@
  *   4. Documents         (school registration certificate — file upload)
  *   5. Principal Account (name, email, password, terms)
  */
-import React, { useState, useCallback } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useCallback, useEffect } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Building2,
   MapPin,
@@ -18,19 +18,25 @@ import {
   ChevronLeft,
   Check,
   Loader2,
+  Mail,
+  AlertTriangle,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import type { FieldPath } from "react-hook-form";
+import { useWatch } from "react-hook-form";
 import type { SchoolOnboardingFormData } from "@/features/onboarding/schema";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { getErrorMessage, cn } from "@/shared/lib/utils";
 import { SESSION_KEYS, removeSession } from "@/shared/lib/session";
-import { AuthButton } from "@/shared/components/ui/auth-fuse";
+import { AuthButton, AuthInput } from "@/shared/components/ui/auth-fuse";
+import { Modal } from "@/shared/components/ui/Modal";
 import type { OnboardingApplicationResponse } from "@/features/onboarding/types";
+import { SCHOOL_BOARDS, SCHOOL_TYPES } from "@/features/onboarding/constants";
 
 import {
   StepIndicator,
   SuccessState,
+  CaptchaWidget,
   SchoolInfoStep,
   ContactStep,
   AcademicStep,
@@ -38,7 +44,7 @@ import {
   PrincipalStep,
   type StepIndex,
 } from "@/features/onboarding/components";
-import { useOnboardingForm } from "@/features/onboarding/hooks";
+import { useOnboardingForm, useOnboardingCapabilities } from "@/features/onboarding/hooks";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const STEPS: {
@@ -70,7 +76,14 @@ const STEPS: {
 ];
 
 const STEP_FIELDS: Record<StepIndex, FieldPath<SchoolOnboardingFormData>[]> = {
-  1: ["school_name", "board", "other_board", "school_type", "established_year"],
+  1: [
+    "school_name",
+    "board",
+    "other_board",
+    "school_type",
+    "other_school_type",
+    "established_year",
+  ],
   2: [
     "email",
     "mobile",
@@ -89,26 +102,153 @@ const STEP_FIELDS: Record<StepIndex, FieldPath<SchoolOnboardingFormData>[]> = {
     "other_medium_of_instruction",
   ],
   4: [],
-  5: [
-    "principal_name",
-    "principal_email",
-    "principal_password",
-    "confirm_password",
-    "terms",
-  ],
+  5: ["principal_name", "principal_email", "filled_by_email", "terms"],
 };
+
+// Error codes the backend returns for an already-active duplicate application —
+// these get an actionable "check your status" banner instead of a dead-end toast.
+const DUPLICATE_ERROR_CODES = new Set([
+  "school_name_pending",
+  "principal_email_pending",
+  "udise_code_pending",
+  "udise_code_exists",
+  "principal_email_exists",
+]);
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export function SchoolOnboardingPage() {
-  const { methods, currentStep, setCurrentStep } = useOnboardingForm();
+  const { methods, currentStep, setCurrentStep, saveState } =
+    useOnboardingForm();
   const {
     register,
     handleSubmit,
     trigger,
     watch,
     setValue,
+    reset,
+    getValues,
+    control,
     formState: { errors },
   } = methods;
+
+  const reviewValues = useWatch({ control }) as Partial<SchoolOnboardingFormData>;
+  const { data: capabilities } = useOnboardingCapabilities();
+
+  const [searchParams] = useSearchParams();
+  const resubmitId = searchParams.get("resubmit");
+  const draftParam = searchParams.get("draft");
+  const [isResubmit, setIsResubmit] = useState(false);
+  const [resubmitAdminMessage, setResubmitAdminMessage] = useState<string | null>(null);
+  const [existingCertificateUrl, setExistingCertificateUrl] = useState<string | null>(null);
+
+  // Prefill from a rejected / changes-requested application so the applicant
+  // corrects & resubmits in place, without re-entering everything. Runs once
+  // when arriving with ?resubmit=<id>.
+  useEffect(() => {
+    if (!resubmitId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await onboardingApi.getResubmitData(resubmitId);
+        if (cancelled) return;
+        reset({
+          school_name: d.school_name,
+          // board/school_type are stored uppercase; the form enums are lowercase
+          // for school_type (and free-text passthrough for board) — normalize.
+          board: (d.board ?? "") as never,
+          other_board: d.other_board ?? "",
+          school_type: (d.school_type?.toLowerCase() ?? "") as never,
+          other_school_type: d.other_school_type ?? "",
+          established_year: d.established_year ?? "",
+          email: d.email,
+          mobile: d.mobile,
+          phone: d.phone ?? "",
+          address_line_1: d.address_line_1,
+          address_line_2: d.address_line_2 ?? "",
+          city: d.city,
+          state: d.state,
+          pin_code: d.pin_code,
+          area: "", // not stored — user re-selects the post office on step 2
+          student_count: String(d.student_count ?? ""),
+          medium_of_instruction: d.medium_of_instruction ?? "",
+          other_medium_of_instruction: d.other_medium_of_instruction ?? "",
+          classes_from: d.classes_from ?? "",
+          classes_to: d.classes_to ?? "",
+          udise_code: d.udise_code ?? "",
+          principal_name: d.principal_name,
+          principal_email: d.principal_email,
+          filled_by_email: d.filled_by_email ?? "",
+          terms: false,
+        });
+        setIsResubmit(true);
+        setExistingCertificateUrl(d.certificate_url ?? null);
+        setResubmitAdminMessage(
+          d.onboarding_status === "changes_requested" ? d.admin_message : null,
+        );
+        setCurrentStep(1);
+        toast.success(
+          d.onboarding_status === "changes_requested"
+            ? "We loaded your application — address the note below and resubmit."
+            : "We loaded your previous application — update and resubmit.",
+        );
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resubmitId]);
+
+  // ── Draft resume (server-side "save & continue later") ──────────────────────
+  const [draftToken, setDraftToken] = useState<string | null>(draftParam);
+  const [showSaveDraftModal, setShowSaveDraftModal] = useState(false);
+  const [draftEmail, setDraftEmail] = useState("");
+  const [savingDraft, setSavingDraft] = useState(false);
+
+  useEffect(() => {
+    if (!draftParam || resubmitId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await onboardingApi.getDraft(draftParam);
+        if (cancelled) return;
+        reset(d.form_data as Partial<SchoolOnboardingFormData>);
+        setCurrentStep(Math.min(Math.max(d.current_step, 1), 5) as StepIndex);
+        toast.success("Welcome back — we restored your saved progress.");
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftParam, resubmitId]);
+
+  const handleSaveDraft = async () => {
+    if (!draftEmail.trim()) {
+      toast.error("Enter an email address to receive your resume link");
+      return;
+    }
+    setSavingDraft(true);
+    try {
+      const res = await onboardingApi.saveDraft({
+        token: draftToken ?? undefined,
+        email: draftEmail.trim(),
+        formData: getValues(),
+        currentStep,
+      });
+      setDraftToken(res.token);
+      setShowSaveDraftModal(false);
+      toast.success("We've emailed you a link to resume this application.");
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setSavingDraft(false);
+    }
+  };
 
   const [certificate, setCertificate] = useState<File | null>(null);
   const [certError, setCertError] = useState("");
@@ -116,23 +256,18 @@ export function SchoolOnboardingPage() {
   const [submitted, setSubmitted] =
     useState<OnboardingApplicationResponse | null>(null);
   const [principalEmail, setPrincipalEmail] = useState("");
+  const [duplicateInfo, setDuplicateInfo] = useState<string | null>(null);
 
-  // Anti-abuse CAPTCHA token. Only sent to the backend when present; the backend
-  // only *requires* it when CAPTCHA is enabled server-side, so local dev (captcha
-  // off) is unaffected.
-  // TODO: mount the provider widget (reCAPTCHA / hCaptcha / Turnstile) on step 5
-  // and call setCaptchaToken(token) from its onVerify callback. Until a provider
-  // is configured this stays null and the field is simply omitted.
-  const [captchaToken] = useState<string | null>(null);
+  // Anti-abuse CAPTCHA token. The widget only renders (and a token is only
+  // required) when the backend reports CAPTCHA is actually enabled — local/dev
+  // deployments with no site key configured are unaffected.
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
 
   const handleNext = useCallback(
     async (e?: React.MouseEvent) => {
       if (e) e.preventDefault();
       if (currentStep === 4) {
-        if (!certificate) {
-          setCertError("Please upload the school registration certificate");
-          return;
-        }
+        // Certificate is recommended but optional — admins can request it later.
         setCertError("");
         setCurrentStep(5);
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -146,7 +281,7 @@ export function SchoolOnboardingPage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },
-    [currentStep, certificate, trigger, setCurrentStep],
+    [currentStep, trigger, setCurrentStep],
   );
 
   const handleBack = useCallback(() => {
@@ -155,14 +290,13 @@ export function SchoolOnboardingPage() {
   }, [setCurrentStep]);
 
   const onSubmit = async (data: SchoolOnboardingFormData) => {
-    if (!certificate) {
-      setCurrentStep(4);
-      setCertError("Please upload the school registration certificate");
-      toast.error("Missing certificate — please upload it on step 4");
+    if (capabilities?.captcha_enabled && !captchaToken) {
+      toast.error("Please complete the verification challenge before submitting.");
       return;
     }
 
     setIsSubmitting(true);
+    setDuplicateInfo(null);
     try {
       const fd = new FormData();
 
@@ -172,6 +306,8 @@ export function SchoolOnboardingPage() {
       if (data.other_board?.trim())
         fd.append("other_board", data.other_board.trim());
       fd.append("school_type", data.school_type);
+      if (data.other_school_type?.trim())
+        fd.append("other_school_type", data.other_school_type.trim());
       if (data.established_year?.trim())
         fd.append("established_year", data.established_year.trim());
 
@@ -202,27 +338,52 @@ export function SchoolOnboardingPage() {
       if (data.udise_code?.trim())
         fd.append("udise_code", data.udise_code.trim());
 
-      // Step 4
-      fd.append("certificate", certificate, certificate.name);
+      // Step 4 — optional; on resubmit, omitting it keeps the certificate on file.
+      if (certificate) fd.append("certificate", certificate, certificate.name);
 
-      // Step 5
+      // Step 5 (no password — set later via emailed one-time code)
       fd.append("principal_name", data.principal_name);
       fd.append("principal_email", data.principal_email);
-      fd.append("principal_password", data.principal_password);
+      if (data.filled_by_email?.trim())
+        fd.append("filled_by_email", data.filled_by_email.trim());
 
-      // Anti-abuse CAPTCHA — only sent when a token was obtained from a widget.
+      // Anti-abuse CAPTCHA — only sent when a token was obtained from the widget.
       if (captchaToken) fd.append("captcha_token", captchaToken);
 
-      const response = await onboardingApi.apply(fd);
+      const response =
+        isResubmit && resubmitId
+          ? await onboardingApi.resubmit(resubmitId, fd)
+          : await onboardingApi.apply(fd);
       setPrincipalEmail(data.principal_email);
       setSubmitted(response);
       removeSession(SESSION_KEYS.ONBOARDING_FORM, SESSION_KEYS.ONBOARDING_STEP);
-      toast.success("Application submitted!");
+      toast.success(isResubmit ? "Application updated!" : "Application submitted!");
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      const code = (err as { response?: { data?: { code?: unknown } } })?.response
+        ?.data?.code;
+      if (typeof code === "string" && DUPLICATE_ERROR_CODES.has(code)) {
+        setDuplicateInfo(getErrorMessage(err));
+      } else {
+        toast.error(getErrorMessage(err));
+      }
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // On a failed submit, jump to the earliest step that owns an errored field so
+  // the user lands on the problem instead of a generic toast on the last step.
+  const onInvalid = (formErrors: typeof errors) => {
+    const errored = new Set(Object.keys(formErrors));
+    for (const s of [1, 2, 3, 5] as StepIndex[]) {
+      if (STEP_FIELDS[s].some((f) => errored.has(f))) {
+        setCurrentStep(s);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        toast.error("Please fix the highlighted fields.");
+        return;
+      }
+    }
+    toast.error("Please review your details and try again.");
   };
 
   if (submitted) {
@@ -246,9 +407,58 @@ export function SchoolOnboardingPage() {
         <p className="text-sm text-muted-foreground">
           Register your school on the DeepDive platform
         </p>
+        {isResubmit && resubmitAdminMessage && (
+          <div className="w-full text-left text-xs text-purple-800 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2">
+            <p className="font-semibold mb-0.5">Admin requested changes:</p>
+            <p>{resubmitAdminMessage}</p>
+          </div>
+        )}
+        {isResubmit && !resubmitAdminMessage && (
+          <p className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+            Editing your previous application — make your changes and resubmit.
+          </p>
+        )}
+        <div className="flex items-center gap-3">
+          {saveState !== "idle" && (
+            <span
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+              aria-live="polite"
+            >
+              {saveState === "saving" ? (
+                <>
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  <Check className="h-3 w-3 text-green-600" aria-hidden />
+                  Progress saved
+                </>
+              )}
+            </span>
+          )}
+          {!isResubmit && (
+            <button
+              type="button"
+              onClick={() => setShowSaveDraftModal(true)}
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+            >
+              <Mail className="h-3 w-3" aria-hidden />
+              Save &amp; continue later
+            </button>
+          )}
+        </div>
       </div>
 
-      <StepIndicator current={currentStep} total={5} />
+      <StepIndicator
+        current={currentStep}
+        total={5}
+        labels={STEPS.map((s) => s.title)}
+        onStepClick={(s) => {
+          setCurrentStep(s);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
 
       <div className="flex items-center gap-3">
         <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -265,7 +475,7 @@ export function SchoolOnboardingPage() {
         </span>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate>
         {currentStep === 1 && (
           <SchoolInfoStep
             register={register}
@@ -296,15 +506,43 @@ export function SchoolOnboardingPage() {
             setCertificate={setCertificate}
             certError={certError}
             setCertError={setCertError}
+            existingCertificateUrl={existingCertificateUrl}
           />
         )}
         {currentStep === 5 && (
-          <PrincipalStep
-            register={register}
-            errors={errors}
-            watch={watch}
-            setValue={setValue}
-          />
+          <>
+            <PrincipalStep
+              register={register}
+              errors={errors}
+              watch={watch}
+              setValue={setValue}
+            />
+            <ReviewSummary values={reviewValues} onEdit={setCurrentStep} />
+            {capabilities?.captcha_enabled && capabilities.captcha_site_key && (
+              <div className="mt-4">
+                <CaptchaWidget
+                  siteKey={capabilities.captcha_site_key}
+                  onVerify={setCaptchaToken}
+                  onExpire={() => setCaptchaToken(null)}
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {duplicateInfo && (
+          <div className="mt-5 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-800 leading-relaxed">
+              <p>{duplicateInfo}</p>
+              <Link
+                to="/onboarding/status"
+                className="font-semibold underline hover:text-amber-900"
+              >
+                Check your application status
+              </Link>
+            </div>
+          </div>
         )}
 
         <div className="flex gap-3 mt-6">
@@ -346,7 +584,7 @@ export function SchoolOnboardingPage() {
               ) : (
                 <>
                   <Check className="h-4 w-4 mr-2" />
-                  Submit Application
+                  {isResubmit ? "Resubmit Application" : "Submit Application"}
                 </>
               )}
             </AuthButton>
@@ -363,6 +601,114 @@ export function SchoolOnboardingPage() {
           Sign in
         </Link>
       </p>
+
+      <Modal
+        open={showSaveDraftModal}
+        onClose={() => setShowSaveDraftModal(false)}
+        title="Save & continue later"
+        size="sm"
+      >
+        <p className="text-sm text-muted-foreground">
+          We'll save your progress for 14 days and email you a link to pick up
+          right where you left off.
+        </p>
+        <div className="mt-3">
+          <AuthInput
+            type="email"
+            label="Your email"
+            placeholder="you@yourschool.edu.in"
+            value={draftEmail}
+            onChange={(e) => setDraftEmail(e.target.value)}
+          />
+        </div>
+        <div className="flex justify-end gap-3 mt-4">
+          <AuthButton
+            type="button"
+            variant="outline"
+            onClick={() => setShowSaveDraftModal(false)}
+          >
+            Cancel
+          </AuthButton>
+          <AuthButton type="button" onClick={handleSaveDraft} disabled={savingDraft}>
+            {savingDraft ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <Mail className="h-4 w-4 mr-2" />
+            )}
+            Email me the link
+          </AuthButton>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+
+// ── Review-before-submit summary ────────────────────────────────────────────
+function ReviewRow({
+  label,
+  value,
+  step,
+  onEdit,
+}: {
+  label: string;
+  value?: string;
+  step: StepIndex;
+  onEdit: (s: StepIndex) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-1.5">
+      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+      <span className="flex items-center gap-2 min-w-0">
+        <span className="text-xs text-foreground text-right truncate">
+          {value?.trim() ? value : "—"}
+        </span>
+        <button
+          type="button"
+          onClick={() => onEdit(step)}
+          className="text-[11px] font-medium text-primary hover:underline shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+        >
+          Edit
+        </button>
+      </span>
+    </div>
+  );
+}
+
+function ReviewSummary({
+  values,
+  onEdit,
+}: {
+  values: Partial<SchoolOnboardingFormData>;
+  onEdit: (s: StepIndex) => void;
+}) {
+  const address = [values.address_line_1, values.city, values.state, values.pin_code]
+    .filter(Boolean)
+    .join(", ");
+  const boardLabel =
+    values.board === "OTHER"
+      ? values.other_board
+      : SCHOOL_BOARDS.find((b) => b.value === values.board)?.label ?? values.board;
+  const schoolTypeLabel =
+    values.school_type === "other"
+      ? values.other_school_type
+      : SCHOOL_TYPES.find((t) => t.value === values.school_type)?.label ?? values.school_type;
+  return (
+    <div className="mt-5 rounded-xl border border-border bg-muted/20 p-4">
+      <p className="mb-2 text-xs font-semibold text-foreground">
+        Review your details before submitting
+      </p>
+      <div className="divide-y divide-border/60">
+        <ReviewRow label="School" value={values.school_name} step={1} onEdit={onEdit} />
+        <ReviewRow label="Board" value={boardLabel} step={1} onEdit={onEdit} />
+        <ReviewRow label="School type" value={schoolTypeLabel} step={1} onEdit={onEdit} />
+        <ReviewRow label="Contact email" value={values.email} step={2} onEdit={onEdit} />
+        <ReviewRow label="Mobile" value={values.mobile} step={2} onEdit={onEdit} />
+        <ReviewRow label="Address" value={address} step={2} onEdit={onEdit} />
+        <ReviewRow label="Students" value={values.student_count} step={3} onEdit={onEdit} />
+        <ReviewRow label="UDISE" value={values.udise_code} step={3} onEdit={onEdit} />
+        <ReviewRow label="Principal" value={values.principal_name} step={5} onEdit={onEdit} />
+        <ReviewRow label="Principal email" value={values.principal_email} step={5} onEdit={onEdit} />
+      </div>
     </div>
   );
 }

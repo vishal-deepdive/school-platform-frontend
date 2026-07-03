@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuthStore } from "@/features/auth/store/auth";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -32,6 +33,7 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Table } from "@/shared/components/ui/Table";
 import { SurveyChart } from "./SurveyChart";
+import { SheetSelector } from "./SheetSelector";
 import type {
   SearchIntent,
   SearchData,
@@ -157,7 +159,11 @@ export function SurveySearchView() {
   const [showData, setShowData] = useState(false);
   const [showSql, setShowSql] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+
+  const role = useAuthStore((s) => s.user?.role);
+  const isAdmin = role === "admin";
 
   useQuery({
     queryKey: ["survey", "status"],
@@ -209,7 +215,13 @@ export function SurveySearchView() {
 
       try {
         for await (const event of surveyApi.searchStream(
-          { query: formData.query },
+          {
+            query: formData.query,
+            // Empty selection = "All sheets" → omit the filter entirely so the
+            // backend searches every accessible row (including legacy rows that
+            // predate sheet-sources and have a NULL source_id).
+            source_ids: selectedSourceIds.length ? selectedSourceIds : undefined,
+          },
           controller.signal,
         )) {
           if (event.type === "meta") {
@@ -225,6 +237,7 @@ export function SurveySearchView() {
           } else if (event.type === "error") {
             flushPending();
             setError(event.message);
+            toast.error(event.message);
           }
         }
       } catch (err) {
@@ -240,7 +253,7 @@ export function SurveySearchView() {
         abortRef.current = null;
       }
     },
-    [queueToken, flushPending],
+    [queueToken, flushPending, selectedSourceIds],
   );
 
   const hasResult = intent !== null;
@@ -258,6 +271,13 @@ export function SurveySearchView() {
         />
 
         <form onSubmit={handleSubmit(runSearch)} className="space-y-4">
+          <SheetSelector
+            value={selectedSourceIds}
+            onChange={setSelectedSourceIds}
+            disabled={streaming}
+            showSchoolName={isAdmin}
+          />
+
           <div className="relative">
             <input
               {...register("query")}
@@ -305,6 +325,21 @@ export function SurveySearchView() {
           </div>
         </form>
       </Card>
+
+      {/* ── Error banner (shown even when no meta/result arrived) ─── */}
+      {error && !streaming && (
+        <Card className="border-destructive/40 bg-destructive/5">
+          <div className="flex items-start gap-2.5">
+            <SearchX className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-destructive">
+                Analysis failed
+              </h3>
+              <p className="text-sm text-destructive/90 mt-0.5">{error}</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ── Results ───────────────────────────────────────────────── */}
       {hasResult && (
@@ -360,8 +395,6 @@ export function SurveySearchView() {
                 </div>
                 Analyzing your data…
               </div>
-            ) : error ? (
-              <p className="text-sm text-destructive">{error}</p>
             ) : null}
 
             {/* Copy button */}
@@ -442,7 +475,7 @@ export function SurveySearchView() {
           )}
 
           {/* ── Empty state ───────────────────────────────────────── */}
-          {!streaming && dataRows.length === 0 && !insight && (
+          {!streaming && dataRows.length === 0 && !insight && !error && (
             <EmptyState
               icon={<SearchX className="h-12 w-12" />}
               title="No matching data found"

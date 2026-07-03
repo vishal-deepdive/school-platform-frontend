@@ -1,3 +1,11 @@
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  FileCheck,
+  CircleDashed,
+  type LucideIcon,
+} from "lucide-react";
 import type { BadgeVariant } from "@/shared/components/ui/Badge";
 import type { SelectOption } from "@/shared/types/common";
 import type { AttendanceStatus } from "@/features/attendance/types";
@@ -9,6 +17,20 @@ export const STATUS_LABELS: Record<AttendanceStatus, string> = {
   E: "Excused",
   H: "Half Day",
 };
+
+// Icons pair a shape with each status so it never relies on colour alone
+// (colour-blind / low-vision accessibility).
+export const STATUS_ICONS: Record<AttendanceStatus, LucideIcon> = {
+  P: CheckCircle2,
+  A: XCircle,
+  L: Clock,
+  E: FileCheck,
+  H: CircleDashed,
+};
+
+export function statusIcon(status: string): LucideIcon {
+  return STATUS_ICONS[status as AttendanceStatus] ?? CircleDashed;
+}
 
 export const STATUS_VARIANTS: Record<AttendanceStatus, BadgeVariant> = {
   P: "success",

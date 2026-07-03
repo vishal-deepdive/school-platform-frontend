@@ -58,4 +58,5 @@ export const SCHOOL_TYPES = [
   { value: "aided", label: "Government Aided" },
   { value: "international", label: "International" },
   { value: "autonomous", label: "Autonomous" },
+  { value: "other", label: "Other" },
 ] as const;

@@ -102,7 +102,7 @@ export const recordingApi = {
       )
       .then((r) => r.data),
 
-  downloadResult: async (jobId: string, format: "md" | "html" = "md") => {
+  downloadResult: async (jobId: string, format: "md" | "html" | "pdf" = "pdf") => {
     const r = await apiClient.get(
       `${BASE}/result/${jobId}/download?format=${format}`,
       {

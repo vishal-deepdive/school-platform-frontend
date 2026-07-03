@@ -64,6 +64,17 @@ const STATUS_CFG: Record<OnboardingStatus, StatusCfg> = {
     description:
       "Email verified. The platform admin is reviewing your application — usually within 1–2 business days.",
   },
+  changes_requested: {
+    Icon: AlertCircle,
+    color: "text-purple-600",
+    bg: "bg-purple-50",
+    border: "border-purple-200",
+    badgeBg: "bg-purple-100",
+    badgeText: "text-purple-700",
+    title: "Changes Requested",
+    description:
+      "The admin needs a correction before approving — see the note below, then update and resubmit.",
+  },
   approved: {
     Icon: CheckCircle2,
     color: "text-green-600",
@@ -73,7 +84,7 @@ const STATUS_CFG: Record<OnboardingStatus, StatusCfg> = {
     badgeText: "text-green-700",
     title: "Application Approved!",
     description:
-      "Your school is now live on DeepDive. Check your email for the password setup link.",
+      "Your school is now live on DeepDive. Check your email for a one-time code to set your principal password, then sign in.",
   },
   rejected: {
     Icon: XCircle,
@@ -188,6 +199,18 @@ function StatusCard({ data }: { data: OnboardingStatusResponse }) {
         </div>
       )}
 
+      {/* Changes requested */}
+      {data.onboarding_status === "changes_requested" && data.admin_message && (
+        <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3">
+          <p className="text-xs font-semibold text-purple-700 mb-1.5">
+            What needs to change
+          </p>
+          <p className="text-xs text-purple-700 leading-relaxed">
+            {data.admin_message}
+          </p>
+        </div>
+      )}
+
       {/* Contextual CTA */}
       {data.onboarding_status === "pending_verification" && (
         <AuthButton variant="outline" asChild className="w-full">
@@ -208,11 +231,16 @@ function StatusCard({ data }: { data: OnboardingStatusResponse }) {
           </Link>
         </AuthButton>
       )}
-      {data.onboarding_status === "rejected" && (
+      {(data.onboarding_status === "rejected" ||
+        data.onboarding_status === "changes_requested") && (
         <AuthButton variant="outline" asChild className="w-full">
-          <Link to="/onboarding/apply">
+          <Link
+            to={`/onboarding/apply?resubmit=${encodeURIComponent(data.application_id)}`}
+          >
             <Building2 className="h-4 w-4 mr-2" />
-            Submit a New Application
+            {data.onboarding_status === "changes_requested"
+              ? "Update & Resubmit"
+              : "Edit & Resubmit"}
           </Link>
         </AuthButton>
       )}
@@ -231,6 +259,29 @@ export function ApplicationStatusPage() {
   );
   const [loading, setLoading] = useState(false);
   const [fetchError, setFetchError] = useState("");
+
+  // Application-ID recovery by email
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupSent, setLookupSent] = useState(false);
+
+  const handleLookup = async () => {
+    const email = lookupEmail.trim();
+    if (!email) {
+      toast.error("Enter the email you applied with");
+      return;
+    }
+    setLookupLoading(true);
+    try {
+      const { message } = await onboardingApi.lookupByEmail(email);
+      setLookupSent(true);
+      toast.success(message);
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setLookupLoading(false);
+    }
+  };
 
   // Auto-fetch when arriving from the success screen with ?id=
   useEffect(() => {
@@ -312,15 +363,50 @@ export function ApplicationStatusPage() {
         </AuthButton>
       </div>
 
-      {/* ── No-data hint (before first search) ── */}
-      {!statusData && !loading && !fetchError && (
-        <div className="flex items-start gap-3 rounded-xl border border-border/50 bg-muted/30 px-4 py-3">
-          <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            Your application ID was shown on the confirmation screen after you
-            submitted your school application. It is also included in the
-            confirmation email.
-          </p>
+      {/* ── Lost-ID recovery by email (before first search) ── */}
+      {!statusData && !loading && (
+        <div className="grid gap-3 rounded-xl border border-border/50 bg-muted/30 px-4 py-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Lost your Application ID? Enter the email you applied with and
+              we&apos;ll send your application details.
+            </p>
+          </div>
+          {lookupSent ? (
+            <div className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+              <Mail className="h-4 w-4 text-green-600 shrink-0" />
+              <p className="text-xs text-green-700">
+                If an application exists for that email, we&apos;ve sent its
+                details. Check your inbox (and spam).
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <AuthInput
+                type="email"
+                placeholder="you@yourschool.edu.in"
+                value={lookupEmail}
+                onChange={(e) => setLookupEmail(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleLookup();
+                }}
+              />
+              <AuthButton
+                variant="outline"
+                className="w-full"
+                onClick={handleLookup}
+                disabled={lookupLoading || !lookupEmail.trim()}
+              >
+                {lookupLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Mail className="h-4 w-4 mr-2" />
+                )}
+                Email me my Application ID
+              </AuthButton>
+            </div>
+          )}
         </div>
       )}
 

@@ -4,6 +4,7 @@ import type { StepPropsExtra } from "./types";
 
 export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
   const selectedBoard = watch("board");
+  const selectedSchoolType = watch("school_type");
 
   const yearReg = register("established_year");
 
@@ -55,6 +56,18 @@ export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
           </option>
         ))}
       </AuthSelect>
+
+      {selectedSchoolType === "other" && (
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+          <AuthInput
+            label="Please specify school type *"
+            type="text"
+            placeholder="e.g. Trust-run, minority institution"
+            error={errors.other_school_type?.message}
+            {...register("other_school_type")}
+          />
+        </div>
+      )}
 
       <AuthInput
         label="Year Established"

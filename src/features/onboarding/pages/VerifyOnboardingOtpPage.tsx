@@ -1,5 +1,10 @@
-import { useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
@@ -7,20 +12,54 @@ import { getErrorMessage } from "@/shared/lib/utils";
 import { AuthInput, AuthButton } from "@/shared/components/ui/auth-fuse";
 import { Button } from "@/shared/components/ui/Button";
 
+// Matches the backend's per-application resend cooldown (service.py
+// _OTP_RESEND_COOLDOWN_SECONDS) — kept in sync as a UX nicety; the server is
+// still the source of truth and returns the exact remaining seconds on 429.
+const RESEND_COOLDOWN_SECONDS = 60;
+
 export function VerifyOnboardingOtpPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const state = location.state as {
     applicationId?: string;
     email?: string;
   } | null;
 
-  const [applicationId, setApplicationId] = useState(
-    state?.applicationId ?? "",
-  );
+  // Prefer router state (from the success screen); fall back to the ?id= query
+  // param so email deep-links land here with the Application ID pre-filled.
+  const prefilledId = state?.applicationId ?? searchParams.get("id") ?? "";
+  const [applicationId, setApplicationId] = useState(prefilledId);
   const [otp, setOtp] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownTimerRef = useRef<number | null>(null);
+
+  const startCooldown = (seconds: number) => {
+    setCooldown(seconds);
+    if (cooldownTimerRef.current !== null) clearInterval(cooldownTimerRef.current);
+    cooldownTimerRef.current = window.setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (cooldownTimerRef.current !== null) clearInterval(cooldownTimerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // An OTP was already sent when the applicant arrived here (either from the
+  // success screen or an email deep-link) — start the cooldown immediately so
+  // "Resend" can't be spam-clicked right away.
+  useEffect(() => {
+    if (prefilledId) startCooldown(RESEND_COOLDOWN_SECONDS);
+    return () => {
+      if (cooldownTimerRef.current !== null) clearInterval(cooldownTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefilledId]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,8 +97,15 @@ export function VerifyOnboardingOtpPage() {
       setIsResending(true);
       await onboardingApi.resendOtp(applicationId.trim());
       toast.success("A new OTP has been sent to your email.");
+      startCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      toast.error(getErrorMessage(err));
+      // On a 429 the backend returns the exact remaining seconds — sync the
+      // countdown to it (e.g. if the applicant has two tabs open) instead of
+      // guessing with the default cooldown.
+      const message = getErrorMessage(err);
+      const match = message.match(/wait (\d+) seconds/);
+      if (match) startCooldown(parseInt(match[1], 10));
+      toast.error(message);
     } finally {
       setIsResending(false);
     }
@@ -90,7 +136,7 @@ export function VerifyOnboardingOtpPage() {
             placeholder="Paste your application ID"
             value={applicationId}
             onChange={(e) => setApplicationId(e.target.value)}
-            disabled={!!state?.applicationId} // Disable if passed via state
+            disabled={!!prefilledId} // Locked when arriving via state or ?id= link
             required
           />
         </div>
@@ -131,11 +177,13 @@ export function VerifyOnboardingOtpPage() {
             variant="ghost"
             size="sm"
             onClick={handleResend}
-            disabled={isResending || isVerifying || !applicationId.trim()}
+            disabled={isResending || isVerifying || !applicationId.trim() || cooldown > 0}
             loading={isResending}
-            className="text-primary hover:text-primary/80 hover:bg-transparent"
+            className="text-primary hover:text-primary/80 hover:bg-transparent disabled:opacity-60"
           >
-            Didn&apos;t receive a code? Resend
+            {cooldown > 0
+              ? `Resend code in ${cooldown}s`
+              : "Didn't receive a code? Resend"}
           </Button>
         </div>
 
