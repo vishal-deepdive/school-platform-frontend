@@ -1,8 +1,27 @@
 import { API_BASE_URL } from "@/shared/config/env";
-import { useAuthStore } from "@/features/auth/store/auth";
+import { decodeJwt } from "@/shared/lib/jwt";
+import {
+  getAccessToken,
+  hasActiveSession,
+  refreshAccessToken,
+  isDefinitiveAuthFailure,
+  forceLogout,
+} from "@/shared/api/client";
 
 /** Raised when the streaming request itself fails (non-2xx or missing body). */
 export class StreamError extends Error {}
+
+// Renew a little before expiry so a long stream isn't opened with a token that
+// dies mid-handshake. Mirrors the axios client's proactive skew.
+const TOKEN_SKEW_MS = 60_000;
+
+/** True if the token is missing or within the skew window of expiring. */
+function tokenNeedsRefresh(token: string | null): boolean {
+  if (!token) return true;
+  const decoded = decodeJwt(token);
+  if (!decoded?.exp) return false; // opaque/undecodable — let the server judge it
+  return decoded.exp * 1_000 - TOKEN_SKEW_MS <= Date.now();
+}
 
 /**
  * Parse one raw SSE event block into its JSON payload, or `undefined` if the
@@ -35,14 +54,13 @@ function parseEvent<T>(rawEvent: string): T | undefined {
  * can't stream a response body incrementally, and EventSource can't send a
  * POST body or set the `Authorization` header.
  */
-export async function* streamSSE<T = unknown>(
+async function openStream(
   path: string,
   body: unknown,
+  token: string | null,
   signal?: AbortSignal,
-): AsyncGenerator<T> {
-  const token = useAuthStore.getState().accessToken;
-
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+): Promise<Response> {
+  return fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -51,6 +69,47 @@ export async function* streamSSE<T = unknown>(
     body: JSON.stringify(body),
     signal,
   });
+}
+
+export async function* streamSSE<T = unknown>(
+  path: string,
+  body: unknown,
+  signal?: AbortSignal,
+): AsyncGenerator<T> {
+  let token = getAccessToken();
+
+  // Proactively refresh a missing/near-expired token before opening the stream,
+  // so we don't fail the handshake on a token that's about to die. Transient
+  // refresh failures fall through — the server still gets a shot with whatever
+  // token we have and the 401-retry below is the backstop.
+  if (hasActiveSession() && tokenNeedsRefresh(token)) {
+    try {
+      token = await refreshAccessToken();
+    } catch (err) {
+      if (isDefinitiveAuthFailure(err)) {
+        forceLogout();
+        throw new StreamError("Session expired. Please log in again.");
+      }
+    }
+  }
+
+  let res = await openStream(path, body, token, signal);
+
+  // Connect-time 401: the access token was rejected. Refresh once (single-flight,
+  // shared with the axios client) and retry — mirrors the axios interceptor so
+  // streaming endpoints heal the same way. Never retry an aborted request.
+  if (res.status === 401 && hasActiveSession() && !signal?.aborted) {
+    try {
+      token = await refreshAccessToken();
+      res = await openStream(path, body, token, signal);
+    } catch (err) {
+      if (isDefinitiveAuthFailure(err)) {
+        forceLogout();
+        throw new StreamError("Session expired. Please log in again.");
+      }
+      // Transient refresh failure — fall through and surface the original 401.
+    }
+  }
 
   if (!res.ok || !res.body) {
     let detail = res.statusText || `Request failed (${res.status})`;

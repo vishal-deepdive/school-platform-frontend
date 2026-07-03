@@ -5,32 +5,31 @@ import type { User, TokenResponse } from "@/features/auth/types";
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
 }
 
 interface AuthActions {
   login: (tokens: TokenResponse, user: User) => void;
   logout: () => void;
-  setTokens: (
-    tokens: Pick<TokenResponse, "access_token" | "refresh_token">,
-  ) => void;
+  setTokens: (tokens: Pick<TokenResponse, "access_token">) => void;
   updateUser: (user: Partial<User>) => void;
 }
 
+// NOTE: the refresh token is deliberately NOT stored here. It is delivered by the
+// backend as an HttpOnly cookie (scoped to /api/v1/auth) so it is unreachable
+// from JS — an XSS payload can read this store but never the refresh token. Only
+// the short-lived access token lives in the (persisted) store.
 export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
     (set, get) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
 
       login: (tokens, user) =>
         set({
           user,
           accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
           isAuthenticated: true,
         }),
 
@@ -38,12 +37,10 @@ export const useAuthStore = create<AuthState & AuthActions>()(
         set({
           user: null,
           accessToken: null,
-          refreshToken: null,
           isAuthenticated: false,
         }),
 
-      setTokens: ({ access_token, refresh_token }) =>
-        set({ accessToken: access_token, refreshToken: refresh_token }),
+      setTokens: ({ access_token }) => set({ accessToken: access_token }),
 
       updateUser: (partial) => {
         const current = get().user;
@@ -55,18 +52,16 @@ export const useAuthStore = create<AuthState & AuthActions>()(
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
     },
   ),
 );
 
-// Keep auth state in sync across browser tabs. Without this, a backgrounded
-// tab can hold onto a refresh token that another tab has already rotated —
-// replaying that stale token later triggers reuse detection on the backend.
-// Re-hydrating from localStorage whenever another tab updates it means every
-// tab always has the latest token pair before it next calls the API.
+// Keep auth state in sync across browser tabs. When one tab rotates the access
+// token (or logs out), other tabs re-hydrate from localStorage so they pick up
+// the latest access token before their next request. The refresh token itself
+// lives in a shared HttpOnly cookie, so all tabs already send the same one.
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
     if (event.key === "auth-storage") {

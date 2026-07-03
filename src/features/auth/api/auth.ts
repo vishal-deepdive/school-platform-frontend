@@ -94,15 +94,13 @@ export const authApi = {
       .post<MessageResponse>(`${BASE}/resend-otp`, data)
       .then((r) => r.data),
 
-  refresh: (refresh_token: string) =>
-    apiClient
-      .post<TokenResponse>(`${BASE}/refresh`, { refresh_token })
-      .then((r) => r.data),
+  /** Rotate tokens. The refresh token travels via the HttpOnly cookie. */
+  refresh: () =>
+    apiClient.post<TokenResponse>(`${BASE}/refresh`, {}).then((r) => r.data),
 
-  logout: (refresh_token: string) =>
-    apiClient
-      .post<MessageResponse>(`${BASE}/logout`, { refresh_token })
-      .then((r) => r.data),
+  /** Revoke the current session. The refresh token travels via the cookie. */
+  logout: () =>
+    apiClient.post<MessageResponse>(`${BASE}/logout`, {}).then((r) => r.data),
 
   /** Fetch the current user's profile (requires Bearer token). */
   me: () => apiClient.get<UserResponse>(`${BASE}/me`).then((r) => r.data),

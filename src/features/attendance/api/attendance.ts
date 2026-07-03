@@ -46,6 +46,15 @@ export const attendanceApi = {
       .then((r) => r.data);
   },
 
+  enrollNewStudentPhotos: (files: File[], params: Record<string, string>) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("photos", f));
+    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
+    return multipartClient
+      .post<EnrollResponse>(`${BASE}/enroll-new-student-photos/`, form)
+      .then((r) => r.data);
+  },
+
   enrollWithReplacement: (file: File, params: Record<string, string>) => {
     const form = new FormData();
     form.append("faces_zip", file);
@@ -73,6 +82,15 @@ export const attendanceApi = {
     Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
     return multipartClient
       .post<MarkAttendanceResponse>(`${BASE}/mark-attendance/`, form)
+      .then((r) => r.data);
+  },
+
+  markAttendancePhotos: (files: File[], params: Record<string, string>) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("photos", f));
+    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
+    return multipartClient
+      .post<MarkAttendanceResponse>(`${BASE}/mark-attendance-photos/`, form)
       .then((r) => r.data);
   },
 

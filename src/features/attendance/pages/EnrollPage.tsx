@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/features/auth/store/auth";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,9 +11,11 @@ import {
 } from "@/features/attendance/schema";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS, ENROLL_MODE_OPTIONS } from "@/features/attendance/constants";
+import { parsePhotoFilename } from "@/features/attendance/lib/photoFilename";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { cn } from "@/shared/lib/utils";
 import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
@@ -25,12 +27,16 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
 import type { EnrollResponse } from "@/features/attendance/types";
 
+type EnrollUploadMethod = "zip" | "photos";
+
 export function EnrollPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
   const queryClient = useQueryClient();
   const [mode, setMode] = useState("new");
   const [files, setFiles] = useState<File[]>([]);
+  const [uploadMethod, setUploadMethod] = useState<EnrollUploadMethod>("zip");
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [result, setResult] = useState<EnrollResponse | null>(null);
   const [schoolId, setSchoolId] = useState<string | undefined>(
     isAdmin ? undefined : user?.school_id ?? undefined,
@@ -84,19 +90,38 @@ export function EnrollPage() {
     setValue("school_name", name);
   };
 
+  // Single-student direct photo uploads skip the ZIP step but must still
+  // follow the same 'RollNo_Name.jpg' identity convention, validated client
+  // -side here so a bad filename is caught before it ever reaches the server.
+  const photoValidation = useMemo(() => {
+    const badNames: string[] = [];
+    const rollNos = new Set<string>();
+    for (const f of photoFiles) {
+      const parsed = parsePhotoFilename(f.name);
+      if (!parsed) {
+        badNames.push(f.name);
+        continue;
+      }
+      rollNos.add(parsed.rollNo);
+    }
+    return { badNames, rollNos: Array.from(rollNos) };
+  }, [photoFiles]);
+
+  const isDirectPhotoMode = mode === "single" && uploadMethod === "photos";
+
   const { mutate, isPending } = useMutation({
-    mutationFn: ({
-      file,
-      params,
-    }: {
-      file: File;
-      params: Record<string, string>;
-    }) => {
+    mutationFn: (
+      vars:
+        | { kind: "zip"; file: File; params: Record<string, string> }
+        | { kind: "photos"; files: File[]; params: Record<string, string> },
+    ) => {
+      if (vars.kind === "photos")
+        return attendanceApi.enrollNewStudentPhotos(vars.files, vars.params);
       if (mode === "single")
-        return attendanceApi.enrollNewStudent(file, params);
+        return attendanceApi.enrollNewStudent(vars.file, vars.params);
       if (mode === "replace")
-        return attendanceApi.enrollWithReplacement(file, params);
-      return attendanceApi.enroll(file, params);
+        return attendanceApi.enrollWithReplacement(vars.file, vars.params);
+      return attendanceApi.enroll(vars.file, vars.params);
     },
     onSuccess: (data) => {
       setResult(data);
@@ -108,10 +133,6 @@ export function EnrollPage() {
   });
 
   const runEnroll = (data: EnrollFormData) => {
-    if (!files[0]) {
-      toast.error("Please select a ZIP file");
-      return;
-    }
     const params: Record<string, string> = {
       school_name: data.school_name || "",
       session: data.session,
@@ -119,11 +140,34 @@ export function EnrollPage() {
       ...(data.section && { section: data.section }),
       ...(data.subject && { subject: data.subject }),
     };
-    mutate({ file: files[0], params });
+    if (isDirectPhotoMode) {
+      mutate({ kind: "photos", files: photoFiles, params });
+      return;
+    }
+    if (!files[0]) {
+      toast.error("Please select a ZIP file");
+      return;
+    }
+    mutate({ kind: "zip", file: files[0], params });
   };
 
   const onSubmit = (data: EnrollFormData) => {
-    if (!files[0]) {
+    if (isDirectPhotoMode) {
+      if (photoFiles.length === 0) {
+        toast.error("Please select at least one photo");
+        return;
+      }
+      if (photoValidation.badNames.length > 0) {
+        toast.error("Fix the highlighted photo filenames before submitting");
+        return;
+      }
+      if (photoValidation.rollNos.length > 1) {
+        toast.error(
+          "All photos must be for the same student (same roll number)",
+        );
+        return;
+      }
+    } else if (!files[0]) {
       toast.error("Please select a ZIP file");
       return;
     }
@@ -170,8 +214,36 @@ export function EnrollPage() {
               onChange={(e) => {
                 setMode(e.target.value);
                 setResult(null);
+                // Direct-photo upload only applies to single-student mode —
+                // switching away should always land back on the ZIP form.
+                if (e.target.value !== "single") setUploadMethod("zip");
               }}
             />
+
+            {mode === "single" && (
+              <div className="flex gap-2">
+                {(
+                  [
+                    { value: "zip", label: "ZIP Archive" },
+                    { value: "photos", label: "Direct Photos" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setUploadMethod(opt.value)}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                      uploadMethod === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border/50 text-muted-foreground hover:bg-accent/50",
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
               {isAdmin && (
@@ -221,13 +293,51 @@ export function EnrollPage() {
               />
             </div>
 
-            <FileUpload
-              label="Student ZIP File"
-              accept=".zip"
-              maxSize={100 * 1024 * 1024}
-              onChange={setFiles}
-              hint="Max 100 MB. Each student's folder should contain 3-5 clear face photos."
-            />
+            {isDirectPhotoMode ? (
+              <div className="flex flex-col gap-2">
+                <FileUpload
+                  key="photos"
+                  label="Student Photos"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                  multiple
+                  maxSize={15 * 1024 * 1024}
+                  onChange={setPhotoFiles}
+                  hint="Name each photo 'RollNo_Name.jpg' (e.g. 101_Priya_Sharma.jpg). Add '_2', '_3', etc. for extra photos of the same student. Max 15 MB each."
+                />
+                {photoValidation.badNames.length > 0 && (
+                  <Alert variant="error" title="These filenames aren't valid">
+                    <ul className="mt-1 space-y-1">
+                      {photoValidation.badNames.map((name) => (
+                        <li key={name} className="text-xs">
+                          <span className="font-medium">{name}</span> — expected
+                          'RollNo_Name.jpg' (e.g. '101_Priya_Sharma.jpg')
+                        </li>
+                      ))}
+                    </ul>
+                  </Alert>
+                )}
+                {photoValidation.badNames.length === 0 &&
+                  photoValidation.rollNos.length > 1 && (
+                    <Alert
+                      variant="error"
+                      title="All photos must be for the same student"
+                    >
+                      <p className="text-xs">
+                        Found roll numbers: {photoValidation.rollNos.join(", ")}
+                      </p>
+                    </Alert>
+                  )}
+              </div>
+            ) : (
+              <FileUpload
+                key="zip"
+                label="Student ZIP File"
+                accept=".zip"
+                maxSize={100 * 1024 * 1024}
+                onChange={setFiles}
+                hint="Max 100 MB. Each student's folder should contain 3-5 clear face photos."
+              />
+            )}
 
             <Button
               type="submit"

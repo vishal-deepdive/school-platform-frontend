@@ -12,7 +12,7 @@ interface UserProfileMenuProps {
 }
 
 export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
-  const { user, refreshToken, logout, updateUser } = useAuthStore();
+  const { user, isAuthenticated, logout, updateUser } = useAuthStore();
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
@@ -36,7 +36,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
   const handleLogout = async () => {
     setLoggingOut(true);
     try {
-      if (refreshToken) await authApi.logout(refreshToken);
+      if (isAuthenticated) await authApi.logout();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {

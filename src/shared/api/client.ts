@@ -16,15 +16,32 @@ function getStoredToken(): string | null {
   return useAuthStore.getState().accessToken;
 }
 
-function getStoredRefreshToken(): string | null {
-  return useAuthStore.getState().refreshToken;
+/** Current access token, if any. Exposed for non-axios callers (e.g. SSE fetch). */
+export function getAccessToken(): string | null {
+  return getStoredToken();
+}
+
+/** True when a session exists to refresh (see hasSession). Exposed for SSE fetch. */
+export function hasActiveSession(): boolean {
+  return hasSession();
+}
+
+/**
+ * There is no session to refresh when the store has no access token and the user
+ * is not marked authenticated. The refresh token itself lives in an HttpOnly
+ * cookie the browser attaches automatically, so JS can't inspect it directly —
+ * we gate on the session flags instead.
+ */
+function hasSession(): boolean {
+  const { accessToken, isAuthenticated } = useAuthStore.getState();
+  return Boolean(accessToken) || isAuthenticated;
 }
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
- * Raised when there is genuinely no refresh token to work with. Treated the
- * same as a 401/403 from the refresh endpoint: the session is unrecoverable.
+ * Raised when there is genuinely no session to work with. Treated the same as a
+ * 401/403 from the refresh endpoint: the session is unrecoverable.
  */
 class RefreshAuthError extends Error {}
 
@@ -34,7 +51,7 @@ class RefreshAuthError extends Error {}
  * again. Network errors, timeouts, 429 (rate limit) and 5xx are *transient*:
  * the refresh token is still good, so we must NOT log the user out for those.
  */
-function isDefinitiveAuthFailure(err: unknown): boolean {
+export function isDefinitiveAuthFailure(err: unknown): boolean {
   if (err instanceof RefreshAuthError) return true;
   if (!axios.isAxiosError(err)) return false;
   const status = err.response?.status;
@@ -58,32 +75,27 @@ const AUTH_ENDPOINT_PATTERN =
 let refreshPromise: Promise<string> | null = null;
 
 async function performRefresh(): Promise<string> {
-  if (!getStoredRefreshToken()) throw new RefreshAuthError("No refresh token");
+  if (!hasSession()) throw new RefreshAuthError("No session");
 
   const MAX_ATTEMPTS = 3;
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    // Re-read on every attempt: another tab may have rotated the token while
-    // we were retrying a transient failure.
-    const refreshToken = getStoredRefreshToken();
-    if (!refreshToken) throw new RefreshAuthError("No refresh token");
-
     try {
       // Bare axios (no interceptors) so the refresh call can never recurse.
-      const res = await axios.post<{
-        access_token: string;
-        refresh_token: string;
-      }>(
+      // withCredentials sends the HttpOnly refresh cookie; the rotated cookie
+      // comes back in the response's Set-Cookie and the browser stores it. No
+      // refresh token ever passes through JS.
+      const res = await axios.post<{ access_token: string }>(
         `${NORMALIZED_BASE}/api/v1/auth/refresh`,
-        { refresh_token: refreshToken },
-        { timeout: 15_000 },
+        {},
+        { timeout: 15_000, withCredentials: true },
       );
 
-      const { access_token, refresh_token } = res.data;
+      const { access_token } = res.data;
       // setTokens fires the store subscription below, which reschedules the
       // proactive refresh for the new token.
-      useAuthStore.getState().setTokens({ access_token, refresh_token });
+      useAuthStore.getState().setTokens({ access_token });
       return access_token;
     } catch (err) {
       lastError = err;
@@ -98,7 +110,7 @@ async function performRefresh(): Promise<string> {
 }
 
 /** Returns the shared in-flight refresh, starting one if none is running. */
-function refreshAccessToken(): Promise<string> {
+export function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = performRefresh().finally(() => {
       refreshPromise = null;
@@ -107,7 +119,7 @@ function refreshAccessToken(): Promise<string> {
   return refreshPromise;
 }
 
-function forceLogout(): void {
+export function forceLogout(): void {
   cancelProactiveRefresh();
   useAuthStore.getState().logout();
   if (typeof window !== "undefined" && window.location.pathname !== "/login") {
@@ -137,7 +149,7 @@ export function scheduleProactiveRefresh(accessToken?: string | null): void {
   cancelProactiveRefresh();
 
   const token = accessToken ?? getStoredToken();
-  if (!token || !getStoredRefreshToken()) return;
+  if (!token || !hasSession()) return;
 
   const decoded = decodeJwt(token);
   if (!decoded?.exp) return;
@@ -147,7 +159,7 @@ export function scheduleProactiveRefresh(accessToken?: string | null): void {
   const safeDelay = Math.max(0, fireInMs);
 
   proactiveTimer = setTimeout(() => {
-    if (!getStoredRefreshToken()) return;
+    if (!hasSession()) return;
     refreshAccessToken().catch((err) => {
       // Only a definitive rejection ends the session. Transient failures are
       // swallowed here — the next request's 401 (or the next timer) recovers.
@@ -236,11 +248,15 @@ function withAuthInterceptors(client: AxiosInstance): AxiosInstance {
 
 // ─── Exported clients ─────────────────────────────────────────────────────────
 
+// withCredentials so the browser stores the refresh cookie from login/refresh
+// responses and returns it on /refresh & /logout. The cookie is path-scoped to
+// /api/v1/auth, so it is only ever sent to those endpoints.
 export const apiClient: AxiosInstance = withAuthInterceptors(
   axios.create({
     baseURL: BASE_URL,
     timeout: 60_000,
     headers: { "Content-Type": "application/json" },
+    withCredentials: true,
   }),
 );
 
@@ -248,5 +264,6 @@ export const multipartClient: AxiosInstance = withAuthInterceptors(
   axios.create({
     baseURL: BASE_URL,
     timeout: 300_000,
+    withCredentials: true,
   }),
 );

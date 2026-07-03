@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Calendar, CalendarRange } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { Tabs } from "@/shared/components/ui/Tabs";
 import {
@@ -9,8 +10,8 @@ import {
 import { isStaff } from "@/shared/lib/permissions";
 
 const viewTabs = [
-  { id: "date", label: "By Date" },
-  { id: "range", label: "Date Range" },
+  { id: "date", label: "By Date", icon: <Calendar className="h-4 w-4" /> },
+  { id: "range", label: "Date Range", icon: <CalendarRange className="h-4 w-4" /> },
 ];
 
 export function ViewAttendancePage() {

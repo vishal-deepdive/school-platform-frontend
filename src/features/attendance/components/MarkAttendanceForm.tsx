@@ -20,6 +20,7 @@ import {
   statusVariant,
 } from "@/features/attendance/lib/status";
 import {
+  cn,
   getErrorMessage,
   isoToIndianDate,
   isSunday,
@@ -65,6 +66,8 @@ export function MarkAttendanceForm() {
   const isAdmin = user?.role === "admin";
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
+  const [uploadMethod, setUploadMethod] = useState<"zip" | "photos">("zip");
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [result, setResult] = useState<MarkAttendanceResponse | null>(null);
   const [schoolId, setSchoolId] = useState<string | undefined>(
     isAdmin ? undefined : user?.school_id ?? undefined,
@@ -134,13 +137,14 @@ export function MarkAttendanceForm() {
   };
 
   const { mutate, isPending } = useMutation({
-    mutationFn: ({
-      file: f,
-      params,
-    }: {
-      file: File;
-      params: Record<string, string>;
-    }) => attendanceApi.markAttendance(f, params),
+    mutationFn: (
+      vars:
+        | { kind: "zip"; file: File; params: Record<string, string> }
+        | { kind: "photos"; files: File[]; params: Record<string, string> },
+    ) =>
+      vars.kind === "photos"
+        ? attendanceApi.markAttendancePhotos(vars.files, vars.params)
+        : attendanceApi.markAttendance(vars.file, vars.params),
     onSuccess: (data) => {
       setResult(data);
       // Views and stats may now be stale after marking attendance.
@@ -185,7 +189,12 @@ export function MarkAttendanceForm() {
   });
 
   const onSubmit = (data: MarkAttendanceFormData) => {
-    if (!file) {
+    if (uploadMethod === "photos") {
+      if (photoFiles.length === 0) {
+        toast.error("Please select at least one classroom photo");
+        return;
+      }
+    } else if (!file) {
       toast.error("Please upload a ZIP archive of classroom photos");
       return;
     }
@@ -207,7 +216,11 @@ export function MarkAttendanceForm() {
       }),
       ...(data.allow_holiday && { allow_holiday: "true" }),
     };
-    mutate({ file, params });
+    if (uploadMethod === "photos") {
+      mutate({ kind: "photos", files: photoFiles, params });
+    } else if (file) {
+      mutate({ kind: "zip", file, params });
+    }
   };
 
   const allRecords = result
@@ -338,13 +351,49 @@ export function MarkAttendanceForm() {
               </Alert>
             )}
 
-            <FileUpload
-              label="Classroom Photos ZIP"
-              accept=".zip,application/zip,application/x-zip-compressed"
-              maxSize={50 * 1024 * 1024}
-              onChange={(files) => setFile(files[0] || null)}
-              hint="Upload a single ZIP archive containing classroom photos (.zip format). Max 50 MB."
-            />
+            <div className="flex gap-2">
+              {(
+                [
+                  { value: "zip", label: "ZIP Archive" },
+                  { value: "photos", label: "Direct Photos" },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setUploadMethod(opt.value)}
+                  className={cn(
+                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                    uploadMethod === opt.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border/50 text-muted-foreground hover:bg-accent/50",
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {uploadMethod === "photos" ? (
+              <FileUpload
+                key="photos"
+                label="Classroom Photos"
+                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                multiple
+                maxSize={15 * 1024 * 1024}
+                onChange={setPhotoFiles}
+                hint="Select multiple photos taken of the class. Any filenames are fine — matching is by face, not name. Max 15 MB each."
+              />
+            ) : (
+              <FileUpload
+                key="zip"
+                label="Classroom Photos ZIP"
+                accept=".zip,application/zip,application/x-zip-compressed"
+                maxSize={50 * 1024 * 1024}
+                onChange={(files) => setFile(files[0] || null)}
+                hint="Upload a single ZIP archive containing classroom photos (.zip format). Max 50 MB."
+              />
+            )}
 
             <Button
               type="submit"

@@ -19,7 +19,8 @@ export interface User {
 
 export interface TokenResponse {
   access_token: string;
-  refresh_token: string;
+  // Delivered via HttpOnly cookie, not the body — present only for legacy clients.
+  refresh_token?: string;
   token_type: "bearer";
   expires_in: number;
 }
@@ -52,7 +53,8 @@ export interface GoogleAuthUrlResponse {
 export interface GoogleTokensIssuedResponse {
   status: "tokens_issued";
   access_token: string;
-  refresh_token: string;
+  // Delivered via HttpOnly cookie, not the body.
+  refresh_token?: string;
   token_type: "bearer";
   expires_in: number;
 }

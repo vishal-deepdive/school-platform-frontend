@@ -21,5 +21,5 @@ export { MarkdownRenderer } from "./MarkdownRenderer";
 export { PageHeader } from "./PageHeader";
 export { EmptyState } from "./EmptyState";
 export { Pagination } from "./Pagination";
-export { TabContainer, type TabRoute } from "./TabContainer";
+export { TabContainer } from "./TabContainer";
 export { ModulePageLayout } from "./ModulePageLayout";
