@@ -86,11 +86,11 @@ function CopyButton({ text }: { text: string }) {
 }
 
 /** Formats an ETA in seconds as a short human-readable string. */
-function formatEta(seconds: number): string {
-  if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
-  const mins = Math.round(seconds / 60);
-  return `${mins} min${mins === 1 ? "" : "s"}`;
-}
+// function formatEta(seconds: number): string {
+//   if (seconds < 60) return `${Math.max(1, Math.round(seconds))}s`;
+//   const mins = Math.round(seconds / 60);
+//   return `${mins} min${mins === 1 ? "" : "s"}`;
+// }
 
 interface JobStatusCardProps {
   jobId: string;
@@ -137,9 +137,9 @@ function JobStatusCard({ jobId, jobStatus, deduplicated, markdown }: JobStatusCa
           <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 p-4">
             <p className="text-sm text-blue-700 dark:text-blue-300">
               AI is transcribing and generating study materials.
-              {jobStatus.eta_seconds != null
+              {/* {jobStatus.eta_seconds != null
                 ? ` Estimated time remaining: ${formatEta(jobStatus.eta_seconds)}.`
-                : " This may take a few minutes."}
+                : " This may take a few minutes."} */}
             </p>
           </div>
         )}
