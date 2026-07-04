@@ -47,15 +47,6 @@ export function ParentApprovalsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Parent Approvals</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review parents who have registered and verified their email. Approving
-          links them to their child and lets them sign in to view that child's
-          records.
-        </p>
-      </div>
-
       {error && <Alert variant="error">{getErrorMessage(error) || "Failed to load pending parents."}</Alert>}
 
       {isLoading && <ListSkeleton items={4} />}

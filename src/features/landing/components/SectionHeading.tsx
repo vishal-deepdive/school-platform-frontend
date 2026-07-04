@@ -35,7 +35,7 @@ export function SectionHeading({
       <motion.h2
         variants={fadeUp}
         className={`mt-5 text-3xl font-bold tracking-tight md:text-[2.6rem] md:leading-[1.15] ${
-          dark ? "text-white" : "text-slate-900"
+          dark ? "text-white" : "text-foreground"
         }`}
       >
         {title}
@@ -44,7 +44,7 @@ export function SectionHeading({
         <motion.p
           variants={fadeUp}
           className={`mt-4 text-lg leading-relaxed ${
-            dark ? "text-slate-300" : "text-slate-600"
+            dark ? "text-slate-300" : "text-muted-foreground"
           }`}
         >
           {subtitle}

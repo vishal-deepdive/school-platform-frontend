@@ -71,8 +71,9 @@ export function OnboardingSection() {
             className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4"
           >
             <Link
-              to="/onboarding/apply"
-              className="group inline-flex h-12 items-center justify-center rounded-full bg-white dark:bg-primary px-8 text-sm font-semibold text-slate-900 dark:text-primary-foreground shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-white/10 dark:hover:shadow-primary/20 focus:outline-none focus:ring-2 focus:ring-white dark:focus:ring-primary focus:ring-offset-2 focus:ring-offset-slate-900 dark:focus:ring-offset-background"
+              // to="/onboarding/apply"
+              to="/"
+              className="group inline-flex h-12 items-center justify-center rounded-lg bg-white dark:bg-primary px-8 text-sm font-semibold text-slate-900 dark:text-primary-foreground shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl hover:shadow-white/10 dark:hover:shadow-primary/20 focus:outline-none focus:ring-2 focus:ring-white dark:focus:ring-primary focus:ring-offset-2 focus:ring-offset-slate-900 dark:focus:ring-offset-background"
             >
               Onboard New School
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
