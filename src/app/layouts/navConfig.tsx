@@ -1,6 +1,5 @@
 import {
   UserCheck,
-  Mic,
   BookOpen,
   BarChart2,
   Users,
@@ -27,6 +26,9 @@ import {
   CalendarClock,
   CalendarDays,
   CheckSquare,
+  FileUp,
+  User,
+  AudioLines,
 } from "lucide-react";
 
 export interface NavItem {
@@ -35,6 +37,10 @@ export interface NavItem {
   icon: React.ReactNode;
   children?: NavItem[];
   end?: boolean;
+  /** Hidden from the sidebar but included in TabContainer route matching. */
+  hidden?: boolean;
+  /** Skip the TabContainer breadcrumb header for this route. */
+  noHeader?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -42,6 +48,7 @@ export const navItems: NavItem[] = [
     label: "Dashboard",
     href: "/dashboard",
     icon: <LayoutDashboard className="h-5 w-5" />,
+    noHeader: true,
   },
   {
     label: "Attendance",
@@ -92,11 +99,16 @@ export const navItems: NavItem[] = [
         href: "/attendance/manage",
         icon: <Users className="h-4 w-4" />,
       },
+      {
+        label: "Import Students",
+        href: "/students/import",
+        icon: <FileUp className="h-4 w-4" />,
+      },
     ],
   },
   {
     label: "Lecture Capture",
-    icon: <Mic className="h-5 w-5" />,
+    icon: <AudioLines className="h-5 w-5" />,
     children: [
       {
         label: "New Recording",
@@ -183,6 +195,12 @@ export const navItems: NavItem[] = [
   //   href: "/approvals/parents",
   //   icon: <UserCheck className="h-5 w-5" />,
   // },
+  {
+    label: "My Profile",
+    href: "/profile",
+    icon: <User className="h-5 w-5" />,
+    hidden: true,
+  },
 ];
 
 export const adminNavItems: NavItem[] = [
