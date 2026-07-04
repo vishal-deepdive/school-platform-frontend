@@ -285,7 +285,6 @@ export function UploadRecordingPage() {
     <div className="space-y-6">
       <div className={`grid grid-cols-1 gap-6 ${(jobId && (jobStatus || deduplicated)) ? "lg:grid-cols-2" : ""}`}>
         <Card>
-          <CardHeader title="Recording Details" />
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-4 items-start">
               {isAdmin && (

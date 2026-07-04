@@ -91,19 +91,19 @@ export function RagAuditPage() {
               label="Total Chunks"
               value={data?.total_chunks ?? 0}
               icon={<Database className="h-5 w-5" />}
-              color="indigo"
+              color="primary"
             />
             <StatCard
               label="Missing Titles"
               value={data?.missing_fields?.titles ?? 0}
               icon={<AlertTriangle className="h-5 w-5" />}
-              color={data?.missing_fields?.titles ? "amber" : "green"}
+              color={data?.missing_fields?.titles ? "warning" : "success"}
             />
             <StatCard
               label="Missing Chapters"
               value={data?.missing_fields?.chapter_names ?? 0}
               icon={<AlertTriangle className="h-5 w-5" />}
-              color={data?.missing_fields?.chapter_names ? "amber" : "green"}
+              color={data?.missing_fields?.chapter_names ? "warning" : "success"}
             />
           </div>
 

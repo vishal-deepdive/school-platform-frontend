@@ -59,8 +59,6 @@ export function RecordingsListPage() {
     <div className="space-y-6">
       <Card padding="none">
         <CardHeader
-          title="All Recordings"
-          description={`${total} recording(s) total`}
           className="px-6 pt-6"
           bordered
           action={
@@ -99,7 +97,7 @@ export function RecordingsListPage() {
                 key={rec.id}
                 recording={rec}
                 canManage={canManage}
-                onPreview={preview.open}
+                onPreview={(id) => void preview.open(id)}
                 onDownload={download}
                 onRetry={retryRec}
                 onDelete={setConfirmDelete}

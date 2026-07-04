@@ -35,8 +35,6 @@ export function RecordingAuditPage() {
     <div className="space-y-6">
       <Card padding="none">
         <CardHeader
-          title="Audit Log"
-          description={`${total} log entries`}
           className="px-6 pt-6"
           action={
             <Button

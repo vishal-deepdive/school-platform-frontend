@@ -79,7 +79,7 @@ export function RagDocumentsPage() {
         ...(statusFilter && { status: statusFilter }),
       },
       {
-        refetchInterval: (query) => {
+        refetchInterval: (query: any) => {
           const items = query.state.data?.items ?? [];
           const stillWorking = items.some(
             (d: { status: string }) =>
@@ -240,8 +240,6 @@ export function RagDocumentsPage() {
     <div className="space-y-6">
       <Card padding="none">
         <CardHeader
-          title="Documents"
-          description={`${total} document(s) in the knowledge base`}
           className="px-6 pt-6"
           action={
             <div className="flex flex-wrap items-end gap-2">
