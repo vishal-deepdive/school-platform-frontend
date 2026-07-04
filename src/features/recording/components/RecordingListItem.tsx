@@ -36,26 +36,28 @@ export function RecordingListItem({
   })();
 
   return (
-    <li className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5">
-      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
-        <FileText className="h-5 w-5" />
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="truncate text-sm font-medium text-foreground" title={rec.audio_filename}>
-          {displayName}
-        </p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <Badge>{rec.school_name}</Badge>
-          <Badge variant="info">Class {rec.class}</Badge>
-          {rec.section && <Badge>{rec.section}</Badge>}
-          {rec.subject && <Badge variant="default">{rec.subject}</Badge>}
-          {rec.recording_subject && (
-            <Badge variant="purple">{rec.recording_subject}</Badge>
-          )}
-          <span className="text-xs text-muted-foreground">{formatDate(rec.date)}</span>
+    <li className="group flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4 md:px-5">
+      <div className="flex min-w-0 flex-1 items-center gap-4">
+        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+          <FileText className="h-5 w-5" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-sm font-medium text-foreground" title={rec.audio_filename}>
+            {displayName}
+          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <Badge>{rec.school_name}</Badge>
+            <Badge variant="info">Class {rec.class}</Badge>
+            {rec.section && <Badge>{rec.section}</Badge>}
+            {rec.subject && <Badge variant="default">{rec.subject}</Badge>}
+            {rec.recording_subject && (
+              <Badge variant="purple">{rec.recording_subject}</Badge>
+            )}
+            <span className="text-xs text-muted-foreground">{formatDate(rec.date)}</span>
+          </div>
         </div>
       </div>
-      <div className="flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+      <div className="flex flex-shrink-0 flex-wrap items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
         {rec.job_id && (
           <Button
             variant="ghost"
