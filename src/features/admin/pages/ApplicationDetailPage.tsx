@@ -8,7 +8,7 @@ import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Textarea } from "@/shared/components/ui/Textarea";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUS_BADGE_VARIANTS,
@@ -90,7 +90,7 @@ export function ApplicationDetailPage() {
     },
   });
 
-  if (isLoading) return <PageSpinner />;
+  if (isLoading) return <PageSkeleton showStats={false} />;
 
   if (error || !app) {
     return (

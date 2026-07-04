@@ -12,7 +12,7 @@ import { Modal } from "@/shared/components/ui/Modal";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import type { AdminUser } from "@/features/admin/types";
 
 const createAdminSchema = z.object({
@@ -154,7 +154,7 @@ export function AdminManagementPage() {
       {removeError && <Alert variant="error">{removeError}</Alert>}
       {adminsError && <Alert variant="error">{getErrorMessage(adminsQueryError) || "Failed to load admins."}</Alert>}
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <TableSkeleton rows={5} columns={4} />}
 
       {!isLoading && !adminsError && admins && (
         <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">

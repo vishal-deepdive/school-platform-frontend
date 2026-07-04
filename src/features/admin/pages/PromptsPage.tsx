@@ -5,7 +5,7 @@ import { promptsApi } from "@/features/admin/api/prompts";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage } from "@/shared/lib/utils";
 import type { PromptSummary, PromptRefreshResponse } from "@/features/admin/types";
 
@@ -308,7 +308,7 @@ export function PromptsPage() {
         <Alert variant="error">{refreshAllError}</Alert>
       )}
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <ListSkeleton items={4} />}
       {promptsError && <Alert variant="error">{getErrorMessage(promptsQueryError) || "Failed to load prompts."}</Alert>}
 
       {!isLoading && !promptsError && prompts && (

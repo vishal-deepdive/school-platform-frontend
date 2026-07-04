@@ -22,6 +22,7 @@ import type {
   LeaveReviewRequest,
   DashboardResponse,
   AnalyticsResponse,
+  MyAnalyticsResponse,
 } from "@/features/attendance/types";
 import { buildQueryString } from "@/shared/lib/utils";
 
@@ -120,6 +121,11 @@ export const attendanceApi = {
   getAnalytics: (params: Record<string, string> = {}) =>
     apiClient
       .get<AnalyticsResponse>(`${BASE}/analytics/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  getMyAnalytics: (params: Record<string, string> = {}) =>
+    apiClient
+      .get<MyAnalyticsResponse>(`${BASE}/my-analytics/${buildQueryString(params)}`)
       .then((r) => r.data),
 
   // ── Holidays ──

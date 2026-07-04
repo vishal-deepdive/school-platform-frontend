@@ -392,6 +392,16 @@ export interface UnmarkedClass {
   enrolled: number;
 }
 
+export interface ClassBreakdownItem {
+  class_name: string | null;
+  section: string | null;
+  enrolled: number;
+  present_today: number;
+  marked_today: number;
+  today_percentage: number | null;
+  window_percentage: number | null; // last 7 days
+}
+
 export interface AnalyticsResponse {
   school_name: string;
   session: string;
@@ -407,4 +417,63 @@ export interface AnalyticsResponse {
   pending_leaves_total: number;
   pending_leaves: LeaveRequestItem[];
   unmarked_classes: UnmarkedClass[];
+  class_breakdown: ClassBreakdownItem[];
+}
+
+// ── Student / parent self-analytics ───────────────────────────────────────────
+
+export interface MyDayStatus {
+  date: string; // DD-MM-YYYY
+  status: AttendanceStatus;
+}
+
+export interface MyAttendanceSummary {
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  half_day: number;
+  attended_days: number;
+  working_days: number;
+  percentage: number | null;
+}
+
+export interface MyMonthlyStat {
+  month: string; // YYYY-MM
+  label: string; // "Jul 2026"
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  half_day: number;
+  attended_days: number;
+  working_days: number;
+  percentage: number | null;
+}
+
+export interface MyLeaveStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  cancelled: number;
+  recent: LeaveRequestItem[];
+}
+
+export interface MyStudentBlock {
+  roll_no: string;
+  student_name: string | null;
+  class_name: string | null;
+  section: string | null;
+  summary: MyAttendanceSummary;
+  day_statuses: MyDayStatus[];
+  monthly: MyMonthlyStat[];
+  leaves: MyLeaveStats;
+}
+
+export interface MyAnalyticsResponse {
+  school_name: string;
+  session: string;
+  date: string; // DD-MM-YYYY (today)
+  days: number;
+  students: MyStudentBlock[];
 }

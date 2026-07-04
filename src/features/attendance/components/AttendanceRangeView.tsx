@@ -23,7 +23,7 @@ import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { statusTextClass, statusLabel } from "@/features/attendance/lib/status";
@@ -187,7 +187,7 @@ export function AttendanceRangeView() {
   // The server does aggregation, filtering, sorting and pagination; rows arrive
   // ready to render. `pageRows` is just the current page's students.
   const pageRows = data?.data ?? [];
-  const dates = data?.dates ?? [];
+  const dates = useMemo(() => data?.dates ?? [], [data]);
   const summary = data?.summary;
   const pagination = data?.pagination;
   const sundaySet = useMemo(
@@ -283,7 +283,7 @@ export function AttendanceRangeView() {
         </div>
       </Card>
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <TableSkeleton rows={6} columns={5} />}
       {isError && (
         <Alert variant="error">
           {getErrorMessage(error) || "Failed to fetch attendance range."}
