@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
+import { ModulePageLayout } from "@/shared/components/ui/ModulePageLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleRoute } from "./routes/RoleRoute";
 import {
@@ -61,6 +62,7 @@ import {
   StudentImportPage,
 } from "@/features/admin";
 import { ParentApprovalsPage } from "@/features/parents";
+import { ProfilePage } from "@/features/profile";
 
 export const router = createBrowserRouter([
   { path: "/", element: <LandingPage /> },
@@ -86,7 +88,19 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: "/dashboard", element: <DashboardPage /> },
+          // ── Dashboard ────────────────────────────────────────────────────
+          {
+            path: "/dashboard",
+            element: <ModulePageLayout />,
+            children: [{ index: true, element: <DashboardPage /> }],
+          },
+          // ── Profile ──────────────────────────────────────────────────────
+          {
+            path: "/profile",
+            element: <ModulePageLayout />,
+            children: [{ index: true, element: <ProfilePage /> }],
+          },
+          // ── Attendance ───────────────────────────────────────────────────
           {
             path: "/attendance",
             element: <AttendancePage />,
@@ -103,6 +117,23 @@ export const router = createBrowserRouter([
               { path: "stats", element: <RoleRoute><AttendanceStatsPage /></RoleRoute> },
             ],
           },
+          // ── Student roster (shares Attendance module in nav) ─────────────
+          {
+            path: "/students",
+            element: <ModulePageLayout />,
+            children: [
+              { index: true, element: <Navigate to="/dashboard" replace /> },
+              {
+                path: "import",
+                element: (
+                  <RoleRoute allow={["admin", "principal"]}>
+                    <StudentImportPage />
+                  </RoleRoute>
+                ),
+              },
+            ],
+          },
+          // ── Lecture Capture ───────────────────────────────────────────────
           {
             path: "/recording",
             element: <RecordingPage />,
@@ -114,6 +145,7 @@ export const router = createBrowserRouter([
               { path: "audit", element: <RoleRoute><RecordingAuditPage /></RoleRoute> },
             ],
           },
+          // ── Study Assistant ───────────────────────────────────────────────
           {
             path: "/rag",
             element: <RagPage />,
@@ -126,6 +158,7 @@ export const router = createBrowserRouter([
               { path: "documents", element: <RoleRoute><RagDocumentsPage /></RoleRoute> },
             ],
           },
+          // ── Feedback Insights ─────────────────────────────────────────────
           {
             path: "/survey",
             element: (
@@ -154,55 +187,34 @@ export const router = createBrowserRouter([
               },
             ],
           },
-          // ── Roster management (principal / admin) ────────────────────────
+          // ── Parent Approvals ──────────────────────────────────────────────
           {
-            path: "/students/import",
+            path: "/approvals",
             element: (
               <RoleRoute allow={["admin", "principal"]}>
-                <StudentImportPage />
+                <ModulePageLayout />
               </RoleRoute>
             ),
+            children: [
+              { index: true, element: <Navigate to="parents" replace /> },
+              { path: "parents", element: <ParentApprovalsPage /> },
+            ],
           },
-          // ── Admin routes (platform admin only) ───────────────────────────
+          // ── Platform Admin ────────────────────────────────────────────────
           {
-            path: "/admin/onboarding",
+            path: "/admin",
             element: (
               <RoleRoute allow={["admin"]}>
-                <OnboardingApplicationsPage />
+                <ModulePageLayout />
               </RoleRoute>
             ),
-          },
-          {
-            path: "/admin/onboarding/:applicationId",
-            element: (
-              <RoleRoute allow={["admin"]}>
-                <ApplicationDetailPage />
-              </RoleRoute>
-            ),
-          },
-          {
-            path: "/admin/admins",
-            element: (
-              <RoleRoute allow={["admin"]}>
-                <AdminManagementPage />
-              </RoleRoute>
-            ),
-          },
-          {
-            path: "/admin/prompts",
-            element: (
-              <RoleRoute allow={["admin"]}>
-                <PromptsPage />
-              </RoleRoute>
-            ),
-          },
-          {
-            path: "/approvals/parents",
-            element: (
-              <RoleRoute allow={["admin", "principal"]}>
-                <ParentApprovalsPage />
-              </RoleRoute>
-            ),
+            children: [
+              { index: true, element: <Navigate to="onboarding" replace /> },
+              { path: "onboarding", element: <OnboardingApplicationsPage /> },
+              { path: "onboarding/:applicationId", element: <ApplicationDetailPage /> },
+              { path: "admins", element: <AdminManagementPage /> },
+              { path: "prompts", element: <PromptsPage /> },
+            ],
           },
         ],
       },

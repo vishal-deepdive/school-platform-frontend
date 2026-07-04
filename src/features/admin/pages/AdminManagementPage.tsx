@@ -137,15 +137,7 @@ export function AdminManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Admin Management
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage platform admin accounts
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Button icon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
           Add Admin
         </Button>
