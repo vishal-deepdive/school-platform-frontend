@@ -40,8 +40,7 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="w-full bg-background">
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+    <footer className="w-full border-t border-border bg-background">
 
       <div className="mx-auto max-w-[1180px] px-4 py-14 xl:px-0">
         <div className="mb-10 grid grid-cols-1 gap-10 md:grid-cols-5">
@@ -62,7 +61,7 @@ export function Footer() {
                   key={social.label}
                   href={social.href}
                   aria-label={social.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm ring-1 ring-border transition-all hover:-translate-y-0.5 hover:text-primary hover:shadow-md hover:ring-primary/30"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground ring-1 ring-border transition-all hover:text-primary hover:shadow-md hover:ring-primary/30"
                 >
                   <social.icon className="h-4 w-4" />
                 </a>
