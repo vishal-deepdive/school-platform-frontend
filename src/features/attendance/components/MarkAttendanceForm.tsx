@@ -424,13 +424,13 @@ export function MarkAttendanceForm() {
                 label="Present"
                 value={result.present_count}
                 icon={<Users className="h-5 w-5" />}
-                color="green"
+                color="success"
               />
               <StatCard
                 label="Absent"
                 value={result.absent_count}
                 icon={<UserX className="h-5 w-5" />}
-                color="red"
+                color="danger"
               />
             </div>
 

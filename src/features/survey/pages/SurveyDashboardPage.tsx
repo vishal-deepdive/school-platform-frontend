@@ -199,25 +199,25 @@ export function SurveyDashboardPage() {
           label="Total Responses"
           value={data?.total_records ?? 0}
           icon={<Users className="h-5 w-5" />}
-          color="indigo"
+          color="primary"
         />
         <StatCard
           label="Schools"
           value={data?.by_school?.length ?? 0}
           icon={<BarChart2 className="h-5 w-5" />}
-          color="blue"
+          color="info"
         />
         <StatCard
           label="Classes"
           value={data?.by_class?.length ?? 0}
           icon={<Database className="h-5 w-5" />}
-          color="green"
+          color="success"
         />
         <StatCard
           label="Active Sources"
           value={activeSources.length}
           icon={<FileSpreadsheet className="h-5 w-5" />}
-          color="indigo"
+          color="primary"
         />
       </div>
 

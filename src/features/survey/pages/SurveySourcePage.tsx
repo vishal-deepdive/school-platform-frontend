@@ -23,7 +23,7 @@ import type {
   HeaderPreviewResponse,
   SurveyType,
 } from "@/features/survey/types";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
@@ -716,10 +716,6 @@ export function SurveySourcePage() {
       {/* Admin school selector */}
       {isAdmin && (
         <Card>
-          <CardHeader
-            title="School"
-            description="Select the school to manage data sources for."
-          />
           <SearchableSelect
             label="School name"
             placeholder="Select a school..."
@@ -739,21 +735,7 @@ export function SurveySourcePage() {
 
       {adminReady && (
         <>
-          {/* Header + Add button */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">
-                Data Sources
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {sources.length === 0
-                  ? "No sheets connected yet."
-                  : `${activeSources.length} active source${activeSources.length !== 1 ? "s" : ""}` +
-                    (inactiveSources.length
-                      ? `, ${inactiveSources.length} inactive`
-                      : "")}
-              </p>
-            </div>
+          <div className="flex justify-end">
             <Button
               onClick={() => setWizardOpen(true)}
               icon={<Plus className="h-4 w-4" />}

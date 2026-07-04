@@ -115,17 +115,17 @@ export function SelfAttendanceView() {
               label="Attendance"
               value={`${me.attendance_percentage.toFixed(0)}%`}
               icon={<CalendarRange className="h-5 w-5" />}
-              color={isBelow75 ? "red" : "green"}
+              color={isBelow75 ? "danger" : "success"}
             />
             <StatCard
               label="Days Present"
               value={me.total_present}
-              color="green"
+              color="success"
             />
             <StatCard
               label="Days Absent"
               value={me.total_absent}
-              color="red"
+              color="danger"
             />
           </div>
 
