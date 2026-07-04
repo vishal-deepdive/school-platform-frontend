@@ -5,7 +5,7 @@ import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import type { PendingParentItem } from "@/features/auth/types";
 
@@ -58,7 +58,7 @@ export function ParentApprovalsPage() {
 
       {error && <Alert variant="error">{getErrorMessage(error) || "Failed to load pending parents."}</Alert>}
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <ListSkeleton items={4} />}
 
       {!isLoading && !error && items.length === 0 && (
         <EmptyState
