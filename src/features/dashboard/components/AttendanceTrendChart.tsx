@@ -124,7 +124,11 @@ export function AttendanceTrendChart({
           </p>
         </div>
       ) : (
-        <div className="h-56 w-full">
+        <div
+          className="h-56 w-full"
+          role="img"
+          aria-label={`Attendance trend over ${data.length} school days, from ${data[0].label} to ${data[data.length - 1].label}. Latest: ${data[data.length - 1].percentage}% present.`}
+        >
           <ResponsiveContainer width="100%" height="100%">
             {mode === "percentage" ? (
               <AreaChart

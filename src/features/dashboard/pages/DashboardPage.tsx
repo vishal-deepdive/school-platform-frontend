@@ -15,6 +15,7 @@ import {
   Activity,
   CalendarClock,
   CalendarDays,
+  ClipboardList,
   NotebookText,
   Minus,
 } from "lucide-react";
@@ -132,6 +133,8 @@ function StaffDashboard() {
     placeholderData: (prev) => prev,
   });
 
+  const unmarkedCount = analytics?.unmarked_classes?.length ?? 0;
+
   return (
     <>
       {analytics?.scope === "class" && analytics.classes_in_scope.length > 0 && (
@@ -143,6 +146,27 @@ function StaffDashboard() {
         </p>
       )}
 
+      {/* Most common action of the day, surfaced before the numbers */}
+      {!isLoading && unmarkedCount > 0 && (
+        <Link
+          to="/attendance/roll-call"
+          className="group flex items-center gap-3 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 transition-colors hover:bg-amber-500/10"
+        >
+          <ClipboardList className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span className="min-w-0 flex-1 text-sm text-foreground">
+            <span className="font-semibold">
+              {unmarkedCount} {unmarkedCount === 1 ? "class hasn't" : "classes haven't"} been
+              marked today
+            </span>
+            <span className="text-muted-foreground"> — take roll call to catch up.</span>
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400">
+            Take roll call
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </Link>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
@@ -150,51 +174,59 @@ function StaffDashboard() {
           ))
         ) : (
           <>
-            <StatCard
-              label="Present Today"
-              value={analytics?.today.present ?? 0}
-              icon={<UserCheck className="h-5 w-5" />}
-              color="success"
-              description={
-                analytics && analytics.today.total_marked > 0
-                  ? `of ${analytics.today.total_marked} marked`
-                  : "no attendance marked yet"
-              }
-            />
-            <StatCard
-              label="Absent Today"
-              value={analytics?.today.absent ?? 0}
-              icon={<UserX className="h-5 w-5" />}
-              color="danger"
-              description={
-                analytics && analytics.today.late > 0
-                  ? `plus ${analytics.today.late} late`
-                  : undefined
-              }
-            />
-            <StatCard
-              label="Attendance Today"
-              value={
-                analytics && analytics.today.total_marked > 0
-                  ? `${Math.round(analytics.today.attendance_percentage)}%`
-                  : "—"
-              }
-              icon={<Activity className="h-5 w-5" />}
-              color="primary"
-              description={
-                <WeekDelta
-                  week={analytics?.week_percentage ?? null}
-                  prev={analytics?.prev_week_percentage ?? null}
-                />
-              }
-            />
-            <StatCard
-              label="Pending Leaves"
-              value={analytics?.pending_leaves_total ?? 0}
-              icon={<CalendarClock className="h-5 w-5" />}
-              color="warning"
-              description="awaiting your review"
-            />
+            <Link to="/attendance/view" className="block h-full">
+              <StatCard
+                label="Present Today"
+                value={analytics?.today.present ?? 0}
+                icon={<UserCheck className="h-5 w-5" />}
+                color="success"
+                description={
+                  analytics && analytics.today.total_marked > 0
+                    ? `of ${analytics.today.total_marked} marked`
+                    : "no attendance marked yet"
+                }
+              />
+            </Link>
+            <Link to="/attendance/view" className="block h-full">
+              <StatCard
+                label="Absent Today"
+                value={analytics?.today.absent ?? 0}
+                icon={<UserX className="h-5 w-5" />}
+                color="danger"
+                description={
+                  analytics && analytics.today.late > 0
+                    ? `plus ${analytics.today.late} late`
+                    : undefined
+                }
+              />
+            </Link>
+            <Link to="/attendance/stats" className="block h-full">
+              <StatCard
+                label="Attendance Today"
+                value={
+                  analytics && analytics.today.total_marked > 0
+                    ? `${Math.round(analytics.today.attendance_percentage)}%`
+                    : "—"
+                }
+                icon={<Activity className="h-5 w-5" />}
+                color="primary"
+                description={
+                  <WeekDelta
+                    week={analytics?.week_percentage ?? null}
+                    prev={analytics?.prev_week_percentage ?? null}
+                  />
+                }
+              />
+            </Link>
+            <Link to="/attendance/leave" className="block h-full">
+              <StatCard
+                label="Pending Leaves"
+                value={analytics?.pending_leaves_total ?? 0}
+                icon={<CalendarClock className="h-5 w-5" />}
+                color="warning"
+                description="awaiting your review"
+              />
+            </Link>
           </>
         )}
       </div>
