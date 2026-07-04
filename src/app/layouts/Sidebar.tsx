@@ -30,10 +30,10 @@ function filterNavByRole(items: NavItem[], role?: UserRole | null): NavItem[] {
 
 const ADMIN_LABELS = new Set(adminNavItems.map((i) => i.label));
 
-/** Shared tooltip for the icon rail. */
+/** Shared tooltip for the icon rail — shows on hover and keyboard focus. */
 function RailTooltip({ label, shortcut }: { label: string; shortcut?: string }) {
   return (
-    <div className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-50 flex -translate-x-1 -translate-y-1/2 items-center gap-2 whitespace-nowrap rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background opacity-0 shadow-lg transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+    <div className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-50 flex -translate-x-1 -translate-y-1/2 items-center gap-2 whitespace-nowrap rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background opacity-0 shadow-lg transition-all duration-150 peer-hover:translate-x-0 peer-hover:opacity-100 peer-focus-visible:translate-x-0 peer-focus-visible:opacity-100">
       {label}
       {shortcut && (
         <kbd className="rounded bg-background/20 px-1 py-0.5 font-sans text-[10px] font-semibold">
@@ -62,7 +62,15 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   }, [isAdmin, user?.role]);
 
   const [activeCategory, setActiveCategory] = useState<NavItem | null>(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  // Collapsed state survives reloads so the layout doesn't jump each session.
+  const [isCollapsed, setIsCollapsed] = useState(
+    () => localStorage.getItem("sidebar-collapsed") === "1",
+  );
+
+  const setCollapsed = (collapsed: boolean) => {
+    setIsCollapsed(collapsed);
+    localStorage.setItem("sidebar-collapsed", collapsed ? "1" : "0");
+  };
 
   // Sync active category with current route (Desktop mainly)
   useEffect(() => {
@@ -91,7 +99,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
 
   const handleCategoryClick = (item: NavItem) => {
     setActiveCategory(item);
-    setIsCollapsed(false);
+    setCollapsed(false);
     if (item.href && !item.children) {
       navigate(item.href);
       if (mobile && onClose) onClose();
@@ -170,12 +178,12 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
         </div>
 
         {/* Command palette trigger */}
-        <div className="group relative w-full px-2">
+        <div className="relative w-full px-2">
           <button
             onClick={() =>
               window.dispatchEvent(new Event("open-command-palette"))
             }
-            className="flex w-full items-center justify-center rounded-lg border border-border/60 bg-muted/40 p-2.5 text-muted-foreground transition-colors duration-200 hover:border-border hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="peer flex w-full items-center justify-center rounded-lg border border-border/60 bg-muted/40 p-2.5 text-muted-foreground transition-colors duration-200 hover:border-border hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Search pages and actions"
           >
             <Search className="h-4 w-4" />
@@ -201,7 +209,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                     aria-hidden="true"
                   />
                 )}
-                <div className="group relative w-full">
+                <div className="relative w-full">
                   {/* Active indicator */}
                   <span
                     className={cn(
@@ -214,7 +222,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                   <button
                     onClick={() => handleCategoryClick(item)}
                     className={cn(
-                      "flex w-full items-center justify-center rounded-lg p-2.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "peer flex w-full items-center justify-center rounded-lg p-2.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       isActive
                         ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
@@ -240,7 +248,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       {/* Collapse/Expand Floating Button (rendered when collapsed and category has children) */}
       {isCollapsed && hasSecondary && (
         <button
-          onClick={() => setIsCollapsed(false)}
+          onClick={() => setCollapsed(false)}
           className="absolute -right-3 top-28 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-all duration-200 hover:bg-accent hover:text-foreground"
           title="Expand sidebar"
           aria-label="Expand sidebar"
@@ -263,7 +271,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                 {activeCategory?.label}
               </h2>
               <button
-                onClick={() => setIsCollapsed(true)}
+                onClick={() => setCollapsed(true)}
                 className="shrink-0 rounded-lg p-1.5 text-muted-foreground/70 transition-colors duration-200 hover:bg-muted/60 hover:text-foreground"
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"

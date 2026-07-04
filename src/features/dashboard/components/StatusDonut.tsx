@@ -94,7 +94,11 @@ export function StatusDonut({
         </div>
       ) : (
         <div className="flex flex-1 flex-col">
-          <div className="relative h-44 w-full">
+          <div
+            className="relative h-44 w-full"
+            role="img"
+            aria-label={`Attendance status breakdown: ${data.map((d) => `${d.value} ${d.name.toLowerCase()}`).join(", ")} — ${total} marked in total.`}
+          >
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Tooltip content={<DonutTooltip />} />
