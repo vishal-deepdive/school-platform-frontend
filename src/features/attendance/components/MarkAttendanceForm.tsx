@@ -2,8 +2,8 @@ import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
+import { CheckSquare, Users, UserX, Pencil, ListChecks } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CheckSquare, Users, UserX, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   markAttendanceSchema,
@@ -26,7 +26,7 @@ import {
   isoToIndianDate,
   isSunday,
 } from "@/shared/lib/utils";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
@@ -35,6 +35,8 @@ import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Avatar } from "@/shared/components/ui/Avatar";
 import type {
   MarkAttendanceResponse,
   AttendanceRecord,
@@ -234,16 +236,24 @@ export function MarkAttendanceForm() {
       )
     : [];
 
+  const attendancePct =
+    result && result.total_enrolled > 0
+      ? Math.round((result.present_count / result.total_enrolled) * 100)
+      : 0;
+
   return (
-    <>
+    <div className="space-y-6">
       <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
-        <Card>
-          <CardHeader title="Session Details" />
+        <Panel>
           <form
             onSubmit={handleSubmit(onSubmit)}
-            className="flex flex-col gap-4"
+            className="flex flex-col gap-5"
           >
-            <div className="grid grid-cols-2 gap-4 items-start">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Class &amp; session
+              </p>
+              <div className="grid grid-cols-2 gap-4 items-start">
               {isAdmin && (
                 <SearchableSelect
                   label="School"
@@ -309,7 +319,7 @@ export function MarkAttendanceForm() {
               {/* Face-match threshold is an admin-only tuning knob. Non-admin
                   staff run at the fixed platform default enforced by the server. */}
               {isAdmin && (
-                <div className="flex flex-col gap-1">
+                <div className="col-span-2 flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/30 p-3">
                   <label className="text-sm font-medium text-foreground">
                     Similarity Threshold
                   </label>
@@ -327,9 +337,9 @@ export function MarkAttendanceForm() {
                           onChange={(e) =>
                             field.onChange(parseFloat(e.target.value))
                           }
-                          className="flex-1"
+                          className="flex-1 accent-primary"
                         />
-                        <span className="w-12 text-sm font-medium text-foreground">
+                        <span className="w-12 rounded-md bg-background px-2 py-0.5 text-center text-sm font-semibold text-foreground tabular-nums">
                           {field.value.toFixed(2)}
                         </span>
                       </div>
@@ -341,6 +351,7 @@ export function MarkAttendanceForm() {
                   </p>
                 </div>
               )}
+              </div>
             </div>
 
             {dateIsHoliday && (
@@ -363,7 +374,11 @@ export function MarkAttendanceForm() {
               </Alert>
             )}
 
-            <div className="flex gap-2">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Classroom photos
+              </p>
+              <div className="inline-flex w-fit rounded-lg border border-border/70 bg-muted/40 p-0.5">
               {(
                 [
                   { value: "zip", label: "ZIP Archive" },
@@ -375,10 +390,10 @@ export function MarkAttendanceForm() {
                   type="button"
                   onClick={() => setUploadMethod(opt.value)}
                   className={cn(
-                    "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                    "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
                     uploadMethod === opt.value
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border/50 text-muted-foreground hover:bg-accent/50",
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {opt.label}
@@ -406,16 +421,18 @@ export function MarkAttendanceForm() {
                 hint="Upload a single ZIP archive containing classroom photos (.zip format). Max 50 MB."
               />
             )}
+            </div>
 
             <Button
               type="submit"
               loading={isPending}
+              className="self-start"
               icon={<CheckSquare className="h-4 w-4" />}
             >
               {isPending ? "Processing…" : "Mark Attendance"}
             </Button>
           </form>
-        </Card>
+        </Panel>
 
         {result && (
           <div className="space-y-4">
@@ -434,41 +451,33 @@ export function MarkAttendanceForm() {
               />
             </div>
 
-            <div className="flex gap-2 flex-wrap">
-              <Badge variant="info">{result.school_name}</Badge>
-              <Badge>
-                Class {result.class_name}-{result.section}
-              </Badge>
-              <Badge>
-                {result.date} · {result.time}
-              </Badge>
-              <Badge variant="default">
-                {result.total_enrolled > 0
-                  ? Math.round(
-                      (result.present_count / result.total_enrolled) * 100,
-                    )
-                  : 0}
-                % attendance
-              </Badge>
+            <div className="rounded-xl border border-border/60 bg-card p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="info">{result.school_name}</Badge>
+                <Badge>
+                  Class {result.class_name}-{result.section}
+                </Badge>
+                <Badge>
+                  {result.date} · {result.time}
+                </Badge>
+                <Badge variant="primary">{attendancePct}% attendance</Badge>
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {result && (
-        <Card padding="none">
-          <div className="px-6 py-4 border-b border-border">
-            <h3 className="font-semibold text-foreground">
-              Attendance Record — {result.date}
-            </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              {result.total_enrolled} enrolled · {result.present_count} present
-              · {result.absent_count} absent
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Counts reflect automatic face-recognition results. Use the
-              dropdown in each row to correct an individual student's status
-              (Present / Absent / Late / Excused / Half Day).
+        <Panel
+          flush
+          icon={<ListChecks className="h-4 w-4" />}
+          title={`Attendance record · ${result.date}`}
+          description={`${result.total_enrolled} enrolled · ${result.present_count} present · ${result.absent_count} absent`}
+        >
+          <div className="border-b border-border/50 px-4 py-3 md:px-5">
+            <p className="text-xs text-muted-foreground">
+              Counts reflect automatic face-recognition results. Use the dropdown
+              in each row to correct an individual student's status.
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -476,8 +485,8 @@ export function MarkAttendanceForm() {
               <thead className="bg-muted/50">
                 <tr>
                   {(isAdmin
-                    ? ["Roll No", "Name", "Confidence", "Status"]
-                    : ["Roll No", "Name", "Status"]
+                    ? ["Student", "Confidence", "Status"]
+                    : ["Student", "Status"]
                   ).map((h) => (
                     <th
                       key={h}
@@ -492,7 +501,7 @@ export function MarkAttendanceForm() {
                 {allRecords.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={isAdmin ? 4 : 3}
+                      colSpan={isAdmin ? 3 : 2}
                       className="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
                       No attendance records found.
@@ -504,14 +513,21 @@ export function MarkAttendanceForm() {
                       key={r.roll_no}
                       className="hover:bg-accent/50 transition-colors"
                     >
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {r.roll_no}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {r.name}
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={r.name ?? r.roll_no} seed={r.roll_no} size="sm" />
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {r.name}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Roll #{r.roll_no}
+                            </p>
+                          </div>
+                        </div>
                       </td>
                       {isAdmin && (
-                        <td className="px-4 py-3 text-sm text-foreground">
+                        <td className="px-4 py-3 text-sm text-foreground tabular-nums">
                           {r.similarity != null
                             ? `${(r.similarity * 100).toFixed(1)}%`
                             : "—"}
@@ -551,8 +567,8 @@ export function MarkAttendanceForm() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </Panel>
       )}
-    </>
+    </div>
   );
 }

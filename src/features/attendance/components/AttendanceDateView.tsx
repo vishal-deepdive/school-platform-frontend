@@ -11,6 +11,7 @@ import {
   FileCheck,
   CircleDashed,
   Percent,
+  ListChecks,
 } from "lucide-react";
 import {
   isoToIndianDate,
@@ -20,7 +21,7 @@ import {
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -29,6 +30,9 @@ import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Table } from "@/shared/components/ui/Table";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
 import type { Column } from "@/shared/components/ui/Table";
 import {
   statusLabel,
@@ -187,31 +191,9 @@ export function AttendanceDateView() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader
-          title="Attendance on a Date"
-          description="Pick a class and day to see who was present."
-        />
-        <div className="space-y-4">
-          <AttendanceScopeFilters value={scope} onChange={setScope} />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <DatePicker
-              label="Date"
-              max={todayIso()}
-              value={dateIso}
-              onChange={(iso) => setDateIso(iso ?? todayIso())}
-              fadeSundays
-              holidays={holidays}
-            />
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={runSearch}
-              disabled={!scopeReady}
-              icon={<Search className="h-4 w-4" />}
-            >
-              Search
-            </Button>
+      <FilterBar
+        actions={
+          <>
             <Button
               variant="outline"
               onClick={handleExportCSV}
@@ -220,9 +202,28 @@ export function AttendanceDateView() {
             >
               Export CSV
             </Button>
-          </div>
+            <Button
+              onClick={runSearch}
+              disabled={!scopeReady}
+              icon={<Search className="h-4 w-4" />}
+            >
+              Search
+            </Button>
+          </>
+        }
+      >
+        <AttendanceScopeFilters value={scope} onChange={setScope} />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <DatePicker
+            label="Date"
+            max={todayIso()}
+            value={dateIso}
+            onChange={(iso) => setDateIso(iso ?? todayIso())}
+            fadeSundays
+            holidays={holidays}
+          />
         </div>
-      </Card>
+      </FilterBar>
 
       {isLoading && <TableSkeleton rows={6} columns={5} />}
       {isError && (
@@ -250,33 +251,35 @@ export function AttendanceDateView() {
             <StatCard label="Present %" value={`${pct}%`} icon={<Percent className="h-5 w-5" />} color="primary" />
           </div>
 
-          <Card>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground">
-                {data.total_records} record(s) on {data.date} · showing {visible.length}
-              </p>
+          <Panel
+            icon={<ListChecks className="h-4 w-4" />}
+            title={`Records · ${data.date}`}
+            description={`${data.total_records} record(s) · showing ${visible.length}`}
+            actions={
               <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search roll or name…"
-                    className="w-48 rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground"
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search roll or name…"
+                  className="w-full sm:w-48"
+                />
+                <div className="w-36">
+                  <Select
+                    options={STATUS_FILTER_OPTIONS}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
                   />
                 </div>
-                <Select
-                  options={STATUS_FILTER_OPTIONS}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                />
-                <Select
-                  options={SORT_OPTIONS}
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                />
+                <div className="w-36">
+                  <Select
+                    options={SORT_OPTIONS}
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+            }
+          >
             <StatusLegend className="mb-4" />
             {visible.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
@@ -285,7 +288,7 @@ export function AttendanceDateView() {
             ) : (
               <Table columns={DATE_COLUMNS} data={visible} />
             )}
-          </Card>
+          </Panel>
         </>
       )}
     </div>

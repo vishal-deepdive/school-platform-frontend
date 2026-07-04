@@ -3,11 +3,12 @@ import { Link } from "react-router-dom";
 import { RefreshCw, FileVideo } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { canManageRecordings, canUploadRecordings } from "@/shared/lib/permissions";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { Badge } from "@/shared/components/ui/Badge";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Pagination } from "@/shared/components/ui/Pagination";
+import { Panel } from "@/shared/components/ui/Panel";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { getErrorMessage } from "@/shared/lib/utils";
@@ -57,11 +58,11 @@ export function RecordingsListPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="none">
-        <CardHeader
-          className="px-6 pt-6"
-          bordered
-          action={
+      <Panel
+        flush
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {total > 0 && <Badge variant="primary">{total} total</Badge>}
             <Button
               variant="outline"
               size="sm"
@@ -71,27 +72,29 @@ export function RecordingsListPage() {
             >
               Refresh
             </Button>
-          }
-        />
+          </div>
+        }
+      >
         {pagedRecordings.length === 0 ? (
-          <EmptyState
-            className="py-10 border-0 rounded-none"
-            icon={<FileVideo className="h-10 w-10" />}
-            title="No recordings yet"
-            description="Recordings will appear here once they have been uploaded and processed."
-            action={
-              canUpload ? (
-                <Link
-                  to="/recording/upload"
-                  className="text-sm font-medium text-primary hover:underline"
-                >
-                  Upload your first recording →
-                </Link>
-              ) : undefined
-            }
-          />
+          <div className="p-4">
+            <EmptyState
+              icon={<FileVideo className="h-10 w-10" />}
+              title="No recordings yet"
+              description="Recordings will appear here once they have been uploaded and processed."
+              action={
+                canUpload ? (
+                  <Link
+                    to="/recording/upload"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
+                    Upload your first recording →
+                  </Link>
+                ) : undefined
+              }
+            />
+          </div>
         ) : (
-          <div className="divide-y divide-border">
+          <ul className="divide-y divide-border/50">
             {pagedRecordings.map((rec) => (
               <RecordingListItem
                 key={rec.id}
@@ -104,9 +107,9 @@ export function RecordingsListPage() {
                 retrying={retrying}
               />
             ))}
-          </div>
+          </ul>
         )}
-      </Card>
+      </Panel>
 
       <Pagination
         currentPage={currentPage}
