@@ -6,7 +6,7 @@ import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 
@@ -58,7 +58,6 @@ export function NotesPage() {
     <div className="space-y-6">
       <div className={`grid grid-cols-1 gap-6 ${(result !== null || isPending) ? "lg:grid-cols-3" : ""}`}>
         <Card className={(result !== null || isPending) ? "lg:col-span-1" : "w-full"}>
-          <CardHeader title="Select Content" />
           <div className="space-y-4">
             <RagFilterPanel filters={filters} onChange={setFilters} />
             <Button

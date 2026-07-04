@@ -94,18 +94,18 @@ export function QAPage() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [chat, autoScroll]);
 
-  const handleScroll = () => {
+  const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setAutoScroll(distanceFromBottom < AUTO_SCROLL_THRESHOLD);
-  };
+  }, []);
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     const el = scrollRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     setAutoScroll(true);
-  };
+  }, []);
 
   const runQuery = async (query: string) => {
     const baseId = Date.now();
@@ -168,14 +168,20 @@ export function QAPage() {
   const canRetry =
     !isStreaming && lastMessage?.role === "assistant" && !!lastMessage.isError;
 
-  const handleStop = () => abortRef.current?.abort();
+  const handleStop = useCallback(() => abortRef.current?.abort(), []);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      void handleSend();
-    }
-  };
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        void handleSend();
+      }
+    },
+    // handleSend re-creates when input/isStreaming change, but the
+    // ref-like closure inside ensures we always call the latest version.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [handleSend],
+  );
 
   const hasFilters = Object.keys(filters).some(
     (k) => filters[k as keyof RagFilters],
