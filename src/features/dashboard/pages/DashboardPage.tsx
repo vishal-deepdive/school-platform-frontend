@@ -21,7 +21,7 @@ import {
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, StatCard } from "@/shared/components/ui/Card";
-import { Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { SetupChecklist } from "@/features/dashboard/components/SetupChecklist";
 import { AttendanceTrendChart } from "@/features/dashboard/components/AttendanceTrendChart";
@@ -146,7 +146,7 @@ function StaffDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <StatCardSkeleton key={i} />
           ))
         ) : (
           <>
@@ -154,7 +154,7 @@ function StaffDashboard() {
               label="Present Today"
               value={analytics?.today.present ?? 0}
               icon={<UserCheck className="h-5 w-5" />}
-              color="green"
+              color="success"
               description={
                 analytics && analytics.today.total_marked > 0
                   ? `of ${analytics.today.total_marked} marked`
@@ -165,7 +165,7 @@ function StaffDashboard() {
               label="Absent Today"
               value={analytics?.today.absent ?? 0}
               icon={<UserX className="h-5 w-5" />}
-              color="red"
+              color="danger"
               description={
                 analytics && analytics.today.late > 0
                   ? `plus ${analytics.today.late} late`
@@ -192,7 +192,7 @@ function StaffDashboard() {
               label="Pending Leaves"
               value={analytics?.pending_leaves_total ?? 0}
               icon={<CalendarClock className="h-5 w-5" />}
-              color="amber"
+              color="warning"
               description="awaiting your review"
             />
           </>

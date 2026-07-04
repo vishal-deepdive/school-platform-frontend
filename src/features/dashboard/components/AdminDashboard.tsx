@@ -27,7 +27,7 @@ import { adminApi } from "@/features/admin/api/admin";
 import type { PlatformTrendPoint } from "@/features/admin/types";
 import { Card, StatCard } from "@/shared/components/ui/Card";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
-import { Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatCardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
 import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
 import { shortDate } from "@/features/dashboard/lib/chartTheme";
 
@@ -126,15 +126,19 @@ export function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-fade-in">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <StatCardSkeleton key={i} />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Skeleton className="h-72 w-full rounded-xl lg:col-span-2" />
-          <Skeleton className="h-72 w-full rounded-xl" />
+          <ChartSkeleton className="lg:col-span-2" />
+          <ChartSkeleton />
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <ChartSkeleton />
+          <ChartSkeleton />
         </div>
       </div>
     );
@@ -147,7 +151,7 @@ export function AdminDashboard() {
           label="Active Schools"
           value={data?.schools_active ?? "—"}
           icon={<Building2 className="h-5 w-5" />}
-          color="indigo"
+          color="primary"
           description={
             pendingReview > 0
               ? `${pendingReview} application${pendingReview === 1 ? "" : "s"} awaiting review`
@@ -158,21 +162,21 @@ export function AdminDashboard() {
           label="Students Enrolled"
           value={data?.students_enrolled ?? "—"}
           icon={<Users className="h-5 w-5" />}
-          color="green"
+          color="success"
           description={`${data?.users_total ?? 0} platform users · +${data?.new_users_30d ?? 0} in 30d`}
         />
         <StatCard
           label="Recordings Processed"
           value={data?.recordings_total ?? "—"}
           icon={<Mic2 className="h-5 w-5" />}
-          color="amber"
+          color="warning"
           description={`${data?.recordings_30d ?? 0} in the last 30 days`}
         />
         <StatCard
           label="Attendance Records"
           value={data?.attendance_records_total ?? "—"}
           icon={<Activity className="h-5 w-5" />}
-          color="blue"
+          color="info"
           description={`${data?.rag_documents_total ?? 0} textbooks indexed for Q&A`}
         />
       </div>

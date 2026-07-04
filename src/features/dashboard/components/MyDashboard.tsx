@@ -26,7 +26,7 @@ import type {
 } from "@/features/attendance/types";
 import { Card, StatCard } from "@/shared/components/ui/Card";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
-import { Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatCardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
 import { StatusDonut } from "@/features/dashboard/components/StatusDonut";
 import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
 import { STATUS_META, shortDate } from "@/features/dashboard/lib/chartTheme";
@@ -206,10 +206,10 @@ function StudentBlock({
             s.percentage == null
               ? "primary"
               : s.percentage >= 90
-                ? "green"
+                ? "success"
                 : s.percentage >= 75
-                  ? "amber"
-                  : "red"
+                  ? "warning"
+                  : "danger"
           }
           description={
             s.working_days > 0
@@ -221,7 +221,7 @@ function StudentBlock({
           label="Days Present"
           value={s.present}
           icon={<CalendarDays className="h-5 w-5" />}
-          color="green"
+          color="success"
           description={
             currentStreak(block) >= 2
               ? `🔥 ${currentStreak(block)}-day streak${s.late > 0 ? ` · ${s.late} late` : ""}`
@@ -234,14 +234,14 @@ function StudentBlock({
           label="Days Absent"
           value={s.absent}
           icon={<UserX className="h-5 w-5" />}
-          color="red"
+          color="danger"
           description={s.excused > 0 ? `plus ${s.excused} excused` : undefined}
         />
         <StatCard
           label="Pending Leaves"
           value={block.leaves.pending}
           icon={<CalendarClock className="h-5 w-5" />}
-          color="amber"
+          color="warning"
           description={`${block.leaves.approved} approved this session`}
         />
       </div>
@@ -348,15 +348,19 @@ export function MyDashboard({ isParent }: { isParent: boolean }) {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4 animate-fade-in">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            <StatCardSkeleton key={i} />
           ))}
         </div>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <Skeleton className="h-64 w-full rounded-xl" />
-          <Skeleton className="h-64 w-full rounded-xl lg:col-span-2" />
+          <ChartSkeleton />
+          <ChartSkeleton className="lg:col-span-2" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ChartSkeleton className="lg:col-span-2" />
+          <ChartSkeleton />
         </div>
       </div>
     );

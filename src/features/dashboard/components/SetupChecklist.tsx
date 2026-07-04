@@ -100,7 +100,7 @@ export function SetupChecklist() {
       } else {
         toast.success("Invite link created — copy and share it");
       }
-      refetch();
+      void refetch();
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
