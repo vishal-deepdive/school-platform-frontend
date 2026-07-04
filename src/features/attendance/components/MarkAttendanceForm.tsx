@@ -19,6 +19,7 @@ import {
   statusLabel,
   statusVariant,
 } from "@/features/attendance/lib/status";
+import { isHolidayDate } from "@/features/attendance/lib/holidays";
 import {
   cn,
   getErrorMessage,
@@ -106,13 +107,16 @@ export function MarkAttendanceForm() {
   const watchedSchoolName = watch("school_name");
   const watchedSession = watch("session");
   const sectionOptions = selectedClass ? getSectionOptions(selectedClass) : [];
-  const dateIsSunday = attendanceDate ? isSunday(attendanceDate) : false;
 
   const holidays = useHolidayDates({
     session: watchedSession || "2025-26",
     schoolName: watchedSchoolName || undefined,
     enabled: !isAdmin || !!watchedSchoolName,
   });
+  const dateIsSunday = attendanceDate ? isSunday(attendanceDate) : false;
+  const dateIsHoliday = attendanceDate
+    ? isHolidayDate(attendanceDate, holidays)
+    : false;
 
   // Reset class/section whenever the selected school changes
   useEffect(() => {
@@ -125,10 +129,11 @@ export function MarkAttendanceForm() {
     setValue("section", "");
   }, [selectedClass, setValue]);
 
-  // Reset the holiday override whenever the date no longer falls on a Sunday
+  // Reset the holiday override whenever the date is no longer a holiday
+  // (Sunday or a configured school holiday).
   useEffect(() => {
-    if (!dateIsSunday) setValue("allow_holiday", false);
-  }, [dateIsSunday, setValue]);
+    if (!dateIsHoliday) setValue("allow_holiday", false);
+  }, [dateIsHoliday, setValue]);
 
   const handleSchoolChange = (id: string) => {
     setSchoolId(id);
@@ -169,7 +174,7 @@ export function MarkAttendanceForm() {
         attendance_date: isoToIndianDate(result.date),
         ...(result.school_name && { school_name: result.school_name }),
         ...(result.subject && { subject: result.subject }),
-        ...(isSunday(result.date) && {
+        ...(isHolidayDate(result.date, holidays) && {
           allow_holiday: "true",
         }),
       };
@@ -338,8 +343,15 @@ export function MarkAttendanceForm() {
               )}
             </div>
 
-            {dateIsSunday && (
-              <Alert variant="warning" title="This date is a Sunday">
+            {dateIsHoliday && (
+              <Alert
+                variant="warning"
+                title={
+                  dateIsSunday
+                    ? "This date is a Sunday"
+                    : "This date is a school holiday"
+                }
+              >
                 <label className="mt-2 flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"

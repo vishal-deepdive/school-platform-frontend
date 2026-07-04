@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Users, Building2, RefreshCw } from "lucide-react";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -19,7 +19,7 @@ export function AttendanceStatsPage() {
     staleTime: 2 * 60_000,
   });
 
-  if (isLoading) return <PageSpinner />;
+  if (isLoading) return <PageSkeleton />;
   if (isError)
     return <Alert variant="error">{getErrorMessage(error) || "Failed to load enrollment statistics."}</Alert>;
 

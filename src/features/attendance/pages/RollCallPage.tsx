@@ -9,6 +9,7 @@ import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
+import { isHolidayDate } from "@/features/attendance/lib/holidays";
 import { STATUS_LABELS } from "@/features/attendance/lib/status";
 import { getErrorMessage, isoToIndianDate, isSunday } from "@/shared/lib/utils";
 import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
@@ -72,13 +73,14 @@ export function RollCallPage() {
   } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
-  const dateIsSunday = date ? isSunday(date) : false;
 
   const holidays = useHolidayDates({
     session,
     schoolName: schoolName || undefined,
     enabled: !isAdmin || !!schoolName,
   });
+  const dateIsSunday = date ? isSunday(date) : false;
+  const dateIsHoliday = date ? isHolidayDate(date, holidays) : false;
 
   // Selecting a different class/section/date invalidates a loaded roster so the
   // teacher can't accidentally save marks against the wrong slot.
@@ -88,8 +90,8 @@ export function RollCallPage() {
   }, [schoolId, className, section, subject, session, date]);
 
   useEffect(() => {
-    if (!dateIsSunday) setAllowHoliday(false);
-  }, [dateIsSunday]);
+    if (!dateIsHoliday) setAllowHoliday(false);
+  }, [dateIsHoliday]);
 
   const handleSchoolChange = (id: string) => {
     setSchoolId(id);
@@ -242,8 +244,12 @@ export function RollCallPage() {
           />
         </div>
 
-        {dateIsSunday && (
-          <Alert variant="warning" title="This date is a Sunday" className="mt-4">
+        {dateIsHoliday && (
+          <Alert
+            variant="warning"
+            title={dateIsSunday ? "This date is a Sunday" : "This date is a school holiday"}
+            className="mt-4"
+          >
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input
                 type="checkbox"

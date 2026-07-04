@@ -7,7 +7,7 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { statusTextClass } from "@/features/attendance/lib/status";
@@ -83,7 +83,7 @@ export function SelfAttendanceView() {
         Update
       </Button>
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <TableSkeleton rows={6} columns={3} />}
       {isError && (
         <Alert variant="error">{getErrorMessage(queryError) || "Failed to load attendance records."}</Alert>
       )}

@@ -25,7 +25,7 @@ import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Table } from "@/shared/components/ui/Table";
@@ -133,7 +133,7 @@ export function AttendanceDateView() {
     staleTime: 60_000,
   });
 
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => data?.data ?? [], [data]);
 
   const counts = useMemo(() => {
     const c: Record<AttendanceStatus, number> = { P: 0, A: 0, L: 0, E: 0, H: 0 };
@@ -224,7 +224,7 @@ export function AttendanceDateView() {
         </div>
       </Card>
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <TableSkeleton rows={6} columns={5} />}
       {isError && (
         <Alert variant="error">
           {getErrorMessage(error) || "Failed to fetch attendance records."}
