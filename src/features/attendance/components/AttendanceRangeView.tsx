@@ -302,9 +302,9 @@ export function AttendanceRangeView() {
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard label="Students" value={summary.total_students} icon={<Users className="h-5 w-5" />} color="primary" />
-            <StatCard label="Days" value={data.date_range.total_days} color="blue" />
-            <StatCard label="Avg attendance" value={`${avgPct}%`} icon={<Percent className="h-5 w-5" />} color={avgPct >= 75 ? "green" : "amber"} />
-            <StatCard label="Below 75%" value={belowCount} icon={<AlertTriangle className="h-5 w-5" />} color="red" />
+            <StatCard label="Days" value={data.date_range.total_days} color="info" />
+            <StatCard label="Avg attendance" value={`${avgPct}%`} icon={<Percent className="h-5 w-5" />} color={avgPct >= 75 ? "success" : "warning"} />
+            <StatCard label="Below 75%" value={belowCount} icon={<AlertTriangle className="h-5 w-5" />} color="danger" />
           </div>
 
           {belowCount > 0 && filter !== "below75" && (
