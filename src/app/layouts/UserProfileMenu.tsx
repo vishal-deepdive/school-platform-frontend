@@ -135,7 +135,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
             className={cn(
-              "absolute z-50 w-64 rounded-xl border border-border bg-background shadow-xl shadow-black/5 overflow-hidden animate-in fade-in zoom-in-95 duration-200",
+              "absolute z-50 w-64 rounded-xl border border-border bg-background shadow-2xl shadow-black/15 dark:shadow-[0_10px_30px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-200",
               mobile
                 ? "bottom-[calc(100%+8px)] left-0"
                 : "bottom-0 left-[calc(100%+16px)]",
