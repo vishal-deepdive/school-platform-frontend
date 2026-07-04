@@ -120,7 +120,7 @@ export function StatCard({
   return (
     <Card
       className={cn(
-        "group flex flex-col justify-between overflow-hidden relative",
+        "group flex h-full flex-col justify-between overflow-hidden relative",
         className,
       )}
       padding="md"

@@ -204,6 +204,13 @@ function withAuthInterceptors(client: AxiosInstance): AxiosInstance {
     async (error: unknown) => {
       if (!axios.isAxiosError(error)) return Promise.reject(error);
 
+      // Transport-level failure (request never reached the server). Let the
+      // OfflineGate verify connectivity and take over the screen if the user
+      // is actually offline.
+      if (error.code === "ERR_NETWORK" && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("app:network-error"));
+      }
+
       const originalRequest = error.config as
         | (InternalAxiosRequestConfig & { _retry?: boolean })
         | undefined;
