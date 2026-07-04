@@ -5,6 +5,7 @@ import { promptsApi } from "@/features/admin/api/prompts";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
+import { Panel } from "@/shared/components/ui/Panel";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage } from "@/shared/lib/utils";
 import type { PromptSummary, PromptRefreshResponse } from "@/features/admin/types";
@@ -306,20 +307,13 @@ export function PromptsPage() {
       {!isLoading && !promptsError && prompts && (
         <div className="space-y-6">
           {Object.entries(grouped).map(([module, rows]) => (
-            <div
+            <Panel
               key={module}
-              className="overflow-hidden rounded-xl border border-border bg-background shadow-sm"
+              flush
+              title={<span className="uppercase tracking-wide">{module}</span>}
+              actions={<Badge variant="default">{rows.length}</Badge>}
+              bodyClassName="overflow-x-auto"
             >
-              {/* Module section header */}
-              <div className="flex items-center gap-3 border-b border-border bg-muted/40 px-5 py-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {module}
-                </span>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  {rows.length}
-                </span>
-              </div>
-
               <table className="min-w-full divide-y divide-border">
                 <thead>
                   <tr className="bg-muted/20">
@@ -352,7 +346,7 @@ export function PromptsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </Panel>
           ))}
         </div>
       )}

@@ -1,17 +1,20 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Search, Inbox } from "lucide-react";
+import { Inbox } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { formatDate, getErrorMessage } from "@/shared/lib/utils";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
-import { Input } from "@/shared/components/ui/Input";
-import type { OnboardingStatus } from "@/features/admin/types";
 import { Badge } from "@/shared/components/ui/Badge";
-import { TableBodySkeleton } from "@/shared/components/ui/Skeleton";
+import { Avatar } from "@/shared/components/ui/Avatar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import type { OnboardingStatus } from "@/features/admin/types";
 import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUS_BADGE_VARIANTS,
@@ -57,32 +60,29 @@ export function OnboardingApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <div className="w-full sm:w-72">
-          <Input
-            type="text"
-            leftIcon={<Search className="h-4 w-4 text-muted-foreground" />}
-            placeholder="Search by school or email..."
+      <FilterBar hideHeader>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap gap-2">
+            {FILTER_OPTIONS.map((opt) => (
+              <Button
+                key={opt.value}
+                variant={statusFilter === opt.value ? "primary" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter(opt.value)}
+                className="rounded-full"
+              >
+                {opt.label}
+              </Button>
+            ))}
+          </div>
+          <SearchInput
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={setSearchTerm}
+            placeholder="Search by school or email…"
+            className="w-full lg:w-72"
           />
         </div>
-      </div>
-
-      {/* Filter tabs */}
-      <div className="flex gap-2 flex-wrap">
-        {FILTER_OPTIONS.map((opt) => (
-          <Button
-            key={opt.value}
-            variant={statusFilter === opt.value ? "primary" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter(opt.value)}
-            className="rounded-full"
-          >
-            {opt.label}
-          </Button>
-        ))}
-      </div>
+      </FilterBar>
 
       {error && (
         <Alert variant="error">
@@ -90,101 +90,87 @@ export function OnboardingApplicationsPage() {
         </Alert>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-        <table className="min-w-full divide-y divide-border">
-          <thead className="bg-muted/50">
-            <tr>
-              {[
-                "School",
-                "Principal",
-                "Location",
-                "Status",
-                "Applied At",
-                "",
-              ].map((h) => (
-                <th
-                  key={h}
-                  className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
-                >
-                  {h || <span className="sr-only">Actions</span>}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border bg-background">
-            {isLoading ? (
-              <TableBodySkeleton rows={5} columns={6} />
-            ) : applications?.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-10">
-                  <EmptyState
-                    className="border-0 py-6"
-                    icon={<Inbox className="h-10 w-10" />}
-                    title="No applications here"
-                    description={
-                      searchTerm
-                        ? `No results for “${searchTerm}”. Try a different search.`
-                        : "Nothing matches this filter yet. New applications appear under “Needs Review” once a school verifies its email."
-                    }
-                  />
-                </td>
-              </tr>
-            ) : (
-              applications?.map((app) => (
-                <tr
+      {isLoading ? (
+        <ListSkeleton items={6} />
+      ) : (
+        <Panel flush>
+          {applications?.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={<Inbox className="h-10 w-10" />}
+                title="No applications here"
+                description={
+                  searchTerm
+                    ? `No results for “${searchTerm}”. Try a different search.`
+                    : "Nothing matches this filter yet. New applications appear under “Needs Review” once a school verifies its email."
+                }
+              />
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/50">
+              {applications?.map((app) => (
+                <li
                   key={app.application_id}
-                  className="hover:bg-muted/50 transition-all duration-200 group"
+                  className="group flex flex-col gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between md:px-5"
                 >
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-foreground group-hover:text-primary transition-colors">
-                      {app.school_name}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="text-sm text-foreground">
-                      {app.principal_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {app.principal_email}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {app.city}, {app.state}
-                  </td>
-                  <td className="px-6 py-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar
+                      name={app.school_name}
+                      seed={app.application_id}
+                      size="md"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                        {app.school_name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {app.principal_name} · {app.principal_email}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground/80">
+                        {app.city}, {app.state}
+                        {app.applied_at
+                          ? ` · Applied ${formatDate(app.applied_at)}`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-3">
                     <Badge
-                      variant={APPLICATION_STATUS_BADGE_VARIANTS[app.onboarding_status as OnboardingStatus] ?? "default"}
+                      variant={
+                        APPLICATION_STATUS_BADGE_VARIANTS[
+                          app.onboarding_status as OnboardingStatus
+                        ] ?? "default"
+                      }
                     >
-                      {APPLICATION_STATUS_LABELS[app.onboarding_status as OnboardingStatus] ?? app.onboarding_status}
+                      {APPLICATION_STATUS_LABELS[
+                        app.onboarding_status as OnboardingStatus
+                      ] ?? app.onboarding_status}
                     </Badge>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-muted-foreground">
-                    {app.applied_at ? formatDate(app.applied_at) : "—"}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <Link
-                      to={`/admin/onboarding/${app.application_id}`}
-                      className="text-sm font-medium text-primary hover:text-primary/80 transition-colors opacity-80 group-hover:opacity-100"
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="opacity-80 transition-opacity focus-within:opacity-100 group-hover:opacity-100"
                     >
-                      Review &rarr;
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                      <Link to={`/admin/onboarding/${app.application_id}`}>
+                        Review
+                      </Link>
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
 
-        {!isLoading &&
-          applications &&
-          (applications.length > 0 || page > 1) && (
-            <div className="px-6 py-4 border-t border-border bg-muted/50 flex items-center justify-between">
+          {applications && (applications.length > 0 || page > 1) && (
+            <div className="flex items-center justify-between gap-4 border-t border-border/60 bg-muted/30 px-4 py-3 md:px-5 dark:bg-black/20">
               <span className="text-sm text-muted-foreground">
                 Showing page {page}
               </span>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
@@ -192,6 +178,7 @@ export function OnboardingApplicationsPage() {
                 </Button>
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => p + 1)}
                   disabled={applications.length < PAGE_LIMIT || isPlaceholderData}
                 >
@@ -200,7 +187,8 @@ export function OnboardingApplicationsPage() {
               </div>
             </div>
           )}
-      </div>
+        </Panel>
+      )}
     </div>
   );
 }
