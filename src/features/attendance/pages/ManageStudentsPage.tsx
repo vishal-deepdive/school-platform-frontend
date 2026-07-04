@@ -7,7 +7,7 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Card } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
@@ -99,10 +99,6 @@ export function ManageStudentsPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader
-          title="Manage Enrolled Students"
-          description="View and remove enrolled students. Deleting a student removes their profile and all attendance records."
-        />
         <Alert variant="warning" title="Destructive actions" className="mb-4">
           Deletions are permanent and audit-logged. Double-check the roll number
           before removing a student.

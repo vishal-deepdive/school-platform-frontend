@@ -12,7 +12,7 @@ import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { isHolidayDate } from "@/features/attendance/lib/holidays";
 import { STATUS_LABELS } from "@/features/attendance/lib/status";
 import { getErrorMessage, isoToIndianDate, isSunday } from "@/shared/lib/utils";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { Card, StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
@@ -179,10 +179,6 @@ export function RollCallPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader
-          title="Manual Roll-Call"
-          description="Tap each student's status — no photos needed. Fastest for daily attendance."
-        />
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {isAdmin && (
             <SearchableSelect
@@ -281,16 +277,16 @@ export function RollCallPage() {
               label="Present"
               value={counts.P}
               icon={<UserCheck className="h-5 w-5" />}
-              color="green"
+              color="success"
             />
             <StatCard
               label="Absent"
               value={counts.A}
               icon={<UserX className="h-5 w-5" />}
-              color="red"
+              color="danger"
             />
-            <StatCard label="Late" value={counts.L} color="amber" />
-            <StatCard label="Excused" value={counts.E} color="blue" />
+            <StatCard label="Late" value={counts.L} color="warning" />
+            <StatCard label="Excused" value={counts.E} color="info" />
             <StatCard label="Half Day" value={counts.H} />
           </div>
 

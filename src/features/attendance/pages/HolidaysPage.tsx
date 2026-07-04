@@ -7,7 +7,7 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Card } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
@@ -90,10 +90,6 @@ export function HolidaysPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader
-          title="Holiday Calendar"
-          description="Mark non-working days. Attendance can't be recorded on these dates (unless overridden), and reports treat them as holidays."
-        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {isAdmin && (
             <SearchableSelect
