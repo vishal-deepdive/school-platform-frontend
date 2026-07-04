@@ -15,7 +15,8 @@ import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { surveyApi } from "@/features/survey/api/survey";
 import type { SourceItem } from "@/features/survey/types";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
+import { Panel } from "@/shared/components/ui/Panel";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
@@ -248,8 +249,10 @@ export function SurveyDashboardPage() {
       )}
 
       {embeddingFields.length > 0 && (
-        <Card>
-          <CardHeader title="Embeddings Coverage" />
+        <Panel
+          title="Embeddings Coverage"
+          icon={<Database className="h-4 w-4" />}
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {embeddingFields.map(([field, count]) => (
               <div
@@ -277,58 +280,69 @@ export function SurveyDashboardPage() {
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {data?.by_school && data.by_school.length > 0 && (
-          <Card padding="none">
-            <CardHeader title="Responses by School" className="px-6 pt-6" bordered />
-            <div className="divide-y divide-border pb-2">
+          <Panel
+            flush
+            title="Responses by School"
+            icon={<BarChart2 className="h-4 w-4" />}
+            actions={
+              <Badge variant="info">{data.by_school.length} schools</Badge>
+            }
+          >
+            <ul className="divide-y divide-border/50">
               {data.by_school.map((s, i) => {
                 const school = s as Record<string, unknown>;
                 return (
-                  <div
+                  <li
                     key={i}
-                    className="flex items-center justify-between px-6 py-3"
+                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
                   >
-                    <p className="text-sm text-foreground">
+                    <p className="min-w-0 truncate text-sm text-foreground">
                       {String(school.school_name ?? "—")}
                     </p>
                     <Badge variant="info">
                       {String(school.count ?? 0)} responses
                     </Badge>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
-          </Card>
+            </ul>
+          </Panel>
         )}
 
         {data?.by_class && data.by_class.length > 0 && (
-          <Card padding="none">
-            <CardHeader title="Responses by Class" className="px-6 pt-6" bordered />
-            <div className="divide-y divide-border pb-2">
+          <Panel
+            flush
+            title="Responses by Class"
+            icon={<Database className="h-4 w-4" />}
+            actions={
+              <Badge variant="success">{data.by_class.length} classes</Badge>
+            }
+          >
+            <ul className="divide-y divide-border/50">
               {data.by_class.map((c, i) => {
                 const cls = c as Record<string, unknown>;
                 return (
-                  <div
+                  <li
                     key={i}
-                    className="flex items-center justify-between px-6 py-3"
+                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
                   >
-                    <p className="text-sm text-foreground">
-                      {String(
-                        cls.class ?? cls.class_name ?? "",
-                      ).trim() || "Unknown Class"}
+                    <p className="min-w-0 truncate text-sm text-foreground">
+                      {String(cls.class ?? cls.class_name ?? "").trim() ||
+                        "Unknown Class"}
                     </p>
                     <Badge variant="success">
                       {String(cls.count ?? 0)} responses
                     </Badge>
-                  </div>
+                  </li>
                 );
               })}
-            </div>
-          </Card>
+            </ul>
+          </Panel>
         )}
       </div>
     </div>

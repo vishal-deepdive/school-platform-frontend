@@ -26,10 +26,14 @@ import {
 import { surveyApi } from "@/features/survey/api/survey";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Card } from "@/shared/components/ui/Card";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Table } from "@/shared/components/ui/Table";
 import { SurveyChart } from "./SurveyChart";
@@ -263,14 +267,31 @@ export function SurveySearchView() {
 
   return (
     <div className="space-y-6">
-      {/* ── Search form ───────────────────────────────────────────── */}
-      <Card>
-        <CardHeader
-          title="AI Survey Copilot"
-          description="Ask any question about student feedback in natural language. The AI analyzes your data and provides actionable insights."
-        />
-
-        <form onSubmit={handleSubmit(runSearch)} className="space-y-4">
+      {/* ── Query controls ────────────────────────────────────────── */}
+      <form onSubmit={handleSubmit(runSearch)}>
+        <FilterBar
+          hideHeader
+          actions={
+            streaming ? (
+              <Button
+                type="button"
+                variant="outline"
+                icon={<StopCircle className="h-4 w-4" />}
+                onClick={() => abortRef.current?.abort()}
+              >
+                Stop
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                loading={isSubmitting}
+                icon={<Sparkles className="h-4 w-4" />}
+              >
+                Analyze
+              </Button>
+            )
+          }
+        >
           <SheetSelector
             value={selectedSourceIds}
             onChange={setSelectedSourceIds}
@@ -279,35 +300,13 @@ export function SurveySearchView() {
           />
 
           <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               {...register("query")}
               placeholder="e.g. How satisfied are students with teacher support in class 10?"
               disabled={streaming}
-              className="w-full rounded-lg border border-border bg-background text-foreground pl-10 pr-28 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 placeholder:text-muted-foreground/60"
+              className="w-full rounded-lg border border-input bg-background text-foreground pl-10 pr-4 py-2.5 text-sm transition-colors hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 placeholder:text-muted-foreground/60"
             />
-            <Search className="absolute left-3 top-4 h-4 w-4 text-muted-foreground" />
-            <div className="absolute right-2 top-2.5 flex items-center gap-2">
-              {streaming ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  icon={<StopCircle className="h-4 w-4" />}
-                  onClick={() => abortRef.current?.abort()}
-                >
-                  Stop
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  size="sm"
-                  loading={isSubmitting}
-                  icon={<Sparkles className="h-4 w-4" />}
-                >
-                  Analyze
-                </Button>
-              )}
-            </div>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
@@ -323,22 +322,42 @@ export function SurveySearchView() {
               </button>
             ))}
           </div>
-        </form>
-      </Card>
+        </FilterBar>
+      </form>
 
       {/* ── Error banner (shown even when no meta/result arrived) ─── */}
       {error && !streaming && (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <div className="flex items-start gap-2.5">
-            <SearchX className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-destructive">
-                Analysis failed
-              </h3>
-              <p className="text-sm text-destructive/90 mt-0.5">{error}</p>
-            </div>
+        <Alert variant="error" title="Analysis failed">
+          {error}
+        </Alert>
+      )}
+
+      {/* ── Pre-query hint ────────────────────────────────────────── */}
+      {!hasResult && !error && !streaming && (
+        <EmptyState
+          icon={<Sparkles className="h-12 w-12" />}
+          title="Ask a question to get started"
+          description="Pose any question about student feedback in natural language. The AI analyzes your data and returns an insight, a chart and the underlying rows."
+        />
+      )}
+
+      {/* ── Analyzing skeleton (query sent, nothing returned yet) ─── */}
+      {streaming && !hasResult && (
+        <Panel title="AI Insight" icon={<Bot className="h-4 w-4" />}>
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <span className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
+              ))}
+            </span>
+            Analyzing your data…
           </div>
-        </Card>
+          <SkeletonText lines={5} />
+        </Panel>
       )}
 
       {/* ── Results ───────────────────────────────────────────────── */}
@@ -366,16 +385,29 @@ export function SurveySearchView() {
           </div>
 
           {/* ── Insight card (streamed narrative) ─────────────────── */}
-          <Card className="relative group">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Bot className="h-3.5 w-3.5" />
-              </div>
-              <h3 className="text-sm font-semibold text-foreground">
-                AI Insight
-              </h3>
-            </div>
-
+          <Panel
+            title="AI Insight"
+            icon={<Bot className="h-4 w-4" />}
+            actions={
+              insight && !streaming ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleCopy}
+                  icon={
+                    copied ? (
+                      <Check className="h-3.5 w-3.5" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )
+                  }
+                >
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+              ) : undefined
+            }
+          >
             {insight ? (
               <MarkdownRenderer
                 content={insight}
@@ -383,59 +415,20 @@ export function SurveySearchView() {
                 className="text-sm"
               />
             ) : streaming ? (
-              <div className="flex items-center gap-2 text-muted-foreground text-sm py-4">
-                <div className="flex gap-1">
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
-                  ))}
-                </div>
-                Analyzing your data…
-              </div>
+              <SkeletonText lines={5} />
             ) : null}
-
-            {/* Copy button */}
-            {insight && !streaming && (
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="absolute top-5 right-5 flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100"
-              >
-                {copied ? (
-                  <Check className="h-3 w-3" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            )}
-          </Card>
+          </Panel>
 
           {/* ── Interactive chart (Recharts) ──────────────────────── */}
           {chartData && (
-            <Card>
-              <div className="flex items-center gap-2 mb-3">
-                <BarChart2 className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">
-                  Visualization
-                </h3>
-              </div>
+            <Panel title="Visualization" icon={<BarChart2 className="h-4 w-4" />}>
               <SurveyChart data={chartData} />
-            </Card>
+            </Panel>
           )}
 
           {/* ── PNG chart fallback ────────────────────────────────── */}
           {!chartData && chartUrl && (
-            <Card>
-              <div className="flex items-center gap-2 mb-3">
-                <BarChart2 className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">
-                  Visualization
-                </h3>
-              </div>
+            <Panel title="Visualization" icon={<BarChart2 className="h-4 w-4" />}>
               <div className="rounded-lg border border-border/50 bg-muted/20 p-3 flex items-center justify-center">
                 <img
                   src={resolveChartSrc(chartUrl)}
@@ -444,7 +437,7 @@ export function SurveySearchView() {
                   loading="lazy"
                 />
               </div>
-            </Card>
+            </Panel>
           )}
 
           {/* ── Raw data (collapsible) ────────────────────────────── */}

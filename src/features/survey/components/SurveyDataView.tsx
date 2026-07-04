@@ -5,7 +5,7 @@ import { Trash2, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 import { surveyApi } from "@/features/survey/api/survey";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Panel } from "@/shared/components/ui/Panel";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
@@ -117,12 +117,12 @@ export function SurveyDataView() {
       )}
 
       <div className="grid grid-cols-1 gap-4">
-        <Card>
-          <CardHeader
-            title="Delete by Roll Number + School"
-            description="Remove a specific student's feedback."
-          />
-          <div className="grid grid-cols-2 gap-4 mb-4">
+        <Panel
+          title="Delete by Roll Number + School"
+          description="Remove a specific student's feedback"
+          icon={<Trash2 className="h-4 w-4" />}
+        >
+          <div className="grid grid-cols-1 gap-4 mb-4 sm:grid-cols-2">
             <Input
               label="Roll Number"
               placeholder="101"
@@ -146,13 +146,13 @@ export function SurveyDataView() {
           >
             Delete Student Feedback
           </Button>
-        </Card>
+        </Panel>
 
-        <Card>
-          <CardHeader
-            title="Delete by School"
-            description="Remove all feedback from a school."
-          />
+        <Panel
+          title="Delete by School"
+          description="Remove all feedback from a school"
+          icon={<Trash2 className="h-4 w-4" />}
+        >
           {isAdmin && (
             <Input
               label="School Name"
@@ -170,13 +170,13 @@ export function SurveyDataView() {
           >
             Delete All School Feedback
           </Button>
-        </Card>
+        </Panel>
 
-        <Card>
-          <CardHeader
-            title="Delete by Class"
-            description="Remove all feedback for a class."
-          />
+        <Panel
+          title="Delete by Class"
+          description="Remove all feedback for a class"
+          icon={<Trash2 className="h-4 w-4" />}
+        >
           {isAdmin && (
             <Input
               label="School Name"
@@ -210,7 +210,7 @@ export function SurveyDataView() {
           >
             Delete Class Feedback
           </Button>
-        </Card>
+        </Panel>
       </div>
 
       <Modal

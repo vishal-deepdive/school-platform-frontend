@@ -23,7 +23,6 @@ import type {
   HeaderPreviewResponse,
   SurveyType,
 } from "@/features/survey/types";
-import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
@@ -32,6 +31,8 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { authApi } from "@/features/auth/api/auth";
 
@@ -188,17 +189,23 @@ function SourceCard({
 
   return (
     <>
-      <div
-        className={`rounded-xl border bg-background p-5 transition-all ${
-          source.is_active
-            ? "border-border shadow-sm"
-            : "border-border/50 opacity-60"
+      <li
+        className={`flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-muted/40 md:flex-row md:items-center md:justify-between md:px-5 ${
+          source.is_active ? "" : "opacity-60"
         }`}
       >
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1 space-y-3">
-            {/* Header row: badges */}
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+            <FileSpreadsheet className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 space-y-1.5">
+            {/* Title + status badges */}
             <div className="flex flex-wrap items-center gap-2">
+              {source.label && (
+                <span className="text-sm font-medium text-foreground">
+                  {source.label}
+                </span>
+              )}
               <Badge variant={source.is_active ? "success" : "default"}>
                 {source.is_active ? (
                   <CheckCircle2 className="mr-1 h-3 w-3" />
@@ -213,11 +220,6 @@ function SourceCard({
               {source.cycle && source.cycle !== "default" && (
                 <Badge variant="default">Term: {source.cycle}</Badge>
               )}
-              {source.label && (
-                <span className="text-sm font-medium text-foreground">
-                  {source.label}
-                </span>
-              )}
             </div>
 
             {/* URL */}
@@ -225,7 +227,7 @@ function SourceCard({
               href={source.sheet_url ?? "#"}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 break-all text-sm text-primary hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
             >
               <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
               <span className="truncate max-w-md">
@@ -234,7 +236,7 @@ function SourceCard({
             </a>
 
             {/* Meta info */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>
                 Last synced:{" "}
                 {source.last_synced_at
@@ -255,69 +257,67 @@ function SourceCard({
         </div>
 
         {/* Actions */}
-        {source.is_active && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-border/50 pt-4">
-            <Button
-              size="sm"
-              onClick={() => onSync(source.id, "append")}
-              loading={syncing}
-              icon={<RefreshCw className="h-3.5 w-3.5" />}
-            >
-              Sync
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setConfirmReplace(true)}
-              disabled={syncing}
-              icon={<AlertTriangle className="h-3.5 w-3.5" />}
-            >
-              Replace
-            </Button>
-            <div className="flex-1" />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onToggleActive(source.id, false)}
-              icon={<PowerOff className="h-3.5 w-3.5" />}
-            >
-              Deactivate
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setConfirmDelete(true)}
-              className="text-destructive hover:text-destructive"
-              icon={<Trash2 className="h-3.5 w-3.5" />}
-            >
-              Remove
-            </Button>
-          </div>
-        )}
-
-        {!source.is_active && (
-          <div className="mt-4 flex items-center gap-2 border-t border-border/50 pt-4">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onToggleActive(source.id, true)}
-              icon={<Power className="h-3.5 w-3.5" />}
-            >
-              Reactivate
-            </Button>
-            <div className="flex-1" />
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setConfirmDelete(true)}
-              className="text-destructive hover:text-destructive"
-              icon={<Trash2 className="h-3.5 w-3.5" />}
-            >
-              Remove
-            </Button>
-          </div>
-        )}
-      </div>
+        <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
+          {source.is_active ? (
+            <>
+              <Button
+                size="sm"
+                onClick={() => onSync(source.id, "append")}
+                loading={syncing}
+                icon={<RefreshCw className="h-3.5 w-3.5" />}
+              >
+                Sync
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmReplace(true)}
+                disabled={syncing}
+                icon={<AlertTriangle className="h-3.5 w-3.5" />}
+              >
+                Replace
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onToggleActive(source.id, false)}
+                icon={<PowerOff className="h-3.5 w-3.5" />}
+              >
+                Deactivate
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmDelete(true)}
+                className="text-destructive hover:text-destructive"
+                icon={<Trash2 className="h-3.5 w-3.5" />}
+              >
+                Remove
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onToggleActive(source.id, true)}
+                icon={<Power className="h-3.5 w-3.5" />}
+              >
+                Reactivate
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setConfirmDelete(true)}
+                className="text-destructive hover:text-destructive"
+                icon={<Trash2 className="h-3.5 w-3.5" />}
+              >
+                Remove
+              </Button>
+            </>
+          )}
+        </div>
+      </li>
 
       {/* Replace confirmation */}
       <Modal
@@ -715,7 +715,7 @@ export function SurveySourcePage() {
     <div className="space-y-6">
       {/* Admin school selector */}
       {isAdmin && (
-        <Card>
+        <FilterBar title="School" icon={<FileSpreadsheet className="h-4 w-4" />}>
           <SearchableSelect
             label="School name"
             placeholder="Select a school..."
@@ -726,11 +726,11 @@ export function SurveySourcePage() {
             onChange={setAdminSchool}
           />
           {!adminReady && (
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Select a school above to manage its data sources.
             </p>
           )}
-        </Card>
+        </FilterBar>
       )}
 
       {adminReady && (
@@ -745,7 +745,7 @@ export function SurveySourcePage() {
           </div>
 
           {/* Empty state */}
-          {sources.length === 0 && (
+          {sources.length === 0 ? (
             <EmptyState
               icon={<FileSpreadsheet className="h-12 w-12" />}
               title="No data sources"
@@ -759,54 +759,72 @@ export function SurveySourcePage() {
                 </Button>
               }
             />
-          )}
-
-          {/* Active sources */}
-          {activeSources.length > 0 && (
-            <div className="space-y-4">
-              {activeSources.map((source) => (
-                <SourceCard
-                  key={source.id}
-                  source={source}
-                  onSync={(id, mode) => syncSource({ id, mode })}
-                  onDelete={(id) => deleteSource(id)}
-                  onToggleActive={(id, active) =>
-                    toggleActive({ id, active })
+          ) : (
+            <>
+              {/* Active sources */}
+              {activeSources.length > 0 && (
+                <Panel
+                  flush
+                  title="Connected Sheets"
+                  icon={<FileSpreadsheet className="h-4 w-4" />}
+                  description="Google Sheets feeding survey responses"
+                  actions={
+                    <Badge variant="primary">
+                      {activeSources.length} active
+                    </Badge>
                   }
-                  syncing={syncing}
-                />
-              ))}
-            </div>
-          )}
+                >
+                  <ul className="divide-y divide-border/50">
+                    {activeSources.map((source) => (
+                      <SourceCard
+                        key={source.id}
+                        source={source}
+                        onSync={(id, mode) => syncSource({ id, mode })}
+                        onDelete={(id) => deleteSource(id)}
+                        onToggleActive={(id, active) =>
+                          toggleActive({ id, active })
+                        }
+                        syncing={syncing}
+                      />
+                    ))}
+                  </ul>
+                </Panel>
+              )}
 
-          {/* Inactive sources */}
-          {inactiveSources.length > 0 && (
-            <div className="space-y-4">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Inactive Sources
-              </h4>
-              {inactiveSources.map((source) => (
-                <SourceCard
-                  key={source.id}
-                  source={source}
-                  onSync={(id, mode) => syncSource({ id, mode })}
-                  onDelete={(id) => deleteSource(id)}
-                  onToggleActive={(id, active) =>
-                    toggleActive({ id, active })
+              {/* Inactive sources */}
+              {inactiveSources.length > 0 && (
+                <Panel
+                  flush
+                  title="Inactive Sources"
+                  actions={
+                    <Badge variant="default">{inactiveSources.length}</Badge>
                   }
-                  syncing={syncing}
-                />
-              ))}
-            </div>
-          )}
+                >
+                  <ul className="divide-y divide-border/50">
+                    {inactiveSources.map((source) => (
+                      <SourceCard
+                        key={source.id}
+                        source={source}
+                        onSync={(id, mode) => syncSource({ id, mode })}
+                        onDelete={(id) => deleteSource(id)}
+                        onToggleActive={(id, active) =>
+                          toggleActive({ id, active })
+                        }
+                        syncing={syncing}
+                      />
+                    ))}
+                  </ul>
+                </Panel>
+              )}
 
-          {/* Info alert */}
-          {sources.length > 0 && (
-            <Alert variant="info" title="Multiple sources">
-              Each source can have its own term/cycle and survey type. Students
-              are deduplicated within the same (name, roll, school, cycle) — use
-              a new cycle value each term so the same students aren't skipped.
-            </Alert>
+              {/* Info alert */}
+              <Alert variant="info" title="Multiple sources">
+                Each source can have its own term/cycle and survey type. Students
+                are deduplicated within the same (name, roll, school, cycle) —
+                use a new cycle value each term so the same students aren't
+                skipped.
+              </Alert>
+            </>
           )}
         </>
       )}
