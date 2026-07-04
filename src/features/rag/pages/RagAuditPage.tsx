@@ -4,7 +4,7 @@ import { Database, RefreshCw, AlertTriangle, Wrench } from "lucide-react";
 import toast from "react-hot-toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -38,7 +38,7 @@ export function RagAuditPage() {
     }
   };
 
-  if (isLoading) return <PageSpinner />;
+  if (isLoading) return <PageSkeleton />;
   if (isError)
     return <Alert variant="error">{getErrorMessage(error) || "Failed to load RAG audit data."}</Alert>;
 

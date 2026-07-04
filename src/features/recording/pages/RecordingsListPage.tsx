@@ -8,7 +8,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Pagination } from "@/shared/components/ui/Pagination";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { getErrorMessage } from "@/shared/lib/utils";
 import {
@@ -52,7 +52,7 @@ export function RecordingsListPage() {
   const goNext = () => setOffset((o) => o + PAGE_SIZE);
   const goPrev = () => setOffset((o) => Math.max(0, o - PAGE_SIZE));
 
-  if (isLoading) return <PageSpinner />;
+  if (isLoading) return <PageSkeleton showStats={false} content="list" />;
   if (isError) return <Alert variant="error">{getErrorMessage(error) || "Failed to load recordings."}</Alert>;
 
   return (

@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import { Modal } from "@/shared/components/ui/Modal";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
@@ -24,7 +24,7 @@ export function MarkdownPreviewModal({
   return (
     <Modal open={open} onClose={onClose} title={title} size="xl">
       {result === null ? (
-        <PageSpinner />
+        <SkeletonText lines={8} className="py-2" />
       ) : result.state === "ready" ? (
         <div className="overflow-y-auto max-h-[60vh]">
           <MarkdownRenderer content={result.markdown} />

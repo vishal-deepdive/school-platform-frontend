@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -19,14 +20,17 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { surveyApi } from "@/features/survey/api/survey";
 import { Card, StatCard } from "@/shared/components/ui/Card";
-import { Badge } from "@/shared/components/ui/Badge";
 import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { SetupChecklist } from "@/features/dashboard/components/SetupChecklist";
 import { AttendanceTrendChart } from "@/features/dashboard/components/AttendanceTrendChart";
 import { NeedsAttention } from "@/features/dashboard/components/NeedsAttention";
+import { StatusDonut } from "@/features/dashboard/components/StatusDonut";
+import { ClassBreakdownChart } from "@/features/dashboard/components/ClassBreakdownChart";
+import { WeekdayPatternChart } from "@/features/dashboard/components/WeekdayPatternChart";
+import { AdminDashboard } from "@/features/dashboard/components/AdminDashboard";
+import { MyDashboard } from "@/features/dashboard/components/MyDashboard";
 import { roleCanAccess } from "@/shared/lib/permissions";
 
 const quickLinks = [
@@ -118,34 +122,132 @@ function WeekDelta({ week, prev }: { week: number | null; prev: number | null })
   );
 }
 
+/** School/class analytics for principals and teachers. */
+function StaffDashboard() {
+  const [trendDays, setTrendDays] = useState(14);
+  const { data: analytics, isLoading } = useQuery({
+    queryKey: ["attendance", "analytics", trendDays],
+    queryFn: () => attendanceApi.getAnalytics({ days: String(trendDays) }),
+    staleTime: 5 * 60_000,
+    placeholderData: (prev) => prev,
+  });
+
+  return (
+    <>
+      {analytics?.scope === "class" && analytics.classes_in_scope.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Showing your assigned {analytics.classes_in_scope.length === 1 ? "class" : "classes"}:{" "}
+          <span className="font-medium text-foreground">
+            {analytics.classes_in_scope.join(", ")}
+          </span>
+        </p>
+      )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {isLoading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-xl" />
+          ))
+        ) : (
+          <>
+            <StatCard
+              label="Present Today"
+              value={analytics?.today.present ?? 0}
+              icon={<UserCheck className="h-5 w-5" />}
+              color="green"
+              description={
+                analytics && analytics.today.total_marked > 0
+                  ? `of ${analytics.today.total_marked} marked`
+                  : "no attendance marked yet"
+              }
+            />
+            <StatCard
+              label="Absent Today"
+              value={analytics?.today.absent ?? 0}
+              icon={<UserX className="h-5 w-5" />}
+              color="red"
+              description={
+                analytics && analytics.today.late > 0
+                  ? `plus ${analytics.today.late} late`
+                  : undefined
+              }
+            />
+            <StatCard
+              label="Attendance Today"
+              value={
+                analytics && analytics.today.total_marked > 0
+                  ? `${Math.round(analytics.today.attendance_percentage)}%`
+                  : "—"
+              }
+              icon={<Activity className="h-5 w-5" />}
+              color="primary"
+              description={
+                <WeekDelta
+                  week={analytics?.week_percentage ?? null}
+                  prev={analytics?.prev_week_percentage ?? null}
+                />
+              }
+            />
+            <StatCard
+              label="Pending Leaves"
+              value={analytics?.pending_leaves_total ?? 0}
+              icon={<CalendarClock className="h-5 w-5" />}
+              color="amber"
+              description="awaiting your review"
+            />
+          </>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <AttendanceTrendChart
+          className="lg:col-span-2"
+          points={analytics?.trend}
+          loading={isLoading}
+          rangeDays={trendDays}
+          onRangeChange={setTrendDays}
+          subtitle={
+            analytics?.scope === "class"
+              ? "Share of your students marked present each school day"
+              : "Share of students marked present each school day"
+          }
+        />
+        <StatusDonut
+          counts={analytics?.today}
+          loading={isLoading}
+          title="Today at a glance"
+          subtitle="How today's marks break down"
+          centerLabel={
+            analytics && analytics.today.total_marked > 0
+              ? `${Math.round(analytics.today.attendance_percentage)}%`
+              : "—"
+          }
+          centerSub="present"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <ClassBreakdownChart
+          className="lg:col-span-2"
+          items={analytics?.class_breakdown}
+          loading={isLoading}
+        />
+        <WeekdayPatternChart points={analytics?.trend} loading={isLoading} />
+      </div>
+
+      <NeedsAttention analytics={analytics} loading={isLoading} wide />
+    </>
+  );
+}
+
 export function DashboardPage() {
   const { user } = useAuthStore();
   const role = user?.role;
   const isAdmin = role === "admin";
-  // Principals and teachers get school/class analytics; admins keep the
-  // platform-wide view; students and parents get their consumer shortcuts.
+  // Principals and teachers get school/class analytics; admins get the
+  // platform-wide view; students and parents get their personal analytics.
   const isSchoolStaff = role === "principal" || role === "teacher";
-
-  const { data: analytics, isLoading: analyticsLoading } = useQuery({
-    queryKey: ["attendance", "analytics"],
-    queryFn: () => attendanceApi.getAnalytics(),
-    enabled: isSchoolStaff,
-    staleTime: 5 * 60_000,
-  });
-
-  const { data: stats } = useQuery({
-    queryKey: ["attendance", "stats"],
-    queryFn: () => attendanceApi.getEnrollmentStats(),
-    enabled: isAdmin,
-    staleTime: 5 * 60_000,
-  });
-
-  const { data: surveyStatus } = useQuery({
-    queryKey: ["survey", "status"],
-    queryFn: () => surveyApi.getStatus(),
-    enabled: isAdmin,
-    staleTime: 5 * 60_000,
-  });
+  const isConsumer = role === "student" || role === "parent";
 
   const greeting = (() => {
     const h = new Date().getHours();
@@ -156,16 +258,10 @@ export function DashboardPage() {
 
   const todayLine = (() => {
     const dateStr = format(new Date(), "EEEE, d MMMM");
-    if (isSchoolStaff && analytics) {
-      if (analytics.is_holiday_today) return `It's ${dateStr} — school holiday today.`;
-      const t = analytics.today;
-      if (t.total_marked > 0) {
-        return `It's ${dateStr} — ${t.present} of ${t.total_marked} students marked present so far.`;
-      }
-      return `It's ${dateStr} — no attendance marked yet today.`;
-    }
+    if (isSchoolStaff) return `It's ${dateStr} — here's how your school is doing.`;
     if (isAdmin) return `It's ${dateStr} — here's what's happening on your platform.`;
-    return `It's ${dateStr} — jump back into your learning tools.`;
+    if (role === "parent") return `It's ${dateStr} — here's how your child is doing.`;
+    return `It's ${dateStr} — here's your learning snapshot.`;
   })();
 
   const visibleLinks = quickLinks
@@ -182,117 +278,9 @@ export function DashboardPage() {
       {/* Post-approval setup checklist — self-hides once the school is set up */}
       <SetupChecklist />
 
-      {isSchoolStaff && (
-        <>
-          {analytics?.scope === "class" && analytics.classes_in_scope.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Showing your assigned {analytics.classes_in_scope.length === 1 ? "class" : "classes"}:{" "}
-              <span className="font-medium text-foreground">
-                {analytics.classes_in_scope.join(", ")}
-              </span>
-            </p>
-          )}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {analyticsLoading ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-xl" />
-              ))
-            ) : (
-              <>
-                <StatCard
-                  label="Present Today"
-                  value={analytics?.today.present ?? 0}
-                  icon={<UserCheck className="h-5 w-5" />}
-                  color="green"
-                  description={
-                    analytics && analytics.today.total_marked > 0
-                      ? `of ${analytics.today.total_marked} marked`
-                      : "no attendance marked yet"
-                  }
-                />
-                <StatCard
-                  label="Absent Today"
-                  value={analytics?.today.absent ?? 0}
-                  icon={<UserX className="h-5 w-5" />}
-                  color="red"
-                  description={
-                    analytics && analytics.today.late > 0
-                      ? `plus ${analytics.today.late} late`
-                      : undefined
-                  }
-                />
-                <StatCard
-                  label="Attendance Today"
-                  value={
-                    analytics && analytics.today.total_marked > 0
-                      ? `${Math.round(analytics.today.attendance_percentage)}%`
-                      : "—"
-                  }
-                  icon={<Activity className="h-5 w-5" />}
-                  color="primary"
-                  description={
-                    <WeekDelta
-                      week={analytics?.week_percentage ?? null}
-                      prev={analytics?.prev_week_percentage ?? null}
-                    />
-                  }
-                />
-                <StatCard
-                  label="Pending Leaves"
-                  value={analytics?.pending_leaves_total ?? 0}
-                  icon={<CalendarClock className="h-5 w-5" />}
-                  color="amber"
-                  description="awaiting your review"
-                />
-              </>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <AttendanceTrendChart
-              className="lg:col-span-2"
-              points={analytics?.trend}
-              loading={analyticsLoading}
-              subtitle={
-                analytics?.scope === "class"
-                  ? "Share of your students marked present each school day"
-                  : "Share of students marked present each school day"
-              }
-            />
-            <NeedsAttention analytics={analytics} loading={analyticsLoading} />
-          </div>
-        </>
-      )}
-
-      {isAdmin && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            label="Total Students Enrolled"
-            value={stats?.total_students ?? "—"}
-            icon={<Users className="h-5 w-5" />}
-            color="indigo"
-          />
-          <StatCard
-            label="Schools"
-            value={stats?.by_school?.length ?? "—"}
-            icon={<UserCheck className="h-5 w-5" />}
-            color="green"
-          />
-          <StatCard
-            label="Survey Records"
-            value={surveyStatus?.total_records ?? "—"}
-            icon={<BarChart2 className="h-5 w-5" />}
-            color="amber"
-          />
-          <StatCard
-            label="Platform Status"
-            value="Healthy"
-            icon={<Activity className="h-5 w-5" />}
-            color="green"
-          />
-        </div>
-      )}
+      {isSchoolStaff && <StaffDashboard />}
+      {isAdmin && <AdminDashboard />}
+      {isConsumer && <MyDashboard isParent={role === "parent"} />}
 
       <div>
         <h2 className="mb-4 text-base font-semibold text-foreground">
@@ -324,35 +312,6 @@ export function DashboardPage() {
           ))}
         </div>
       </div>
-
-      {isAdmin && stats?.by_school && stats.by_school.length > 0 && (
-        <Card padding="md">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-foreground">
-              Enrollment by School
-            </h2>
-            <Link
-              to="/attendance/stats"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
-            >
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="divide-y divide-border">
-            {stats.by_school.slice(0, 5).map((school, i) => (
-              <div
-                key={school.school_name || i}
-                className="flex items-center justify-between py-3"
-              >
-                <p className="text-sm text-foreground">
-                  {school.school_name || "Unknown"}
-                </p>
-                <Badge variant="info">{school.total} students</Badge>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
     </div>
   );
 }

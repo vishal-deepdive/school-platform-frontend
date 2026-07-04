@@ -193,3 +193,42 @@ export interface PromptRefreshResponse {
   reason: string | null;
   label: string | null;
 }
+
+// ── Platform overview (admin dashboard) ───────────────────────────────────────
+
+export interface RoleCount {
+  role: string;
+  count: number;
+}
+
+export interface PlatformTrendPoint {
+  date: string; // DD-MM-YYYY
+  present: number;
+  total_marked: number;
+  percentage: number;
+}
+
+export interface SchoolEnrollment {
+  school_name: string;
+  students: number;
+}
+
+export interface OnboardingStatusCount {
+  status: string;
+  count: number;
+}
+
+export interface PlatformOverview {
+  schools_active: number;
+  students_enrolled: number;
+  users_total: number;
+  users_by_role: RoleCount[];
+  new_users_30d: number;
+  attendance_records_total: number;
+  attendance_trend: PlatformTrendPoint[]; // last 14 days
+  recordings_total: number;
+  recordings_30d: number;
+  rag_documents_total: number;
+  onboarding_by_status: OnboardingStatusCount[];
+  top_schools: SchoolEnrollment[];
+}
