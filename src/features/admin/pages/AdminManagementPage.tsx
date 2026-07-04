@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus } from "lucide-react";
+import { Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { emailField, passwordField } from "@/shared/lib/validators";
@@ -12,7 +12,10 @@ import { Modal } from "@/shared/components/ui/Modal";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
-import { TableSkeleton } from "@/shared/components/ui/Skeleton";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Avatar } from "@/shared/components/ui/Avatar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import type { AdminUser } from "@/features/admin/types";
 
 const createAdminSchema = z.object({
@@ -41,42 +44,44 @@ function AdminRow({
   const canRemove = !isSelf && !isMyCreator;
 
   return (
-    <tr className="hover:bg-muted/50 transition-colors">
-      <td className="px-6 py-4">
-        <p className="font-medium text-foreground">{admin.full_name || "—"}</p>
-        <p className="text-xs text-muted-foreground">{admin.email}</p>
-      </td>
-      <td className="px-6 py-4 text-sm text-muted-foreground">
-        {admin.created_by_name ? (
-          <div>
-            <p>{admin.created_by_name}</p>
-            <p className="text-xs text-muted-foreground/70">{admin.created_by_email}</p>
-          </div>
-        ) : (
-          <span className="text-muted-foreground/70 italic">Bootstrap admin</span>
-        )}
-      </td>
-      <td className="px-6 py-4 text-sm text-muted-foreground">
-        {admin.created_at ? formatDate(admin.created_at) : "—"}
-      </td>
-      <td className="px-6 py-4 text-right">
-        {isSelf && <span className="text-xs text-muted-foreground/70 italic">You</span>}
-        {isMyCreator && !isSelf && (
-          <span className="text-xs text-muted-foreground/70 italic">Your creator</span>
-        )}
+    <li className="group flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 md:px-5">
+      <div className="flex min-w-0 items-center gap-3">
+        <Avatar name={admin.full_name || admin.email} seed={admin.id} size="md" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">
+            {admin.full_name || admin.email}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{admin.email}</p>
+          <p className="truncate text-xs text-muted-foreground/70">
+            {admin.created_by_name
+              ? `Added by ${admin.created_by_name}`
+              : "Bootstrap admin"}
+            {admin.created_at ? ` · ${formatDate(admin.created_at)}` : ""}
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {isSelf && <Badge variant="primary">You</Badge>}
+        {isMyCreator && !isSelf && <Badge variant="default">Your creator</Badge>}
         {canRemove && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onRemove(admin.id)}
             disabled={removing}
-            className="text-destructive hover:text-destructive/80"
+            loading={removing}
+            icon={
+              !removing ? (
+                <Trash2 className="h-4 w-4 text-destructive" />
+              ) : undefined
+            }
+            className="text-destructive opacity-0 transition-opacity hover:text-destructive/80 focus-visible:opacity-100 group-hover:opacity-100"
           >
             Remove
           </Button>
         )}
-      </td>
-    </tr>
+      </div>
+    </li>
   );
 }
 
@@ -137,50 +142,42 @@ export function AdminManagementPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button icon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
-          Add Admin
-        </Button>
-      </div>
-
       {removeError && <Alert variant="error">{removeError}</Alert>}
       {adminsError && <Alert variant="error">{getErrorMessage(adminsQueryError) || "Failed to load admins."}</Alert>}
 
-      {isLoading && <TableSkeleton rows={5} columns={4} />}
+      {isLoading && <ListSkeleton items={5} />}
 
       {!isLoading && !adminsError && admins && (
-        <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Admin
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Created By
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Added On
-                </th>
-                <th className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-background">
-              {admins.map((admin) => (
-                <AdminRow
-                  key={admin.id}
-                  admin={admin}
-                  currentUserId={user?.id}
-                  currentUserCreatedBy={currentUserCreatedBy}
-                  onRemove={handleRemove}
-                  removing={removingId === admin.id && removeMutation.isPending}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Panel
+          flush
+          icon={<ShieldCheck className="h-4 w-4" />}
+          title="Platform admins"
+          actions={
+            <div className="flex items-center gap-2">
+              <Badge variant="primary">{admins.length} total</Badge>
+              <Button
+                size="sm"
+                icon={<Plus className="h-4 w-4" />}
+                onClick={() => setShowAddModal(true)}
+              >
+                Add Admin
+              </Button>
+            </div>
+          }
+        >
+          <ul className="divide-y divide-border/50">
+            {admins.map((admin) => (
+              <AdminRow
+                key={admin.id}
+                admin={admin}
+                currentUserId={user?.id}
+                currentUserCreatedBy={currentUserCreatedBy}
+                onRemove={handleRemove}
+                removing={removingId === admin.id && removeMutation.isPending}
+              />
+            ))}
+          </ul>
+        </Panel>
       )}
 
       {/* Add Admin Modal */}

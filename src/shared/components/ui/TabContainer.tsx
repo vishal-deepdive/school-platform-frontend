@@ -94,9 +94,12 @@ export function TabContainer({ className }: TabContainerProps) {
       {/* In dark mode the panel dips below the background instead of using
           muted (which composites to ~the same lightness as bg-card), so cards
           inside stay visibly elevated. */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/60 bg-muted/30 dark:border-border/50 dark:bg-black/25">
+      <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.02] via-muted/30 to-primary/[0.06] dark:border-border/50 dark:from-primary/[0.03] dark:via-black/25 dark:to-primary/[0.09]">
         <div className="h-full overflow-y-auto scrollbar-custom px-3 py-4 md:px-4 md:py-5">
-          <div className="mx-auto w-full max-w-6xl">
+          {/* min-h-full + flex-col lets full-height pages (e.g. the Q&A chat)
+              fill the viewport via `flex-1`, while normal content pages keep
+              flowing top-down and let this container scroll. */}
+          <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col">
             <Outlet />
           </div>
         </div>
