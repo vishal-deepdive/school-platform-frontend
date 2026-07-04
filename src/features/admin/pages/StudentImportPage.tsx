@@ -16,7 +16,6 @@ import { getErrorMessage } from "@/shared/lib/utils";
 import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
-import { PageHeader } from "@/shared/components/ui/PageHeader";
 
 const SAMPLE_CSV =
   "roll_no,name,class_name,section,session\n" +
@@ -66,11 +65,6 @@ export function StudentImportPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <PageHeader
-        title="Import Student Roster"
-        description="Upload a CSV to add many students at once."
-      />
-
       <Card padding="md" className="space-y-4">
         <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
           <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-primary" />

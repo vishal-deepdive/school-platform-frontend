@@ -11,6 +11,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import type { OnboardingStatus } from "@/features/admin/types";
 import { Badge } from "@/shared/components/ui/Badge";
+import { TableBodySkeleton } from "@/shared/components/ui/Skeleton";
 import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUS_BADGE_VARIANTS,
@@ -56,16 +57,7 @@ export function OnboardingApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            School Applications
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Review and approve school onboarding applications
-          </p>
-        </div>
-
+      <div className="flex justify-end">
         <div className="w-full sm:w-72">
           <Input
             type="text"
@@ -121,29 +113,7 @@ export function OnboardingApplicationsPage() {
           </thead>
           <tbody className="divide-y divide-border bg-background">
             {isLoading ? (
-              Array.from({ length: 5 }).map((_, idx) => (
-                <tr key={idx} className="animate-pulse">
-                  <td className="px-6 py-4">
-                    <div className="h-4 bg-muted rounded w-3/4" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="h-4 bg-muted rounded w-1/2 mb-2" />
-                    <div className="h-3 bg-muted/60 rounded w-2/3" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="h-4 bg-muted rounded w-1/2" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="h-6 bg-muted rounded-full w-24" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="h-4 bg-muted rounded w-24" />
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="h-4 bg-muted rounded w-12 ml-auto" />
-                  </td>
-                </tr>
-              ))
+              <TableBodySkeleton rows={5} columns={6} />
             ) : applications?.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-10">

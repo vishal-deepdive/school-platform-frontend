@@ -242,10 +242,10 @@ export function AttendanceDateView() {
       {data && rows.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            <StatCard label="Present" value={counts.P} icon={<UserCheck className="h-5 w-5" />} color="green" />
-            <StatCard label="Absent" value={counts.A} icon={<UserX className="h-5 w-5" />} color="red" />
-            <StatCard label="Late" value={counts.L} icon={<Clock className="h-5 w-5" />} color="amber" />
-            <StatCard label="Excused" value={counts.E} icon={<FileCheck className="h-5 w-5" />} color="blue" />
+            <StatCard label="Present" value={counts.P} icon={<UserCheck className="h-5 w-5" />} color="success" />
+            <StatCard label="Absent" value={counts.A} icon={<UserX className="h-5 w-5" />} color="danger" />
+            <StatCard label="Late" value={counts.L} icon={<Clock className="h-5 w-5" />} color="warning" />
+            <StatCard label="Excused" value={counts.E} icon={<FileCheck className="h-5 w-5" />} color="info" />
             <StatCard label="Half Day" value={counts.H} icon={<CircleDashed className="h-5 w-5" />} />
             <StatCard label="Present %" value={`${pct}%`} icon={<Percent className="h-5 w-5" />} color="primary" />
           </div>

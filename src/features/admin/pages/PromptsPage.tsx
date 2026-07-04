@@ -278,20 +278,12 @@ export function PromptsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Prompt Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Live version shows what the backend is currently serving (bypasses the
-            60s in-process cache).{" "}
-            {checkedCount > 0 && (
-              <span className="text-foreground/70">
-                {checkedCount} / {totalCount} checked.
-              </span>
-            )}
+      <div className="flex items-center justify-end gap-4">
+        {checkedCount > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {checkedCount} / {totalCount} checked
           </p>
-        </div>
+        )}
         <Button
           variant="outline"
           size="sm"

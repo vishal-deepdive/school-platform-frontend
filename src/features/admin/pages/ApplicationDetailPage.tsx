@@ -122,9 +122,6 @@ export function ApplicationDetailPage() {
           >
             ← Back to applications
           </Link>
-          <h1 className="mt-2 text-2xl font-bold text-foreground">
-            {app.school_name}
-          </h1>
           <div className="mt-2 flex items-center gap-3">
             <Badge
               variant={APPLICATION_STATUS_BADGE_VARIANTS[app.onboarding_status] ?? "default"}
