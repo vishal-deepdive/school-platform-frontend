@@ -23,7 +23,6 @@ import {
   Trash2,
   FileSpreadsheet,
   ScanFace,
-  Camera,
   History,
   CalendarClock,
   CalendarDays,

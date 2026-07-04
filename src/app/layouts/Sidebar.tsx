@@ -92,8 +92,8 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   // ------------------------------------
   if (mobile) {
     return (
-      <aside className="flex h-full w-[280px] flex-col bg-background shadow-2xl animate-slide-in relative">
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-5">
+      <aside className="flex h-full w-[286px] max-w-[85vw] flex-col bg-background shadow-2xl animate-slide-in relative border-r border-border/60">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/60 px-5">
           <div className="flex items-center gap-3">
             <img
               src="/logo.png"
@@ -105,19 +105,23 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
             <button
               onClick={onClose}
               className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+              aria-label="Close menu"
             >
               <X className="h-5 w-5" />
             </button>
           )}
         </div>
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin">
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+            Menu
+          </p>
           {allItems.map((item, i) => (
             <div key={i}>
               <MobileSidebarItem item={item} onClose={onClose} />
             </div>
           ))}
         </div>
-        <div className="shrink-0 border-t border-border p-4">
+        <div className="shrink-0 border-t border-border/60 bg-muted/20 p-3">
           <UserProfileMenu mobile />
         </div>
       </aside>
@@ -133,36 +137,45 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   return (
     <div className="flex h-full relative">
       {/* Primary Sidebar (Icons only) */}
-      <aside className="relative z-20 flex h-full w-16 flex-col items-center border-r border-border bg-background py-4 shadow-sm">
+      <aside className="relative z-20 flex h-full w-16 flex-col items-center border-r border-border/60 bg-background py-4">
         {/* Logo */}
-        <div className="mb-8 flex h-10 w-8 shrink-0 items-center justify-center">
+        <div className="mb-6 flex h-10 w-8 shrink-0 items-center justify-center">
           <img
             src="/favicon.png"
             alt="DeepDive Logo"
             className="h-full w-full object-contain"
           />
         </div>
+        <div className="mb-4 h-px w-8 shrink-0 bg-border/60" />
 
         {/* Primary Nav Items */}
-        <nav className="flex w-full flex-1 flex-col items-center gap-3 px-1 pb-4 overflow-visible">
+        <nav className="flex w-full flex-1 flex-col items-center gap-2 px-2 pb-4 overflow-visible">
           {allItems.map((item, idx) => {
             const isActive = activeCategory === item;
             return (
               <div key={idx} className="group relative w-full">
+                {/* Active indicator */}
+                <span
+                  className={cn(
+                    "absolute -left-2 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary transition-all duration-300",
+                    isActive ? "opacity-100 scale-y-100" : "opacity-0 scale-y-0",
+                  )}
+                />
                 <button
                   onClick={() => handleCategoryClick(item)}
                   className={cn(
-                    "flex w-full items-center justify-center rounded-xl p-3 transition-all duration-200",
+                    "flex w-full items-center justify-center rounded-xl p-2.5 transition-all duration-200 active:scale-95",
                     isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      ? "bg-primary/10 text-primary shadow-[inset_0_0_0_1px] shadow-primary/15"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
                   )}
                   aria-label={item.label}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   {item.icon}
                 </button>
                 {/* Tooltip */}
-                <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background opacity-0 shadow-lg transition-opacity group-hover:opacity-100 pointer-events-none z-50 whitespace-nowrap">
+                <div className="absolute left-[calc(100%+10px)] top-1/2 -translate-y-1/2 rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background opacity-0 shadow-lg transition-all duration-150 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-1 pointer-events-none z-50 whitespace-nowrap">
                   {item.label}
                   <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-[4px] border-transparent border-r-foreground" />
                 </div>
@@ -191,25 +204,27 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       {/* Secondary Sidebar (Context Menu) */}
       <aside
         className={cn(
-          "z-10 h-full border-r border-border bg-muted/10 transition-all duration-300 ease-in-out overflow-hidden",
+          "z-10 h-full border-r border-border/60 bg-background transition-all duration-300 ease-in-out overflow-hidden",
           hasSecondary && !isCollapsed ? "w-60" : "w-0 border-r-0",
         )}
       >
         {hasSecondary && (
           <div className="flex h-full w-60 flex-col">
-            <div className="flex h-[72px] shrink-0 items-center justify-between px-5">
-              <h2 className="text-base font-semibold text-foreground tracking-tight">
+            <div className="flex h-16 shrink-0 items-center justify-between px-4">
+              <h2 className="truncate px-2 text-[15px] font-semibold tracking-tight text-foreground">
                 {activeCategory?.label}
               </h2>
               <button
                 onClick={() => setIsCollapsed(true)}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-all duration-200"
+                className="rounded-lg p-1.5 text-muted-foreground/70 hover:bg-muted/60 hover:text-foreground transition-colors duration-200"
                 title="Collapse sidebar"
+                aria-label="Collapse sidebar"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-3 pb-6 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="mx-4 h-px shrink-0 bg-border/50" />
+            <div className="flex-1 overflow-y-auto px-3 py-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <nav className="space-y-1">
                 {activeCategory?.children?.map((child, i) => (
                   <NavLink
@@ -218,7 +233,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                     end={child.end !== undefined ? child.end : child.href === "/"}
                     className={({ isActive }) =>
                       cn(
-                        "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200",
+                        "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors duration-200",
                         isActive
                           ? "bg-primary/10 text-primary"
                           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -232,12 +247,12 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                             "flex items-center justify-center transition-colors",
                             isActive
                               ? "text-primary"
-                              : "text-muted-foreground group-hover:text-foreground",
+                              : "text-muted-foreground/70 group-hover:text-foreground",
                           )}
                         >
                           {child.icon}
                         </div>
-                        {child.label}
+                        <span className="truncate">{child.label}</span>
                       </>
                     )}
                   </NavLink>

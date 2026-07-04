@@ -9,11 +9,19 @@ import type {
   RequestChangesRequest,
   SchoolSetupStatus,
   BulkImportResult,
+  PlatformOverview,
 } from "@/features/admin/types";
 
 const ADMIN_BASE = "/api/v1/admin";
 
 export const adminApi = {
+  // ── Platform overview (dashboard) ─────────────────────────────────────────
+
+  getPlatformOverview: () =>
+    apiClient
+      .get<PlatformOverview>(`${ADMIN_BASE}/platform-overview`)
+      .then((r) => r.data),
+
   // ── Admin user management ─────────────────────────────────────────────────
 
   listAdmins: () =>

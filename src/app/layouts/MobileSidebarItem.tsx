@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { NavItem } from "./navConfig";
 
@@ -41,6 +41,7 @@ export function MobileSidebarItem({ item, onClose }: MobileSidebarItemProps) {
     <div>
       <button
         onClick={() => setOpen((p) => !p)}
+        aria-expanded={open}
         className={cn(
           "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
           isChildActive
@@ -50,15 +51,16 @@ export function MobileSidebarItem({ item, onClose }: MobileSidebarItemProps) {
       >
         {item.icon}
         <span className="flex-1 text-left">{item.label}</span>
-        {open ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        )}
+        <ChevronRight
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+            open && "rotate-90",
+          )}
+        />
       </button>
 
       {open && (
-        <div className="mt-1 flex flex-col gap-1 border-l-2 border-border ml-[22px] pl-4">
+        <div className="mt-1 flex flex-col gap-0.5 border-l-2 border-border/70 ml-[22px] pl-3 animate-fade-in">
           {item.children?.map((child, i) => (
             <NavLink
               key={i}
@@ -75,7 +77,7 @@ export function MobileSidebarItem({ item, onClose }: MobileSidebarItemProps) {
               }
             >
               <div className="scale-90">{child.icon}</div>
-              {child.label}
+              <span className="truncate">{child.label}</span>
             </NavLink>
           ))}
         </div>

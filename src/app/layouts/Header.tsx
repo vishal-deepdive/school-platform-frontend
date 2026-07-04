@@ -6,7 +6,7 @@ interface HeaderProps {
 
 export function Header({ onMenuToggle }: HeaderProps) {
   return (
-    <header className="md:hidden flex h-16 items-center justify-between border-b border-border bg-background px-4 sticky top-0 z-30">
+    <header className="md:hidden flex h-16 items-center justify-between border-b border-border/60 bg-background/90 backdrop-blur-md px-4 sticky top-0 z-30">
       <div className="flex items-center gap-3">
         <img
           src="/favicon.png"
