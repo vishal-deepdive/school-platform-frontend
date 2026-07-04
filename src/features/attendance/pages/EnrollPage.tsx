@@ -16,7 +16,6 @@ import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { cn } from "@/shared/lib/utils";
-import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
@@ -25,6 +24,8 @@ import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Avatar } from "@/shared/components/ui/Avatar";
 import type { EnrollResponse } from "@/features/attendance/types";
 
 type EnrollUploadMethod = "zip" | "photos";
@@ -192,9 +193,9 @@ export function EnrollPage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
+    <div className="w-full space-y-6">
       <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
-        <Card>
+        <Panel>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
             <Select
               label="Enrollment Mode"
@@ -210,7 +211,7 @@ export function EnrollPage() {
             />
 
             {mode === "single" && (
-              <div className="flex gap-2">
+              <div className="inline-flex w-fit rounded-lg border border-border/70 bg-muted/40 p-0.5">
                 {(
                   [
                     { value: "zip", label: "ZIP Archive" },
@@ -222,10 +223,10 @@ export function EnrollPage() {
                     type="button"
                     onClick={() => setUploadMethod(opt.value)}
                     className={cn(
-                      "rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                      "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
                       uploadMethod === opt.value
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border/50 text-muted-foreground hover:bg-accent/50",
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     {opt.label}
@@ -234,7 +235,11 @@ export function EnrollPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Class &amp; session
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
               {isAdmin && (
                 <SearchableSelect
                   label="School"
@@ -280,9 +285,14 @@ export function EnrollPage() {
                 placeholder="Mathematics"
                 {...register("subject")}
               />
+              </div>
             </div>
 
-            {isDirectPhotoMode ? (
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Student photos
+              </p>
+              {isDirectPhotoMode ? (
               <div className="flex flex-col gap-2">
                 <FileUpload
                   key="photos"
@@ -327,43 +337,45 @@ export function EnrollPage() {
                 hint="Max 100 MB. Each student's folder should contain 3-5 clear face photos."
               />
             )}
+            </div>
 
             <Button
               type="submit"
               loading={isPending}
+              className="self-start"
               icon={<UserPlus className="h-4 w-4" />}
             >
               {isPending ? "Enrolling…" : "Enroll Students"}
             </Button>
           </form>
-        </Card>
+        </Panel>
 
         {result && (
           <div className="space-y-4">
             {result.enrolled_students.length > 0 && (
-              <Card>
-                <div className="flex items-center gap-2 mb-4">
-                  <CheckCircle2 className="h-5 w-5 text-green-500 dark:text-green-400" />
-                  <h3 className="font-semibold text-foreground">
-                    {result.enrolled_students.length} Student(s) Enrolled
-                  </h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
+              <Panel
+                icon={<CheckCircle2 className="h-4 w-4" />}
+                title={`${result.enrolled_students.length} student(s) enrolled`}
+              >
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {result.enrolled_students.map((s) => (
                     <div
                       key={s.roll_no}
-                      className="rounded-lg border border-green-200 dark:border-green-900/50 bg-green-50 dark:bg-green-950/30 px-3 py-1.5"
+                      className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2"
                     >
-                      <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                        {s.name}
-                      </p>
-                      <p className="text-xs text-green-600 dark:text-green-400">
-                        #{s.roll_no} · {s.images_processed} photos
-                      </p>
+                      <Avatar name={s.name} seed={s.roll_no} size="sm" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {s.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          #{s.roll_no} · {s.images_processed} photos
+                        </p>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </Card>
+              </Panel>
             )}
 
             {result.skipped && result.skipped.length > 0 && (
@@ -378,7 +390,7 @@ export function EnrollPage() {
               </Alert>
             )}
 
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex flex-wrap gap-2">
               {result.school_name && (
                 <Badge variant="info">School: {result.school_name}</Badge>
               )}

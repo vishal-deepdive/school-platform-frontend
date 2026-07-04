@@ -1,19 +1,23 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, Search } from "lucide-react";
+import { Users, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
-import { Card } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Alert } from "@/shared/components/ui/Alert";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Avatar } from "@/shared/components/ui/Avatar";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
 
@@ -98,8 +102,21 @@ export function ManageStudentsPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <Alert variant="warning" title="Destructive actions" className="mb-4">
+      <FilterBar
+        title="Find a class"
+        icon={<Users className="h-4 w-4" />}
+        actions={
+          <Button
+            onClick={() => loadMutation.mutate()}
+            loading={loadMutation.isPending}
+            disabled={!canLoad}
+            icon={<Users className="h-4 w-4" />}
+          >
+            Load Students
+          </Button>
+        }
+      >
+        <Alert variant="warning" title="Destructive actions">
           Deletions are permanent and audit-logged. Double-check the roll number
           before removing a student.
         </Alert>
@@ -150,50 +167,53 @@ export function ManageStudentsPage() {
             onChange={(e) => setSession(e.target.value)}
           />
         </div>
-        <div className="mt-4">
-          <Button
-            onClick={() => loadMutation.mutate()}
-            loading={loadMutation.isPending}
-            disabled={!canLoad}
-            icon={<Users className="h-4 w-4" />}
-          >
-            Load Students
-          </Button>
-        </div>
-      </Card>
+      </FilterBar>
 
       {roster && (
-        <Card padding="none">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-6 py-4">
-            <Badge>{roster.length} enrolled</Badge>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <input
+        <Panel
+          flush
+          icon={<Users className="h-4 w-4" />}
+          title="Enrolled students"
+          description={
+            className && section ? `Class ${className}-${section}` : undefined
+          }
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="primary">{roster.length} enrolled</Badge>
+              <SearchInput
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={setSearch}
                 placeholder="Search roll or name…"
-                className="w-56 rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground"
+                className="w-full sm:w-56"
               />
             </div>
-          </div>
-          <div className="divide-y divide-border/40">
-            {visible.length === 0 ? (
-              <p className="px-6 py-10 text-center text-sm text-muted-foreground">
-                No students match your search.
-              </p>
-            ) : (
-              visible.map((s) => (
-                <div
+          }
+        >
+          {visible.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                icon={<Users className="h-9 w-9" />}
+                title="No students match your search"
+                description="Try a different roll number or name."
+              />
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/50">
+              {visible.map((s) => (
+                <li
                   key={s.roll_no}
-                  className="flex items-center justify-between px-6 py-3"
+                  className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
                 >
-                  <div>
-                    <span className="font-medium text-foreground">
-                      {s.name ?? s.roll_no}
-                    </span>
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      #{s.roll_no}
-                    </span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar name={s.name ?? s.roll_no} seed={s.roll_no} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {s.name ?? s.roll_no}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Roll #{s.roll_no}
+                      </p>
+                    </div>
                   </div>
                   <Button
                     size="sm"
@@ -204,14 +224,15 @@ export function ManageStudentsPage() {
                     }
                     onClick={() => confirmDelete(s)}
                     icon={<Trash2 className="h-4 w-4 text-destructive" />}
+                    className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     Delete
                   </Button>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
       )}
     </div>
   );

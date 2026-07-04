@@ -7,13 +7,15 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
-import { Card } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage, isoToIndianDate } from "@/shared/lib/utils";
 
 function todayIso(): string {
@@ -21,6 +23,17 @@ function todayIso(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
     d.getDate(),
   ).padStart(2, "0")}`;
+}
+
+// "DD-MM-YYYY" → short weekday + day chip for the holiday row marker.
+function dateChip(dmy: string): { day: string; month: string } {
+  const [d, m, y] = dmy.split("-").map(Number);
+  if (!d || !m || !y) return { day: "—", month: "" };
+  const date = new Date(y, m - 1, d);
+  return {
+    day: String(d).padStart(2, "0"),
+    month: date.toLocaleDateString("en-IN", { month: "short" }),
+  };
 }
 
 export function HolidaysPage() {
@@ -89,7 +102,20 @@ export function HolidaysPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <FilterBar
+        title="Add a holiday"
+        icon={<CalendarPlus className="h-4 w-4" />}
+        actions={
+          <Button
+            onClick={() => addMutation.mutate()}
+            loading={addMutation.isPending}
+            disabled={!ready}
+            icon={<CalendarPlus className="h-4 w-4" />}
+          >
+            Add Holiday
+          </Button>
+        }
+      >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {isAdmin && (
             <SearchableSelect
@@ -122,57 +148,63 @@ export function HolidaysPage() {
             onChange={(e) => setName(e.target.value)}
           />
         </div>
-        <div className="mt-4">
-          <Button
-            onClick={() => addMutation.mutate()}
-            loading={addMutation.isPending}
-            disabled={!ready}
-            icon={<CalendarPlus className="h-4 w-4" />}
-          >
-            Add Holiday
-          </Button>
-        </div>
-      </Card>
+      </FilterBar>
 
-      <Card padding="none">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h3 className="flex items-center gap-2 font-semibold text-foreground">
-            <CalendarDays className="h-4 w-4" /> Holidays — {session}
-          </h3>
-          <Badge>{data?.total ?? 0}</Badge>
-        </div>
-        <div className="divide-y divide-border/40">
-          {!data || data.holidays.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-muted-foreground">
-              No holidays configured for this session.
-            </p>
-          ) : (
-            data.holidays.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center justify-between px-6 py-3"
-              >
-                <div>
-                  <span className="font-medium text-foreground">{h.date}</span>
-                  {h.name && (
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {h.name}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => deleteMutation.mutate(h.date)}
-                  icon={<Trash2 className="h-4 w-4 text-destructive" />}
+      <Panel
+        flush
+        icon={<CalendarDays className="h-4 w-4" />}
+        title={`Holidays · ${session}`}
+        description="Days excluded from attendance for this session"
+        actions={<Badge variant="primary">{data?.total ?? 0} total</Badge>}
+      >
+        {!data || data.holidays.length === 0 ? (
+          <div className="p-4">
+            <EmptyState
+              icon={<CalendarDays className="h-9 w-9" />}
+              title="No holidays configured"
+              description="Add school holidays so they're skipped when marking attendance."
+            />
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {data.holidays.map((h) => {
+              const chip = dateChip(h.date);
+              return (
+                <li
+                  key={h.id}
+                  className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
                 >
-                  Remove
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg border border-primary/15 bg-primary/5 leading-none">
+                      <span className="text-sm font-bold text-primary tabular-nums">
+                        {chip.day}
+                      </span>
+                      <span className="text-[10px] font-medium uppercase text-primary/70">
+                        {chip.month}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {h.name || "Holiday"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{h.date}</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => deleteMutation.mutate(h.date)}
+                    icon={<Trash2 className="h-4 w-4 text-destructive" />}
+                    className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    Remove
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
     </div>
   );
 }
