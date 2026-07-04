@@ -12,6 +12,7 @@ interface TableProps<T extends object> {
   data: T[];
   emptyMessage?: string;
   className?: string;
+  rowKey?: (row: T, index: number) => string | number;
 }
 
 export function Table<T extends object>({
@@ -19,6 +20,7 @@ export function Table<T extends object>({
   data,
   emptyMessage = "No data found.",
   className,
+  rowKey,
 }: TableProps<T>) {
   return (
     <div
@@ -56,7 +58,7 @@ export function Table<T extends object>({
             </tr>
           ) : (
             data.map((row, i) => (
-              <tr key={i} className="hover:bg-accent/50 transition-colors">
+              <tr key={rowKey ? rowKey(row, i) : i} className="hover:bg-accent/50 transition-colors">
                 {columns.map((col) => (
                   <td
                     key={col.key}
