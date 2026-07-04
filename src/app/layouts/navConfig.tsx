@@ -21,7 +21,6 @@ import {
   Sparkles,
   Trash2,
   FileSpreadsheet,
-  ScanFace,
   History,
   CalendarClock,
   CalendarDays,
@@ -29,6 +28,7 @@ import {
   FileUp,
   User,
   AudioLines,
+  SmilePlus,
 } from "lucide-react";
 
 export interface NavItem {
@@ -62,7 +62,7 @@ export const navItems: NavItem[] = [
       {
         label: "Face Enrollment",
         href: "/attendance/enroll",
-        icon: <ScanFace className="h-4 w-4" />,
+        icon: <SmilePlus className="h-4 w-4" />,
       },
       {
         label: "Roll Call",

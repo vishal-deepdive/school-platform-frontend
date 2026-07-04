@@ -5,47 +5,45 @@ interface SectionHeadingProps {
   eyebrow: string;
   title: string;
   subtitle?: string;
-  dark?: boolean;
+  align?: "left" | "center";
 }
 
 export function SectionHeading({
   eyebrow,
   title,
   subtitle,
-  dark = false,
+  align = "left",
 }: SectionHeadingProps) {
+  const centered = align === "center";
+
   return (
     <motion.div
       variants={staggerContainer}
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: "-80px" }}
-      className="mx-auto mb-16 max-w-2xl text-center"
+      className={`mb-14 max-w-2xl ${centered ? "mx-auto text-center" : ""}`}
     >
       <motion.span
         variants={fadeUp}
-        className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest ${
-          dark
-            ? "bg-white/10 text-sky-300 ring-1 ring-white/15"
-            : "bg-primary/10 text-primary ring-1 ring-primary/15"
+        className={`flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary ${
+          centered ? "justify-center" : ""
         }`}
       >
+        <span className="h-px w-7 bg-primary/60" aria-hidden="true" />
         {eyebrow}
+        {centered && <span className="h-px w-7 bg-primary/60" aria-hidden="true" />}
       </motion.span>
       <motion.h2
         variants={fadeUp}
-        className={`mt-5 text-3xl font-bold tracking-tight md:text-[2.6rem] md:leading-[1.15] ${
-          dark ? "text-white" : "text-foreground"
-        }`}
+        className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-4xl md:leading-[1.15]"
       >
         {title}
       </motion.h2>
       {subtitle && (
         <motion.p
           variants={fadeUp}
-          className={`mt-4 text-lg leading-relaxed ${
-            dark ? "text-slate-300" : "text-muted-foreground"
-          }`}
+          className="mt-4 text-base leading-relaxed text-muted-foreground md:text-lg"
         >
           {subtitle}
         </motion.p>

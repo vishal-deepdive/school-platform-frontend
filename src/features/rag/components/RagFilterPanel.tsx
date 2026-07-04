@@ -13,7 +13,15 @@ interface RagFilterPanelProps {
   onChange: (next: RagFilters) => void;
   /** Render the chapter dropdown (default true). */
   showChapter?: boolean;
+  /**
+   * Layout of the select container. Defaults to a responsive grid for use
+   * inside a FilterBar; pass `"space-y-4"` for narrow vertical contexts such
+   * as the Q&A sidebar/modal.
+   */
+  className?: string;
 }
+
+const DEFAULT_LAYOUT = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3";
 
 const toOptions = (values: string[], allLabel: string): SelectOption[] => [
   { value: "", label: allLabel },
@@ -36,6 +44,7 @@ export function RagFilterPanel({
   filters,
   onChange,
   showChapter = true,
+  className = DEFAULT_LAYOUT,
 }: RagFilterPanelProps) {
   const { data: classData, isLoading: classesLoading } = useRagClassLevels();
   const { data: meta } = useRagMetadata();
@@ -63,7 +72,7 @@ export function RagFilterPanel({
 
   if (classesLoading) {
     return (
-      <div className="space-y-4">
+      <div className={className}>
         {[1, 2, 3].map((i) => (
           <div key={i} className="h-[62px] animate-pulse rounded-lg bg-muted/60" />
         ))}
@@ -72,7 +81,7 @@ export function RagFilterPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className={className}>
       <Select
         label="Class"
         options={toOptions(classValues, "All classes")}
