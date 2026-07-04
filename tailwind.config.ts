@@ -62,6 +62,7 @@ export default {
         "fade-in": "fadeIn 0.2s ease-in-out",
         "slide-in": "slideIn 0.3s ease-out",
         "slide-up": "slideUp 0.3s ease-out",
+        "nav-item-in": "navItemIn 0.3s ease-out both",
         shimmer: "shimmer 1.8s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
         float: "float 6s ease-in-out infinite",
@@ -74,6 +75,10 @@ export default {
         slideUp: {
           "0%": { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        navItemIn: {
+          "0%": { opacity: "0", transform: "translateX(-8px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
         },
         shimmer: {
           "0%": { transform: "translateX(-100%)" },
