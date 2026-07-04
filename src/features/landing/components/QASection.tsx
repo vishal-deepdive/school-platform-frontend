@@ -37,7 +37,7 @@ export function QASection() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section id="faq" className="w-full scroll-mt-24 bg-background py-24">
+    <section id="faq" className="w-full scroll-mt-24 bg-background py-16 sm:py-20 lg:py-24">
       <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-x-16 gap-y-4 px-4 lg:grid-cols-[2fr_3fr] xl:px-0">
         <div>
           <SectionHeading

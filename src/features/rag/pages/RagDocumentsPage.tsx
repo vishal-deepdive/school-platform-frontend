@@ -389,7 +389,7 @@ export function RagDocumentsPage() {
             accept=".pdf,.docx,.pptx,.md,.txt"
             onChange={(files) => setFile(files[0] || null)}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
               label="Class"
               options={classOptions}
@@ -413,7 +413,7 @@ export function RagDocumentsPage() {
               onChange={(e) => setFormData({ ...formData, subject_other: e.target.value })}
             />
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Input label="Chapter Number" required value={formData.chapter_number} onChange={(e) => setFormData({ ...formData, chapter_number: e.target.value })} />
             <Input label="Chapter Name" required value={formData.chapter_name} onChange={(e) => setFormData({ ...formData, chapter_name: e.target.value })} />
           </div>
