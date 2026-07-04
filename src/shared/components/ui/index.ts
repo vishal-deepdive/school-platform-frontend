@@ -7,7 +7,16 @@ export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "./Popove
 export { Card, CardHeader, StatCard } from "./Card";
 export { Badge } from "./Badge";
 export { Spinner, PageSpinner } from "./Spinner";
-export { Skeleton } from "./Skeleton";
+export {
+  Skeleton,
+  SkeletonText,
+  StatCardSkeleton,
+  CardSkeleton,
+  TableSkeleton,
+  ListSkeleton,
+  ChartSkeleton,
+  PageSkeleton,
+} from "./Skeleton";
 export { Alert } from "./Alert";
 export { Modal } from "./Modal";
 export { Table } from "./Table";

@@ -4,7 +4,7 @@ import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Badge } from "@/shared/components/ui/Badge";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { formatDate, getErrorMessage } from "@/shared/lib/utils";
 import {
@@ -54,7 +54,7 @@ export function SearchRecordingsPage() {
           </h2>
 
           {isLoading ? (
-            <PageSpinner />
+            <ListSkeleton items={3} />
           ) : isError ? (
             <Alert variant="error">{getErrorMessage(error) || "An error occurred while searching. Please try again."}</Alert>
           ) : data?.results?.length === 0 ? (

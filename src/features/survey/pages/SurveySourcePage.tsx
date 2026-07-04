@@ -30,7 +30,7 @@ import { Select } from "@/shared/components/ui/Select";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { authApi } from "@/features/auth/api/auth";
@@ -709,7 +709,7 @@ export function SurveySourcePage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  if (isLoading && adminReady) return <PageSpinner />;
+  if (isLoading && adminReady) return <PageSkeleton showStats={false} content="list" />;
 
   return (
     <div className="space-y-6">

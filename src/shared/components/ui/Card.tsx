@@ -16,9 +16,9 @@ const paddingClasses = {
 };
 
 const variantClasses = {
-  default: "bg-card border-border/40 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_20px_-5px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_24px_-8px_rgba(0,0,0,0.5)]",
-  glass: "bg-card/70 backdrop-blur-md border-border/30 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] dark:bg-card/45",
-  gradient: "bg-gradient-to-br from-card via-card to-muted/10 border-border/40 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_20px_-5px_rgba(0,0,0,0.04)]",
+  default: "bg-card border-border/60",
+  glass: "bg-card/70 backdrop-blur-md border-border/40 dark:bg-card/45",
+  gradient: "bg-gradient-to-br from-card via-card to-muted/10 border-border/60",
 };
 
 export function Card({
@@ -31,10 +31,12 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border transition-all duration-300 ease-out",
+        // Flat at rest — elevation only appears on hover.
+        "rounded-xl border shadow-none transition-all duration-300 ease-out",
+        // "hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_10px_24px_-6px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_10px_28px_-8px_rgba(0,0,0,0.55)]",
         variantClasses[variant],
         hoverable &&
-          "hover:-translate-y-1 hover:shadow-[0_12px_28px_-4px_rgba(0,0,0,0.08),0_4px_12px_-2px_rgba(0,0,0,0.03)] hover:border-primary/20 dark:hover:border-primary/30 cursor-pointer",
+          "hover:-translate-y-0.5 hover:border-primary/25 dark:hover:border-primary/35 cursor-pointer",
         paddingClasses[padding],
         className,
       )}
@@ -62,13 +64,13 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex items-start justify-between gap-4 mb-6",
-        bordered && "border-b border-border/40 pb-4 mb-5",
+        "flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-5 sm:mb-6",
+        bordered && "border-b border-border/40 pb-4 sm:mb-5",
         className,
       )}
     >
-      <div>
-        <h2 className="text-lg font-semibold text-foreground tracking-tight">
+      <div className="min-w-0">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
           {title}
         </h2>
         {description && (
@@ -149,7 +151,7 @@ export function StatCard({
       </div>
 
       <div className="mt-4">
-        <p className="text-3xl font-extrabold text-foreground tracking-tight">
+        <p className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight tabular-nums">
           {value}
         </p>
         {description && (

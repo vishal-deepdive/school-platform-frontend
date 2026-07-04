@@ -18,7 +18,7 @@ export function AppLayout() {
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 flex md:hidden">
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
             onClick={() => setSidebarOpen(false)}
           />
           <div className="relative z-50 flex h-full">
@@ -29,7 +29,7 @@ export function AppLayout() {
 
       <div className={cn("flex flex-1 flex-col overflow-hidden")}>
         <Header onMenuToggle={() => setSidebarOpen((p) => !p)} />
-        <main className="flex-1 overflow-y-auto px-4 md:pt-4 md:py-2 md:px-5">
+        <main className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:pt-5 md:pb-3">
           <Outlet />
         </main>
       </div>
