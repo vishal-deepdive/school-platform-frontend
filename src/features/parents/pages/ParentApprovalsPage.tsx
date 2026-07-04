@@ -61,13 +61,14 @@ export function ParentApprovalsPage() {
 
       {!isLoading && items.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-muted/50">
               <tr>
                 {["Parent", "Child", "Relation", "Requested", ""].map((h, i) => (
                   <th
                     key={i}
-                    className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    className="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                   >
                     {h || <span className="sr-only">Actions</span>}
                   </th>
@@ -99,7 +100,7 @@ export function ParentApprovalsPage() {
                     <td className="px-6 py-4 text-sm capitalize text-muted-foreground">
                       {p.relation}
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       {p.requested_at ? formatDate(p.requested_at) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
@@ -125,6 +126,7 @@ export function ParentApprovalsPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

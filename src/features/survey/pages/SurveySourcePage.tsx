@@ -78,8 +78,8 @@ function ColumnMappingTable({
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             Auto-matched ({Object.keys(preview.auto_mapped).length} columns)
           </h4>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="rounded-lg border border-border overflow-x-auto">
+            <table className="w-full min-w-[20rem] text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b border-border">
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">
@@ -119,8 +119,8 @@ function ColumnMappingTable({
             canonical field, or leave them unmapped — they'll be saved but
             excluded from AI analytics.
           </p>
-          <div className="rounded-lg border border-border overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="rounded-lg border border-border overflow-x-auto">
+            <table className="w-full min-w-[20rem] text-sm">
               <thead>
                 <tr className="bg-muted/50 border-b border-border">
                   <th className="text-left px-4 py-2 font-medium text-muted-foreground">

@@ -44,7 +44,7 @@ export function HowItWorksSection() {
   return (
     <section
       id="how-it-works"
-      className="w-full scroll-mt-24 border-t border-border bg-secondary/30 py-24"
+      className="w-full scroll-mt-24 border-t border-border bg-secondary/30 py-16 sm:py-20 lg:py-24"
     >
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <SectionHeading
