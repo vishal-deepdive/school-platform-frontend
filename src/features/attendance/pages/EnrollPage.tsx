@@ -16,7 +16,7 @@ import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { cn } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Card } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
@@ -195,17 +195,6 @@ export function EnrollPage() {
     <div className="space-y-6 w-full">
       <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
         <Card>
-          <CardHeader
-            title={
-              mode === "new"
-                ? "New Batch Enrollment"
-                : mode === "single"
-                  ? "Enroll Single Student"
-                  : "Batch Enrollment with Replacement"
-            }
-            description="ZIP structure: each student in a subfolder named roll_no_student_name (e.g. 101_Priya_Sharma)"
-          />
-
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
             <Select
               label="Enrollment Mode"

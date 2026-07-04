@@ -14,7 +14,8 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { Card, StatCard } from "@/shared/components/ui/Card";
+import { StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -47,7 +48,7 @@ export function AttendanceDashboardPage() {
 
   const ready = !isAdmin || !!schoolName;
 
-  const { data, isFetching, isError } = useQuery({
+  const { data, isFetching, isLoading, isError } = useQuery({
     queryKey: ["attendance", "dashboard", schoolName, session, date],
     queryFn: () =>
       attendanceApi.getDashboard({
@@ -69,10 +70,6 @@ export function AttendanceDashboardPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader
-          title="Attendance Dashboard"
-          description="Today's attendance at a glance across the school."
-        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {isAdmin && (
             <SearchableSelect
@@ -108,6 +105,12 @@ export function AttendanceDashboardPage() {
             Select a school to view its dashboard.
           </p>
         </Card>
+      ) : isLoading ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <StatCardSkeleton key={i} />
+          ))}
+        </div>
       ) : isError ? (
         <Card>
           <p className="py-8 text-center text-sm text-muted-foreground">
@@ -121,25 +124,25 @@ export function AttendanceDashboardPage() {
               label="Present"
               value={data?.present ?? 0}
               icon={<UserCheck className="h-5 w-5" />}
-              color="green"
+              color="success"
             />
             <StatCard
               label="Absent"
               value={data?.absent ?? 0}
               icon={<UserX className="h-5 w-5" />}
-              color="red"
+              color="danger"
             />
             <StatCard
               label="Late"
               value={data?.late ?? 0}
               icon={<Clock className="h-5 w-5" />}
-              color="amber"
+              color="warning"
             />
             <StatCard
               label="Excused"
               value={data?.excused ?? 0}
               icon={<FileCheck className="h-5 w-5" />}
-              color="blue"
+              color="info"
             />
             <StatCard
               label="Half Day"

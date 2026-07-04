@@ -30,13 +30,13 @@ export function AttendanceStatsPage() {
           label="Total Students"
           value={data?.total_students ?? 0}
           icon={<Users className="h-5 w-5" />}
-          color="indigo"
+          color="primary"
         />
         <StatCard
           label="Schools"
           value={data?.by_school?.length ?? 0}
           icon={<Building2 className="h-5 w-5" />}
-          color="blue"
+          color="info"
         />
         <StatCard
           label="Avg per School"
@@ -46,13 +46,12 @@ export function AttendanceStatsPage() {
               : 0
           }
           icon={<Users className="h-5 w-5" />}
-          color="green"
+          color="success"
         />
       </div>
 
       <Card padding="none">
         <CardHeader
-          title="Breakdown by School"
           className="px-6 pt-6"
           action={
             <Button

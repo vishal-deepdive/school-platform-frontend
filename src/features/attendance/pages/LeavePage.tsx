@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Card } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
@@ -86,10 +86,6 @@ export function LeavePage() {
     <div className="space-y-6">
       {!isStaff && (
         <Card>
-          <CardHeader
-            title="Apply for Leave"
-            description="Request leave over a date range. Approved days are marked Excused automatically."
-          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Select
               label="Session"
