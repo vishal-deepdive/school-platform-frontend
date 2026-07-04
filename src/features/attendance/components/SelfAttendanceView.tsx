@@ -4,12 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Search, AlertTriangle, CalendarRange } from "lucide-react";
 import { toIndianDate, getErrorMessage } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
 import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
 import { statusTextClass } from "@/features/attendance/lib/status";
 import type { AttendanceRangeStudent } from "@/features/attendance/types";
 
@@ -55,67 +57,68 @@ export function SelfAttendanceView() {
   const me: AttendanceRangeStudent | undefined = data?.data?.[0];
   const isBelow75 = me?.below_75_percent === "Yes";
 
-  const title = isParent ? "My Child's Attendance" : "My Attendance";
-
   return (
-    <Card>
-      <CardHeader title={title} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 mb-4">
-        <Input
-          label="Start Date (DD-MM-YYYY)"
-          value={filters.start_date}
-          onChange={(e) =>
-            setFilters((p) => ({ ...p, start_date: e.target.value }))
-          }
-        />
-        <Input
-          label="End Date (DD-MM-YYYY)"
-          value={filters.end_date}
-          onChange={(e) =>
-            setFilters((p) => ({ ...p, end_date: e.target.value }))
-          }
-        />
-      </div>
-      <Button
-        onClick={() => setQuery({ ...filters })}
-        icon={<Search className="h-4 w-4" />}
+    <div className="space-y-6">
+      <FilterBar
+        title="Date range"
+        icon={<CalendarRange className="h-4 w-4" />}
+        actions={
+          <Button
+            onClick={() => setQuery({ ...filters })}
+            icon={<Search className="h-4 w-4" />}
+          >
+            Update
+          </Button>
+        }
       >
-        Update
-      </Button>
-
-      {isLoading && <TableSkeleton rows={6} columns={3} />}
-      {isError && (
-        <Alert variant="error">{getErrorMessage(queryError) || "Failed to load attendance records."}</Alert>
-      )}
-
-      {data && !me && (
-        <div className="mt-6">
-          <EmptyState
-            icon={<CalendarRange className="h-10 w-10" />}
-            title="No attendance records"
-            description={
-              isParent
-                ? "There are no attendance records for your child in this date range yet."
-                : "You have no attendance records in this date range yet."
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Input
+            label="Start Date (DD-MM-YYYY)"
+            value={filters.start_date}
+            onChange={(e) =>
+              setFilters((p) => ({ ...p, start_date: e.target.value }))
+            }
+          />
+          <Input
+            label="End Date (DD-MM-YYYY)"
+            value={filters.end_date}
+            onChange={(e) =>
+              setFilters((p) => ({ ...p, end_date: e.target.value }))
             }
           />
         </div>
+      </FilterBar>
+
+      {isLoading && <TableSkeleton rows={6} columns={3} />}
+      {isError && (
+        <Alert variant="error">
+          {getErrorMessage(queryError) || "Failed to load attendance records."}
+        </Alert>
+      )}
+
+      {data && !me && (
+        <EmptyState
+          icon={<CalendarRange className="h-10 w-10" />}
+          title="No attendance records"
+          description={
+            isParent
+              ? "There are no attendance records for your child in this date range yet."
+              : "You have no attendance records in this date range yet."
+          }
+        />
       )}
 
       {data && me && (
-        <div className="mt-6 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            {me.name} · #{me.roll_number}
-            {me.class ? ` · Class ${me.class}` : ""}
-            {me.section ? `-${me.section}` : ""}
-          </p>
-
+        <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard
               label="Attendance"
               value={`${me.attendance_percentage.toFixed(0)}%`}
               icon={<CalendarRange className="h-5 w-5" />}
               color={isBelow75 ? "danger" : "success"}
+              description={`${me.name} · #${me.roll_number}${
+                me.class ? ` · Class ${me.class}` : ""
+              }${me.section ? `-${me.section}` : ""}`}
             />
             <StatCard
               label="Days Present"
@@ -130,10 +133,7 @@ export function SelfAttendanceView() {
           </div>
 
           {isBelow75 && (
-            <Alert
-              variant="warning"
-              title="Attendance is below 75%"
-            >
+            <Alert variant="warning" title="Attendance is below 75%">
               <p className="text-sm">
                 {isParent
                   ? "Your child's attendance is below the 75% requirement for this period."
@@ -142,40 +142,37 @@ export function SelfAttendanceView() {
             </Alert>
           )}
 
-          <div>
-            <p className="text-sm font-medium text-foreground mb-2">
-              Recent Days
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {data.dates && data.dates.length > 0 ? (
-                data.dates.map((d: string, i: number) => {
+          <Panel icon={<CalendarRange className="h-4 w-4" />} title="Recent days">
+            {data.dates && data.dates.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {data.dates.map((d: string, i: number) => {
                   const status = me.cells[i] ?? "-";
                   return (
                     <div
                       key={d}
-                      className="flex flex-col items-center rounded-lg border border-border bg-muted/40 px-3 py-2"
+                      className="flex min-w-[4.5rem] flex-col items-center gap-1 rounded-lg border border-border/60 bg-muted/30 px-3 py-2"
                     >
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      <span className="whitespace-nowrap text-xs text-muted-foreground">
                         {d}
                       </span>
                       <span
-                        className={`text-sm font-bold ${statusTextClass(status)}`}
+                        className={`text-base font-bold ${statusTextClass(status)}`}
                       >
                         {status}
                       </span>
                     </div>
                   );
-                })
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <AlertTriangle className="h-4 w-4" />
-                  No per-day records in this range.
-                </div>
-              )}
-            </div>
-          </div>
+                })}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <AlertTriangle className="h-4 w-4" />
+                No per-day records in this range.
+              </div>
+            )}
+          </Panel>
         </div>
       )}
-    </Card>
+    </div>
   );
 }

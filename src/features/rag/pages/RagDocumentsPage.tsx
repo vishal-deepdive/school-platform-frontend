@@ -3,7 +3,6 @@ import { Plus, Trash2, RefreshCw, FileText, Lock } from "lucide-react";
 import toast from "react-hot-toast";
 import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Input } from "@/shared/components/ui/Input";
@@ -12,6 +11,9 @@ import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Alert } from "@/shared/components/ui/Alert";
+import { TableBodySkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
 import { SUBJECT_OPTIONS, RAG_OTHER_SUBJECT } from "@/features/rag/constants";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -238,43 +240,47 @@ export function RagDocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="none">
-        <CardHeader
-          className="px-6 pt-6"
-          action={
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="w-40">
-                <Select
-                  options={STATUS_FILTER_OPTIONS}
-                  value={statusFilter}
-                  onChange={(e) => handleStatusFilter(e.target.value)}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                loading={isFetching}
-                icon={<RefreshCw className="h-4 w-4" />}
-              >
-                Refresh
-              </Button>
-              {canManage && (
-                <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
-                  Upload Document
-                </Button>
-              )}
+      <Panel
+        flush
+        actions={
+          <>
+            {total > 0 && (
+              <Badge variant="primary">
+                {total} indexed
+              </Badge>
+            )}
+            <div className="w-40">
+              <Select
+                options={STATUS_FILTER_OPTIONS}
+                value={statusFilter}
+                onChange={(e) => handleStatusFilter(e.target.value)}
+              />
             </div>
-          }
-        />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              loading={isFetching}
+              icon={<RefreshCw className="h-4 w-4" />}
+            >
+              Refresh
+            </Button>
+            {canManage && (
+              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+                Upload Document
+              </Button>
+            )}
+          </>
+        }
+      >
         {isError ? (
-          <div className="px-6 pb-8 pt-2">
-            <p className="text-center text-sm text-destructive">
+          <div className="p-4">
+            <Alert variant="error">
               Failed to load documents. {getErrorMessage(error)}
-            </p>
+            </Alert>
           </div>
         ) : !isLoading && items.length === 0 ? (
-          <div className="px-6 pb-8 pt-2">
+          <div className="p-4">
             <EmptyState
               icon={<FileText className="h-12 w-12" />}
               title={statusFilter ? "No matching documents" : "No documents yet"}
@@ -296,26 +302,28 @@ export function RagDocumentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
+            <table className="min-w-full divide-y divide-border/50">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Class / Chapter</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">File</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Class / Chapter</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                   {canManage && (
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                   )}
                 </tr>
               </thead>
-              <tbody className="bg-background divide-y divide-border">
+              <tbody className="bg-card divide-y divide-border/30">
                 {isLoading ? (
-                  <tr><td colSpan={colSpan} className="px-6 py-4 text-center text-sm text-muted-foreground">Loading documents...</td></tr>
+                  <TableBodySkeleton rows={6} columns={colSpan} />
                 ) : (
                   items.map((doc) => (
-                    <tr key={doc.id}>
+                    <tr key={doc.id} className="transition-colors hover:bg-muted/40">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-muted-foreground mr-2" />
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+                            <FileText className="h-4 w-4" />
+                          </span>
                           <div>
                             <div className="text-sm font-medium text-foreground">{doc.original_filename}</div>
                             <div className="text-xs text-muted-foreground">{(doc.file_size / 1024).toFixed(1)} KB • {doc.parser}</div>
@@ -363,7 +371,7 @@ export function RagDocumentsPage() {
             </table>
           </div>
         )}
-      </Card>
+      </Panel>
 
       <Pagination
         currentPage={currentPage}

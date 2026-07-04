@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from "react";
-import { Search, FileText, Eye } from "lucide-react";
-import { Card } from "@/shared/components/ui/Card";
+import { Search, FileText, Eye, AlertTriangle, SearchX } from "lucide-react";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Badge } from "@/shared/components/ui/Badge";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
-import { Alert } from "@/shared/components/ui/Alert";
 import { formatDate, getErrorMessage } from "@/shared/lib/utils";
 import {
   useSearchRecordings,
@@ -28,100 +29,118 @@ export function SearchRecordingsPage() {
     }
   };
 
+  const results = data?.results ?? [];
+
   return (
     <div className="space-y-6">
-      <Card>
-        <form onSubmit={handleSearch} className="flex gap-3 p-6">
-          <div className="flex-1">
-            <Input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="E.g., What did we learn about mitochondria?"
-              leftIcon={<Search className="h-4 w-4 text-muted-foreground" />}
-            />
-          </div>
-          <Button type="submit" disabled={query.length < 2 || isFetching}>
-            {isFetching ? "Searching..." : "Search"}
-          </Button>
-        </form>
-      </Card>
+      <form onSubmit={handleSearch}>
+        <FilterBar
+          title="Search notes"
+          icon={<Search className="h-4 w-4" />}
+          actions={
+            <Button
+              type="submit"
+              disabled={query.length < 2 || isFetching}
+              loading={isFetching}
+              icon={<Search className="h-4 w-4" />}
+            >
+              {isFetching ? "Searching…" : "Search"}
+            </Button>
+          }
+        >
+          <Input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="E.g., What did we learn about mitochondria?"
+            leftIcon={<Search className="h-4 w-4 text-muted-foreground" />}
+          />
+        </FilterBar>
+      </form>
 
-      {submittedQuery && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-medium text-foreground">
-            Results for &quot;{submittedQuery}&quot;
-          </h2>
-
-          {isLoading ? (
-            <ListSkeleton items={3} />
-          ) : isError ? (
-            <Alert variant="error">{getErrorMessage(error) || "An error occurred while searching. Please try again."}</Alert>
-          ) : data?.results?.length === 0 ? (
-            <Alert variant="info">
-              No matching notes found for your query.
-            </Alert>
-          ) : (
-            <div className="grid gap-4">
-              {data?.results.map((result) => (
-                <Card
+      {submittedQuery &&
+        (isLoading ? (
+          <ListSkeleton items={3} />
+        ) : isError ? (
+          <EmptyState
+            icon={<AlertTriangle className="h-10 w-10" />}
+            title="Search failed"
+            description={
+              getErrorMessage(error) ||
+              "An error occurred while searching. Please try again."
+            }
+          />
+        ) : results.length === 0 ? (
+          <EmptyState
+            icon={<SearchX className="h-10 w-10" />}
+            title="No matching notes"
+            description={`No notes matched “${submittedQuery}”. Try a different phrase.`}
+          />
+        ) : (
+          <Panel
+            flush
+            icon={<FileText className="h-4 w-4" />}
+            title={`Results for “${submittedQuery}”`}
+            actions={<Badge variant="primary">{results.length} found</Badge>}
+          >
+            <ul className="divide-y divide-border/50">
+              {results.map((result) => (
+                <li
                   key={result.id}
-                  className="hover:border-primary/30 transition-colors"
+                  className="group flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
                 >
-                  <div className="flex items-start justify-between p-5">
-                    <div className="flex gap-4">
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 mt-1">
-                        <FileText className="h-5 w-5 text-primary" />
+                  <div className="flex min-w-0 gap-3">
+                    <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+                      <FileText className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-sm font-medium text-foreground">
+                          Class {result.class}{" "}
+                          {result.section ? `- ${result.section}` : ""}
+                        </h3>
+                        {result.similarity !== undefined && (
+                          <Badge
+                            variant={
+                              result.similarity > 0.8 ? "success" : "default"
+                            }
+                          >
+                            {Math.max(0, result.similarity * 100).toFixed(0)}% Match
+                          </Badge>
+                        )}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-foreground">
-                            Class {result.class}{" "}
-                            {result.section ? `- ${result.section}` : ""}
-                          </h3>
-                          {result.similarity !== undefined && (
-                            <Badge
-                              variant={
-                                result.similarity > 0.8 ? "success" : "default"
-                              }
-                            >
-                              {Math.max(0, result.similarity * 100).toFixed(0)}% Match
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                          <Badge variant="default">{result.school_name}</Badge>
-                          {result.subject && (
-                            <Badge variant="info">{result.subject}</Badge>
-                          )}
-                          {result.recording_subject && (
-                            <Badge variant="info">
-                              {result.recording_subject}
-                            </Badge>
-                          )}
-                          {result.date && (
-                            <span className="text-xs text-muted-foreground flex items-center">
-                              {formatDate(result.date)}
-                            </span>
-                          )}
-                        </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <Badge variant="default">{result.school_name}</Badge>
+                        {result.subject && (
+                          <Badge variant="info">{result.subject}</Badge>
+                        )}
+                        {result.recording_subject && (
+                          <Badge variant="purple">
+                            {result.recording_subject}
+                          </Badge>
+                        )}
+                        {result.date && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatDate(result.date)}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={<Eye className="h-4 w-4" />}
-                      onClick={() => preview.open(result.id)}
-                    >
-                      Read Notes
-                    </Button>
                   </div>
-                </Card>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={<Eye className="h-4 w-4" />}
+                    onClick={() => preview.open(result.id)}
+                    className="flex-shrink-0"
+                  >
+                    Read Notes
+                  </Button>
+                </li>
               ))}
-            </div>
-          )}
-        </div>
-      )}
+            </ul>
+          </Panel>
+        ))}
 
       <MarkdownPreviewModal
         open={!!preview.previewId}

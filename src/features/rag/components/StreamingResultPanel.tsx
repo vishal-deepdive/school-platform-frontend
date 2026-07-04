@@ -1,7 +1,8 @@
 import { RotateCcw, Download } from "lucide-react";
-import { Card } from "@/shared/components/ui/Card";
+import { Panel } from "@/shared/components/ui/Panel";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
+import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { downloadFile } from "@/shared/lib/utils";
 
@@ -32,7 +33,7 @@ export function StreamingResultPanel({
 }: StreamingResultPanelProps) {
   if (error && !isPending) {
     return (
-      <Card>
+      <Panel>
         <Alert variant="error" title="Generation failed">
           {error}
         </Alert>
@@ -47,43 +48,61 @@ export function StreamingResultPanel({
             Retry
           </Button>
         </div>
-      </Card>
+      </Panel>
     );
   }
 
-  if (result !== null) {
+  // Show the streamed content as soon as the first token lands (result is a
+  // non-empty string), whether still streaming or complete.
+  if (result) {
     return (
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold text-foreground">{title}</h3>
+      <Panel
+        icon={<Icon className="h-4 w-4" />}
+        title={title}
+        actions={
+          <>
             {actions}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            icon={<Download className="h-4 w-4" />}
-            onClick={() => downloadFile(result, filename)}
-          >
-            Download
-          </Button>
-        </div>
-        <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/40 p-4">
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Download className="h-4 w-4" />}
+              onClick={() => downloadFile(result, filename)}
+            >
+              Download
+            </Button>
+          </>
+        }
+      >
+        <div className="scrollbar-thin max-h-[65vh] overflow-y-auto rounded-lg bg-muted/40 p-4">
           <MarkdownRenderer content={result} streaming={isPending} />
         </div>
-      </Card>
+      </Panel>
     );
   }
 
-  return (
-    <Card className="h-full flex items-center justify-center">
-      <div className="flex flex-col items-center gap-4 py-12 text-muted-foreground">
-        <div className="animate-spin">
-          <Icon className="h-8 w-8" />
+  // Request sent but no token has streamed back yet → skeleton placeholder so
+  // the user sees a clear "generating" state until the first token arrives.
+  if (isPending) {
+    return (
+      <Panel icon={<Icon className="h-4 w-4" />} title={title}>
+        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="flex gap-1">
+            {[0, 1, 2].map((i) => (
+              <span
+                key={i}
+                className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </span>
+          {pendingMessage}
         </div>
-        <p>{pendingMessage}</p>
-      </div>
-    </Card>
-  );
+        <div className="rounded-lg bg-muted/40 p-4">
+          <SkeletonText lines={6} />
+        </div>
+      </Panel>
+    );
+  }
+
+  return null;
 }

@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Activity, RefreshCw } from "lucide-react";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useRecordingAuditLogs } from "@/features/recording/hooks/useRecordings";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Pagination } from "@/shared/components/ui/Pagination";
+import { Panel } from "@/shared/components/ui/Panel";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 
@@ -33,10 +34,11 @@ export function RecordingAuditPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="none">
-        <CardHeader
-          className="px-6 pt-6"
-          action={
+      <Panel
+        flush
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {total > 0 && <Badge variant="primary">{total} events</Badge>}
             <Button
               variant="outline"
               size="sm"
@@ -46,51 +48,55 @@ export function RecordingAuditPage() {
             >
               Refresh
             </Button>
-          }
-        />
-        <div className="divide-y divide-border">
-          {pagedLogs.length === 0 && (
-            <p className="p-6 text-sm text-muted-foreground text-center">
-              No audit logs yet.
-            </p>
-          )}
-          {pagedLogs.map((log) => (
-            <div
-              key={log.id}
-              className="flex items-start gap-4 px-6 py-4 hover:bg-muted/50"
-            >
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary/10">
-                <Activity className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-medium text-foreground">
-                    {log.activity}
+          </div>
+        }
+      >
+        {pagedLogs.length === 0 ? (
+          <div className="p-4">
+            <EmptyState
+              icon={<Activity className="h-10 w-10" />}
+              title="No audit logs yet"
+              description="Processing and management activity will appear here."
+            />
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {pagedLogs.map((log) => (
+              <li
+                key={log.id}
+                className="flex items-start gap-4 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
+              >
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+                  <Activity className="h-4 w-4" />
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-foreground">
+                      {log.activity}
+                    </p>
+                    <Badge variant="info">{log.school_name}</Badge>
+                    <Badge>Class {log.class_name}</Badge>
+                    {log.section && <Badge>{log.section}</Badge>}
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {log.audio_filename}
                   </p>
-                  <Badge variant="info">{log.school_name}</Badge>
-                  <Badge>Class {log.class_name}</Badge>
-                  {log.section && <Badge>{log.section}</Badge>}
+                  {log.recording_subject && (
+                    <p className="text-xs text-muted-foreground">
+                      {log.recording_subject}
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                  {log.audio_filename}
-                </p>
-                {log.recording_subject && (
-                  <p className="text-xs text-muted-foreground">
-                    {log.recording_subject}
-                  </p>
-                )}
-              </div>
-              <div className="flex-shrink-0 text-right">
-                <p className="text-xs text-muted-foreground whitespace-nowrap">
+                <p className="flex-shrink-0 whitespace-nowrap text-right text-xs text-muted-foreground">
                   {formatDateTime(
                     log.activity_timestamp ?? log.created_at ?? "",
                   )}
                 </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
 
       <Pagination
         currentPage={currentPage}
