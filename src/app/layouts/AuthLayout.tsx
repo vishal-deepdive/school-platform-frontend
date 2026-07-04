@@ -1,5 +1,7 @@
+import { Suspense } from "react";
 import { Link, Outlet, useLocation, Navigate } from "react-router-dom";
 import { Typewriter } from "@/shared/components/ui/auth-fuse";
+import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { useAuthStore } from "@/features/auth/store/auth";
 import logoImg from "@/public/logo.png";
 import authImg from "@/public/auth.png";
@@ -88,7 +90,7 @@ export function AuthLayout() {
         </Link>
 
         <div className="relative z-10 flex h-full flex-col items-center justify-end p-8 pb-8">
-          <blockquote className="space-y-2.5 text-center text-foreground bg-background/80 max-w-lg">
+          <blockquote className="max-w-lg space-y-2.5 rounded-2xl bg-background/80 px-6 py-5 text-center text-foreground backdrop-blur-md ring-1 ring-border/40">
             <p className="text-xl font-semibold leading-relaxed">
               “
               <Typewriter
@@ -118,7 +120,20 @@ export function AuthLayout() {
           </div>
 
           <div className="shrink-0 w-full">
-            <Outlet />
+            <Suspense
+              fallback={
+                <div
+                  className="mx-auto w-full max-w-[350px] space-y-4"
+                  aria-busy="true"
+                >
+                  <Skeleton className="mx-auto h-8 w-56" />
+                  <Skeleton className="mx-auto h-4 w-44" />
+                  <Skeleton className="h-64 w-full" />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
           </div>
         </div>
       </div>

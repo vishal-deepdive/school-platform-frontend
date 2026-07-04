@@ -1,71 +1,98 @@
+import { lazy, Suspense, type ComponentType } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppLayout } from "@/app/layouts/AppLayout";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { ModulePageLayout } from "@/shared/components/ui/ModulePageLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleRoute } from "./routes/RoleRoute";
-import {
-  LoginPage,
-  RegisterPage,
-  VerifyOtpPage,
-  ForgotPasswordPage,
-  ResetPasswordPage,
-  AuthCallbackPage,
-  GoogleCompleteProfilePage,
-} from "@/features/auth";
-import { LandingPage } from "@/features/landing";
-import { DashboardPage } from "@/features/dashboard";
-import {
-  AttendancePage,
-  EnrollPage,
-  MarkAttendancePage,
-  RollCallPage,
-  ViewAttendancePage,
-  AttendanceStatsPage,
-  AttendanceDashboardPage,
-  HolidaysPage,
-  LeavePage,
-  ManageStudentsPage,
-} from "@/features/attendance";
-import {
-  RecordingPage,
-  UploadRecordingPage,
-  RecordingsListPage,
-  SearchRecordingsPage,
-  RecordingAuditPage,
-} from "@/features/recording";
-import {
-  RagPage,
-  QAPage,
-  QuestionsPage,
-  NotesPage,
-  RagAuditPage,
-  RagDocumentsPage,
-} from "@/features/rag";
-import {
-  SurveyPage,
-  SurveyDashboardPage,
-  SurveySearchPage,
-  SurveyDataPage,
-  SurveySourcePage,
-} from "@/features/survey";
-import {
-  SchoolOnboardingPage,
-  ApplicationStatusPage,
-  VerifyOnboardingOtpPage,
-} from "@/features/onboarding";
-import {
-  OnboardingApplicationsPage,
-  ApplicationDetailPage,
-  AdminManagementPage,
-  PromptsPage,
-  StudentImportPage,
-} from "@/features/admin";
-import { ParentApprovalsPage } from "@/features/parents";
-import { ProfilePage } from "@/features/profile";
+
+/*
+ * Route-level code splitting: every feature barrel is imported lazily, so each
+ * feature becomes its own chunk and the landing page doesn't pay for recharts,
+ * katex, or the syntax highlighter. Pages within one feature share a chunk, so
+ * switching tabs inside a module never re-suspends.
+ */
+function lazyPage<K extends string, T extends Record<K, ComponentType>>(
+  loader: () => Promise<T>,
+  name: K,
+) {
+  return lazy(() => loader().then((m) => ({ default: m[name] })));
+}
+
+const auth = () => import("@/features/auth");
+const LoginPage = lazyPage(auth, "LoginPage");
+const RegisterPage = lazyPage(auth, "RegisterPage");
+const VerifyOtpPage = lazyPage(auth, "VerifyOtpPage");
+const ForgotPasswordPage = lazyPage(auth, "ForgotPasswordPage");
+const ResetPasswordPage = lazyPage(auth, "ResetPasswordPage");
+const AuthCallbackPage = lazyPage(auth, "AuthCallbackPage");
+const GoogleCompleteProfilePage = lazyPage(auth, "GoogleCompleteProfilePage");
+
+const LandingPage = lazyPage(() => import("@/features/landing"), "LandingPage");
+const DashboardPage = lazyPage(() => import("@/features/dashboard"), "DashboardPage");
+const ProfilePage = lazyPage(() => import("@/features/profile"), "ProfilePage");
+const ParentApprovalsPage = lazyPage(() => import("@/features/parents"), "ParentApprovalsPage");
+
+const attendance = () => import("@/features/attendance");
+const AttendancePage = lazyPage(attendance, "AttendancePage");
+const AttendanceDashboardPage = lazyPage(attendance, "AttendanceDashboardPage");
+const EnrollPage = lazyPage(attendance, "EnrollPage");
+const RollCallPage = lazyPage(attendance, "RollCallPage");
+const MarkAttendancePage = lazyPage(attendance, "MarkAttendancePage");
+const ViewAttendancePage = lazyPage(attendance, "ViewAttendancePage");
+const LeavePage = lazyPage(attendance, "LeavePage");
+const HolidaysPage = lazyPage(attendance, "HolidaysPage");
+const ManageStudentsPage = lazyPage(attendance, "ManageStudentsPage");
+const AttendanceStatsPage = lazyPage(attendance, "AttendanceStatsPage");
+
+const recording = () => import("@/features/recording");
+const RecordingPage = lazyPage(recording, "RecordingPage");
+const UploadRecordingPage = lazyPage(recording, "UploadRecordingPage");
+const RecordingsListPage = lazyPage(recording, "RecordingsListPage");
+const SearchRecordingsPage = lazyPage(recording, "SearchRecordingsPage");
+const RecordingAuditPage = lazyPage(recording, "RecordingAuditPage");
+
+const rag = () => import("@/features/rag");
+const RagPage = lazyPage(rag, "RagPage");
+const QAPage = lazyPage(rag, "QAPage");
+const QuestionsPage = lazyPage(rag, "QuestionsPage");
+const NotesPage = lazyPage(rag, "NotesPage");
+const RagAuditPage = lazyPage(rag, "RagAuditPage");
+const RagDocumentsPage = lazyPage(rag, "RagDocumentsPage");
+
+const survey = () => import("@/features/survey");
+const SurveyPage = lazyPage(survey, "SurveyPage");
+const SurveyDashboardPage = lazyPage(survey, "SurveyDashboardPage");
+const SurveySearchPage = lazyPage(survey, "SurveySearchPage");
+const SurveyDataPage = lazyPage(survey, "SurveyDataPage");
+const SurveySourcePage = lazyPage(survey, "SurveySourcePage");
+
+const onboarding = () => import("@/features/onboarding");
+const SchoolOnboardingPage = lazyPage(onboarding, "SchoolOnboardingPage");
+const ApplicationStatusPage = lazyPage(onboarding, "ApplicationStatusPage");
+const VerifyOnboardingOtpPage = lazyPage(onboarding, "VerifyOnboardingOtpPage");
+
+const admin = () => import("@/features/admin");
+const OnboardingApplicationsPage = lazyPage(admin, "OnboardingApplicationsPage");
+const ApplicationDetailPage = lazyPage(admin, "ApplicationDetailPage");
+const AdminManagementPage = lazyPage(admin, "AdminManagementPage");
+const PromptsPage = lazyPage(admin, "PromptsPage");
+const StudentImportPage = lazyPage(admin, "StudentImportPage");
+
+/** Full-viewport fallback for routes that render outside AppLayout. */
+function FullPageFallback() {
+  return <div className="min-h-screen w-full bg-background" aria-busy="true" />;
+}
 
 export const router = createBrowserRouter([
-  { path: "/", element: <LandingPage /> },
+  {
+    path: "/",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <LandingPage />
+      </Suspense>
+    ),
+  },
   {
     element: <AuthLayout />,
     children: [
