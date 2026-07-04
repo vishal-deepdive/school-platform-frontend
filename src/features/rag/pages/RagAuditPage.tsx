@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Database, RefreshCw, AlertTriangle, Wrench } from "lucide-react";
+import {
+  Database,
+  RefreshCw,
+  AlertTriangle,
+  Wrench,
+  Layers,
+  BookOpen,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { ragApi } from "@/features/rag/api/rag";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
+import { Panel } from "@/shared/components/ui/Panel";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
@@ -42,7 +50,8 @@ export function RagAuditPage() {
   if (isError)
     return <Alert variant="error">{getErrorMessage(error) || "Failed to load RAG audit data."}</Alert>;
 
-  const isEmpty = (data?.total_chunks ?? 0) === 0;
+  const totalChunks = data?.total_chunks ?? 0;
+  const isEmpty = totalChunks === 0;
   const hasMissingMetadata =
     (data?.missing_fields?.titles ?? 0) > 0 ||
     (data?.missing_fields?.chapter_names ?? 0) > 0;
@@ -107,41 +116,73 @@ export function RagAuditPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {[
-              { label: "By Class", data: data?.counts?.by_class },
-              { label: "By Subject", data: data?.counts?.by_subject },
-            ].map(({ label, data: rows }) => (
-              <Card key={label} padding="none">
-                <CardHeader title={label} className="px-6 pt-6" />
-                <div className="divide-y divide-border pb-2">
-                  {!rows?.length && (
-                    <p className="px-6 py-4 text-sm text-muted-foreground">
-                      No data.
-                    </p>
-                  )}
-                  {(rows ?? []).map((row, i) => {
-                    const name =
-                      row.book ??
-                      row.class_level ??
-                      row.subject ??
-                      row.name ??
-                      "—";
-                    const count = row.count ?? row.total ?? "—";
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between px-6 py-3"
-                      >
-                        <p className="text-sm text-foreground truncate">
-                          {name}
-                        </p>
-                        <Badge variant="info">{count} chunks</Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
+              {
+                label: "By Class",
+                icon: <Layers className="h-4 w-4" />,
+                data: data?.counts?.by_class,
+              },
+              {
+                label: "By Subject",
+                icon: <BookOpen className="h-4 w-4" />,
+                data: data?.counts?.by_subject,
+              },
+            ].map(({ label, icon, data: rows }) => (
+              <Panel
+                key={label}
+                flush
+                icon={icon}
+                title={label}
+                actions={<Badge variant="info">{rows?.length ?? 0}</Badge>}
+              >
+                {!rows?.length ? (
+                  <p className="px-4 py-4 text-sm text-muted-foreground md:px-5">
+                    No data.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border/50">
+                    {rows.map((row, i) => {
+                      const name =
+                        row.book ??
+                        row.class_level ??
+                        row.subject ??
+                        row.name ??
+                        "—";
+                      const rawCount = row.count ?? row.total;
+                      const pct =
+                        typeof rawCount === "number" && totalChunks > 0
+                          ? Math.round((rawCount / totalChunks) * 100)
+                          : null;
+                      return (
+                        <li key={i} className="px-4 py-3 md:px-5">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="truncate text-sm font-medium text-foreground">
+                              {name}
+                            </p>
+                            <Badge variant="info">
+                              {rawCount ?? "—"} chunks
+                            </Badge>
+                          </div>
+                          {pct !== null && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-primary"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">
+                                {pct}%
+                              </span>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </Panel>
             ))}
           </div>
 

@@ -25,24 +25,26 @@ export function RecordingListItem({
   onDelete,
   retrying,
 }: RecordingListItemProps) {
+  const displayName = (() => {
+    const ext = rec.audio_filename.split(".").pop() || "mp3";
+    const className = String(rec.class || "class").trim().replace(/[^a-zA-Z0-9]/g, "_");
+    const subject = String(rec.subject || "subject").trim().replace(/[^a-zA-Z0-9]/g, "_");
+    const chapter = String(rec.recording_subject || "chapter").trim().replace(/[^a-zA-Z0-9]/g, "_");
+    let base = `${className}_${subject}_${chapter}`.replace(/_+/g, "_").replace(/^_|_$/g, "");
+    if (!base) base = `recording-${rec.id}`;
+    return `${base}.${ext}`;
+  })();
+
   return (
-    <div className="flex items-center gap-4 px-6 py-4 hover:bg-muted/50 transition-colors">
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
-        <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-      </div>
+    <li className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5">
+      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+        <FileText className="h-5 w-5" />
+      </span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate" title={rec.audio_filename}>
-          {(() => {
-            const ext = rec.audio_filename.split('.').pop() || 'mp3';
-            const className = String(rec.class || "class").trim().replace(/[^a-zA-Z0-9]/g, '_');
-            const subject = String(rec.subject || "subject").trim().replace(/[^a-zA-Z0-9]/g, '_');
-            const chapter = String(rec.recording_subject || "chapter").trim().replace(/[^a-zA-Z0-9]/g, '_');
-            let base = `${className}_${subject}_${chapter}`.replace(/_+/g, '_').replace(/^_|_$/g, '');
-            if (!base) base = `recording-${rec.id}`;
-            return `${base}.${ext}`;
-          })()}
+        <p className="truncate text-sm font-medium text-foreground" title={rec.audio_filename}>
+          {displayName}
         </p>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           <Badge>{rec.school_name}</Badge>
           <Badge variant="info">Class {rec.class}</Badge>
           {rec.section && <Badge>{rec.section}</Badge>}
@@ -53,7 +55,7 @@ export function RecordingListItem({
           <span className="text-xs text-muted-foreground">{formatDate(rec.date)}</span>
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex flex-shrink-0 items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
         {rec.job_id && (
           <Button
             variant="ghost"
@@ -89,7 +91,7 @@ export function RecordingListItem({
           <Button
             variant="ghost"
             size="sm"
-            icon={<Trash2 className="h-4 w-4" />}
+            icon={<Trash2 className="h-4 w-4 text-destructive" />}
             onClick={() => onDelete(rec.id)}
             className="text-destructive hover:bg-destructive/10"
           >
@@ -97,6 +99,6 @@ export function RecordingListItem({
           </Button>
         )}
       </div>
-    </div>
+    </li>
   );
 }

@@ -19,8 +19,8 @@ import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { ChatMessageBubble } from "@/features/rag/components/ChatMessageBubble";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Modal } from "@/shared/components/ui/Modal";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 import type { RagFilters } from "@/features/rag/types";
@@ -196,14 +196,18 @@ export function QAPage() {
   };
 
   const filterPanel = (
-    <div className="space-y-3">
-      <RagFilterPanel filters={filters} onChange={setFilters} />
+    <div className="flex flex-col gap-3">
+      <RagFilterPanel
+        filters={filters}
+        onChange={setFilters}
+        className="space-y-4"
+      />
       {hasFilters && (
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setFilters({})}
-          className="w-full"
+          className="self-start"
         >
           Clear filters
         </Button>
@@ -212,16 +216,19 @@ export function QAPage() {
   );
 
   return (
-    <div className="flex h-full gap-4 overflow-hidden">
-      <div className="hidden lg:block w-64 flex-shrink-0 min-w-0">
-        <Card className="h-full overflow-y-auto overflow-x-hidden" padding="md">
-          <CardHeader title="Filter content" />
+    <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+      <div className="hidden w-64 flex-shrink-0 lg:flex lg:flex-col">
+        <FilterBar
+          title="Filter content"
+          icon={<SlidersHorizontal className="h-4 w-4" />}
+          className="min-h-0 flex-1 overflow-y-auto scrollbar-thin"
+        >
           {filterPanel}
-        </Card>
+        </FilterBar>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-        <div className="flex items-center justify-between px-4 py-2.5">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <MessageSquare className="h-4 w-4 text-primary" />
             Ask the textbook
@@ -261,8 +268,8 @@ export function QAPage() {
           >
             {chat.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center gap-4 text-center px-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
-                  <MessageSquare className="h-7 w-7 text-primary" />
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
+                  <MessageSquare className="h-7 w-7" />
                 </div>
                 <div>
                   <p className="font-semibold text-foreground">
@@ -283,7 +290,7 @@ export function QAPage() {
                       icon={s.icon}
                       onClick={() => handleQuickAction(s.query)}
                       disabled={isStreaming}
-                      className="text-muted-foreground shadow-sm hover:bg-primary/5 hover:border-primary/50"
+                      className="text-muted-foreground hover:bg-primary/5 hover:border-primary/50"
                     >
                       {s.label}
                     </Button>
