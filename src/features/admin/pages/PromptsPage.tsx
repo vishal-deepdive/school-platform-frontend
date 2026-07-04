@@ -279,7 +279,7 @@ export function PromptsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end gap-4">
+      <div className="flex flex-wrap items-center justify-end gap-4">
         {checkedCount > 0 && (
           <p className="text-sm text-muted-foreground">
             {checkedCount} / {totalCount} checked
