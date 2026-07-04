@@ -57,31 +57,33 @@ export function FutureGrowthSection() {
             className="space-y-8 lg:pr-4"
           >
             <motion.div variants={fadeUp}>
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary ring-1 ring-primary/15">
+              <span className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                <span className="h-px w-7 bg-primary/60" aria-hidden="true" />
                 Analytics
               </span>
-              <h2 className="mt-5 text-3xl font-bold tracking-tight text-foreground md:text-[2.6rem] md:leading-[1.15]">
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-4xl md:leading-[1.15]">
                 See your institution's growth before it happens
               </h2>
-              <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-                Gain actionable insights into your institution's performance.
-                Predict student success and streamline administrative
-                efficiency with beautiful, real-time analytics.
+              <p className="mt-4 text-base leading-relaxed text-muted-foreground md:text-lg">
+                Actionable insight into how your institution is performing —
+                enrollment, engagement, and attendance in real time, not at
+                the end of term.
               </p>
             </motion.div>
 
-            <div className="space-y-6">
+            <div className="divide-y divide-border border-y border-border">
               {HIGHLIGHTS.map((item) => (
                 <motion.div
                   key={item.title}
                   variants={fadeUp}
-                  className="group flex gap-4"
+                  className="flex gap-4 py-5"
                 >
-                  <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-secondary/50 text-primary transition-colors duration-300 group-hover:border-primary/25 group-hover:bg-primary/10">
-                    <item.icon className="h-5 w-5" />
-                  </div>
+                  <item.icon
+                    className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
                   <div>
-                    <h3 className="font-semibold text-foreground">
+                    <h3 className="text-sm font-semibold text-foreground">
                       {item.title}
                     </h3>
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">

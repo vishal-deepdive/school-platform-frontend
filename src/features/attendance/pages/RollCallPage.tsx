@@ -1,7 +1,7 @@
 import { useAuthStore } from "@/features/auth/store/auth";
 import { useMemo, useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckSquare, Users, UserCheck, UserX, Search } from "lucide-react";
+import { CheckSquare, Users, UserCheck, UserX } from "lucide-react";
 import toast from "react-hot-toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
@@ -12,14 +12,18 @@ import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { isHolidayDate } from "@/features/attendance/lib/holidays";
 import { STATUS_LABELS } from "@/features/attendance/lib/status";
 import { getErrorMessage, isoToIndianDate, isSunday } from "@/shared/lib/utils";
-import { Card, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
-import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Avatar } from "@/shared/components/ui/Avatar";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import type {
   AttendanceStatus,
   RosterStudent,
@@ -38,11 +42,11 @@ const STATUSES: AttendanceStatus[] = ["P", "A", "L", "E", "H"];
 
 // Active-state colour per status (inactive buttons stay neutral/outlined).
 const ACTIVE_CLASSES: Record<AttendanceStatus, string> = {
-  P: "bg-green-600 text-white border-green-600",
-  A: "bg-red-500 text-white border-red-500",
-  L: "bg-amber-500 text-white border-amber-500",
-  E: "bg-blue-500 text-white border-blue-500",
-  H: "bg-muted-foreground text-white border-muted-foreground",
+  P: "bg-green-600 text-white border-green-600 shadow-sm",
+  A: "bg-red-500 text-white border-red-500 shadow-sm",
+  L: "bg-amber-500 text-white border-amber-500 shadow-sm",
+  E: "bg-blue-500 text-white border-blue-500 shadow-sm",
+  H: "bg-muted-foreground text-white border-muted-foreground shadow-sm",
 };
 
 export function RollCallPage() {
@@ -178,7 +182,19 @@ export function RollCallPage() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <FilterBar
+        title="Class & date"
+        actions={
+          <Button
+            onClick={() => loadMutation.mutate()}
+            loading={loadMutation.isPending}
+            disabled={!canLoad}
+            icon={<Users className="h-4 w-4" />}
+          >
+            {loadMutation.isPending ? "Loading…" : "Load Class"}
+          </Button>
+        }
+      >
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
           {isAdmin && (
             <SearchableSelect
@@ -244,7 +260,6 @@ export function RollCallPage() {
           <Alert
             variant="warning"
             title={dateIsSunday ? "This date is a Sunday" : "This date is a school holiday"}
-            className="mt-4"
           >
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input
@@ -257,18 +272,7 @@ export function RollCallPage() {
             </label>
           </Alert>
         )}
-
-        <div className="mt-4">
-          <Button
-            onClick={() => loadMutation.mutate()}
-            loading={loadMutation.isPending}
-            disabled={!canLoad}
-            icon={<Users className="h-4 w-4" />}
-          >
-            {loadMutation.isPending ? "Loading…" : "Load Class"}
-          </Button>
-        </div>
-      </Card>
+      </FilterBar>
 
       {roster && (
         <>
@@ -290,50 +294,55 @@ export function RollCallPage() {
             <StatCard label="Half Day" value={counts.H} />
           </div>
 
-          <Card padding="none">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <Panel
+            flush
+            icon={<CheckSquare className="h-4 w-4" />}
+            title="Mark students"
+            description={`${roster.length} student${roster.length === 1 ? "" : "s"} in this class`}
+            actions={
               <div className="flex flex-wrap items-center gap-2">
-                <Badge>
-                  {roster.length} student{roster.length === 1 ? "" : "s"}
-                </Badge>
                 <Button size="sm" variant="secondary" onClick={() => setAll("P")}>
                   All Present
                 </Button>
                 <Button size="sm" variant="secondary" onClick={() => setAll("A")}>
                   All Absent
                 </Button>
-              </div>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
+                <SearchInput
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={setSearch}
                   placeholder="Search roll or name…"
-                  className="w-56 rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground"
+                  className="w-full sm:w-56"
                 />
               </div>
-            </div>
-
+            }
+          >
             <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
               {visible.length === 0 ? (
-                <p className="col-span-full py-10 text-center text-sm text-muted-foreground">
-                  No students match your search.
-                </p>
+                <div className="col-span-full">
+                  <EmptyState
+                    icon={<Users className="h-9 w-9" />}
+                    title="No students match your search"
+                    description="Try a different roll number or name."
+                  />
+                </div>
               ) : (
                 visible.map((s) => {
                   const current = statuses[s.roll_no] ?? "P";
                   return (
                     <div
                       key={s.roll_no}
-                      className="flex flex-col gap-2 rounded-lg border border-border bg-background p-3"
+                      className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background p-3 transition-colors hover:border-border"
                     >
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="truncate font-medium text-foreground">
-                          {s.name ?? s.roll_no}
-                        </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          #{s.roll_no}
-                        </span>
+                      <div className="flex items-center gap-3">
+                        <Avatar name={s.name ?? s.roll_no} seed={s.roll_no} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-foreground">
+                            {s.name ?? s.roll_no}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Roll #{s.roll_no}
+                          </p>
+                        </div>
                       </div>
                       <div className="flex gap-1">
                         {STATUSES.map((st) => {
@@ -346,10 +355,10 @@ export function RollCallPage() {
                               aria-pressed={active}
                               aria-label={`${STATUS_LABELS[st]} for ${s.name ?? s.roll_no}`}
                               title={STATUS_LABELS[st]}
-                              className={`flex-1 rounded-md border px-0 py-1.5 text-sm font-semibold transition-colors ${
+                              className={`flex-1 rounded-lg border px-0 py-1.5 text-sm font-semibold transition-all ${
                                 active
                                   ? ACTIVE_CLASSES[st]
-                                  : "border-input bg-background text-muted-foreground hover:bg-accent"
+                                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
                               }`}
                             >
                               {st}
@@ -365,7 +374,14 @@ export function RollCallPage() {
 
             <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
               <p className="text-sm text-muted-foreground">
-                {counts.P} present · {counts.A} absent · {roster.length} total
+                <span className="font-semibold text-green-600 dark:text-green-400">
+                  {counts.P}
+                </span>{" "}
+                present ·{" "}
+                <span className="font-semibold text-red-500 dark:text-red-400">
+                  {counts.A}
+                </span>{" "}
+                absent · {roster.length} total
               </p>
               <Button
                 onClick={() => saveMutation.mutate()}
@@ -375,7 +391,7 @@ export function RollCallPage() {
                 {saveMutation.isPending ? "Saving…" : "Save Attendance"}
               </Button>
             </div>
-          </Card>
+          </Panel>
         </>
       )}
     </div>
