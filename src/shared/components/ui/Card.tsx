@@ -102,11 +102,11 @@ interface StatCardProps {
 }
 
 const statColors: Record<StatCardColor, string> = {
-  primary: "from-primary/20 to-primary/5 text-primary border-primary/10",
-  success: "from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400 border-green-500/10",
-  warning: "from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/10",
-  danger:  "from-destructive/20 to-destructive/5 text-destructive border-destructive/10",
-  info:    "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/10",
+  primary: "bg-primary/10 text-primary",
+  success: "bg-green-500/10 text-green-600 dark:text-green-400",
+  warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  danger:  "bg-destructive/10 text-destructive",
+  info:    "bg-blue-500/10 text-blue-600 dark:text-blue-400",
 };
 
 export function StatCard({
@@ -127,13 +127,13 @@ export function StatCard({
       hoverable
     >
       <div className="flex items-start justify-between w-full">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider leading-none mt-1">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider leading-none mt-1">
           {label}
         </p>
         {icon && (
           <div
             className={cn(
-              "flex-shrink-0 rounded-xl p-2.5 bg-gradient-to-br border transition-transform duration-300 group-hover:scale-110",
+              "flex-shrink-0 rounded-lg p-2",
               statColors[color],
             )}
           >
@@ -143,7 +143,7 @@ export function StatCard({
       </div>
 
       <div className="mt-4">
-        <p className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight tabular-nums">
+        <p className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight tabular-nums">
           {value}
         </p>
         {description && (

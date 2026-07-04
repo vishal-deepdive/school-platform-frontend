@@ -38,42 +38,42 @@ const quickLinks = [
     title: "Mark Attendance",
     desc: "Upload classroom photos to auto-mark attendance",
     href: "/attendance/mark",
-    icon: <UserCheck className="h-6 w-6" />,
+    icon: <UserCheck className="h-5 w-5" />,
     color: "text-green-600 dark:text-green-400 bg-green-500/10",
   },
   {
     title: "Enroll Students",
     desc: "Upload face photos to register students for attendance",
     href: "/attendance/enroll",
-    icon: <Users className="h-6 w-6" />,
+    icon: <Users className="h-5 w-5" />,
     color: "text-primary bg-primary/10",
   },
   {
     title: "Upload Recording",
     desc: "Convert lecture audio into notes, questions, and summaries",
     href: "/recording/upload",
-    icon: <Mic2 className="h-6 w-6" />,
+    icon: <Mic2 className="h-5 w-5" />,
     color: "text-purple-600 dark:text-purple-400 bg-purple-500/10",
   },
   {
     title: "Ask a Question",
     desc: "Query your textbooks with AI-powered semantic search",
     href: "/rag/qa",
-    icon: <BookOpen className="h-6 w-6" />,
+    icon: <BookOpen className="h-5 w-5" />,
     color: "text-blue-600 dark:text-blue-400 bg-blue-500/10",
   },
   {
     title: "Survey Analytics",
     desc: "Explore student feedback with AI-powered search",
     href: "/survey/search",
-    icon: <BarChart2 className="h-6 w-6" />,
+    icon: <BarChart2 className="h-5 w-5" />,
     color: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
   },
   {
     title: "Attendance Trends",
     desc: "View attendance history and low-attendance alerts",
     href: "/attendance/view",
-    icon: <TrendingUp className="h-6 w-6" />,
+    icon: <TrendingUp className="h-5 w-5" />,
     color: "text-destructive bg-destructive/10",
   },
   // Student / parent surfaces — role filtering below picks what applies.
@@ -81,14 +81,14 @@ const quickLinks = [
     title: "Apply for Leave",
     desc: "Request leave and track the approval status",
     href: "/attendance/leave",
-    icon: <CalendarDays className="h-6 w-6" />,
+    icon: <CalendarDays className="h-5 w-5" />,
     color: "text-amber-600 dark:text-amber-400 bg-amber-500/10",
   },
   {
     title: "Class Recordings",
     desc: "Browse lecture notes and summaries from your classes",
     href: "/recording/list",
-    icon: <NotebookText className="h-6 w-6" />,
+    icon: <NotebookText className="h-5 w-5" />,
     color: "text-purple-600 dark:text-purple-400 bg-purple-500/10",
   },
 ];
@@ -257,11 +257,10 @@ export function DashboardPage() {
   })();
 
   const todayLine = (() => {
-    const dateStr = format(new Date(), "EEEE, d MMMM");
-    if (isSchoolStaff) return `It's ${dateStr} — here's how your school is doing.`;
-    if (isAdmin) return `It's ${dateStr} — here's what's happening on your platform.`;
-    if (role === "parent") return `It's ${dateStr} — here's how your child is doing.`;
-    return `It's ${dateStr} — here's your learning snapshot.`;
+    if (isSchoolStaff) return "Here's how your school is doing today.";
+    if (isAdmin) return "Here's what's happening on your platform.";
+    if (role === "parent") return "Here's how your child is doing.";
+    return "Here's your learning snapshot.";
   })();
 
   const visibleLinks = quickLinks
@@ -271,8 +270,14 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`${greeting}, ${user?.full_name?.split(" ")[0] ?? "there"} 👋`}
+        title={`${greeting}, ${user?.full_name?.split(" ")[0] ?? "there"}`}
         description={todayLine}
+        actions={
+          <span className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {format(new Date(), "EEEE, d MMMM")}
+          </span>
+        }
       />
 
       {/* Post-approval setup checklist — self-hides once the school is set up */}
@@ -283,28 +288,33 @@ export function DashboardPage() {
       {isConsumer && <MyDashboard isParent={role === "parent"} />}
 
       <div>
-        <h2 className="mb-4 text-base font-semibold text-foreground">
-          Quick Actions
-        </h2>
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">
+            Quick actions
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Jump straight to the things you do most often.
+          </p>
+        </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleLinks.map((link) => (
-            <Link key={link.href} to={link.href} className="group block">
-              <Card className="h-full overflow-hidden" padding="md" hoverable>
+            <Link key={link.href} to={link.href} className="group block h-full">
+              <Card className="relative h-full overflow-hidden" padding="md" hoverable>
+                <ArrowRight
+                  className="absolute right-5 top-5 h-4 w-4 -translate-x-1 text-muted-foreground/0 transition-all duration-200 group-hover:translate-x-0 group-hover:text-primary"
+                  aria-hidden="true"
+                />
                 <div className="flex items-start gap-4">
-                  <div
-                    className={`flex-shrink-0 rounded-xl p-2.5 transition-transform duration-300 group-hover:scale-110 ${link.color}`}
-                  >
+                  <div className={`flex-shrink-0 rounded-lg p-2 ${link.color}`}>
                     {link.icon}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-foreground">{link.title}</p>
+                  <div className="min-w-0 flex-1 pr-5">
+                    <p className="text-sm font-semibold text-foreground">
+                      {link.title}
+                    </p>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                       {link.desc}
                     </p>
-                    <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary transition-all group-hover:gap-2">
-                      Get started{" "}
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </span>
                   </div>
                 </div>
               </Card>
