@@ -33,3 +33,7 @@ export { EmptyState } from "./EmptyState";
 export { Pagination } from "./Pagination";
 export { TabContainer } from "./TabContainer";
 export { ModulePageLayout } from "./ModulePageLayout";
+export { Avatar } from "./Avatar";
+export { SearchInput } from "./SearchInput";
+export { FilterBar } from "./FilterBar";
+export { Panel } from "./Panel";

@@ -5,10 +5,11 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/shared/lib/utils";
 import type { SelectOption } from "@/shared/types/common";
 import { ChevronDown } from "lucide-react";
-import { useClickOutside } from "@/shared/hooks/useClickOutside";
+import { useAnchoredPosition } from "@/shared/hooks/useAnchoredPosition";
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
@@ -27,14 +28,27 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const [isOpen, setIsOpen] = useState(false);
     const [displayValue, setDisplayValue] = useState("");
     const internalRef = useRef<HTMLSelectElement | null>(null);
-    const dropdownRef = useRef<HTMLDivElement | null>(null);
+    const triggerRef = useRef<HTMLDivElement | null>(null);
+    const menuRef = useRef<HTMLDivElement | null>(null);
     const optionsRef = useRef<(HTMLDivElement | null)[]>([]);
+    const pos = useAnchoredPosition(triggerRef, isOpen);
 
     const [searchQuery, setSearchQuery] = useState("");
     const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
-    useClickOutside(dropdownRef, () => setIsOpen(false));
+    // Close on outside mousedown; the menu is portaled, so check both refs.
+    useEffect(() => {
+      if (!isOpen) return;
+      const onDown = (e: MouseEvent) => {
+        const t = e.target as Node;
+        if (triggerRef.current?.contains(t) || menuRef.current?.contains(t))
+          return;
+        setIsOpen(false);
+      };
+      document.addEventListener("mousedown", onDown);
+      return () => document.removeEventListener("mousedown", onDown);
+    }, [isOpen]);
 
     useEffect(() => {
       if (isOpen) {
@@ -156,7 +170,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     };
 
     return (
-      <div className="grid gap-2 w-full relative" ref={dropdownRef}>
+      <div className="grid gap-1.5 w-full">
         {label && (
           <label
             htmlFor={selectId}
@@ -182,13 +196,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
 
         {/* Custom UI */}
         <div
+          ref={triggerRef}
           tabIndex={0}
           onClick={() => !props.disabled && setIsOpen(!isOpen)}
           onKeyDown={handleKeyDown}
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer select-none",
+            "flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer select-none",
             "text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200",
-            "hover:border-primary/50 focus-visible:bg-accent focus-visible:outline-none",
+            "hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
             isOpen && "ring-2 ring-primary/20 border-primary",
             error && "border-destructive ring-0",
             props.disabled && "opacity-50 cursor-not-allowed hover:border-input",
@@ -198,7 +213,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           <span
             title={displayValue || undefined}
             className={cn(
-              "truncate flex-1 text-left min-w-0 mr-2",
+              "truncate flex-1 text-left min-w-0",
               !displayValue && "text-muted-foreground/70",
             )}
           >
@@ -206,40 +221,55 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </span>
           <ChevronDown
             className={cn(
-              "h-4 w-4 opacity-50 transition-transform duration-200",
+              "h-4 w-4 shrink-0 opacity-50 transition-transform duration-200",
               isOpen && "rotate-180",
             )}
           />
         </div>
 
-        {/* Dropdown Menu */}
-        {isOpen && (
-          <div className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 py-1 max-h-60 overflow-y-auto overflow-x-hidden scrollbar-thin">
-            {options.map((opt, index) => (
-              <div
-                key={opt.value}
-                ref={(el) => { optionsRef.current[index] = el; }}
-                title={opt.label}
-                className={cn(
-                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  focusedIndex === index && "bg-accent text-accent-foreground",
-                  internalRef.current?.value === opt.value &&
-                    "bg-primary/10 text-primary font-medium",
-                )}
-                onClick={() => handleSelect(opt.value, opt.label)}
-              >
-                <span className="truncate">{opt.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Dropdown Menu (portaled so it escapes card overflow) */}
+        {isOpen &&
+          pos &&
+          createPortal(
+            <div
+              ref={menuRef}
+              style={{
+                position: "fixed",
+                top: pos.top,
+                left: pos.left,
+                width: pos.width,
+                maxHeight: pos.maxHeight,
+                transform:
+                  pos.placement === "top" ? "translateY(-100%)" : undefined,
+              }}
+              className="z-[60] overflow-y-auto overflow-x-hidden rounded-lg border border-border bg-popover p-1.5 text-popover-foreground shadow-lg shadow-black/10 scrollbar-thin animate-in fade-in-0 zoom-in-95"
+            >
+              {options.map((opt, index) => (
+                <div
+                  key={opt.value}
+                  ref={(el) => { optionsRef.current[index] = el; }}
+                  title={opt.label}
+                  className={cn(
+                    "relative flex w-full cursor-pointer select-none items-center rounded-md px-3 py-2 text-sm outline-none transition-colors",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    focusedIndex === index && "bg-accent text-accent-foreground",
+                    internalRef.current?.value === opt.value &&
+                      "bg-primary/10 text-primary font-medium",
+                  )}
+                  onClick={() => handleSelect(opt.value, opt.label)}
+                >
+                  <span className="truncate">{opt.label}</span>
+                </div>
+              ))}
+            </div>,
+            document.body,
+          )}
 
         {hint && !error && (
-          <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
         )}
         {error && (
-          <p className="text-xs text-destructive font-medium mt-0.5">{error}</p>
+          <p className="text-xs text-destructive font-medium">{error}</p>
         )}
       </div>
     );
