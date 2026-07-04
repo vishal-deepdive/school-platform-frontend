@@ -14,7 +14,7 @@ export function OnboardingSection() {
   return (
     <section
       id="onboard"
-      className="mx-auto w-full max-w-[1180px] scroll-mt-24 px-4 py-24 xl:px-0"
+      className="mx-auto w-full max-w-[1180px] scroll-mt-24 px-4 py-16 sm:py-20 lg:py-24 xl:px-0"
     >
       <motion.div
         variants={staggerContainer}

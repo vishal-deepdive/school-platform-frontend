@@ -44,7 +44,7 @@ export function FutureGrowthSection() {
     <section
       ref={sectionRef}
       id="growth"
-      className="w-full scroll-mt-24 bg-background py-24"
+      className="w-full scroll-mt-24 bg-background py-16 sm:py-20 lg:py-24"
     >
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2">
