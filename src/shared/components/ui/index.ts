@@ -13,6 +13,7 @@ export {
   StatCardSkeleton,
   CardSkeleton,
   TableSkeleton,
+  TableBodySkeleton,
   ListSkeleton,
   ChartSkeleton,
   PageSkeleton,

@@ -161,8 +161,13 @@ export function ChartSkeleton({ className }: { className?: string }) {
   const bars = [40, 65, 50, 80, 60, 90, 70, 55];
   return (
     <SkeletonCardShell className={className}>
-      <Skeleton className="h-5 w-44" />
-      <div className="mt-6 flex h-40 items-end gap-3 sm:h-48">
+      <div className="flex items-start justify-between">
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-44" />
+          <Skeleton className="h-3 w-32" />
+        </div>
+      </div>
+      <div className="mt-5 flex h-48 items-end gap-3 sm:h-56">
         {bars.map((h, i) => (
           <Skeleton
             key={i}
@@ -172,6 +177,41 @@ export function ChartSkeleton({ className }: { className?: string }) {
         ))}
       </div>
     </SkeletonCardShell>
+  );
+}
+
+/**
+ * In-table body placeholder — renders `<tr><td>` rows for use inside a real
+ * `<table><tbody>`. Use `TableSkeleton` for a self-contained div-based table.
+ */
+export function TableBodySkeleton({
+  rows = 5,
+  columns = 5,
+}: {
+  rows?: number;
+  columns?: number;
+}) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, r) => (
+        <tr key={r} aria-hidden="true">
+          {Array.from({ length: columns }).map((_, c) => (
+            <td key={c} className="px-6 py-4">
+              <Skeleton
+                className={cn(
+                  "h-3.5",
+                  c === 0
+                    ? "w-3/4"
+                    : c === columns - 1
+                      ? "ml-auto w-12"
+                      : "w-1/2",
+                )}
+              />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 }
 

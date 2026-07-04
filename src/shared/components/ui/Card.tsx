@@ -47,7 +47,7 @@ export function Card({
 }
 
 interface CardHeaderProps {
-  title: string;
+  title?: string;
   description?: string;
   action?: React.ReactNode;
   className?: string;
@@ -61,60 +61,52 @@ export function CardHeader({
   className,
   bordered = false,
 }: CardHeaderProps) {
+  const hasText = title || description;
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 mb-5 sm:mb-6",
+        "flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4 mb-5 sm:mb-6",
+        hasText ? "justify-between" : "justify-end",
         bordered && "border-b border-border/40 pb-4 sm:mb-5",
         className,
       )}
     >
-      <div className="min-w-0">
-        <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
-          {title}
-        </h2>
-        {description && (
-          <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-            {description}
-          </p>
-        )}
-      </div>
+      {hasText && (
+        <div className="min-w-0">
+          {title && (
+            <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
+              {title}
+            </h2>
+          )}
+          {description && (
+            <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
+              {description}
+            </p>
+          )}
+        </div>
+      )}
       {action && <div className="flex-shrink-0">{action}</div>}
     </div>
   );
 }
 
+export type StatCardColor = "primary" | "success" | "warning" | "danger" | "info";
+
 interface StatCardProps {
   label: string;
   value: string | number;
   icon?: React.ReactNode;
-  color?:
-    | "primary"
-    | "success"
-    | "warning"
-    | "danger"
-    | "info"
-    | "indigo"
-    | "green"
-    | "amber"
-    | "red"
-    | "blue";
+  color?: StatCardColor;
   className?: string;
   description?: React.ReactNode;
 }
 
-const _PRIMARY = "from-primary/20 to-primary/5 text-primary border-primary/10";
-const _GREEN   = "from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400 border-green-500/10";
-const _AMBER   = "from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/10";
-const _RED     = "from-destructive/20 to-destructive/5 text-destructive border-destructive/10";
-const _BLUE    = "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/10";
-
-const statColors = {
-  primary: _PRIMARY, indigo: _PRIMARY,
-  success: _GREEN,   green:  _GREEN,
-  warning: _AMBER,   amber:  _AMBER,
-  danger:  _RED,     red:    _RED,
-  info:    _BLUE,    blue:   _BLUE,
+const statColors: Record<StatCardColor, string> = {
+  primary: "from-primary/20 to-primary/5 text-primary border-primary/10",
+  success: "from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400 border-green-500/10",
+  warning: "from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/10",
+  danger:  "from-destructive/20 to-destructive/5 text-destructive border-destructive/10",
+  info:    "from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/10",
 };
 
 export function StatCard({
