@@ -112,7 +112,8 @@ export function QASection() {
         >
           Still have questions?{" "}
           <Link
-            to="/onboarding/apply"
+            // to="/onboarding/apply"
+            to="/"
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Reach out through your application
