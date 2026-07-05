@@ -100,7 +100,8 @@ export function HeroSection() {
             className="mt-8 flex flex-wrap items-center justify-center gap-3"
           >
             <Link
-              to="/onboarding/apply"
+              // to="/onboarding/apply"
+              to="/"
               className="group inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
             >
               Onboard Your School
