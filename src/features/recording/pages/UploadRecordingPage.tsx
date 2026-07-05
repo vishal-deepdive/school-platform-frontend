@@ -11,7 +11,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { recordingApi } from "@/features/recording/api/recording";
 import { optimizeAudioForUpload } from "@/features/recording/lib/optimizeAudio";
 import { getErrorMessage, downloadFile, formatFileSize } from "@/shared/lib/utils";

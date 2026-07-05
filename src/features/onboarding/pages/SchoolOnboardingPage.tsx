@@ -21,7 +21,7 @@ import {
   Mail,
   AlertTriangle,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import type { FieldPath } from "react-hook-form";
 import { useWatch } from "react-hook-form";
 import type { SchoolOnboardingFormData } from "@/features/onboarding/schema";

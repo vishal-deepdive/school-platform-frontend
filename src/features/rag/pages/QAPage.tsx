@@ -12,7 +12,7 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { qaSchema } from "@/features/rag/schema";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
@@ -190,6 +190,14 @@ export function QAPage() {
   const hasChapter = !!filters.chapter_name?.length;
   const suggestions = hasChapter ? CHAPTER_ACTIONS : STARTER_SUGGESTIONS;
 
+  // The scope the answers are drawn from — surfaced in the toolbar so the
+  // reader always knows which textbooks a reply is grounded in.
+  const scopeParts = [
+    filters.class_level,
+    filters.subject,
+    filters.chapter_name?.[0],
+  ].filter(Boolean) as string[];
+
   const handleQuickAction = (query: string) => {
     if (isStreaming) return;
     void runQuery(query);
@@ -216,24 +224,43 @@ export function QAPage() {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
-      <div className="hidden w-64 flex-shrink-0 lg:flex lg:flex-col">
+    <div className="flex h-full min-h-0 gap-3 md:gap-4">
+      <aside className="hidden w-64 flex-shrink-0 lg:flex lg:flex-col">
         <FilterBar
-          title="Filter content"
+          title="Answer scope"
           icon={<SlidersHorizontal className="h-4 w-4" />}
           className="min-h-0 flex-1 overflow-y-auto scrollbar-thin"
         >
           {filterPanel}
         </FilterBar>
-      </div>
+      </aside>
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
-        <div className="flex items-center justify-between px-4 py-2.5">
-          {/* <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-            <MessageSquare className="h-4 w-4 text-primary" />
-            Ask the textbook
-          </div> */}
-          <div className="flex items-center gap-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
+        {/* Toolbar — the functional scope of the answers, plus session actions. */}
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/60 px-3 py-2 md:px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="hidden text-xs font-medium text-muted-foreground sm:inline">
+              Answering from
+            </span>
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              {scopeParts.length > 0 ? (
+                scopeParts.map((part) => (
+                  <span
+                    key={part}
+                    className="max-w-[12rem] truncate rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary"
+                  >
+                    {part}
+                  </span>
+                ))
+              ) : (
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                  All textbooks
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -241,9 +268,9 @@ export function QAPage() {
               icon={<SlidersHorizontal className="h-4 w-4" />}
               onClick={() => setShowFilters(true)}
             >
-              Filters
+              Scope
               {hasFilters && (
-                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
+                <span className="absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Button>
             {chat.length > 0 && (
@@ -260,131 +287,152 @@ export function QAPage() {
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-hidden">
+        {/* Transcript — the only element that scrolls. */}
+        <div className="relative min-h-0 flex-1">
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="scrollbar-thin h-full overflow-y-auto p-4 space-y-4"
+            className="scrollbar-thin h-full overflow-y-auto px-3 py-5 md:px-4"
           >
             {chat.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center gap-4 text-center px-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-primary/15 bg-primary/10 text-primary">
+              <div className="mx-auto flex h-full max-w-lg flex-col items-center justify-center gap-5 px-2 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/15 bg-primary/10 text-primary">
                   <MessageSquare className="h-7 w-7" />
                 </div>
                 <div>
-                  <p className="font-semibold text-foreground">
+                  <p className="text-lg font-semibold text-foreground">
                     Ask anything about your textbooks
                   </p>
-                  <p className="mt-1 text-sm text-muted-foreground max-w-md">
+                  <p className="mx-auto mt-1.5 max-w-md text-sm text-muted-foreground">
                     {hasChapter
-                      ? "Ask a question or try one of these."
-                      : "Select a chapter from filters for summaries, or ask any question below."}
+                      ? "Ask a question in your own words, or start with one of these."
+                      : "Pick a class and subject on the left to focus answers, or just ask a question below."}
                   </p>
                 </div>
-                <div className="flex flex-wrap justify-center gap-2 max-w-lg">
+                <div className="flex flex-wrap justify-center gap-2">
                   {suggestions.map((s) => (
-                    <Button
+                    <button
                       key={s.label}
                       type="button"
-                      variant="outline"
-                      icon={s.icon}
                       onClick={() => handleQuickAction(s.query)}
                       disabled={isStreaming}
-                      className="text-muted-foreground hover:bg-primary/5 hover:border-primary/50"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                     >
+                      <span className="text-primary">{s.icon}</span>
                       {s.label}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               </div>
             ) : (
-              chat.map((msg, i) => (
-                <ChatMessageBubble
-                  key={msg.id}
-                  message={msg}
-                  isStreaming={isStreaming && i === chat.length - 1 && msg.role === "assistant"}
-                />
-              ))
+              <div className="mx-auto w-full max-w-3xl space-y-6">
+                {chat.map((msg, i) => (
+                  <ChatMessageBubble
+                    key={msg.id}
+                    message={msg}
+                    isStreaming={
+                      isStreaming &&
+                      i === chat.length - 1 &&
+                      msg.role === "assistant"
+                    }
+                  />
+                ))}
+              </div>
             )}
           </div>
 
           {!autoScroll && chat.length > 0 && (
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={scrollToBottom}
-              className="absolute bottom-4 right-4 h-9 w-9 rounded-full p-0 shadow-md text-muted-foreground"
               aria-label="Scroll to latest message"
+              className="absolute bottom-4 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-colors hover:border-primary/40 hover:text-foreground"
             >
               <ArrowDown className="h-4 w-4" />
-            </Button>
+            </button>
           )}
         </div>
 
-        <div className="p-3">
-          {canRetry && (
-            <div className="mb-2 flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                icon={<RotateCcw className="h-3.5 w-3.5" />}
-                onClick={handleRetry}
-              >
-                Retry last question
-              </Button>
-            </div>
-          )}
-          {chat.length > 0 && !isStreaming && !canRetry && (
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {suggestions.map((s) => (
+        {/* Composer — pinned; never scrolls out of view. */}
+        <div className="shrink-0 border-t border-border/60 bg-card px-3 py-3 md:px-4">
+          <div className="mx-auto w-full max-w-3xl">
+            {canRetry ? (
+              <div className="mb-2 flex justify-center">
                 <Button
-                  key={s.label}
                   type="button"
                   variant="outline"
                   size="sm"
-                  icon={s.icon}
-                  onClick={() => handleQuickAction(s.query)}
-                  className="rounded-full text-muted-foreground hover:border-primary/50"
+                  icon={<RotateCcw className="h-3.5 w-3.5" />}
+                  onClick={handleRetry}
                 >
-                  {s.label}
+                  Retry last question
                 </Button>
-              ))}
-            </div>
-          )}
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask a question about the textbook… (Shift+Enter for a new line)"
-              rows={1}
-              disabled={isStreaming}
-              className="flex-1 resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-60"
-            />
-            {isStreaming ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                icon={<Square className="h-3.5 w-3.5" />}
-                onClick={handleStop}
-              >
-                Stop
-              </Button>
+              </div>
             ) : (
-              <Button
-                type="button"
-                size="sm"
-                icon={<Send className="h-4 w-4" />}
-                onClick={() => void handleSend()}
-                disabled={!input.trim()}
-              >
-                Ask
-              </Button>
+              chat.length > 0 &&
+              !isStreaming && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {suggestions.map((s) => (
+                    <button
+                      key={s.label}
+                      type="button"
+                      onClick={() => handleQuickAction(s.query)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"
+                    >
+                      <span className="text-primary">{s.icon}</span>
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )
             )}
+
+            <div className="flex items-end gap-2 rounded-xl border border-border bg-background py-1.5 pl-3 pr-1.5 transition-colors focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask a question about the textbook…"
+                rows={1}
+                disabled={isStreaming}
+                className="max-h-40 flex-1 resize-none bg-transparent py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-60"
+              />
+              {isStreaming ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  icon={<Square className="h-3.5 w-3.5" />}
+                  onClick={handleStop}
+                  className="shrink-0"
+                >
+                  Stop
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => void handleSend()}
+                  disabled={!input.trim()}
+                  aria-label="Send question"
+                  className="h-9 w-9 shrink-0 rounded-lg p-0"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            <p className="mt-1.5 hidden px-1 text-[11px] text-muted-foreground sm:block">
+              Press{" "}
+              <kbd className="rounded border border-border bg-muted px-1 font-sans text-[10px]">
+                Enter
+              </kbd>{" "}
+              to send ·{" "}
+              <kbd className="rounded border border-border bg-muted px-1 font-sans text-[10px]">
+                Shift + Enter
+              </kbd>{" "}
+              for a new line
+            </p>
           </div>
         </div>
       </div>
@@ -392,7 +440,7 @@ export function QAPage() {
       <Modal
         open={showFilters}
         onClose={() => setShowFilters(false)}
-        title="Filter content"
+        title="Answer scope"
         size="sm"
       >
         {filterPanel}

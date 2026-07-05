@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Plus, Trash2, RefreshCw, FileText, Lock } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/Button";

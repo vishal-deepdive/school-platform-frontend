@@ -8,7 +8,7 @@ import {
   Layers,
   BookOpen,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Panel } from "@/shared/components/ui/Panel";
