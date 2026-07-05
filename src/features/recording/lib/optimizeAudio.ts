@@ -38,6 +38,11 @@ export interface OptimizeResult {
   optimized: boolean;
   originalBytes: number;
   outputBytes: number;
+  /**
+   * Media duration in whole seconds, when it could be decoded. Undefined for
+   * pass-through uploads (too large / decode failed) — duration is best-effort.
+   */
+  durationSeconds?: number;
 }
 
 type AudioContextCtor = typeof AudioContext;
@@ -134,6 +139,11 @@ export async function optimizeAudioForUpload(
     // decodeAudioData detaches the buffer, so pass a copy.
     const decoded = await decodeCtx.decodeAudioData(arrayBuffer.slice(0));
 
+    // Capture the media length now that we have decoded PCM — best-effort metadata.
+    const durationSeconds = Number.isFinite(decoded.duration)
+      ? Math.round(decoded.duration)
+      : undefined;
+
     onStage?.("Optimizing for speech…");
     const frameCount = Math.max(
       1,
@@ -150,7 +160,7 @@ export async function optimizeAudioForUpload(
     const wav = encodeWav16Mono(rendered);
     // Only adopt the conversion when it genuinely reduces bandwidth.
     if (wav.byteLength >= input.size) {
-      return passthrough();
+      return { ...passthrough(), durationSeconds };
     }
 
     const baseName = input.name.replace(/\.[^./\\]+$/, "") || "recording";
@@ -160,6 +170,7 @@ export async function optimizeAudioForUpload(
       optimized: true,
       originalBytes: input.size,
       outputBytes: file.size,
+      durationSeconds,
     };
   } catch {
     // Unsupported/corrupt container, OOM, etc. — upload the original untouched.

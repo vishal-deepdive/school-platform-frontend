@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { recordingApi } from "@/features/recording/api/recording";
 import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
-import type { MarkdownResult, Recording } from "@/features/recording/types";
+import type {
+  MarkdownResult,
+  Recording,
+  RecordingListQuery,
+} from "@/features/recording/types";
 
 /**
  * Centralised React Query keys for the recording feature. Using a factory keeps
@@ -14,17 +18,26 @@ import type { MarkdownResult, Recording } from "@/features/recording/types";
  */
 export const recordingKeys = {
   all: ["recordings"] as const,
-  list: (limit: number, offset: number) =>
-    ["recordings", "list", limit, offset] as const,
+  list: (query: RecordingListQuery) =>
+    ["recordings", "list", query] as const,
   search: (query: string) => ["recordings", "search", query] as const,
   audit: (limit: number, offset: number) =>
     ["recording-audit", limit, offset] as const,
 };
 
-export function useRecordingsList(limit: number, offset: number) {
+/** Drop undefined/empty values so they never reach the query string. */
+function toParams(query: RecordingListQuery): Record<string, string | number> {
+  const params: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(query)) {
+    if (v !== undefined && v !== null && v !== "") params[k] = v;
+  }
+  return params;
+}
+
+export function useRecordingsList(query: RecordingListQuery) {
   return useQuery({
-    queryKey: recordingKeys.list(limit, offset),
-    queryFn: () => recordingApi.listRecordings({ limit, offset }),
+    queryKey: recordingKeys.list(query),
+    queryFn: () => recordingApi.listRecordings(toParams(query)),
     staleTime: 60_000,
   });
 }
@@ -52,6 +65,36 @@ export function useDeleteRecording() {
     mutationFn: (id: string) => recordingApi.deleteRecording(id),
     onSuccess: () => {
       toast.success("Recording deleted");
+      qc.invalidateQueries({ queryKey: recordingKeys.all });
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+}
+
+export function useBulkDeleteRecordings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => recordingApi.bulkDeleteRecordings(ids),
+    onSuccess: (res) => {
+      toast.success(res.message ?? "Recordings deleted");
+      qc.invalidateQueries({ queryKey: recordingKeys.all });
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+}
+
+export function useBulkRetryRecordings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const results = await Promise.allSettled(
+        ids.map((id) => recordingApi.retryRecording(id)),
+      );
+      const ok = results.filter((r) => r.status === "fulfilled").length;
+      return { ok, total: ids.length };
+    },
+    onSuccess: ({ ok, total }) => {
+      toast.success(`Queued ${ok}/${total} recording(s) for retry`);
       qc.invalidateQueries({ queryKey: recordingKeys.all });
     },
     onError: (err) => toast.error(getErrorMessage(err)),
