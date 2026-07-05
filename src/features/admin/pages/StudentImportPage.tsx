@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UploadCloud, FileSpreadsheet, CheckCircle2 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { adminApi } from "@/features/admin/api/admin";
 import { useAuthStore } from "@/features/auth/store/auth";
 import type { BulkImportResult } from "@/features/admin/types";
