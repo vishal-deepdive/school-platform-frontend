@@ -100,27 +100,29 @@ export function LoginForm({
         </div>
       </form>
 
-      <div className="text-center text-sm mt-8">
+      <div className="mt-6 flex flex-col gap-4">
+        <OrDivider />
+
+        <AuthButton
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => handleGoogleLogin()}
+        >
+          <GoogleIcon />
+          Continue with Google
+        </AuthButton>
+      </div>
+
+      <p className="text-center text-sm mt-6">
         Don&apos;t have an account?{" "}
         <Link
           to="/register"
-          className="pl-1 font-semibold text-primary hover:text-primary/80 transition-colors"
+          className="font-semibold text-primary hover:text-primary/80 transition-colors"
         >
           Sign up
         </Link>
-      </div>
-
-      <OrDivider />
-
-      <AuthButton
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() => handleGoogleLogin()}
-      >
-        <GoogleIcon />
-        Continue with Google
-      </AuthButton>
+      </p>
     </>
   );
 }

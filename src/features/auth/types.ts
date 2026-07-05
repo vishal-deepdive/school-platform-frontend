@@ -37,6 +37,7 @@ export interface MessageResponse {
 export interface OtpVerifiedResponse {
   message: string;
   verified: boolean;
+  reset_token?: string;
 }
 
 export type VerifyOtpResponse =
@@ -160,8 +161,7 @@ export interface ForgotPasswordRequest {
 export type ResendOtpRequest = ForgotPasswordRequest;
 
 export interface ResetPasswordRequest {
-  email: string;
-  otp: string;
+  reset_token: string;
   new_password: string;
 }
 

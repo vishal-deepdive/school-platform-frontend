@@ -18,7 +18,8 @@ import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { StatCard } from "@/shared/components/ui/Card";
-import { StatCardSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatCardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatusDonut } from "@/features/dashboard/components/StatusDonut";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
@@ -114,10 +115,13 @@ export function AttendanceDashboardPage() {
           description="Choose a school above to see its attendance snapshot for the day."
         />
       ) : isLoading ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
-          ))}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <ChartSkeleton />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
         </div>
       ) : isError ? (
         <EmptyState
@@ -176,42 +180,56 @@ export function AttendanceDashboardPage() {
             </div>
           </section>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            <StatCard
-              label="Present"
-              value={data?.present ?? 0}
-              icon={<UserCheck className="h-5 w-5" />}
-              color="success"
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <StatusDonut
+              counts={data}
+              title="Today's mix"
+              subtitle="How the day's marks break down"
+              centerLabel={
+                data && data.total_marked > 0
+                  ? `${data.attendance_percentage}%`
+                  : "—"
+              }
+              centerSub="present"
             />
-            <StatCard
-              label="Absent"
-              value={data?.absent ?? 0}
-              icon={<UserX className="h-5 w-5" />}
-              color="danger"
-            />
-            <StatCard
-              label="Late"
-              value={data?.late ?? 0}
-              icon={<Clock className="h-5 w-5" />}
-              color="warning"
-            />
-            <StatCard
-              label="Excused"
-              value={data?.excused ?? 0}
-              icon={<FileCheck className="h-5 w-5" />}
-              color="info"
-            />
-            <StatCard
-              label="Half Day"
-              value={data?.half_day ?? 0}
-              icon={<CircleDashed className="h-5 w-5" />}
-            />
-            <StatCard
-              label="Attendance %"
-              value={`${data?.attendance_percentage ?? 0}%`}
-              icon={<Users className="h-5 w-5" />}
-              color="primary"
-            />
+
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-2">
+              <StatCard
+                label="Present"
+                value={data?.present ?? 0}
+                icon={<UserCheck className="h-5 w-5" />}
+                color="success"
+              />
+              <StatCard
+                label="Absent"
+                value={data?.absent ?? 0}
+                icon={<UserX className="h-5 w-5" />}
+                color="danger"
+              />
+              <StatCard
+                label="Late"
+                value={data?.late ?? 0}
+                icon={<Clock className="h-5 w-5" />}
+                color="warning"
+              />
+              <StatCard
+                label="Excused"
+                value={data?.excused ?? 0}
+                icon={<FileCheck className="h-5 w-5" />}
+                color="info"
+              />
+              <StatCard
+                label="Half Day"
+                value={data?.half_day ?? 0}
+                icon={<CircleDashed className="h-5 w-5" />}
+              />
+              <StatCard
+                label="Attendance %"
+                value={`${data?.attendance_percentage ?? 0}%`}
+                icon={<Users className="h-5 w-5" />}
+                color="primary"
+              />
+            </div>
           </div>
         </>
       )}

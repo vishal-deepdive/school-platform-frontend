@@ -17,6 +17,11 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
   const { isDark, toggleTheme } = useTheme();
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [user?.avatar_url]);
 
   useEffect(() => {
     if (user && !user.full_name) {
@@ -46,10 +51,11 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
     }
   };
 
-  const avatarChar =
-    user?.full_name?.charAt(0).toUpperCase() ??
-    user?.email?.charAt(0).toUpperCase() ??
-    "U";
+  const avatarChar = (
+    user?.full_name?.trim().charAt(0) ||
+    user?.email?.trim().charAt(0) ||
+    "U"
+  ).toUpperCase();
 
   const getRoleBadge = (role?: string) => {
     if (!role) return null;
@@ -80,11 +86,13 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
           onClick={() => setOpen(!open)}
           className="flex w-full items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted/50 transition-colors"
         >
-          {user?.avatar_url ? (
+          {user?.avatar_url && !imgError ? (
             <img
               src={user.avatar_url}
               alt={user?.full_name || "User"}
               className="h-10 w-10 shrink-0 rounded-xl object-cover"
+              referrerPolicy="no-referrer"
+              onError={() => setImgError(true)}
             />
           ) : (
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-foreground font-bold shadow-sm ring-1 ring-border">
@@ -111,11 +119,13 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
             className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-foreground font-bold shadow-sm ring-1 ring-border transition-all duration-200 hover:bg-muted/50 overflow-hidden"
             aria-label="User Profile"
           >
-            {user?.avatar_url ? (
+            {user?.avatar_url && !imgError ? (
               <img
                 src={user.avatar_url}
                 alt={user?.full_name || "User"}
                 className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
               />
             ) : (
               avatarChar
@@ -143,11 +153,13 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
           >
             {/* Dropdown Header */}
             <div className="flex items-center gap-3 border-b border-border/50 bg-muted/30 p-3">
-              {user?.avatar_url ? (
+              {user?.avatar_url && !imgError ? (
                 <img
                   src={user.avatar_url}
                   alt={user?.full_name || "User"}
                   className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                  referrerPolicy="no-referrer"
+                  onError={() => setImgError(true)}
                 />
               ) : (
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background text-foreground font-bold shadow-sm ring-1 ring-border">
@@ -202,7 +214,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive/80 hover:bg-destructive/10 hover:text-destructive transition-all"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-rose-500/80 dark:text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 transition-all"
               >
                 <LogOut className="h-4 w-4" />
                 {loggingOut ? "Logging out..." : "Log out"}
