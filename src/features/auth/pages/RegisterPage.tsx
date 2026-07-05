@@ -116,7 +116,7 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-[400px] gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto grid w-full max-w-[400px] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <AuthPageHeader
         title="Create an account"
         subtitle="Enter your details below to sign up"
