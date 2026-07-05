@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Trash2 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";

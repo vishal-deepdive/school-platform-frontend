@@ -1,7 +1,7 @@
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   googleCompleteStudentSchema,
   type GoogleCompleteStudentFormData,
