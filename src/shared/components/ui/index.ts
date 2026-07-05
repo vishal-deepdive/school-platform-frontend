@@ -19,6 +19,7 @@ export {
   PageSkeleton,
 } from "./Skeleton";
 export { Alert } from "./Alert";
+export { Toaster } from "./Toaster";
 export { Modal } from "./Modal";
 export { Table } from "./Table";
 export { Tabs } from "./Tabs";
