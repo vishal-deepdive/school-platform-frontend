@@ -42,8 +42,7 @@ export function OnboardingSection() {
 
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link
-                // to="/onboarding/apply"
-                to="/"
+                to="/onboarding/apply"
                 className="group inline-flex h-12 items-center justify-center rounded-lg bg-white px-7 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[hsl(212_62%_15%)]"
               >
                 Onboard your school

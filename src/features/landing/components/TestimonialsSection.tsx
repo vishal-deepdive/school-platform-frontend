@@ -13,7 +13,7 @@ const FEATURED = {
 const TESTIMONIALS = [
   {
     quote:
-      "Onboarding was remarkably smooth — we applied on a Monday and were running live classes on the platform by the end of the week.",
+      "Onboarding was remarkably smooth — we applied on a Monday and were running classes on the platform by the end of the week.",
     name: "Rajesh Kumar",
     role: "Administrator, Sunrise Public School",
     initials: "RK",
