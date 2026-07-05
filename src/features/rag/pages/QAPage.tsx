@@ -228,11 +228,11 @@ export function QAPage() {
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border/60 bg-card">
-        <div className="flex items-center justify-between border-b border-border/60 px-4 py-2.5">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        <div className="flex items-center justify-between px-4 py-2.5">
+          {/* <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <MessageSquare className="h-4 w-4 text-primary" />
             Ask the textbook
-          </div>
+          </div> */}
           <div className="flex items-center gap-1">
             <Button
               variant="ghost"

@@ -2,16 +2,19 @@ import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/shared/hooks/useTheme";
 
 export function ThemeToggle() {
-  const { toggleTheme } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
+  const label = isDark ? "Switch to light theme" : "Switch to dark theme";
 
   return (
     <button
+      type="button"
       onClick={toggleTheme}
-      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      aria-label="Toggle theme"
+      aria-label={label}
+      title={label}
+      className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
     >
-      <Sun className="h-4 w-4 transition-all scale-100 rotate-0 dark:scale-0 dark:-rotate-90 absolute" />
-      <Moon className="h-4 w-4 transition-all scale-0 rotate-90 dark:scale-100 dark:rotate-0 absolute" />
+      <Sun className="h-[18px] w-[18px] rotate-0 scale-100 transition-all duration-300 dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute h-[18px] w-[18px] rotate-90 scale-0 transition-all duration-300 dark:rotate-0 dark:scale-100" />
     </button>
   );
 }
