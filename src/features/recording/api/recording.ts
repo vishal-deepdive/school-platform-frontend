@@ -6,6 +6,7 @@ import type {
   RecordingsListResponse,
   AuditLogsListResponse,
   DeleteRecordingResponse,
+  BulkDeleteResponse,
   SearchResponse,
   MarkdownResult,
   ResultSection,
@@ -80,6 +81,14 @@ export const recordingApi = {
 
   deleteAllRecordings: () =>
     apiClient.delete(`${BASE}/recordings`).then((r) => r.data),
+
+  /** Delete a specific set of recordings (school-scoped per id on the backend). */
+  bulkDeleteRecordings: (recordIds: string[]) =>
+    apiClient
+      .post<BulkDeleteResponse>(`${BASE}/recordings/bulk-delete`, {
+        record_ids: recordIds,
+      })
+      .then((r) => r.data),
 
   listAuditLogs: (params: Record<string, string | number>) =>
     apiClient

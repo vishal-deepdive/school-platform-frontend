@@ -193,7 +193,7 @@ export function EnrollPage() {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="space-y-6">
       <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
         <Panel>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">

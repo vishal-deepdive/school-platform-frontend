@@ -29,6 +29,7 @@ const AuthCallbackPage = lazyPage(auth, "AuthCallbackPage");
 const GoogleCompleteProfilePage = lazyPage(auth, "GoogleCompleteProfilePage");
 
 const LandingPage = lazyPage(() => import("@/features/landing"), "LandingPage");
+const TermsPage = lazyPage(() => import("@/features/legal"), "TermsPage");
 const DashboardPage = lazyPage(() => import("@/features/dashboard"), "DashboardPage");
 const ProfilePage = lazyPage(() => import("@/features/profile"), "ProfilePage");
 const ParentApprovalsPage = lazyPage(() => import("@/features/parents"), "ParentApprovalsPage");
@@ -90,6 +91,14 @@ export const router = createBrowserRouter([
     element: (
       <Suspense fallback={<FullPageFallback />}>
         <LandingPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/terms",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <TermsPage />
       </Suspense>
     ),
   },

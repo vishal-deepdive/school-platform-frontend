@@ -9,6 +9,7 @@ import {
 } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { writeOtpFlow } from "@/shared/lib/session";
 import { AuthInput, AuthSubmitButton } from "@/shared/components/ui/auth-fuse";
 import { useOtpCooldown } from "../hooks/useOtpCooldown";
 
@@ -22,6 +23,7 @@ export function ForgotPasswordForm() {
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
+    mode: "onTouched",
   });
 
   const watchEmail = useWatch({ control, name: "email", defaultValue: "" });
@@ -32,6 +34,7 @@ export function ForgotPasswordForm() {
       await authApi.forgotPassword(data);
       toast.success("OTP sent to your email!");
       startCooldown();
+      writeOtpFlow({ email: data.email, purpose: "reset_password" });
       navigate("/verify-otp", {
         state: { email: data.email, purpose: "reset_password" },
       });
@@ -50,6 +53,7 @@ export function ForgotPasswordForm() {
         label="Email"
         type="email"
         autoComplete="email"
+        autoFocus
         placeholder="Email Address"
         error={errors.email?.message}
         {...register("email")}
