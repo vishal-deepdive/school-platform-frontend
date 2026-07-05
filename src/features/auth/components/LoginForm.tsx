@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LogIn } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { loginSchema, type LoginFormData } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
