@@ -2,7 +2,6 @@ import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
-import { ElegantShape } from "@/components/ui/shape-landing-hero";
 import {
   fadeUp,
   staggerContainer,
@@ -35,56 +34,18 @@ export function HeroSection() {
 
   return (
     <section className="relative overflow-hidden bg-background dark:bg-[#030303] pt-16">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.4] dark:from-indigo-500/[0.15] via-transparent to-rose-500/[0.4] dark:to-rose-500/[0.15] blur-3xl" />
+      {/* Quiet, single-hue backdrop: a structured grid — the visual language of a
+         register or timetable — fading into one soft brand glow. Static by design;
+         no rotating shapes to paint every frame. */}
+      <div
+        aria-hidden="true"
+        className="mask-radial-fade pointer-events-none absolute inset-0 bg-grid-slate dark:bg-grid-white"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(60%_60%_at_50%_-5%,hsl(var(--primary)/0.13),transparent_72%)]"
+      />
 
-      <div className="absolute inset-0 overflow-hidden">
-        <ElegantShape
-            delay={0.3}
-            width={600}
-            height={140}
-            rotate={12}
-            gradient="from-indigo-500/[0.8] dark:from-indigo-500/[0.4]"
-            className="left-[-10%] md:left-[-5%] top-[15%] md:top-[20%]"
-        />
-
-        <ElegantShape
-            delay={0.5}
-            width={500}
-            height={120}
-            rotate={-15}
-            gradient="from-rose-500/[0.8] dark:from-rose-500/[0.4]"
-            className="right-[-5%] md:right-[0%] top-[70%] md:top-[75%]"
-        />
-
-        <ElegantShape
-            delay={0.4}
-            width={300}
-            height={80}
-            rotate={-8}
-            gradient="from-violet-500/[0.8] dark:from-violet-500/[0.4]"
-            className="left-[5%] md:left-[10%] bottom-[5%] md:bottom-[10%]"
-        />
-
-        <ElegantShape
-            delay={0.6}
-            width={200}
-            height={60}
-            rotate={20}
-            gradient="from-amber-500/[0.8] dark:from-amber-500/[0.4]"
-            className="right-[15%] md:right-[20%] top-[10%] md:top-[15%]"
-        />
-
-        <ElegantShape
-            delay={0.7}
-            width={150}
-            height={40}
-            rotate={-25}
-            gradient="from-cyan-500/[0.8] dark:from-cyan-500/[0.4]"
-            className="left-[20%] md:left-[25%] top-[5%] md:top-[10%]"
-        />
-      </div>
-
-      <div className="absolute inset-0 bg-gradient-to-t from-background dark:from-[#030303] via-transparent to-background/80 dark:to-[#030303]/80 pointer-events-none" />
       <div className="relative mx-auto w-full max-w-[1180px] px-4 pt-16 text-center md:pt-24 xl:px-0">
         <motion.div
           variants={staggerContainer}
@@ -139,8 +100,7 @@ export function HeroSection() {
             className="mt-8 flex flex-wrap items-center justify-center gap-3"
           >
             <Link
-              // to="/onboarding/apply"
-              to="/"
+              to="/onboarding/apply"
               className="group inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
             >
               Onboard Your School
@@ -172,7 +132,7 @@ export function HeroSection() {
 
         {/* Product mockup with scroll-linked perspective */}
         <div className="relative mt-14 [perspective:1400px] md:mt-16">
-          <div className="pointer-events-none absolute -inset-x-8 top-8 -bottom-8 rounded-[3rem] bg-primary/10 blur-3xl" />
+          <div className="pointer-events-none absolute -inset-x-8 top-8 -bottom-8 rounded-[3rem] bg-primary/[0.07] blur-3xl" />
           <motion.div
             ref={mockupRef}
             style={{ rotateX, scale, transformStyle: "preserve-3d" }}
