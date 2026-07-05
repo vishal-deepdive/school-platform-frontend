@@ -13,7 +13,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { authApi } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { decodeJwt, buildUserFromJwt } from "@/shared/lib/jwt";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { SESSION_KEYS, writeSession } from "@/shared/lib/session";
 

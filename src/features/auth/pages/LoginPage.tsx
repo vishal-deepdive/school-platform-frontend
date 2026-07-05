@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { AuthPageHeader } from "@/shared/components/common/AuthPageHeader";
 import { LoginForm } from "@/features/auth/components";

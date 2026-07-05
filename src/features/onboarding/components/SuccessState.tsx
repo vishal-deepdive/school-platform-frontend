@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CheckCircle2, Check, Copy, MailCheck } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { Button } from "@/shared/components/ui/Button";
 import { AuthButton } from "@/shared/components/ui/auth-fuse";
 import type { OnboardingApplicationResponse } from "@/features/onboarding/types";

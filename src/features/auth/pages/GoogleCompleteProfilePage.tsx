@@ -38,7 +38,7 @@ import {
   MailOpen,
   ShieldAlert,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 
 import { useAuthStore } from "@/features/auth/store/auth";
 import { decodeJwt, buildUserFromJwt } from "@/shared/lib/jwt";
