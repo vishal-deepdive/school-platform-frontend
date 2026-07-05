@@ -10,7 +10,7 @@ import {
   Percent,
   Grid3x3,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   isoToIndianDate,
   downloadBlob,

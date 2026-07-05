@@ -266,7 +266,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       >
         {hasSecondary && (
           <div className="flex h-full w-60 flex-col">
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/40 pl-5 pr-3">
+            <div className="flex h-16 shrink-0 items-center justify-between pl-5 pr-3">
               <h2 className="truncate text-sm font-semibold tracking-tight text-foreground">
                 {activeCategory?.label}
               </h2>

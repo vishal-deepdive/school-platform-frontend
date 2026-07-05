@@ -41,6 +41,12 @@ export interface NavItem {
   hidden?: boolean;
   /** Skip the TabContainer breadcrumb header for this route. */
   noHeader?: boolean;
+  /**
+   * Full-height "app" page (e.g. the Q&A chat): the TabContainer content area
+   * gives it an exact height and trims its own vertical padding so the page
+   * owns its internal scroll instead of the shell scrolling.
+   */
+  fullBleed?: boolean;
 }
 
 export const navItems: NavItem[] = [
@@ -140,6 +146,7 @@ export const navItems: NavItem[] = [
         label: "Ask a Doubt",
         href: "/rag/qa",
         icon: <MessageSquare className="h-4 w-4" />,
+        fullBleed: true,
       },
       {
         label: "Practice Test Generator",

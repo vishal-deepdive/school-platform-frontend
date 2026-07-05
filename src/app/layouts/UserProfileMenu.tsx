@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, LogOut, Moon, Sun, User as UserIcon } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { authApi } from "@/features/auth/api/auth";
 import { useTheme } from "@/shared/hooks/useTheme";
