@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { RefreshCw, WifiOff } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { Button } from "@/shared/components/ui/Button";
 
 /** Dispatched by the API layer when a request dies without reaching the server. */

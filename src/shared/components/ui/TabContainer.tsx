@@ -62,6 +62,9 @@ function findActiveTab(pathname: string): ActiveTab | null {
 export function TabContainer({ className }: TabContainerProps) {
   const { pathname } = useLocation();
   const active = useMemo(() => findActiveTab(pathname), [pathname]);
+  // Full-height "app" pages (the Q&A chat) manage their own internal scroll,
+  // so the shell hands them an exact height and drops its own vertical padding.
+  const fullBleed = active?.tab.fullBleed ?? false;
 
   return (
     <div
@@ -95,11 +98,25 @@ export function TabContainer({ className }: TabContainerProps) {
           muted (which composites to ~the same lightness as bg-card), so cards
           inside stay visibly elevated. */}
       <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/[0.02] via-muted/30 to-primary/[0.06] dark:border-border/50 dark:from-primary/[0.03] dark:via-black/25 dark:to-primary/[0.09]">
-        <div className="h-full overflow-y-auto scrollbar-custom px-3 py-4 md:px-4 md:py-5">
-          {/* min-h-full + flex-col lets full-height pages (e.g. the Q&A chat)
-              fill the viewport via `flex-1`, while normal content pages keep
-              flowing top-down and let this container scroll. */}
-          <div className="mx-auto flex min-h-full w-full max-w-6xl flex-col">
+        <div
+          className={cn(
+            "h-full scrollbar-custom",
+            // Full-bleed pages own their scroll and sit tight to the frame;
+            // regular pages scroll here with generous padding.
+            fullBleed
+              ? "overflow-hidden p-1.5 md:p-2"
+              : "overflow-y-auto px-3 py-4 md:px-4 md:py-5",
+          )}
+        >
+          {/* h-full gives full-bleed pages an exact height so they can pin a
+              footer and scroll internally; min-h-full lets normal content
+              pages flow top-down and let this container scroll. */}
+          <div
+            className={cn(
+              "mx-auto flex w-full max-w-6xl flex-col",
+              fullBleed ? "h-full min-h-0" : "min-h-full",
+            )}
+          >
             <Outlet />
           </div>
         </div>
