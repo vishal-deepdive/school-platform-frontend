@@ -136,7 +136,7 @@ function StaffDashboard() {
   const unmarkedCount = analytics?.unmarked_classes?.length ?? 0;
 
   return (
-    <>
+    <div className="animate-slide-up space-y-6">
       {analytics?.scope === "class" && analytics.classes_in_scope.length > 0 && (
         <p className="text-xs text-muted-foreground">
           Showing your assigned {analytics.classes_in_scope.length === 1 ? "class" : "classes"}:{" "}
@@ -268,7 +268,7 @@ function StaffDashboard() {
       </div>
 
       <NeedsAttention analytics={analytics} loading={isLoading} wide />
-    </>
+    </div>
   );
 }
 

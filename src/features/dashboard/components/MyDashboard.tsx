@@ -388,7 +388,7 @@ export function MyDashboard({ isParent }: { isParent: boolean }) {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="animate-slide-up space-y-8">
       <div className="flex items-center justify-end">
         <SegmentedControl
           aria-label="Summary window"
