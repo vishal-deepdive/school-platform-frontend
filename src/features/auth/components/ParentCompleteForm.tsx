@@ -31,6 +31,7 @@ export function ParentCompleteForm({
     formState: { errors, isSubmitting },
   } = useForm<GoogleCompleteParentFormData>({
     resolver: zodResolver(googleCompleteParentSchema),
+    mode: "onTouched",
     defaultValues: {
       full_name: prefillName || undefined,
       relation: "guardian",
@@ -89,6 +90,7 @@ export function ParentCompleteForm({
       </p>
 
       <AuthInput
+        label="Full Name"
         type="text"
         autoComplete="name"
         placeholder="Full name"

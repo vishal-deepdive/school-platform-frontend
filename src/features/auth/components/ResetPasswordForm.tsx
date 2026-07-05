@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound } from "lucide-react";
 import toast from "react-hot-toast";
@@ -9,10 +9,12 @@ import {
 } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { clearResetFlow, clearOtpFlow } from "@/shared/lib/session";
 import {
   AuthPasswordInput,
   AuthSubmitButton,
 } from "@/shared/components/ui/auth-fuse";
+import { PasswordStrengthMeter } from "@/shared/components/common/PasswordStrengthMeter";
 
 export interface ResetPasswordFormProps {
   resetToken?: string;
@@ -24,16 +26,26 @@ export function ResetPasswordForm({ resetToken = "" }: ResetPasswordFormProps) {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
+    mode: "onTouched",
     defaultValues: { reset_token: resetToken },
+  });
+
+  const watchPassword = useWatch({
+    control,
+    name: "new_password",
+    defaultValue: "",
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
     try {
       const { confirm_password: _, ...rest } = data;
       await authApi.resetPassword(rest);
+      clearResetFlow();
+      clearOtpFlow();
       toast.success("Password reset! Please sign in with your new password.");
       navigate("/login");
     } catch (err) {
@@ -49,14 +61,17 @@ export function ResetPasswordForm({ resetToken = "" }: ResetPasswordFormProps) {
     >
       <input type="hidden" {...register("reset_token")} />
 
-      <AuthPasswordInput
-        label="New Password"
-        autoComplete="new-password"
-        placeholder="New password"
-        error={errors.new_password?.message}
-        hint="Min 8 chars with uppercase, lowercase, number & special character"
-        {...register("new_password")}
-      />
+      <div className="grid gap-2">
+        <AuthPasswordInput
+          label="New Password"
+          autoComplete="new-password"
+          autoFocus
+          placeholder="New password"
+          error={errors.new_password?.message}
+          {...register("new_password")}
+        />
+        {watchPassword && <PasswordStrengthMeter value={watchPassword} />}
+      </div>
 
       <AuthPasswordInput
         label="Confirm Password"

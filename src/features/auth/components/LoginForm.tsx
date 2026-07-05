@@ -6,17 +6,16 @@ import toast from "react-hot-toast";
 import { loginSchema, type LoginFormData } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { getErrorInfo } from "@/shared/lib/utils";
 import { decodeJwt, buildUserFromJwt } from "@/shared/lib/jwt";
+import { writeOtpFlow } from "@/shared/lib/session";
 import {
   AuthInput,
   AuthPasswordInput,
-  AuthButton,
   AuthSubmitButton,
 } from "@/shared/components/ui/auth-fuse";
 import { OrDivider } from "@/shared/components/common/OrDivider";
-import { GoogleIcon } from "./GoogleIcon";
-import { useGoogleAuth } from "@/features/auth/hooks/useGoogleAuth";
+import { GoogleButton } from "./GoogleButton";
 
 export function LoginForm({
   redirectPath = "/dashboard",
@@ -25,13 +24,15 @@ export function LoginForm({
 }) {
   const navigate = useNavigate();
   const { login } = useAuthStore();
-  const { handleGoogleLogin } = useGoogleAuth();
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: "onTouched",
+  });
 
   const onSubmit = async (data: LoginFormData) => {
     try {
@@ -43,16 +44,19 @@ export function LoginForm({
       toast.success("Welcome back!");
       navigate(redirectPath, { replace: true });
     } catch (err) {
-      const msg = getErrorMessage(err);
-      if (
-        msg.toLowerCase().includes("verify") ||
-        msg.toLowerCase().includes("otp")
-      ) {
+      const { message, code } = getErrorInfo(err);
+      // Route unverified accounts to the OTP screen. Prefer the structured code;
+      // fall back to matching the message so this keeps working either way.
+      const isUnverified =
+        code === "email_not_verified" ||
+        /verif|not verified|otp/i.test(message);
+      if (isUnverified) {
+        writeOtpFlow({ email: data.email, purpose: "verify_email" });
         navigate("/verify-otp", {
           state: { email: data.email, purpose: "verify_email" },
         });
       } else {
-        toast.error(msg);
+        toast.error(message);
       }
     }
   };
@@ -69,6 +73,7 @@ export function LoginForm({
             label="Email"
             type="email"
             autoComplete="email"
+            autoFocus
             placeholder="m@example.com"
             error={errors.email?.message}
             {...register("email")}
@@ -103,15 +108,7 @@ export function LoginForm({
       <div className="mt-6 flex flex-col gap-4">
         <OrDivider />
 
-        <AuthButton
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={() => handleGoogleLogin()}
-        >
-          <GoogleIcon />
-          Continue with Google
-        </AuthButton>
+        <GoogleButton />
       </div>
 
       <p className="text-center text-sm mt-6">
