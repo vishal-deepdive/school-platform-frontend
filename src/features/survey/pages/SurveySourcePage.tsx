@@ -13,7 +13,7 @@ import {
   Power,
   PowerOff,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { surveyApi } from "@/features/survey/api/survey";
@@ -680,9 +680,9 @@ export function SurveySourcePage() {
           (deleted ? `, ${deleted} replaced` : ""),
       );
       if (drift) {
-        toast(
+        toast.warning(
           `Schema changed: ${drift.added.length} columns added, ${drift.removed.length} removed`,
-          { icon: "⚠️", duration: 6000 },
+          { duration: 6000 },
         );
       }
       qc.invalidateQueries({ queryKey: ["survey"] });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { recordingApi } from "@/features/recording/api/recording";
 import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
 import type {

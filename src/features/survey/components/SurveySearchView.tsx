@@ -18,7 +18,7 @@ import {
   StopCircle,
   Users,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   surveySearchSchema,
   type SurveySearchFormData,
