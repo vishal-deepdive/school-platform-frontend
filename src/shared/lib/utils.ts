@@ -82,6 +82,38 @@ export function getErrorMessage(error: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+export interface ApiErrorInfo {
+  message: string;
+  status?: number;
+  /** Machine-readable error code when the backend provides one. */
+  code?: string;
+}
+
+/**
+ * Like getErrorMessage, but also surfaces the HTTP status and any structured
+ * error code so callers can branch on the *cause* rather than string-matching
+ * the human-facing message (which changes when copy is edited).
+ */
+export function getErrorInfo(error: unknown): ApiErrorInfo {
+  const message = getErrorMessage(error);
+  if (error && typeof error === "object" && "response" in error) {
+    const axiosError = error as {
+      response?: {
+        status?: number;
+        data?: { detail?: unknown; code?: string; error_code?: string };
+      };
+    };
+    const data = axiosError.response?.data;
+    const detailObj =
+      data?.detail && typeof data.detail === "object"
+        ? (data.detail as { code?: string })
+        : undefined;
+    const code = data?.code ?? data?.error_code ?? detailObj?.code;
+    return { message, status: axiosError.response?.status, code };
+  }
+  return { message };
+}
+
 export function buildQueryString(params: Record<string, unknown>): string {
   const qs = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
