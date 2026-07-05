@@ -255,10 +255,12 @@ export function UploadRecordingPage() {
     // bandwidth with no transcription-quality loss. Best-effort: on any failure
     // optimizeAudioForUpload returns the original file untouched.
     let toUpload = file[0];
+    let durationSeconds: number | undefined;
     setOptimizing(true);
     try {
       const res = await optimizeAudioForUpload(file[0], setOptimizeStage);
       toUpload = res.file;
+      durationSeconds = res.durationSeconds;
       if (res.optimized) {
         const saved = Math.round(
           (1 - res.outputBytes / res.originalBytes) * 100,
@@ -274,7 +276,12 @@ export function UploadRecordingPage() {
       setOptimizeStage("");
     }
 
-    upload({ f: toUpload, p: params });
+    // Attach best-effort duration (seconds) so the backend can store it.
+    const payload: Record<string, string> = { ...params };
+    if (durationSeconds != null) {
+      payload.duration_seconds = String(durationSeconds);
+    }
+    upload({ f: toUpload, p: payload });
   };
 
   return (
