@@ -75,7 +75,7 @@ export function VerifyOtpForm({
         navigate(
           data.purpose === "verify_email" ? "/login" : "/reset-password",
           data.purpose === "reset_password"
-            ? { state: { email: data.email } }
+            ? { state: { email: data.email, resetToken: (result as { reset_token?: string }).reset_token } }
             : undefined,
         );
       }
@@ -122,6 +122,10 @@ export function VerifyOtpForm({
         autoComplete="email"
         placeholder="Email Address"
         error={errors.email?.message}
+        readOnly={!!initialEmail}
+        className={
+          initialEmail ? "bg-muted/50 text-muted-foreground cursor-default" : ""
+        }
         {...register("email")}
       />
 
@@ -143,17 +147,15 @@ export function VerifyOtpForm({
 
       <input type="hidden" {...register("purpose")} />
 
-      <div className="pt-2">
-        <AuthSubmitButton
-          icon={ShieldCheck}
-          isLoading={isSubmitting}
-          className="mt-2"
-        >
-          Verify OTP
-        </AuthSubmitButton>
-      </div>
+      <AuthSubmitButton
+        icon={ShieldCheck}
+        isLoading={isSubmitting}
+        className="mt-2"
+      >
+        Verify code
+      </AuthSubmitButton>
 
-      <div className="text-center mt-2">
+      <div className="text-center">
         <Button
           type="button"
           variant="ghost"

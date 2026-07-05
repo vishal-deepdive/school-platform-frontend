@@ -238,7 +238,7 @@ export function GoogleCompleteProfilePage() {
         <div className="mt-4 mb-3">
           <div className="flex items-center gap-2.5 mb-3">
             <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <MailOpen className="h-4.5 w-4.5 text-primary" />
+              <MailOpen className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground leading-tight">
@@ -279,7 +279,7 @@ export function GoogleCompleteProfilePage() {
           fullName={full_name}
           avatarUrl={avatar_url}
         />
-        <h1 className="text-3xl font-extrabold tracking-tight text-foreground mt-4">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground mt-4">
           Complete your profile
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -305,7 +305,7 @@ export function GoogleCompleteProfilePage() {
               aria-selected={isActive}
               aria-controls={`tabpanel-complete-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 text-sm font-semibold rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive
                   ? "text-primary bg-background shadow-sm border border-border/50"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50"

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useMemo, useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Sector, Tooltip } from "recharts";
 import { PieChart as PieIcon } from "lucide-react";
 import { Card } from "@/shared/components/ui/Card";
 import { Skeleton } from "@/shared/components/ui/Skeleton";
@@ -39,6 +39,42 @@ function DonutTooltip({ active, payload }: DonutTooltipProps) {
   );
 }
 
+interface ActiveSliceProps {
+  cx?: number;
+  cy?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  startAngle?: number;
+  endAngle?: number;
+  fill?: string;
+}
+
+/** The hovered arc grows outward and gains a surface ring, so the slice under
+ * the cursor reads as "picked up" off the ring. */
+function ActiveSlice({
+  cx = 0,
+  cy = 0,
+  innerRadius = 0,
+  outerRadius = 0,
+  startAngle = 0,
+  endAngle = 0,
+  fill,
+}: ActiveSliceProps) {
+  return (
+    <Sector
+      cx={cx}
+      cy={cy}
+      innerRadius={innerRadius}
+      outerRadius={outerRadius + 5}
+      startAngle={startAngle}
+      endAngle={endAngle}
+      fill={fill}
+      stroke="oklch(var(--card))"
+      strokeWidth={2}
+    />
+  );
+}
+
 interface StatusDonutProps {
   counts: StatusCounts | undefined;
   loading?: boolean;
@@ -73,6 +109,7 @@ export function StatusDonut({
     [counts],
   );
   const total = data.reduce((acc, d) => acc + d.value, 0);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   return (
     <Card padding="md" className={cn("flex flex-col", className)}>
@@ -110,31 +147,63 @@ export function StatusDonut({
                   outerRadius="95%"
                   paddingAngle={2}
                   strokeWidth={0}
+                  activeShape={ActiveSlice}
+                  onMouseEnter={(_, i) => setActiveIndex(i)}
+                  onMouseLeave={() => setActiveIndex(null)}
                 >
-                  {data.map((d) => (
-                    <Cell key={d.name} fill={d.color} />
+                  {data.map((d, i) => (
+                    <Cell
+                      key={d.name}
+                      fill={d.color}
+                      fillOpacity={
+                        activeIndex == null || activeIndex === i ? 1 : 0.4
+                      }
+                      className="transition-opacity duration-200"
+                    />
                   ))}
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-            {centerLabel && (
+            {(centerLabel || activeIndex != null) && (
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-2xl font-extrabold tracking-tight text-foreground">
-                  {centerLabel}
-                </p>
-                {centerSub && (
-                  <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                    {centerSub}
-                  </p>
+                {activeIndex != null && data[activeIndex] ? (
+                  <>
+                    <p
+                      className="text-3xl font-extrabold tracking-tight tabular-nums"
+                      style={{ color: data[activeIndex].color }}
+                    >
+                      {data[activeIndex].value}
+                    </p>
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {data[activeIndex].name}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-extrabold tracking-tight text-foreground">
+                      {centerLabel}
+                    </p>
+                    {centerSub && (
+                      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {centerSub}
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}
           </div>
           <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1.5">
-            {data.map((d) => (
-              <span
+            {data.map((d, i) => (
+              <button
                 key={d.name}
-                className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                type="button"
+                onMouseEnter={() => setActiveIndex(i)}
+                onMouseLeave={() => setActiveIndex(null)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground transition-opacity",
+                  activeIndex != null && activeIndex !== i && "opacity-40",
+                )}
               >
                 <span
                   className="h-2.5 w-2.5 rounded-full"
@@ -142,7 +211,7 @@ export function StatusDonut({
                 />
                 {d.name}
                 <span className="font-semibold text-foreground">{d.value}</span>
-              </span>
+              </button>
             ))}
           </div>
         </div>

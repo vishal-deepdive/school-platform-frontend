@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/features/auth/store/auth";
+import { AuthPageHeader } from "@/shared/components/common/AuthPageHeader";
 import { LoginForm } from "@/features/auth/components";
 
 export function LoginPage() {
@@ -25,15 +26,12 @@ export function LoginPage() {
   }, [incompleteProfile, logout]);
 
   return (
-    <div className="mx-auto grid w-full max-w-[350px] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col items-center gap-2 text-center mb-4">
-        <h1 className="text-2xl font-bold text-foreground">
-          Sign in to your account
-        </h1>
-        <p className="text-balance text-sm text-muted-foreground">
-          Enter your email below to sign in
-        </p>
-      </div>
+    <div className="mx-auto grid w-full max-w-[400px] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <AuthPageHeader
+        title="Sign in to your account"
+        subtitle="Welcome back! Enter your details to continue."
+        className="mb-4"
+      />
 
       <LoginForm redirectPath={from} />
     </div>
