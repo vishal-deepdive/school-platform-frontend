@@ -46,21 +46,18 @@ export function ForgotPasswordForm() {
       className="flex flex-col gap-5"
       noValidate
     >
-      <div>
-        <AuthInput
-          type="email"
-          autoComplete="email"
-          placeholder="Email Address"
-          error={errors.email?.message}
-          {...register("email")}
-        />
-      </div>
+      <AuthInput
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="Email Address"
+        error={errors.email?.message}
+        {...register("email")}
+      />
 
-      <div className="pt-2">
-        <AuthSubmitButton icon={Mail} isLoading={isSubmitting} className="mt-2">
-          Send reset OTP
-        </AuthSubmitButton>
-      </div>
+      <AuthSubmitButton icon={Mail} isLoading={isSubmitting} className="mt-2">
+        Send reset code
+      </AuthSubmitButton>
 
       <p className="text-center text-sm text-muted-foreground mt-2">
         Remembered it?{" "}

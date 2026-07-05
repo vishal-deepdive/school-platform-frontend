@@ -57,8 +57,17 @@ export function AuthLayout() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  // Password-recovery pages belong to the sign-in journey, so they share its imagery
+  const SIGN_IN_ROUTES = [
+    "login",
+    "forgot-password",
+    "reset-password",
+    "verify-otp",
+    "auth/callback",
+  ];
   const isSignIn =
-    location.pathname.includes("login") || location.pathname === "/";
+    location.pathname === "/" ||
+    SIGN_IN_ROUTES.some((r) => location.pathname.includes(r));
   const isOnboarding = location.pathname.includes("onboarding");
 
   const currentContent = isOnboarding

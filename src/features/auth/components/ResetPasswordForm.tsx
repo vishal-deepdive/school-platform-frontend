@@ -10,18 +10,15 @@ import {
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/lib/utils";
 import {
-  AuthInput,
   AuthPasswordInput,
   AuthSubmitButton,
 } from "@/shared/components/ui/auth-fuse";
 
 export interface ResetPasswordFormProps {
-  initialEmail?: string;
+  resetToken?: string;
 }
 
-export function ResetPasswordForm({
-  initialEmail = "",
-}: ResetPasswordFormProps) {
+export function ResetPasswordForm({ resetToken = "" }: ResetPasswordFormProps) {
   const navigate = useNavigate();
 
   const {
@@ -30,7 +27,7 @@ export function ResetPasswordForm({
     formState: { errors, isSubmitting },
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
-    defaultValues: { email: initialEmail },
+    defaultValues: { reset_token: resetToken },
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
@@ -44,74 +41,38 @@ export function ResetPasswordForm({
     }
   };
 
-  const otpReg = register("otp");
-
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col gap-5"
       noValidate
     >
-      <div>
-        <AuthInput
-          type="email"
-          autoComplete="email"
-          placeholder="Email"
-          error={errors.email?.message}
-          readOnly={!!initialEmail}
-          className={
-            initialEmail
-              ? "bg-muted/50 text-muted-foreground cursor-default"
-              : ""
-          }
-          {...register("email")}
-        />
-      </div>
+      <input type="hidden" {...register("reset_token")} />
 
-      <div>
-        <AuthInput
-          type="text"
-          inputMode="numeric"
-          maxLength={6}
-          placeholder="OTP Code"
-          error={errors.otp?.message}
-          className="font-mono text-center text-lg tracking-widest"
-          {...otpReg}
-          onChange={(e) => {
-            e.target.value = e.target.value.replace(/\D/g, "");
-            otpReg.onChange(e);
-          }}
-        />
-      </div>
+      <AuthPasswordInput
+        label="New Password"
+        autoComplete="new-password"
+        placeholder="New password"
+        error={errors.new_password?.message}
+        hint="Min 8 chars with uppercase, lowercase, number & special character"
+        {...register("new_password")}
+      />
 
-      <div>
-        <AuthPasswordInput
-          autoComplete="new-password"
-          placeholder="New password"
-          error={errors.new_password?.message}
-          hint="Min 8 chars with uppercase, lowercase, number & special character"
-          {...register("new_password")}
-        />
-      </div>
+      <AuthPasswordInput
+        label="Confirm Password"
+        autoComplete="new-password"
+        placeholder="Confirm new password"
+        error={errors.confirm_password?.message}
+        {...register("confirm_password")}
+      />
 
-      <div>
-        <AuthPasswordInput
-          autoComplete="new-password"
-          placeholder="Confirm new password"
-          error={errors.confirm_password?.message}
-          {...register("confirm_password")}
-        />
-      </div>
-
-      <div className="pt-2">
-        <AuthSubmitButton
-          icon={KeyRound}
-          isLoading={isSubmitting}
-          className="mt-2"
-        >
-          Reset password
-        </AuthSubmitButton>
-      </div>
+      <AuthSubmitButton
+        icon={KeyRound}
+        isLoading={isSubmitting}
+        className="mt-2"
+      >
+        Reset password
+      </AuthSubmitButton>
 
       <p className="text-center text-sm text-muted-foreground mt-2">
         <Link
