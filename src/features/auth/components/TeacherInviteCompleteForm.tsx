@@ -24,6 +24,7 @@ export function TeacherInviteCompleteForm({
     formState: { errors, isSubmitting },
   } = useForm<GoogleCompleteTeacherInviteFormData>({
     resolver: zodResolver(googleCompleteTeacherInviteSchema),
+    mode: "onTouched",
     defaultValues: { full_name: prefillName || undefined },
   });
 
@@ -50,8 +51,10 @@ export function TeacherInviteCompleteForm({
       noValidate
     >
       <AuthInput
+        label="Full Name"
         type="text"
         autoComplete="name"
+        autoFocus
         placeholder="Full name (optional)"
         error={errors.full_name?.message}
         {...register("full_name")}

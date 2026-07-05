@@ -8,16 +8,16 @@ import {
 } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { writeOtpFlow } from "@/shared/lib/session";
 import {
   AuthInput,
   AuthPasswordInput,
-  AuthButton,
   AuthSubmitButton,
 } from "@/shared/components/ui/auth-fuse";
 import { TermsCheckbox } from "@/shared/components/common/TermsCheckbox";
 import { OrDivider } from "@/shared/components/common/OrDivider";
-import { GoogleIcon } from "./GoogleIcon";
-import { useGoogleAuth } from "@/features/auth/hooks/useGoogleAuth";
+import { PasswordStrengthMeter } from "@/shared/components/common/PasswordStrengthMeter";
+import { GoogleButton } from "./GoogleButton";
 import { useOtpCooldown } from "../hooks/useOtpCooldown";
 import type { NavProps } from "./types";
 
@@ -32,12 +32,13 @@ export function TeacherInviteRegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<TeacherInviteFormData>({
     resolver: zodResolver(teacherInviteFormSchema),
+    mode: "onTouched",
     defaultValues: { terms: false },
   });
 
   const watchEmail = useWatch({ control, name: "email", defaultValue: "" });
+  const watchPassword = useWatch({ control, name: "password", defaultValue: "" });
   const { startCooldown } = useOtpCooldown(watchEmail, "verify_email", false);
-  const { handleGoogleLogin } = useGoogleAuth();
 
   const onSubmit = async (data: TeacherInviteFormData) => {
     try {
@@ -45,6 +46,7 @@ export function TeacherInviteRegisterForm({
       await authApi.registerTeacher({ ...rest, invite_token: inviteToken });
       toast.success("Teacher account created! Please verify your email.");
       startCooldown();
+      writeOtpFlow({ email: data.email, purpose: "verify_email" });
       navigate("/verify-otp", {
         state: { email: data.email, purpose: "verify_email" },
       });
@@ -63,6 +65,7 @@ export function TeacherInviteRegisterForm({
         label="Full Name"
         type="text"
         autoComplete="name"
+        autoFocus
         placeholder="Full name"
         error={errors.full_name?.message}
         {...register("full_name")}
@@ -77,14 +80,16 @@ export function TeacherInviteRegisterForm({
         {...register("email")}
       />
 
-      <AuthPasswordInput
-        label="Password"
-        autoComplete="new-password"
-        placeholder="Password"
-        error={errors.password?.message}
-        hint="Min 8 chars, uppercase, lowercase, digit &amp; special char"
-        {...register("password")}
-      />
+      <div className="grid gap-2">
+        <AuthPasswordInput
+          label="Password"
+          autoComplete="new-password"
+          placeholder="Password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        {watchPassword && <PasswordStrengthMeter value={watchPassword} />}
+      </div>
 
       <AuthPasswordInput
         label="Confirm Password"
@@ -106,15 +111,7 @@ export function TeacherInviteRegisterForm({
 
       <OrDivider />
 
-      <AuthButton
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() => handleGoogleLogin({ role: "teacher", inviteToken })}
-      >
-        <GoogleIcon />
-        Continue with Google
-      </AuthButton>
+      <GoogleButton options={{ role: "teacher", inviteToken }} />
     </form>
   );
 }
