@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserCheck } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { Alert } from "@/shared/components/ui/Alert";

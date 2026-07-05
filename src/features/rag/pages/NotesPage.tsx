@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { StickyNote } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";

@@ -7,7 +7,7 @@ import {
   Mail,
   Building2,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { authApi } from "@/features/auth/api/auth";
 import { Card, CardHeader } from "@/shared/components/ui/Card";

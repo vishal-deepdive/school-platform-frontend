@@ -20,7 +20,7 @@ import {
   Copy,
   Loader2,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { adminApi } from "@/features/admin/api/admin";
 import { authApi } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
