@@ -9,6 +9,7 @@ import {
   EASE_OUT_EXPO,
 } from "@/features/landing/animations";
 import { DashboardPreview } from "@/features/landing/components/DashboardPreview";
+import { SpotlightGrid } from "@/features/landing/components/SpotlightGrid";
 
 const HEADLINE_WORDS = ["One", "platform", "to", "run", "your"];
 
@@ -35,16 +36,9 @@ export function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-background dark:bg-[#030303] pt-16">
       {/* Quiet, single-hue backdrop: a structured grid — the visual language of a
-         register or timetable — fading into one soft brand glow. Static by design;
-         no rotating shapes to paint every frame. */}
-      <div
-        aria-hidden="true"
-        className="mask-radial-fade pointer-events-none absolute inset-0 bg-grid-slate dark:bg-grid-white"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(60%_60%_at_50%_-5%,hsl(var(--primary)/0.13),transparent_72%)]"
-      />
+         register or timetable — fading into one soft brand glow. The register
+         lines light up in brand blue under the cursor as it moves. */}
+      <SpotlightGrid />
 
       <div className="relative mx-auto w-full max-w-[1180px] px-4 pt-16 text-center md:pt-24 xl:px-0">
         <motion.div

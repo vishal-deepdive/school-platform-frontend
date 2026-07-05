@@ -171,6 +171,16 @@
     background-size: 44px 44px;
   }
 
+  /* Brighter, brand-tinted register lines. Shares the 44px cell of the base
+     grids so it overlays them exactly; only revealed under the cursor spotlight
+     (see SpotlightGrid), where it reads as the timetable lighting up. */
+  .bg-grid-primary {
+    background-image:
+      linear-gradient(to right, hsl(var(--primary) / 0.32) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--primary) / 0.32) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
   /* Fades a decorative backdrop (grid / glow) into the surface from the top,
      so it reads as ambient texture rather than a hard-edged panel. */
   .mask-radial-fade {
