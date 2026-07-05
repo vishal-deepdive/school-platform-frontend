@@ -242,3 +242,107 @@
   }
 }
 
+/* ── Sonner toast theming ──────────────────────────────────────────────────
+   Sonner self-injects its base stylesheet at runtime, so these overrides use
+   a `.dd-toaster` class + extra attribute to out-specify its defaults. The
+   neutral toast borrows the app's card/foreground/border tokens (so it tracks
+   light/dark automatically); the semantic variants mirror `Alert.tsx`. */
+[data-sonner-toaster].dd-toaster {
+  font-family: "Inter", system-ui, sans-serif;
+  --border-radius: 12px;
+  --width: 380px;
+}
+
+/* Neutral (default / loading) toast → app surface tokens. Higher specificity
+   than sonner's `[data-sonner-toaster][data-sonner-theme='…']` base rule. */
+[data-sonner-toaster].dd-toaster[data-sonner-theme] {
+  --normal-bg: oklch(var(--card));
+  --normal-text: oklch(var(--foreground));
+  --normal-border: oklch(var(--border));
+}
+
+/* Semantic palette — light. Mirrors Alert.tsx (green / red / amber / blue). */
+[data-sonner-toaster].dd-toaster[data-sonner-theme="light"] {
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --success-text: #15803d;
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+  --error-text: #b91c1c;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #b45309;
+  --info-bg: #eff6ff;
+  --info-border: #bfdbfe;
+  --info-text: #1d4ed8;
+}
+
+/* Semantic palette — dark. Tints lifted off the navy surface for legibility. */
+[data-sonner-toaster].dd-toaster[data-sonner-theme="dark"] {
+  --success-bg: #0c2a1c;
+  --success-border: #166534;
+  --success-text: #4ade80;
+  --error-bg: #2c1416;
+  --error-border: #991b1b;
+  --error-text: #f87171;
+  --warning-bg: #2a2008;
+  --warning-border: #92400e;
+  --warning-text: #fbbf24;
+  --info-bg: #0f1d38;
+  --info-border: #1e40af;
+  --info-text: #60a5fa;
+}
+
+/* Toast card: radius, padding, type scale, and a soft elevated shadow. */
+[data-sonner-toaster].dd-toaster [data-sonner-toast] {
+  padding: 14px 16px;
+  gap: 10px;
+  font-size: 13.5px;
+  box-shadow:
+    0 6px 24px -4px rgba(15, 23, 42, 0.12),
+    0 2px 6px -2px rgba(15, 23, 42, 0.08);
+}
+[data-sonner-toaster].dd-toaster[data-sonner-theme="dark"] [data-sonner-toast] {
+  box-shadow:
+    0 10px 30px -6px rgba(0, 0, 0, 0.55),
+    0 2px 8px -2px rgba(0, 0, 0, 0.45);
+}
+
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-title] {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+}
+
+/* Icon sized to match Alert; colour is inherited from the toast text token. */
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-icon] {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+}
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-icon] > svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Close button: quiet until the toast is hovered/focused. */
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-close-button] {
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+[data-sonner-toaster].dd-toaster [data-sonner-toast]:hover [data-close-button],
+[data-sonner-toaster].dd-toaster
+  [data-sonner-toast]:focus-within
+  [data-close-button] {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  [data-sonner-toaster].dd-toaster {
+    --width: 100%;
+  }
+}
+

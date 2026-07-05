@@ -20,7 +20,7 @@ import {
   AlertCircle,
   Building2,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { getErrorMessage, formatDateTime, cn } from "@/shared/lib/utils";
 import { AuthInput, AuthButton } from "@/shared/components/ui/auth-fuse";

@@ -10,7 +10,7 @@ import {
   Inbox,
   FileSpreadsheet,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { surveyApi } from "@/features/survey/api/survey";

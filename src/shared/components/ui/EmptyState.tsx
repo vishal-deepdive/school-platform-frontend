@@ -1,4 +1,5 @@
 import { cn } from "@/shared/lib/utils";
+import { Card } from "./Card";
 
 interface EmptyStateProps {
   icon: React.ReactNode;
@@ -19,7 +20,7 @@ export function EmptyState({
   className,
 }: EmptyStateProps) {
   return (
-    <div
+    <Card
       className={cn(
         "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border py-16 text-center",
         className,
@@ -33,6 +34,6 @@ export function EmptyState({
         )}
       </div>
       {action}
-    </div>
+    </Card>
   );
 }
