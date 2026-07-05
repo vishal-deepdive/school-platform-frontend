@@ -46,7 +46,41 @@ export interface Recording {
   recording_subject?: string;
   audio_filename: string;
   job_id?: string;
+  /** Uploader user id + resolved display name (from the users join). */
+  uploaded_by?: string;
+  uploader_name?: string;
+  /** Distribution state: draft | pending | published | archived. */
+  visibility?: string;
+  title?: string;
+  duration_seconds?: number;
+  file_size_bytes?: number;
   created_at?: string;
+}
+
+/** Columns the recordings list may be sorted by (must match the backend allow-list). */
+export type RecordingSortBy =
+  | "created_at"
+  | "date"
+  | "class"
+  | "subject"
+  | "title"
+  | "duration_seconds"
+  | "file_size_bytes"
+  | "school_name";
+
+/** Query parameters accepted by the recordings list endpoint. */
+export interface RecordingListQuery {
+  limit: number;
+  offset: number;
+  /** Sent as the `class` query alias expected by the backend. */
+  class?: string;
+  section?: string;
+  subject?: string;
+  recording_subject?: string;
+  date?: string;
+  school_name?: string;
+  sort_by?: RecordingSortBy;
+  order?: "asc" | "desc";
 }
 
 export interface RecordingsListResponse {
@@ -54,6 +88,11 @@ export interface RecordingsListResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface BulkDeleteResponse {
+  message: string;
+  deleted_count: number;
 }
 
 export interface AuditLog {

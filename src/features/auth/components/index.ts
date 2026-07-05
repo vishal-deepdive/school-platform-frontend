@@ -1,4 +1,5 @@
 export * from "./GoogleIcon";
+export * from "./GoogleButton";
 export * from "./TeacherInviteRegisterForm";
 export * from "./StudentRegisterForm";
 export * from "./ParentRegisterForm";
