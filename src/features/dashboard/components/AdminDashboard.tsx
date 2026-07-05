@@ -126,7 +126,7 @@ export function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4 animate-fade-in">
+      <div className="space-y-6 animate-fade-in">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <StatCardSkeleton key={i} />

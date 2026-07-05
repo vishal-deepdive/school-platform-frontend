@@ -40,10 +40,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-import { authApi } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { decodeJwt, buildUserFromJwt } from "@/shared/lib/jwt";
-import { getErrorMessage } from "@/shared/lib/utils";
 import {
   SESSION_KEYS,
   readSignupSession,
@@ -54,7 +52,7 @@ import { AuthButton } from "@/shared/components/ui/auth-fuse";
 import type { TokenResponse } from "@/features/auth/types";
 
 import {
-  GoogleIcon,
+  GoogleButton,
   TeacherInviteCompleteForm,
   StudentCompleteForm,
   ParentCompleteForm,
@@ -143,21 +141,10 @@ export function GoogleCompleteProfilePage() {
           </p>
         </div>
 
-        <AuthButton
-          type="button"
-          className="w-full"
-          onClick={async () => {
-            try {
-              const { auth_url } = await authApi.googleLogin();
-              window.location.href = auth_url;
-            } catch (err) {
-              toast.error(getErrorMessage(err));
-            }
-          }}
-        >
-          <GoogleIcon />
-          Sign in with Google to complete profile
-        </AuthButton>
+        <GoogleButton
+          variant="default"
+          label="Sign in with Google to complete profile"
+        />
 
         <p className="text-sm text-muted-foreground">
           Wrong account?{" "}
