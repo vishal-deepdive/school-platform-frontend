@@ -25,6 +25,62 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 
 const SYNC_POLL_MS = 3000;
 
+interface RankedRow {
+  label: string;
+  count: number;
+}
+
+/**
+ * Ranked horizontal proportion bars — reads a list of {label, count} rows as a
+ * magnitude comparison rather than a flat badge list, so the biggest
+ * contributors stand out at a glance. Bars are normalized to the largest row.
+ */
+function ResponseBars({
+  rows,
+  accent,
+  limit = 8,
+}: {
+  rows: RankedRow[];
+  accent: string;
+  limit?: number;
+}) {
+  const sorted = [...rows].sort((a, b) => b.count - a.count);
+  const shown = sorted.slice(0, limit);
+  const hidden = sorted.length - shown.length;
+  const max = Math.max(1, ...shown.map((r) => r.count));
+
+  return (
+    <div className="px-4 py-4 md:px-5">
+      <ul className="space-y-3">
+        {shown.map((r) => (
+          <li key={r.label}>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-sm text-foreground">{r.label}</p>
+              <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                {r.count}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
+                style={{
+                  width: `${Math.round((r.count / max) * 100)}%`,
+                  backgroundColor: accent,
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          +{hidden} more not shown
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function SurveyDashboardPage() {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
@@ -293,24 +349,16 @@ export function SurveyDashboardPage() {
               <Badge variant="info">{data.by_school.length} schools</Badge>
             }
           >
-            <ul className="divide-y divide-border/50">
-              {data.by_school.map((s, i) => {
+            <ResponseBars
+              accent="hsl(var(--primary))"
+              rows={data.by_school.map((s) => {
                 const school = s as Record<string, unknown>;
-                return (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
-                  >
-                    <p className="min-w-0 truncate text-sm text-foreground">
-                      {String(school.school_name ?? "—")}
-                    </p>
-                    <Badge variant="info">
-                      {String(school.count ?? 0)} responses
-                    </Badge>
-                  </li>
-                );
+                return {
+                  label: String(school.school_name ?? "—"),
+                  count: Number(school.count ?? 0),
+                };
               })}
-            </ul>
+            />
           </Panel>
         )}
 
@@ -323,25 +371,18 @@ export function SurveyDashboardPage() {
               <Badge variant="success">{data.by_class.length} classes</Badge>
             }
           >
-            <ul className="divide-y divide-border/50">
-              {data.by_class.map((c, i) => {
+            <ResponseBars
+              accent="hsl(var(--primary))"
+              rows={data.by_class.map((c) => {
                 const cls = c as Record<string, unknown>;
-                return (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
-                  >
-                    <p className="min-w-0 truncate text-sm text-foreground">
-                      {String(cls.class ?? cls.class_name ?? "").trim() ||
-                        "Unknown Class"}
-                    </p>
-                    <Badge variant="success">
-                      {String(cls.count ?? 0)} responses
-                    </Badge>
-                  </li>
-                );
+                return {
+                  label:
+                    String(cls.class ?? cls.class_name ?? "").trim() ||
+                    "Unknown Class",
+                  count: Number(cls.count ?? 0),
+                };
               })}
-            </ul>
+            />
           </Panel>
         )}
       </div>

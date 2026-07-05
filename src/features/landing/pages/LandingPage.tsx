@@ -2,6 +2,7 @@ import { MotionConfig, motion, useScroll, useSpring } from "framer-motion";
 import { LandingNavbar } from "@/features/landing/components/LandingNavbar";
 import { HeroSection } from "@/features/landing/components/HeroSection";
 import { FeatureSection } from "@/features/landing/components/FeatureSection";
+import { RolesSection } from "@/features/landing/components/RolesSection";
 import { HowItWorksSection } from "@/features/landing/components/HowItWorksSection";
 import { FutureGrowthSection } from "@/features/landing/components/FutureGrowthSection";
 import { TestimonialsSection } from "@/features/landing/components/TestimonialsSection";
@@ -34,6 +35,7 @@ export function LandingPage() {
         <main>
           <HeroSection />
           <FeatureSection />
+          <RolesSection />
           <HowItWorksSection />
           <FutureGrowthSection />
           <TestimonialsSection />

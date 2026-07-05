@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
+import { ThemeToggle } from "@/shared/components/ui/ThemeToggle";
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
+  { label: "Roles", href: "#roles" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Analytics", href: "#growth" },
   { label: "Testimonials", href: "#testimonials" },
@@ -57,17 +59,18 @@ export function LandingNavbar() {
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
+          <ThemeToggle />
           {isAuthenticated ? (
             <Link
               to="/dashboard"
-              className="group inline-flex items-center gap-2 rounded-lg border border-border px-3.5 py-2 text-sm font-medium text-foreground/80 transition-colors hover:bg-accent/50"
+              aria-label="Go to dashboard"
+              className="inline-flex items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2"
             >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                 {user?.full_name?.charAt(0).toUpperCase() ??
                   user?.email?.charAt(0).toUpperCase() ??
                   "U"}
               </span>
-              Dashboard
             </Link>
           ) : (
             <>
@@ -88,13 +91,16 @@ export function LandingNavbar() {
           )}
         </div>
 
-        <button
-          onClick={() => setMenuOpen((open) => !open)}
-          className="rounded-lg p-2 text-foreground/80 transition hover:bg-accent md:hidden"
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-        >
-          {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          <ThemeToggle />
+          <button
+            onClick={() => setMenuOpen((open) => !open)}
+            className="rounded-lg p-2 text-foreground/80 transition hover:bg-accent"
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            {menuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </nav>
 
       <AnimatePresence>
