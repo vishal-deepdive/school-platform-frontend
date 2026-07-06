@@ -5,6 +5,7 @@ import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { ModulePageLayout } from "@/shared/components/ui/ModulePageLayout";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleRoute } from "./routes/RoleRoute";
+import { SchoolGate } from "./routes/SchoolGate";
 
 /*
  * Route-level code splitting: every feature barrel is imported lazily, so each
@@ -139,7 +140,11 @@ export const router = createBrowserRouter([
           // ── Attendance ───────────────────────────────────────────────────
           {
             path: "/attendance",
-            element: <AttendancePage />,
+            element: (
+              <SchoolGate>
+                <AttendancePage />
+              </SchoolGate>
+            ),
             children: [
               { index: true, element: <Navigate to="view" replace /> },
               { path: "dashboard", element: <RoleRoute><AttendanceDashboardPage /></RoleRoute> },
@@ -163,7 +168,9 @@ export const router = createBrowserRouter([
                 path: "import",
                 element: (
                   <RoleRoute allow={["admin", "principal"]}>
-                    <StudentImportPage />
+                    <SchoolGate>
+                      <StudentImportPage />
+                    </SchoolGate>
                   </RoleRoute>
                 ),
               },
@@ -172,7 +179,11 @@ export const router = createBrowserRouter([
           // ── Lecture Capture ───────────────────────────────────────────────
           {
             path: "/recording",
-            element: <RecordingPage />,
+            element: (
+              <SchoolGate>
+                <RecordingPage />
+              </SchoolGate>
+            ),
             children: [
               { index: true, element: <Navigate to="list" replace /> },
               { path: "upload", element: <RoleRoute><UploadRecordingPage /></RoleRoute> },
@@ -184,7 +195,11 @@ export const router = createBrowserRouter([
           // ── Study Assistant ───────────────────────────────────────────────
           {
             path: "/rag",
-            element: <RagPage />,
+            element: (
+              <SchoolGate>
+                <RagPage />
+              </SchoolGate>
+            ),
             children: [
               { index: true, element: <Navigate to="qa" replace /> },
               { path: "qa", element: <RoleRoute><QAPage /></RoleRoute> },
@@ -199,7 +214,9 @@ export const router = createBrowserRouter([
             path: "/survey",
             element: (
               <RoleRoute allow={["admin", "principal", "teacher"]}>
-                <SurveyPage />
+                <SchoolGate>
+                  <SurveyPage />
+                </SchoolGate>
               </RoleRoute>
             ),
             children: [

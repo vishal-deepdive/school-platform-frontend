@@ -26,6 +26,11 @@
     --card-foreground: 0.145 0 0;
     --popover: 1 0 0;
     --popover-foreground: 0.145 0 0;
+    /* App shell surfaces: canvas = main content area (solid equivalent of the
+       old bg-muted/30 composite), rail = icon sidebar strip. Solid values so
+       the sidebar "connected tab" notches can match them exactly. */
+    --canvas: 0.9805 0 0;
+    --rail: 0.955 0 0;
   }
 
   .dark {
@@ -48,6 +53,8 @@
     --card-foreground: 0.985 0 0;
     --popover: 0.20 0.02 260;
     --popover-foreground: 0.985 0 0;
+    --canvas: 0.183 0.02 260;
+    --rail: 0.21 0.02 260;
   }
 
   *,
