@@ -1,4 +1,3 @@
-import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -18,12 +17,11 @@ import { getErrorMessage, downloadFile, formatFileSize } from "@/shared/lib/util
 import { Panel } from "@/shared/components/ui/Panel";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import type { JobStatus, JobStatusResponse } from "@/features/recording/types";
 
@@ -153,8 +151,7 @@ function JobStatusCard({ jobId, jobStatus, deduplicated, markdown }: JobStatusCa
 }
 
 export function UploadRecordingPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const [file, setFile] = useState<File[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
@@ -165,32 +162,22 @@ export function UploadRecordingPage() {
   // When a re-upload is deduplicated the job is already complete on the
   // backend, so we skip status polling and fetch the existing result directly.
   const [deduplicated, setDeduplicated] = useState(false);
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
   const [params, setParams] = useState({
-    school_name: "",
     class_name: "",
     section: "",
     subject: "",
     recording_subject: "",
   });
 
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = params.class_name
     ? getSectionOptions(params.class_name)
     : [];
 
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
-    setParams((p) => ({ ...p, school_name: name, class_name: "", section: "" }));
-  };
+  // Clear the class picker when the active school changes (its classes differ).
+  useEffect(() => {
+    setParams((p) => ({ ...p, class_name: "", section: "" }));
+  }, [schoolId]);
 
   const handleClassChange = (className: string) => {
     setParams((p) => ({ ...p, class_name: className, section: "" }));
@@ -241,7 +228,7 @@ export function UploadRecordingPage() {
       toast.error("Please select an audio file");
       return;
     }
-    if ((user?.role === "admin" && !params.school_name) || !params.class_name) {
+    if ((isAdmin && !schoolName) || !params.class_name) {
       toast.error("School name and class are required");
       return;
     }
@@ -276,8 +263,13 @@ export function UploadRecordingPage() {
       setOptimizeStage("");
     }
 
-    // Attach best-effort duration (seconds) so the backend can store it.
-    const payload: Record<string, string> = { ...params };
+    // Attach best-effort duration (seconds) so the backend can store it. The
+    // school comes from the global active-school selection (blank for non-admins,
+    // who are scoped server-side).
+    const payload: Record<string, string> = {
+      ...params,
+      school_name: schoolName || "",
+    };
     if (durationSeconds != null) {
       payload.duration_seconds = String(durationSeconds);
     }
@@ -294,20 +286,9 @@ export function UploadRecordingPage() {
                 Class &amp; subject
               </h4>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
-                {isAdmin && (
-                  <SearchableSelect
-                    label="School"
-                    placeholder="Select school..."
-                    options={schoolOptions}
-                    value={schoolId}
-                    onChange={handleSchoolChange}
-                    onSearchChange={setSchoolQuery}
-                    isLoading={schoolsLoading}
-                  />
-                )}
                 <Select
                   label="Class"
-                  placeholder={schoolId ? "Select class" : "Select a school first"}
+                  placeholder="Select class"
                   options={classNameOptions}
                   value={params.class_name}
                   disabled={!schoolId}

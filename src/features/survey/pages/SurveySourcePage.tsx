@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
-import { useAuthStore } from "@/features/auth/store/auth";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { surveyApi } from "@/features/survey/api/survey";
 import type {
   SourceItem,
@@ -31,10 +31,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Panel } from "@/shared/components/ui/Panel";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
-import { authApi } from "@/features/auth/api/auth";
 
 const SURVEY_TYPE_OPTIONS = [
   { value: "general", label: "General" },
@@ -637,31 +634,17 @@ function AddSourceWizard({
 
 export function SurveySourcePage() {
   const qc = useQueryClient();
-  const role = useAuthStore((s) => s.user?.role);
-  const isAdmin = role === "admin";
+  // School comes from the global active-school selection: the picked school for
+  // admins, or `undefined` for principals (scoped server-side by their session).
+  const { schoolName, ready } = useActiveSchool();
+  const schoolParam = schoolName || undefined;
 
-  const [adminSchool, setAdminSchool] = useState("");
   const [wizardOpen, setWizardOpen] = useState(false);
 
-  const { data: schoolsData, isLoading: isLoadingSchools } = useQuery({
-    queryKey: ["schools", "list"],
-    queryFn: () => authApi.searchSchools(""),
-    enabled: isAdmin,
-  });
-
-  const schoolOptions = (schoolsData ?? []).map((s) => ({
-    label: s.name,
-    value: s.name,
-    sublabel: [s.address, s.city, s.state, s.pin_code].filter(Boolean).join(", "),
-  }));
-
-  const schoolParam = isAdmin ? adminSchool.trim() || undefined : undefined;
-  const adminReady = !isAdmin || !!schoolParam;
-
   const { data: sourcesData, isLoading } = useQuery({
-    queryKey: ["survey", "sources", isAdmin ? adminSchool.trim() : "self"],
+    queryKey: ["survey", "sources", schoolName || "self"],
     queryFn: () => surveyApi.getSources(schoolParam),
-    enabled: adminReady,
+    enabled: ready,
   });
 
   const sources = sourcesData?.sources ?? [];
@@ -709,31 +692,11 @@ export function SurveySourcePage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  if (isLoading && adminReady) return <PageSkeleton showStats={false} content="list" />;
+  if (isLoading && ready) return <PageSkeleton showStats={false} content="list" />;
 
   return (
     <div className="space-y-6">
-      {/* Admin school selector */}
-      {isAdmin && (
-        <FilterBar title="School" icon={<FileSpreadsheet className="h-4 w-4" />}>
-          <SearchableSelect
-            label="School name"
-            placeholder="Select a school..."
-            searchPlaceholder="Search schools..."
-            options={schoolOptions}
-            isLoading={isLoadingSchools}
-            value={adminSchool}
-            onChange={setAdminSchool}
-          />
-          {!adminReady && (
-            <p className="text-sm text-muted-foreground">
-              Select a school above to manage its data sources.
-            </p>
-          )}
-        </FilterBar>
-      )}
-
-      {adminReady && (
+      {ready && (
         <>
           <div className="flex justify-end">
             <Button
