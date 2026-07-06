@@ -1,11 +1,10 @@
-import { useAuthStore } from "@/features/auth/store/auth";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Users, UserCheck, UserX } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
@@ -15,7 +14,6 @@ import { getErrorMessage, isoToIndianDate, isSunday } from "@/shared/lib/utils";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
@@ -50,14 +48,9 @@ const ACTIVE_CLASSES: Record<AttendanceStatus, string> = {
 };
 
 export function RollCallPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const queryClient = useQueryClient();
 
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
-  const [schoolName, setSchoolName] = useState<string>("");
   // Persist the teacher's class/section/session — they mark the same class daily.
   const [className, setClassName] = usePersistedState("att.rollcall.class", "");
   const [section, setSection] = usePersistedState("att.rollcall.section", "");
@@ -70,11 +63,6 @@ export function RollCallPage() {
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [search, setSearch] = useState("");
 
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
 
@@ -93,16 +81,21 @@ export function RollCallPage() {
     setStatuses({});
   }, [schoolId, className, section, subject, session, date]);
 
+  // When an admin switches the active school, the persisted class/section may
+  // not exist in the new school — clear them. Skip the initial mount so a
+  // teacher's saved class isn't wiped on every page load.
+  const prevSchoolId = useRef(schoolId);
+  useEffect(() => {
+    if (prevSchoolId.current !== schoolId) {
+      prevSchoolId.current = schoolId;
+      setClassName("");
+      setSection("");
+    }
+  }, [schoolId, setClassName, setSection]);
+
   useEffect(() => {
     if (!dateIsHoliday) setAllowHoliday(false);
   }, [dateIsHoliday]);
-
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    setClassName("");
-    setSection("");
-    setSchoolName(schoolOptions.find((o) => o.value === id)?.label ?? "");
-  };
 
   const loadMutation = useMutation({
     mutationFn: () => {
@@ -196,23 +189,12 @@ export function RollCallPage() {
         }
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-          {isAdmin && (
-            <SearchableSelect
-              label="School"
-              placeholder="Select school..."
-              options={schoolOptions}
-              value={schoolId}
-              onChange={handleSchoolChange}
-              onSearchChange={setSchoolQuery}
-              isLoading={schoolsLoading}
-            />
-          )}
           <Select
             label="Class"
-            placeholder={schoolId ? "Select class" : "Select a school first"}
+            placeholder="Select class"
             options={classNameOptions}
             value={className}
-            disabled={isAdmin && !schoolId}
+            disabled={!schoolId}
             onChange={(e) => {
               setClassName(e.target.value);
               setSection("");

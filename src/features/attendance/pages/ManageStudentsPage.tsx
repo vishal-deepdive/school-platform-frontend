@@ -1,15 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Trash2 } from "lucide-react";
 import toast from "@/shared/lib/toast";
-import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -22,29 +20,24 @@ import { getErrorMessage } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
 
 export function ManageStudentsPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, isAdmin, schoolParam } = useActiveSchool();
   const queryClient = useQueryClient();
 
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
-  const [schoolName, setSchoolName] = useState("");
   const [className, setClassName] = useState("");
   const [section, setSection] = useState("");
   const [session, setSession] = useState("2025-26");
   const [roster, setRoster] = useState<RosterStudent[] | null>(null);
   const [search, setSearch] = useState("");
 
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
-  const schoolParam: Record<string, string> =
-    isAdmin && schoolName ? { school_name: schoolName } : {};
+
+  // Reset the class picker and any loaded roster when the active school changes.
+  useEffect(() => {
+    setClassName("");
+    setSection("");
+    setRoster(null);
+  }, [schoolId]);
 
   const loadMutation = useMutation({
     mutationFn: () =>
@@ -68,14 +61,6 @@ export function ManageStudentsPage() {
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
-
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    setClassName("");
-    setSection("");
-    setRoster(null);
-    setSchoolName(schoolOptions.find((o) => o.value === id)?.label ?? "");
-  };
 
   const confirmDelete = (s: RosterStudent) => {
     if (
@@ -120,24 +105,13 @@ export function ManageStudentsPage() {
           Deletions are permanent and audit-logged. Double-check the roll number
           before removing a student.
         </Alert>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {isAdmin && (
-            <SearchableSelect
-              label="School"
-              placeholder="Select school..."
-              options={schoolOptions}
-              value={schoolId}
-              onChange={handleSchoolChange}
-              onSearchChange={setSchoolQuery}
-              isLoading={schoolsLoading}
-            />
-          )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select
             label="Class"
-            placeholder={schoolId ? "Select class" : "Select a school first"}
+            placeholder="Select class"
             options={classNameOptions}
             value={className}
-            disabled={isAdmin && !schoolId}
+            disabled={!schoolId}
             onChange={(e) => {
               setClassName(e.target.value);
               setSection("");

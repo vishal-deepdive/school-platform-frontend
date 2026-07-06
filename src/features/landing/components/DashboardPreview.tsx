@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
@@ -126,13 +127,77 @@ const ACTIVITY = [
   {
     icon: CalendarCheck2,
     text: "Class 8B attendance marked",
-    time: "2 min ago",
+    time: "just now",
   },
-  { icon: Video, text: "Physics lecture uploaded", time: "18 min ago" },
-  { icon: BarChart3, text: "Term survey responses in", time: "1 hr ago" },
+  { icon: Video, text: "Physics lecture uploaded", time: "2 min ago" },
+  { icon: BarChart3, text: "Term survey responses in", time: "18 min ago" },
+  { icon: Users, text: "3 parent accounts approved", time: "24 min ago" },
+  { icon: CalendarCheck2, text: "Class 10A register closed", time: "31 min ago" },
+  { icon: Video, text: "Maths — Trigonometry uploaded", time: "1 hr ago" },
 ];
 
 const QA_BARS = [42, 65, 50, 80, 68, 92, 74];
+
+/* "Monday, 6 July — Term 1", always today. Indian academic year: Term 1
+   runs April–September, Term 2 October–March. */
+function todayLabel() {
+  const now = new Date();
+  const date = now.toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const term = now.getMonth() >= 3 && now.getMonth() <= 8 ? 1 : 2;
+  return `${date} — Term ${term}`;
+}
+
+/* Recent-activity feed that quietly rotates, so the mockup reads as a live
+   school day instead of a screenshot. */
+function ActivityFeed() {
+  const reduceMotion = useReducedMotion();
+  const [start, setStart] = useState(0);
+
+  useEffect(() => {
+    if (reduceMotion) return;
+    const id = setInterval(
+      () => setStart((s) => (s + 1) % ACTIVITY.length),
+      3200,
+    );
+    return () => clearInterval(id);
+  }, [reduceMotion]);
+
+  const visible = [0, 1, 2].map(
+    (offset) => ACTIVITY[(start + offset) % ACTIVITY.length],
+  );
+
+  return (
+    <div className="space-y-2.5">
+      <AnimatePresence initial={false} mode="popLayout">
+        {visible.map((item) => (
+          <motion.div
+            key={item.text}
+            layout
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
+            className="flex items-center gap-2.5"
+          >
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <item.icon className="h-3.5 w-3.5" />
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs text-foreground/80">
+              {item.text}
+            </span>
+            <span className="shrink-0 text-[10px] text-muted-foreground">
+              {item.time}
+            </span>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export function DashboardPreview() {
   return (
@@ -177,7 +242,7 @@ export function DashboardPreview() {
                 Dashboard overview
               </div>
               <div className="text-xs text-muted-foreground">
-                Monday, 6 July — Term 1
+                {todayLabel()}
               </div>
             </div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:ring-emerald-800">
@@ -257,32 +322,11 @@ export function DashboardPreview() {
                 </div>
               </div>
 
-              <div className="flex-1 rounded-xl border border-border bg-background/60 p-4">
+              <div className="flex-1 overflow-hidden rounded-xl border border-border bg-background/60 p-4">
                 <div className="mb-2.5 text-xs font-semibold text-card-foreground">
                   Recent activity
                 </div>
-                <div className="space-y-2.5">
-                  {ACTIVITY.map((item, i) => (
-                    <motion.div
-                      key={item.text}
-                      initial={{ opacity: 0, x: 12 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.7 + i * 0.15, duration: 0.35 }}
-                      className="flex items-center gap-2.5"
-                    >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-                        <item.icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-xs text-foreground/80">
-                        {item.text}
-                      </span>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">
-                        {item.time}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
+                <ActivityFeed />
               </div>
             </div>
           </div>

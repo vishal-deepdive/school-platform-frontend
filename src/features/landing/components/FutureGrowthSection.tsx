@@ -8,21 +8,21 @@ import { CountUp } from "@/features/landing/components/interactive";
 const HIGHLIGHTS = [
   {
     icon: TrendingUp,
-    title: "Predictive Analytics",
+    title: "Catch slipping attendance early",
     description:
-      "Forecast student enrollment trends and resource needs months in advance.",
+      "See which class is drifting before mid-term — not in the end-of-term report.",
   },
   {
     icon: Users,
-    title: "Engagement Metrics",
+    title: "Know what students rewatch",
     description:
-      "Track classroom participation and interactive learning success rates.",
+      "The lectures students return to most show exactly where a topic didn't land.",
   },
   {
     icon: Activity,
-    title: "Real-time Activity",
+    title: "The school day, live",
     description:
-      "Monitor live attendance and daily active usage across your entire platform.",
+      "Registers, uploads, and logins across every class — as they happen, on one screen.",
   },
 ];
 
@@ -44,7 +44,7 @@ export function FutureGrowthSection() {
     <section
       ref={sectionRef}
       id="growth"
-      className="w-full scroll-mt-24 bg-background py-16 sm:py-20 lg:py-24"
+      className="w-full scroll-mt-24 bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24"
     >
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2">
