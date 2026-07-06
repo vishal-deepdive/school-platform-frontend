@@ -30,8 +30,12 @@ import { NeedsAttention } from "@/features/dashboard/components/NeedsAttention";
 import { StatusDonut } from "@/features/dashboard/components/StatusDonut";
 import { ClassBreakdownChart } from "@/features/dashboard/components/ClassBreakdownChart";
 import { WeekdayPatternChart } from "@/features/dashboard/components/WeekdayPatternChart";
+import { AttendanceHeatmap } from "@/features/dashboard/components/AttendanceHeatmap";
 import { AdminDashboard } from "@/features/dashboard/components/AdminDashboard";
 import { MyDashboard } from "@/features/dashboard/components/MyDashboard";
+import { RecordingAnalyticsSection } from "@/features/dashboard/components/RecordingAnalyticsSection";
+import { LibraryAnalyticsSection } from "@/features/dashboard/components/LibraryAnalyticsSection";
+import { SurveyAnalyticsSection } from "@/features/dashboard/components/SurveyAnalyticsSection";
 import { SchoolSwitcherPill } from "@/app/layouts/SchoolSwitcher";
 import { roleCanAccess } from "@/shared/lib/permissions";
 
@@ -268,6 +272,8 @@ function StaffDashboard() {
         <WeekdayPatternChart points={analytics?.trend} loading={isLoading} />
       </div>
 
+      <AttendanceHeatmap points={analytics?.trend} loading={isLoading} />
+
       <NeedsAttention analytics={analytics} loading={isLoading} wide />
     </div>
   );
@@ -324,6 +330,39 @@ export function DashboardPage() {
       {isSchoolStaff && <StaffDashboard />}
       {isAdmin && <AdminDashboard />}
       {isConsumer && <MyDashboard isParent={role === "parent"} />}
+
+      {/* Cross-domain analytics — recordings, knowledge base, and feedback.
+          Each section fetches its own role-scoped endpoint and self-hides when
+          the caller has no access, so the mix shown reflects the role. */}
+      {(isSchoolStaff || isAdmin) && (
+        <section className="space-y-8">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Content &amp; engagement
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Lecture recordings, the textbook knowledge base, and student feedback.
+            </p>
+          </div>
+          <RecordingAnalyticsSection />
+          <LibraryAnalyticsSection />
+          <SurveyAnalyticsSection />
+        </section>
+      )}
+
+      {isConsumer && (
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Learning resources
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Lecture recordings and study material available to you.
+            </p>
+          </div>
+          <RecordingAnalyticsSection />
+        </section>
+      )}
 
       <div>
         <div className="mb-4">
