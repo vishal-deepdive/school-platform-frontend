@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import {
   Check,
   Play,
@@ -17,13 +18,19 @@ const REGISTER_ROWS = [
 ];
 
 function AttendanceVignette() {
+  const today = new Date().toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
   return (
     <div className="mt-7 rounded-xl border border-border bg-background/60 p-4">
       <div className="flex items-baseline justify-between text-xs">
         <span className="font-semibold text-foreground">
           Class 8B — morning register
         </span>
-        <span className="text-muted-foreground">Mon, 6 Jul</span>
+        <span className="text-muted-foreground">{today}</span>
       </div>
       <ul className="mt-3 divide-y divide-border/60">
         {REGISTER_ROWS.map((row, i) => (
@@ -58,9 +65,39 @@ function AttendanceVignette() {
   );
 }
 
+const QA_ANSWER =
+  "Light slows down when it enters water, so the rays bend — that's refraction. Ma'am covered this with the coin experiment.";
+
 function QAVignette() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const reduceMotion = useReducedMotion();
+  const [chars, setChars] = useState(0);
+  const done = chars >= QA_ANSWER.length;
+
+  useEffect(() => {
+    if (!inView) return;
+    if (reduceMotion) {
+      setChars(QA_ANSWER.length);
+      return;
+    }
+    // Wait for the question bubble to land, then stream the answer.
+    const start = setTimeout(() => {
+      const id = setInterval(() => {
+        setChars((c) => {
+          if (c >= QA_ANSWER.length) {
+            clearInterval(id);
+            return c;
+          }
+          return c + 1;
+        });
+      }, 18);
+    }, 900);
+    return () => clearTimeout(start);
+  }, [inView, reduceMotion]);
+
   return (
-    <div className="mt-7 space-y-3">
+    <div ref={ref} className="mt-7 space-y-3">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -77,14 +114,24 @@ function QAVignette() {
         transition={{ delay: 0.55, duration: 0.4, ease: EASE_OUT_EXPO }}
         className="mr-8 rounded-2xl rounded-bl-md border border-border bg-background/60 px-4 py-3"
       >
-        <p className="text-sm leading-relaxed text-foreground/85">
-          Light slows down when it enters water, so the rays bend — that's
-          refraction. Ma'am covered this with the coin experiment.
+        <p className="min-h-[3lh] text-sm leading-relaxed text-foreground/85">
+          {QA_ANSWER.slice(0, chars)}
+          {!done && (
+            <span
+              className="ml-px inline-block h-[1em] w-[2px] translate-y-[0.15em] animate-pulse bg-primary"
+              aria-hidden="true"
+            />
+          )}
         </p>
-        <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground">
+        <motion.span
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={done ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+          className="mt-2.5 inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground"
+        >
           <Play className="h-3 w-3" />
           Physics — Light &amp; Refraction, 12:40
-        </span>
+        </motion.span>
       </motion.div>
     </div>
   );
@@ -188,7 +235,7 @@ const SUPPORTING = [
 
 export function FeatureSection() {
   return (
-    <section id="features" className="w-full scroll-mt-24 bg-background py-16 sm:py-20 lg:py-24">
+    <section id="features" className="w-full scroll-mt-24 bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <SectionHeading
           eyebrow="The platform"

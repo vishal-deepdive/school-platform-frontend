@@ -86,7 +86,7 @@ export function RolesSection() {
   return (
     <section
       id="roles"
-      className="w-full scroll-mt-24 border-t border-border bg-background py-16 sm:py-20 lg:py-24"
+      className="w-full scroll-mt-24 border-t border-border bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24"
     >
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <SectionHeading

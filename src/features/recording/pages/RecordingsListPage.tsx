@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { RefreshCw, FileVideo, Trash2, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -14,8 +14,8 @@ import { Alert } from "@/shared/components/ui/Alert";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { DatePicker } from "@/shared/components/ui/DatePicker";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { getErrorMessage } from "@/shared/lib/utils";
 import {
@@ -44,7 +44,6 @@ const SORT_OPTIONS = [
 ];
 
 const EMPTY_FILTERS = {
-  school_name: "",
   class: "",
   section: "",
   subject: "",
@@ -53,27 +52,18 @@ const EMPTY_FILTERS = {
 };
 
 export function RecordingsListPage() {
-  const user = useAuthStore((s) => s.user);
-  const role = user?.role;
-  const isAdmin = role === "admin";
+  const role = useAuthStore((s) => s.user?.role);
+  const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const canManage = canManageRecordings(role);
   const canUpload = canUploadRecordings(role);
 
   const [offset, setOffset] = useState(0);
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS });
   const [sort, setSort] = useState("created_at:desc");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
 
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = filters.class ? getSectionOptions(filters.class) : [];
 
@@ -84,12 +74,13 @@ export function RecordingsListPage() {
     clearSelection();
   };
 
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
-    setFilters((f) => ({ ...f, school_name: name, class: "", section: "" }));
-    resetView();
-  };
+  // Switching the active school clears class/section filters and resets paging.
+  useEffect(() => {
+    setFilters((f) => ({ ...f, class: "", section: "" }));
+    setOffset(0);
+    setSelected(new Set());
+  }, [schoolId]);
+
   const handleClassChange = (className: string) => {
     setFilters((f) => ({ ...f, class: className, section: "" }));
     resetView();
@@ -100,7 +91,6 @@ export function RecordingsListPage() {
   };
   const clearFilters = () => {
     setFilters({ ...EMPTY_FILTERS });
-    if (isAdmin) setSchoolId(undefined);
     setSort("created_at:desc");
     resetView();
   };
@@ -114,7 +104,7 @@ export function RecordingsListPage() {
     subject: filters.subject || undefined,
     recording_subject: filters.recording_subject || undefined,
     date: filters.date || undefined,
-    school_name: isAdmin ? filters.school_name || undefined : undefined,
+    school_name: isAdmin ? schoolName || undefined : undefined,
     sort_by: sortBy,
     order,
   };
@@ -195,17 +185,6 @@ export function RecordingsListPage() {
         }
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {isAdmin && (
-            <SearchableSelect
-              label="School"
-              placeholder="All schools"
-              options={schoolOptions}
-              value={schoolId}
-              onChange={handleSchoolChange}
-              onSearchChange={setSchoolQuery}
-              isLoading={schoolsLoading}
-            />
-          )}
           {classNameOptions.length > 0 ? (
             <Select
               label="Class"
@@ -250,11 +229,10 @@ export function RecordingsListPage() {
             value={filters.recording_subject}
             onChange={(e) => setFilterField("recording_subject", e.target.value)}
           />
-          <Input
-            type="date"
+          <DatePicker
             label="Date"
             value={filters.date}
-            onChange={(e) => setFilterField("date", e.target.value)}
+            onChange={(iso) => setFilterField("date", iso ?? "")}
           />
           <Select
             label="Sort by"
