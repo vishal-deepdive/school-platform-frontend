@@ -1,4 +1,3 @@
-import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
@@ -11,7 +10,7 @@ import {
 } from "@/features/attendance/schema";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import {
@@ -29,7 +28,6 @@ import {
 import { StatCard } from "@/shared/components/ui/Card";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -65,23 +63,14 @@ function updateRecordStatus(
 }
 
 export function MarkAttendanceForm() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
   const [uploadMethod, setUploadMethod] = useState<"zip" | "photos">("zip");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [result, setResult] = useState<MarkAttendanceResponse | null>(null);
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
   const [correctingRoll, setCorrectingRoll] = useState<string | null>(null);
 
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
 
   const {
@@ -96,7 +85,6 @@ export function MarkAttendanceForm() {
     defaultValues: {
       threshold: 0.4,
       session: "2025-26",
-      school_name: "",
       class_name: "",
       section: "",
       attendance_date: todayIso(),
@@ -106,14 +94,13 @@ export function MarkAttendanceForm() {
 
   const selectedClass = watch("class_name");
   const attendanceDate = watch("attendance_date");
-  const watchedSchoolName = watch("school_name");
   const watchedSession = watch("session");
   const sectionOptions = selectedClass ? getSectionOptions(selectedClass) : [];
 
   const holidays = useHolidayDates({
     session: watchedSession || "2025-26",
-    schoolName: watchedSchoolName || undefined,
-    enabled: !isAdmin || !!watchedSchoolName,
+    schoolName: schoolName || undefined,
+    enabled: !isAdmin || !!schoolName,
   });
   const dateIsSunday = attendanceDate ? isSunday(attendanceDate) : false;
   const dateIsHoliday = attendanceDate
@@ -136,12 +123,6 @@ export function MarkAttendanceForm() {
   useEffect(() => {
     if (!dateIsHoliday) setValue("allow_holiday", false);
   }, [dateIsHoliday, setValue]);
-
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
-    setValue("school_name", name);
-  };
 
   const { mutate, isPending } = useMutation({
     mutationFn: (
@@ -205,12 +186,12 @@ export function MarkAttendanceForm() {
       toast.error("Please upload a ZIP archive of classroom photos");
       return;
     }
-    if (isAdmin && !data.school_name) {
+    if (isAdmin && !schoolName) {
       toast.error("Please select a school");
       return;
     }
     const params: Record<string, string> = {
-      school_name: data.school_name || "",
+      school_name: schoolName || "",
       class_name: data.class_name,
       section: data.section,
       // Only admins may tune the match threshold; the server ignores it for
@@ -254,22 +235,9 @@ export function MarkAttendanceForm() {
                 Class &amp; session
               </p>
               <div className="grid grid-cols-2 gap-4 items-start">
-              {isAdmin && (
-                <SearchableSelect
-                  label="School"
-                  placeholder="Select school..."
-                  options={schoolOptions}
-                  value={schoolId}
-                  onChange={handleSchoolChange}
-                  onSearchChange={setSchoolQuery}
-                  isLoading={schoolsLoading}
-                />
-              )}
               <Select
                 label="Class"
-                placeholder={
-                  schoolId ? "Select class" : "Select a school first"
-                }
+                placeholder="Select class"
                 options={classNameOptions}
                 error={errors.class_name?.message}
                 disabled={!schoolId}

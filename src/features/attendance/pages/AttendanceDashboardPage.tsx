@@ -12,16 +12,14 @@ import {
   Layers,
   Loader2,
 } from "lucide-react";
-import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { StatCard } from "@/shared/components/ui/Card";
 import { StatCardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
 import { StatusDonut } from "@/features/dashboard/components/StatusDonut";
 import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
@@ -35,23 +33,10 @@ function todayIso(): string {
 }
 
 export function AttendanceDashboardPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolName, ready } = useActiveSchool();
 
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
-  const [schoolName, setSchoolName] = useState("");
   const [session, setSession] = useState("2025-26");
   const [date, setDate] = useState(todayIso());
-
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
-
-  const ready = !isAdmin || !!schoolName;
 
   const { data, isFetching, isLoading, isError } = useQuery({
     queryKey: ["attendance", "dashboard", schoolName, session, date],
@@ -59,16 +44,11 @@ export function AttendanceDashboardPage() {
       attendanceApi.getDashboard({
         session,
         date: isoToIndianDate(date),
-        ...(isAdmin && schoolName ? { school_name: schoolName } : {}),
+        ...(schoolName ? { school_name: schoolName } : {}),
       }),
     enabled: ready,
     staleTime: 60_000,
   });
-
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    setSchoolName(schoolOptions.find((o) => o.value === id)?.label ?? "");
-  };
 
   const holidays = useHolidayDates({ session, schoolName, enabled: ready });
 
@@ -79,18 +59,7 @@ export function AttendanceDashboardPage() {
   return (
     <div className="space-y-6">
       <FilterBar title="Scope" icon={<CalendarDays className="h-4 w-4" />}>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {isAdmin && (
-            <SearchableSelect
-              label="School"
-              placeholder="Select school..."
-              options={schoolOptions}
-              value={schoolId}
-              onChange={handleSchoolChange}
-              onSearchChange={setSchoolQuery}
-              isLoading={schoolsLoading}
-            />
-          )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label="Session"
             options={SESSION_OPTIONS}
@@ -108,13 +77,7 @@ export function AttendanceDashboardPage() {
         </div>
       </FilterBar>
 
-      {!ready ? (
-        <EmptyState
-          icon={<School className="h-10 w-10" />}
-          title="Select a school"
-          description="Choose a school above to see its attendance snapshot for the day."
-        />
-      ) : isLoading ? (
+      {isLoading ? (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <ChartSkeleton />
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:col-span-2 lg:grid-cols-2">

@@ -2,10 +2,10 @@ import { useAuthStore } from "@/features/auth/store/auth";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, AlertTriangle, CalendarRange } from "lucide-react";
-import { toIndianDate, getErrorMessage } from "@/shared/lib/utils";
+import { toIndianDate, isoToIndianDate, indianDateToIso, getErrorMessage } from "@/shared/lib/utils";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { StatCard } from "@/shared/components/ui/Card";
-import { Input } from "@/shared/components/ui/Input";
+import { DatePicker } from "@/shared/components/ui/DatePicker";
 import { Button } from "@/shared/components/ui/Button";
 import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -30,9 +30,9 @@ export function SelfAttendanceView() {
   const { user } = useAuthStore();
   const isParent = user?.role === "parent";
 
-  const [filters, setFilters] = useState<SelfRange>({
-    start_date: toIndianDate(new Date(Date.now() - 29 * 86400000)),
-    end_date: toIndianDate(new Date()),
+  const [filters, setFilters] = useState({
+    start_date: indianDateToIso(toIndianDate(new Date(Date.now() - 29 * 86400000))),
+    end_date: indianDateToIso(toIndianDate(new Date())),
   });
   const [query, setQuery] = useState<SelfRange | null>({
     start_date: toIndianDate(new Date(Date.now() - 29 * 86400000)),
@@ -64,7 +64,12 @@ export function SelfAttendanceView() {
         icon={<CalendarRange className="h-4 w-4" />}
         actions={
           <Button
-            onClick={() => setQuery({ ...filters })}
+            onClick={() =>
+              setQuery({
+                start_date: isoToIndianDate(filters.start_date),
+                end_date: isoToIndianDate(filters.end_date),
+              })
+            }
             icon={<Search className="h-4 w-4" />}
           >
             Update
@@ -72,18 +77,18 @@ export function SelfAttendanceView() {
         }
       >
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Input
-            label="Start Date (DD-MM-YYYY)"
+          <DatePicker
+            label="Start Date"
             value={filters.start_date}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, start_date: e.target.value }))
+            onChange={(iso) =>
+              setFilters((p) => ({ ...p, start_date: iso ?? p.start_date }))
             }
           />
-          <Input
-            label="End Date (DD-MM-YYYY)"
+          <DatePicker
+            label="End Date"
             value={filters.end_date}
-            onChange={(e) =>
-              setFilters((p) => ({ ...p, end_date: e.target.value }))
+            onChange={(iso) =>
+              setFilters((p) => ({ ...p, end_date: iso ?? p.end_date }))
             }
           />
         </div>

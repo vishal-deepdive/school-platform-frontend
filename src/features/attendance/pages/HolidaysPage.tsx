@@ -2,14 +2,12 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, Trash2, CalendarDays } from "lucide-react";
 import toast from "@/shared/lib/toast";
-import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
@@ -37,27 +35,12 @@ function dateChip(dmy: string): { day: string; month: string } {
 }
 
 export function HolidaysPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolName, ready, schoolParam } = useActiveSchool();
   const queryClient = useQueryClient();
 
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
-  const [schoolName, setSchoolName] = useState("");
   const [session, setSession] = useState("2025-26");
   const [newDate, setNewDate] = useState(todayIso());
   const [name, setName] = useState("");
-
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
-
-  const ready = !isAdmin || !!schoolName;
-  const schoolParam: Record<string, string> =
-    isAdmin && schoolName ? { school_name: schoolName } : {};
 
   const { data } = useQuery({
     queryKey: ["attendance", "holidays", schoolName, session],
@@ -93,11 +76,6 @@ export function HolidaysPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    setSchoolName(schoolOptions.find((o) => o.value === id)?.label ?? "");
-  };
-
   const holidays = useHolidayDates({ session, schoolName, enabled: ready });
 
   return (
@@ -116,18 +94,7 @@ export function HolidaysPage() {
           </Button>
         }
       >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {isAdmin && (
-            <SearchableSelect
-              label="School"
-              placeholder="Select school..."
-              options={schoolOptions}
-              value={schoolId}
-              onChange={handleSchoolChange}
-              onSearchChange={setSchoolQuery}
-              isLoading={schoolsLoading}
-            />
-          )}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select
             label="Session"
             options={SESSION_OPTIONS}
