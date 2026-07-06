@@ -2,15 +2,16 @@
  * Bulk student roster import (CSV) — so a school never types 500 students by hand.
  *
  * Uploads a CSV to POST /admin/schools/{id}/students/bulk and shows a per-row
- * result summary (created / skipped duplicates / errored rows). Principal-scoped:
- * the school is taken from the caller's session.
+ * result summary (created / skipped duplicates / errored rows). The target
+ * school is the principal's own school, or — for platform admins — the school
+ * currently selected in the global active-school switcher.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { UploadCloud, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { adminApi } from "@/features/admin/api/admin";
-import { useAuthStore } from "@/features/auth/store/auth";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import type { BulkImportResult } from "@/features/admin/types";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
@@ -25,9 +26,10 @@ const SAMPLE_CSV =
   "2,Diya Patel,7,A,2025-26\n";
 
 export function StudentImportPage() {
-  const { user } = useAuthStore();
+  // Admins act on the globally-selected school; principals use their own. The
+  // SchoolGate guarantees an admin has picked one before this page renders.
+  const { schoolId } = useActiveSchool();
   const navigate = useNavigate();
-  const schoolId = user?.school_id ?? "";
 
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);

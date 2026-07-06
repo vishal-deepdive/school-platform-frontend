@@ -117,8 +117,8 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   // ------------------------------------
   if (mobile) {
     return (
-      <aside className="relative flex h-full w-[286px] max-w-[85vw] flex-col border-r border-border/60 bg-background shadow-2xl animate-slide-in">
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-border/60 px-5">
+      <aside className="relative flex h-full w-[286px] max-w-[85vw] flex-col border-r border-slate-200 dark:border-slate-800 bg-background shadow-2xl animate-slide-in">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 dark:border-slate-800 px-5">
           <div className="flex items-center gap-3">
             <img
               src="/logo.png"
@@ -129,7 +129,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
           {onClose && (
             <button
               onClick={onClose}
-              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="rounded-full p-2 text-slate-500 dark:text-slate-400 transition-colors hover:bg-accent hover:text-foreground"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" />
@@ -137,7 +137,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
           )}
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-thin">
-          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
             Menu
           </p>
           {allItems.map((item, i) => (
@@ -146,7 +146,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
             </div>
           ))}
         </div>
-        <div className="shrink-0 border-t border-border/60 bg-muted/20 p-3">
+        <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-muted/20 p-3">
           <UserProfileMenu mobile />
         </div>
       </aside>
@@ -162,12 +162,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   return (
     <div className="relative flex h-full bg-background">
       {/* Primary Sidebar (Icons only) */}
-      <aside
-        className={cn(
-          "relative z-20 flex h-full w-16 flex-col items-center py-4",
-          hasSecondary && !isCollapsed && "border-r border-border/60",
-        )}
-      >
+      <aside className="relative z-20 flex h-full w-16 flex-col items-center bg-rail py-4">
         {/* Logo */}
         <div className="mb-4 flex h-10 w-8 shrink-0 items-center justify-center">
           <img
@@ -183,7 +178,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
             onClick={() =>
               window.dispatchEvent(new Event("open-command-palette"))
             }
-            className="peer flex w-full items-center justify-center rounded-lg border border-border/60 bg-muted/40 p-2.5 text-muted-foreground transition-colors duration-200 hover:border-border hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="peer flex w-full items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-background/70 p-2.5 text-slate-600 dark:text-slate-400 transition-colors duration-200 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Search pages and actions"
           >
             <Search className="h-4 w-4" />
@@ -191,7 +186,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
           <RailTooltip label="Search" shortcut="Ctrl K" />
         </div>
 
-        <div className="my-4 h-px w-8 shrink-0 bg-border/70" aria-hidden="true" />
+        <div className="my-4 h-px w-8 shrink-0 bg-slate-200 dark:bg-slate-800" aria-hidden="true" />
 
         {/* Primary Nav Items */}
         <nav className="flex w-full flex-1 flex-col items-center gap-1.5 overflow-visible px-2 pb-4">
@@ -205,11 +200,11 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
               <div key={idx} className="w-full">
                 {isFirstAdminItem && (
                   <div
-                    className="mx-auto mb-1.5 h-px w-8 bg-border/70"
+                    className="mx-auto mb-1.5 h-px w-8 bg-slate-200 dark:bg-slate-800"
                     aria-hidden="true"
                   />
                 )}
-                <div className="relative w-full">
+                <div className={cn("relative w-full", isActive && "z-10")}>
                   {/* Active indicator */}
                   <span
                     className={cn(
@@ -222,10 +217,13 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                   <button
                     onClick={() => handleCategoryClick(item)}
                     className={cn(
-                      "peer flex w-full items-center justify-center rounded-lg p-2.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "peer flex items-center justify-center p-2.5 transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                        ? // Tab merged with the adjacent surface (secondary pane
+                          // or the page shell — both bg-background): extends over
+                          // the rail's right edge, flat right side.
+                          "w-[calc(100%+0.5rem)] rounded-l-lg bg-background text-primary"
+                        : "w-full rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/40 hover:text-foreground",
                     )}
                     aria-label={item.label}
                     aria-current={isActive ? "page" : undefined}
@@ -233,6 +231,24 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                     {item.icon}
                   </button>
                   <RailTooltip label={item.label} />
+                  {isActive && (
+                    <>
+                      {/* Inverted corners: surface-colored squares carved back
+                          to the rail color so the tab curves into the surface. */}
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -right-2 -top-3 h-3 w-3 animate-notch-in bg-background"
+                      >
+                        <span className="absolute inset-0 rounded-br-full bg-rail" />
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute -bottom-3 -right-2 h-3 w-3 animate-notch-in bg-background"
+                      >
+                        <span className="absolute inset-0 rounded-tr-full bg-rail" />
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             );
@@ -249,7 +265,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       {isCollapsed && hasSecondary && (
         <button
           onClick={() => setCollapsed(false)}
-          className="absolute -right-3 top-28 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-all duration-200 hover:bg-accent hover:text-foreground"
+          className="absolute -right-3 top-28 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 bg-background text-slate-500 dark:text-slate-400 shadow-sm transition-all duration-200 hover:bg-accent hover:text-foreground"
           title="Expand sidebar"
           aria-label="Expand sidebar"
         >
@@ -267,12 +283,15 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
         {hasSecondary && (
           <div className="flex h-full w-60 flex-col">
             <div className="flex h-16 shrink-0 items-center justify-between pl-5 pr-3">
-              <h2 className="truncate text-sm font-semibold tracking-tight text-foreground">
+              <h2
+                key={activeCategory?.label}
+                className="animate-nav-item-in truncate text-sm font-semibold tracking-tight text-foreground"
+              >
                 {activeCategory?.label}
               </h2>
               <button
                 onClick={() => setCollapsed(true)}
-                className="shrink-0 rounded-lg p-1.5 text-muted-foreground/70 transition-colors duration-200 hover:bg-muted/60 hover:text-foreground"
+                className="shrink-0 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 transition-colors duration-200 hover:bg-muted hover:text-foreground"
                 title="Collapse sidebar"
                 aria-label="Collapse sidebar"
               >
@@ -292,7 +311,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                         "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 animate-nav-item-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isActive
                           ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                          : "text-slate-600 dark:text-slate-400 hover:bg-muted/50 hover:text-foreground",
                       )
                     }
                   >
@@ -303,7 +322,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                             "flex items-center justify-center transition-colors",
                             isActive
                               ? "text-primary"
-                              : "text-muted-foreground/70 group-hover:text-foreground",
+                              : "text-slate-500 dark:text-slate-400 group-hover:text-foreground",
                           )}
                         >
                           {child.icon}

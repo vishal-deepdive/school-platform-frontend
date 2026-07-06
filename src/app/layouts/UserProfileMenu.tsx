@@ -90,12 +90,12 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
             <img
               src={user.avatar_url}
               alt={user?.full_name || "User"}
-              className="h-10 w-10 shrink-0 rounded-xl object-cover"
+              className="h-10 w-10 shrink-0 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shadow-sm"
               referrerPolicy="no-referrer"
               onError={() => setImgError(true)}
             />
           ) : (
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-foreground font-bold shadow-sm ring-1 ring-border">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-background text-foreground font-bold shadow-sm border border-slate-300 dark:border-slate-700">
               {avatarChar}
             </div>
           )}
@@ -106,17 +106,17 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
               </p>
               {getRoleBadge(user?.role)}
             </div>
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">
               {user?.email}
             </p>
           </div>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
         </button>
       ) : (
         <>
           <button
             onClick={() => setOpen(!open)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-foreground font-bold shadow-sm ring-1 ring-border transition-all duration-200 hover:bg-muted/50 overflow-hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-foreground font-bold shadow-sm border border-slate-300 dark:border-slate-700 transition-all duration-200 hover:bg-muted/50 overflow-hidden"
             aria-label="User Profile"
           >
             {user?.avatar_url && !imgError ? (
@@ -145,24 +145,24 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
             className={cn(
-              "absolute z-50 w-64 rounded-xl border border-border bg-background shadow-2xl shadow-black/15 dark:shadow-[0_10px_30px_rgba(0,0,0,0.6)] overflow-hidden animate-in fade-in zoom-in-95 duration-200",
+              "absolute z-50 w-64 rounded-xl border border-slate-300 dark:border-slate-700 bg-background shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_0_20px_rgba(255,255,255,0.07)] overflow-hidden animate-in fade-in zoom-in-95 duration-200",
               mobile
                 ? "bottom-[calc(100%+8px)] left-0"
                 : "bottom-0 left-[calc(100%+16px)]",
             )}
           >
             {/* Dropdown Header */}
-            <div className="flex items-center gap-3 border-b border-border/50 bg-muted/30 p-3">
+            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-muted/30 p-3">
               {user?.avatar_url && !imgError ? (
                 <img
                   src={user.avatar_url}
                   alt={user?.full_name || "User"}
-                  className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                  className="h-9 w-9 shrink-0 rounded-lg object-cover border border-slate-300 dark:border-slate-700 shadow-sm"
                   referrerPolicy="no-referrer"
                   onError={() => setImgError(true)}
                 />
               ) : (
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background text-foreground font-bold shadow-sm ring-1 ring-border">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background text-foreground font-bold shadow-sm border border-slate-300 dark:border-slate-700">
                   {avatarChar}
                 </div>
               )}
@@ -173,7 +173,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
                   </p>
                   {getRoleBadge(user?.role)}
                 </div>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
+                <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">
                   {user?.email}
                 </p>
               </div>
@@ -186,7 +186,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
                   setOpen(false);
                   navigate("/profile");
                 }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-muted/50 hover:text-foreground transition-all"
               >
                 <UserIcon className="h-4 w-4" />
                 My Profile
@@ -194,7 +194,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
 
               <button
                 onClick={toggleTheme}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
+                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-muted/50 hover:text-foreground transition-all"
               >
                 <div className="flex items-center gap-3">
                   {isDark ? (
@@ -204,12 +204,12 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
                   )}
                   Theme
                 </div>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground/70 tracking-wider">
+                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
                   {isDark ? "Dark" : "Light"}
                 </span>
               </button>
 
-              <div className="my-1 border-t border-border/50" />
+              <div className="my-1 border-t border-slate-200 dark:border-slate-800" />
 
               <button
                 onClick={handleLogout}
