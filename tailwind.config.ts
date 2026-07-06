@@ -49,6 +49,8 @@ export default {
           DEFAULT: "oklch(var(--popover) / <alpha-value>)",
           foreground: "oklch(var(--popover-foreground) / <alpha-value>)",
         },
+        canvas: "oklch(var(--canvas) / <alpha-value>)",
+        rail: "oklch(var(--rail) / <alpha-value>)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -63,6 +65,7 @@ export default {
         "slide-in": "slideIn 0.3s ease-out",
         "slide-up": "slideUp 0.3s ease-out",
         "nav-item-in": "navItemIn 0.3s ease-out both",
+        "notch-in": "fadeIn 0.25s ease-out 0.12s both",
         shimmer: "shimmer 1.8s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
         float: "float 6s ease-in-out infinite",
