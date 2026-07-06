@@ -160,3 +160,62 @@ export type ResultSection =
   | "actions"
   | "feedback"
   | "misconceptions";
+
+// ── Analytics (GET /recording/analytics) ────────────────────────────────────
+
+export interface RecordingTotals {
+  recordings: number;
+  total_minutes: number;
+  avg_minutes: number;
+  storage_mb: number;
+  processed: number;
+  processing: number;
+  classes: number;
+  subjects: number;
+}
+
+export interface RecordingTrendPoint {
+  date: string; // DD-MM-YYYY
+  count: number;
+}
+
+export interface RecordingSubjectStat {
+  subject: string;
+  count: number;
+  minutes: number;
+}
+
+export interface RecordingClassStat {
+  class_name: string;
+  count: number;
+}
+
+export interface RecordingTeacherStat {
+  teacher: string;
+  count: number;
+}
+
+export interface RecentRecordingItem {
+  id: string;
+  title: string;
+  class_name?: string | null;
+  subject?: string | null;
+  date?: string | null;
+  duration_seconds?: number | null;
+  processed: boolean;
+}
+
+/** `scope`: own (teacher) · school (principal) · platform (admin) · class (student/parent). */
+export type RecordingAnalyticsScope = "own" | "school" | "platform" | "class";
+
+export interface RecordingAnalyticsResponse {
+  scope: RecordingAnalyticsScope;
+  school_name: string | null;
+  days: number;
+  totals: RecordingTotals;
+  trend: RecordingTrendPoint[];
+  by_subject: RecordingSubjectStat[];
+  by_class: RecordingClassStat[];
+  by_teacher: RecordingTeacherStat[];
+  recent: RecentRecordingItem[];
+}
