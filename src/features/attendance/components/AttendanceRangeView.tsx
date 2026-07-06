@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/features/auth/store/auth";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -87,11 +87,9 @@ interface AppliedFilters {
 }
 
 export function AttendanceRangeView() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, ready: scopeReady } = useActiveSchool();
 
   const [scope, setScope] = usePersistedState<ScopeValue>("att.rangeview.scope", {
-    schoolName: "",
     className: "",
     section: "",
     subject: "",
@@ -116,12 +114,13 @@ export function AttendanceRangeView() {
   // Filter/search/sort changes restart at page 0; the server owns pagination.
   useEffect(() => setPage(0), [applied, filter, debouncedSearch, sortBy]);
 
-  const scopeReady = !isAdmin || !!scope.schoolName;
+  // Switching the active school invalidates any applied search from the old one.
+  useEffect(() => setApplied(null), [schoolId]);
 
   const holidays = useHolidayDates({
     session: "2025-26",
-    schoolName: scope.schoolName || undefined,
-    enabled: !!scope.schoolName,
+    schoolName: schoolName || undefined,
+    enabled: !!schoolName,
   });
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
@@ -129,6 +128,7 @@ export function AttendanceRangeView() {
       "attendance",
       "range",
       applied,
+      schoolName,
       page,
       sortBy,
       filter,
@@ -144,7 +144,7 @@ export function AttendanceRangeView() {
         sort_by: sortBy,
         student_filter: filter,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
-        ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+        ...(schoolName ? { school_name: schoolName } : {}),
         ...(s.className ? { class_name: s.className } : {}),
         ...(s.section ? { section: s.section } : {}),
         ...(s.subject ? { subject: s.subject } : {}),
@@ -177,7 +177,7 @@ export function AttendanceRangeView() {
     const blob = await attendanceApi.exportAttendanceRange({
       start_date: isoToIndianDate(applied.start),
       end_date: isoToIndianDate(applied.end),
-      ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+      ...(schoolName ? { school_name: schoolName } : {}),
       ...(s.className ? { class_name: s.className } : {}),
       ...(s.section ? { section: s.section } : {}),
       ...(s.subject ? { subject: s.subject } : {}),

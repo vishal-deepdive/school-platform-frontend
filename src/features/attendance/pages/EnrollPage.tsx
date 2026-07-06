@@ -1,4 +1,3 @@
-import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -12,13 +11,12 @@ import {
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS, ENROLL_MODE_OPTIONS } from "@/features/attendance/constants";
 import { parsePhotoFilename } from "@/features/attendance/lib/photoFilename";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -31,28 +29,19 @@ import type { EnrollResponse } from "@/features/attendance/types";
 type EnrollUploadMethod = "zip" | "photos";
 
 export function EnrollPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState("new");
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMethod, setUploadMethod] = useState<EnrollUploadMethod>("zip");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [result, setResult] = useState<EnrollResponse | null>(null);
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
   // Holds the validated form data while the destructive "replace" mode awaits
   // an explicit confirmation before the enrollment is actually mutated.
   const [pendingReplace, setPendingReplace] = useState<EnrollFormData | null>(
     null,
   );
 
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
 
   const {
@@ -65,7 +54,6 @@ export function EnrollPage() {
     resolver: zodResolver(enrollSchema),
     defaultValues: {
       session: "2025-26",
-      school_name: "",
       class_name: "",
       section: "",
     },
@@ -84,12 +72,6 @@ export function EnrollPage() {
   useEffect(() => {
     setValue("section", "");
   }, [selectedClass, setValue]);
-
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
-    setValue("school_name", name);
-  };
 
   // Single-student direct photo uploads skip the ZIP step but must still
   // follow the same 'RollNo_Name.jpg' identity convention, validated client
@@ -135,7 +117,7 @@ export function EnrollPage() {
 
   const runEnroll = (data: EnrollFormData) => {
     const params: Record<string, string> = {
-      school_name: data.school_name || "",
+      school_name: schoolName || "",
       session: data.session,
       ...(data.class_name && { class_name: data.class_name }),
       ...(data.section && { section: data.section }),
@@ -172,7 +154,7 @@ export function EnrollPage() {
       toast.error("Please select a ZIP file");
       return;
     }
-    if (isAdmin && !data.school_name) {
+    if (isAdmin && !schoolName) {
       toast.error("Please select a school");
       return;
     }
@@ -240,17 +222,6 @@ export function EnrollPage() {
                 Class &amp; session
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
-              {isAdmin && (
-                <SearchableSelect
-                  label="School"
-                  placeholder="Select school..."
-                  options={schoolOptions}
-                  value={schoolId}
-                  onChange={handleSchoolChange}
-                  onSearchChange={setSchoolQuery}
-                  isLoading={schoolsLoading}
-                />
-              )}
               <Select
                 label="Session"
                 options={SESSION_OPTIONS}
@@ -259,9 +230,7 @@ export function EnrollPage() {
               />
               <Select
                 label="Class (optional)"
-                placeholder={
-                  schoolId ? "Select class" : "Select a school first"
-                }
+                placeholder="Select class"
                 options={classNameOptions}
                 disabled={!schoolId}
                 {...register("class_name")}

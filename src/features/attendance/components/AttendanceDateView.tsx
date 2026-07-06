@@ -1,5 +1,5 @@
-import { useAuthStore } from "@/features/auth/store/auth";
-import { useMemo, useState } from "react";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -97,11 +97,9 @@ interface AppliedFilters {
 }
 
 export function AttendanceDateView() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, ready: scopeReady } = useActiveSchool();
 
   const [scope, setScope] = usePersistedState<ScopeValue>("att.dateview.scope", {
-    schoolName: "",
     className: "",
     section: "",
     subject: "",
@@ -113,21 +111,22 @@ export function AttendanceDateView() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("roll");
 
-  const scopeReady = !isAdmin || !!scope.schoolName;
+  // Switching the active school invalidates any applied search from the old one.
+  useEffect(() => setApplied(null), [schoolId]);
 
   const holidays = useHolidayDates({
     session: "2025-26",
-    schoolName: scope.schoolName || undefined,
-    enabled: !!scope.schoolName,
+    schoolName: schoolName || undefined,
+    enabled: !!schoolName,
   });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["attendance", "date", applied],
+    queryKey: ["attendance", "date", applied, schoolName],
     queryFn: () => {
       const s = applied!.scope;
       return attendanceApi.getAttendanceOnDate({
         date: isoToIndianDate(applied!.date),
-        ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+        ...(schoolName ? { school_name: schoolName } : {}),
         ...(s.className ? { class_name: s.className } : {}),
         ...(s.section ? { section: s.section } : {}),
         ...(s.subject ? { subject: s.subject } : {}),
@@ -181,7 +180,7 @@ export function AttendanceDateView() {
     const s = applied.scope;
     const blob = await attendanceApi.exportAttendanceOnDate({
       date: isoToIndianDate(applied.date),
-      ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+      ...(schoolName ? { school_name: schoolName } : {}),
       ...(s.className ? { class_name: s.className } : {}),
       ...(s.section ? { section: s.section } : {}),
       ...(s.subject ? { subject: s.subject } : {}),

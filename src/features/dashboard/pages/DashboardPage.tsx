@@ -32,6 +32,7 @@ import { ClassBreakdownChart } from "@/features/dashboard/components/ClassBreakd
 import { WeekdayPatternChart } from "@/features/dashboard/components/WeekdayPatternChart";
 import { AdminDashboard } from "@/features/dashboard/components/AdminDashboard";
 import { MyDashboard } from "@/features/dashboard/components/MyDashboard";
+import { SchoolSwitcherPill } from "@/app/layouts/SchoolSwitcher";
 import { roleCanAccess } from "@/shared/lib/permissions";
 
 const quickLinks = [
@@ -305,10 +306,15 @@ export function DashboardPage() {
         title={`${greeting}, ${user?.full_name?.split(" ")[0] ?? "there"}`}
         description={todayLine}
         actions={
-          <span className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {format(new Date(), "EEEE, d MMMM")}
-          </span>
+          <>
+            {/* Global active-school selector — admin-only; the single place an
+                admin chooses which school the whole app operates on. */}
+            <SchoolSwitcherPill />
+            <span className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {format(new Date(), "EEEE, d MMMM")}
+            </span>
+          </>
         }
       />
 

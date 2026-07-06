@@ -10,7 +10,7 @@ export function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/30">
+    <div className="flex h-screen overflow-hidden bg-canvas">
       <CommandPalette />
       <div className="hidden md:flex md:flex-shrink-0">
         <Sidebar />
