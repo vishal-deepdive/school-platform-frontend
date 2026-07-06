@@ -3,6 +3,7 @@ import { streamSSE } from "@/shared/api/streaming";
 import { API_BASE_URL } from "@/shared/config/env";
 import type {
   SurveyStatusResponse,
+  SurveyAnalyticsResponse,
   SearchRequest,
   SearchResponse,
   SearchStreamEvent,
@@ -24,6 +25,12 @@ const BASE = "/api/v1/survey";
 export const surveyApi = {
   getStatus: () =>
     apiClient.get<SurveyStatusResponse>(`${BASE}/status`).then((r) => r.data),
+
+  /** Feedback satisfaction analytics for the dashboard (staff-scoped). */
+  getAnalytics: () =>
+    apiClient
+      .get<SurveyAnalyticsResponse>(`${BASE}/analytics`)
+      .then((r) => r.data),
 
   // ── Multi-source endpoints ──────────────────────────────────────────────
 

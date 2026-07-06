@@ -180,3 +180,52 @@ export interface DocumentListResponse {
   limit: number;
   offset: number;
 }
+
+// ── Library analytics (GET /rag/analytics) ──────────────────────────────────
+
+export interface RagLibraryTotals {
+  documents: number;
+  chunks: number;
+  completed: number;
+  pending: number;
+  failed: number;
+  global_docs: number;
+  school_docs: number;
+  subjects: number;
+  class_levels: number;
+}
+
+export interface RagSubjectStat {
+  subject: string;
+  count: number;
+}
+
+export interface RagClassStat {
+  class_level: string;
+  count: number;
+}
+
+export interface RagStatusStat {
+  status: string;
+  count: number;
+}
+
+export interface RagRecentDocument {
+  id: string;
+  class_level?: string | null;
+  subject?: string | null;
+  chapter_name?: string | null;
+  status: string;
+  total_chunks?: number | null;
+  is_global: boolean;
+  created_at?: string | null;
+}
+
+export interface RagAnalyticsResponse {
+  scope: "platform" | "school";
+  totals: RagLibraryTotals;
+  by_subject: RagSubjectStat[];
+  by_class: RagClassStat[];
+  by_status: RagStatusStat[];
+  recent: RagRecentDocument[];
+}

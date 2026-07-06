@@ -10,6 +10,7 @@ import type {
   SearchResponse,
   MarkdownResult,
   ResultSection,
+  RecordingAnalyticsResponse,
 } from "@/features/recording/types";
 import { buildQueryString, getErrorMessage } from "@/shared/lib/utils";
 
@@ -123,4 +124,10 @@ export const recordingApi = {
 
   getResultSection: (jobId: string, section: ResultSection): Promise<MarkdownResult> =>
     fetchMarkdown(`${BASE}/result/${jobId}/section/${section}`),
+
+  /** Role-scoped recording-activity analytics for the dashboard. */
+  getAnalytics: (params: Record<string, string | number> = {}) =>
+    apiClient
+      .get<RecordingAnalyticsResponse>(`${BASE}/analytics${buildQueryString(params)}`)
+      .then((r) => r.data),
 };
