@@ -18,12 +18,32 @@ export function LandingNavbar() {
   const { isAuthenticated, user } = useAuthStore();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Scrollspy: light up the nav link for the section under the viewport centre.
+  useEffect(() => {
+    const sections = NAV_LINKS.map((link) =>
+      document.querySelector(link.href),
+    ).filter((el): el is Element => el !== null);
+    if (sections.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) setActiveSection(`#${entry.target.id}`);
+        }
+      },
+      { rootMargin: "-40% 0px -55% 0px" },
+    );
+    sections.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -33,7 +53,7 @@ export function LandingNavbar() {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className={`fixed top-0 z-50 w-full border-b transition-all duration-300 ${
         scrolled
-          ? "border-border/70 bg-background/85 dark:bg-[#030303]/85 backdrop-blur-xl"
+          ? "border-border/70 bg-background/85 dark:bg-[#0b0e14]/85 backdrop-blur-xl"
           : "border-transparent bg-transparent"
       }`}
     >
@@ -47,15 +67,28 @@ export function LandingNavbar() {
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
-            >
-              {link.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((link) => {
+            const isActive = activeSection === link.href;
+            return (
+              <a
+                key={link.href}
+                href={link.href}
+                className={`relative rounded-md px-3 py-2 text-sm font-medium transition-colors hover:text-foreground ${
+                  isActive ? "text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="nav-active-pill"
+                    transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                    className="absolute inset-0 rounded-md bg-accent/60"
+                    aria-hidden="true"
+                  />
+                )}
+                <span className="relative">{link.label}</span>
+              </a>
+            );
+          })}
         </div>
 
         <div className="hidden items-center gap-2 md:flex">
@@ -110,7 +143,7 @@ export function LandingNavbar() {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="overflow-hidden border-t border-border bg-background/95 dark:bg-[#030303]/95 backdrop-blur-xl md:hidden"
+            className="overflow-hidden border-t border-border bg-background/95 dark:bg-[#0b0e14]/95 backdrop-blur-xl md:hidden"
           >
             <div className="flex flex-col gap-1 px-4 py-4">
               {NAV_LINKS.map((link) => (

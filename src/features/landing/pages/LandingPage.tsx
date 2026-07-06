@@ -29,7 +29,7 @@ function ScrollProgressBar() {
 export function LandingPage() {
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen w-full overflow-x-clip bg-background dark:bg-[#030303] font-sans text-foreground antialiased selection:bg-primary/20">
+      <div className="min-h-screen w-full overflow-x-clip bg-background dark:bg-[#0b0e14] font-sans text-foreground antialiased selection:bg-primary/20">
         <ScrollProgressBar />
         <LandingNavbar />
         <main>

@@ -4,10 +4,10 @@ import { Link } from "react-router-dom";
 import { fadeUp, staggerContainer } from "@/features/landing/animations";
 
 const BENEFITS = [
-  "Complete student management system",
-  "Real-time attendance tracking",
-  "Searchable lecture recording library",
-  "AI-powered Q&A on course material",
+  "Registers marked in under a minute",
+  "Every lecture searchable by the same evening",
+  "AI answers grounded in your own classes",
+  "Parents see progress without calling the office",
 ];
 
 export function OnboardingSection() {
@@ -44,7 +44,7 @@ export function OnboardingSection() {
               <Link
                 // to="/onboarding/apply"
                 to="/"
-                className="group inline-flex h-12 items-center justify-center rounded-lg bg-white px-7 text-sm font-semibold text-slate-900 transition-colors hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[hsl(212_62%_15%)]"
+                className="group inline-flex h-12 items-center justify-center rounded-lg bg-white px-7 text-sm font-semibold text-slate-900 transition-all hover:-translate-y-0.5 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[hsl(212_62%_15%)]"
               >
                 Onboard your school
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
