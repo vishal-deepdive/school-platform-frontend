@@ -40,7 +40,7 @@ export function SpotlightGrid({ radius = 260 }: SpotlightGridProps) {
   const spotlightMask = useMotionTemplate`radial-gradient(${radius}px circle at ${x}px ${y}px, #000 0%, transparent 78%)`;
   const colorGlow = useMotionTemplate`radial-gradient(${
     radius * 1.5
-  }px circle at ${x}px ${y}px, hsl(var(--primary) / 0.18), transparent 72%)`;
+  }px circle at ${x}px ${y}px, oklch(var(--primary) / 0.18), transparent 72%)`;
 
   useEffect(() => {
     const section = ref.current?.parentElement;
@@ -98,7 +98,7 @@ export function SpotlightGrid({ radius = 260 }: SpotlightGridProps) {
       <div className="mask-radial-fade absolute inset-0 bg-grid-slate dark:bg-grid-white" />
 
       {/* Establishing brand light anchored to the top (static, unchanged). */}
-      <div className="absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(60%_60%_at_50%_-5%,hsl(var(--primary)/0.13),transparent_72%)]" />
+      <div className="absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(60%_60%_at_50%_-5%,oklch(var(--primary)/0.13),transparent_72%)]" />
 
       {/* Ambient color wash trailing the cursor. */}
       <motion.div

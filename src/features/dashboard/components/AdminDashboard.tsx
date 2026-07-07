@@ -214,8 +214,8 @@ export function AdminDashboard() {
                 <AreaChart data={trend} margin={{ top: 8, right: 8, bottom: 0, left: -12 }}>
                   <defs>
                     <linearGradient id="platform-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                      <stop offset="0%" stopColor="oklch(var(--primary))" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="oklch(var(--primary))" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
@@ -252,7 +252,7 @@ export function AdminDashboard() {
                     type="monotone"
                     dataKey={trendMetric}
                     name={trendMetric === "percentage" ? "Attendance %" : "Marked"}
-                    stroke="hsl(var(--primary))"
+                    stroke="oklch(var(--primary))"
                     strokeWidth={2}
                     fill="url(#platform-fill)"
                     dot={false}

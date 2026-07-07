@@ -24,6 +24,7 @@ import type {
   RecordingTrendPoint,
 } from "@/features/recording/types";
 import { Card, StatCard } from "@/shared/components/ui/Card";
+import { CollapsibleSection } from "@/shared/components/ui/CollapsibleSection";
 import { ChartSkeleton, StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { Badge } from "@/shared/components/ui/Badge";
 import { BarList } from "@/features/dashboard/components/BarList";
@@ -96,17 +97,23 @@ export function RecordingAnalyticsSection() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
-          ))}
+      <CollapsibleSection
+        id="dash-recordings"
+        title="Lecture recordings"
+        description="Loading recording activity…"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ChartSkeleton className="lg:col-span-2" />
+            <ChartSkeleton />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <ChartSkeleton className="lg:col-span-2" />
-          <ChartSkeleton />
-        </div>
-      </div>
+      </CollapsibleSection>
     );
   }
 
@@ -117,23 +124,20 @@ export function RecordingAnalyticsSection() {
   const copy = SCOPE_COPY[data.scope];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Mic2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{copy.title}</h3>
-            <p className="text-xs text-muted-foreground">{copy.subtitle}</p>
-          </div>
-        </div>
+    <CollapsibleSection
+      id="dash-recordings"
+      title={copy.title}
+      description={copy.subtitle}
+      action={
         <Link
           to="/recording/list"
           className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
         >
           Browse <ArrowRight className="h-3 w-3" />
         </Link>
-      </div>
-
+      }
+    >
+    <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Recordings"
@@ -193,8 +197,8 @@ export function RecordingAnalyticsSection() {
                 <AreaChart data={trend} margin={{ top: 8, right: 8, bottom: 0, left: -20 }}>
                   <defs>
                     <linearGradient id="recording-fill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                      <stop offset="0%" stopColor="oklch(var(--primary))" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="oklch(var(--primary))" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
@@ -225,7 +229,7 @@ export function RecordingAnalyticsSection() {
                     type="monotone"
                     dataKey="count"
                     name="Recordings"
-                    stroke="hsl(var(--primary))"
+                    stroke="oklch(var(--primary))"
                     strokeWidth={2}
                     fill="url(#recording-fill)"
                     dot={false}
@@ -297,5 +301,6 @@ export function RecordingAnalyticsSection() {
         </Card>
       </div>
     </div>
+    </CollapsibleSection>
   );
 }

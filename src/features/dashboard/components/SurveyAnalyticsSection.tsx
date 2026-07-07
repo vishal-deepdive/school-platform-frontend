@@ -13,6 +13,7 @@ import {
 import { ArrowRight, MessagesSquare, Smile, ThumbsUp, Users } from "lucide-react";
 import { surveyApi } from "@/features/survey/api/survey";
 import { Card, StatCard } from "@/shared/components/ui/Card";
+import { CollapsibleSection } from "@/shared/components/ui/CollapsibleSection";
 import { ChartSkeleton, StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { BarList } from "@/features/dashboard/components/BarList";
 
@@ -59,17 +60,24 @@ export function SurveyAnalyticsSection() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
-          ))}
+      <CollapsibleSection
+        id="dash-survey"
+        title="Student feedback"
+        description="Loading feedback analytics…"
+        defaultOpen={false}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ChartSkeleton className="lg:col-span-2" />
+            <ChartSkeleton />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <ChartSkeleton className="lg:col-span-2" />
-          <ChartSkeleton />
-        </div>
-      </div>
+      </CollapsibleSection>
     );
   }
 
@@ -80,33 +88,28 @@ export function SurveyAnalyticsSection() {
   const overallRated = overall.positive + overall.neutral + overall.negative;
   const overallPct = overallRated > 0 ? Math.round((overall.positive / overallRated) * 100) : null;
 
-  const header = (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex items-center gap-2">
-        <MessagesSquare className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Student feedback</h3>
-          <p className="text-xs text-muted-foreground">
-            {data.scope === "platform"
-              ? "Satisfaction across all schools"
-              : "How students rate their school experience"}
-          </p>
-        </div>
-      </div>
+  const sectionProps = {
+    id: "dash-survey",
+    title: "Student feedback",
+    description:
+      data.scope === "platform"
+        ? "Satisfaction across all schools"
+        : "How students rate their school experience",
+    defaultOpen: false,
+    action: (
       <Link
         to="/survey/search"
         className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
       >
         Explore <ArrowRight className="h-3 w-3" />
       </Link>
-    </div>
-  );
+    ),
+  };
 
   // No feedback loaded for this school yet — a compact, honest empty state.
   if (data.total_responses === 0) {
     return (
-      <div className="space-y-4">
-        {header}
+      <CollapsibleSection {...sectionProps}>
         <Card padding="lg">
           <div className="flex flex-col items-center gap-2 py-6 text-center">
             <MessagesSquare className="h-8 w-8 text-muted-foreground/40" />
@@ -116,15 +119,15 @@ export function SurveyAnalyticsSection() {
             </p>
           </div>
         </Card>
-      </div>
+      </CollapsibleSection>
     );
   }
 
   const dimensions = data.dimensions.filter((d) => d.total > 0);
 
   return (
+    <CollapsibleSection {...sectionProps}>
     <div className="space-y-4">
-      {header}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -252,5 +255,6 @@ export function SurveyAnalyticsSection() {
         </Card>
       </div>
     </div>
+    </CollapsibleSection>
   );
 }

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Boxes, Globe, Library } from "lucide-react";
 import { ragApi } from "@/features/rag/api/rag";
 import { Card, StatCard } from "@/shared/components/ui/Card";
+import { CollapsibleSection } from "@/shared/components/ui/CollapsibleSection";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
 import { ChartSkeleton, StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { BarList } from "@/features/dashboard/components/BarList";
@@ -29,18 +30,25 @@ export function LibraryAnalyticsSection() {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
-          ))}
+      <CollapsibleSection
+        id="dash-library"
+        title="Knowledge base"
+        description="Loading library analytics…"
+        defaultOpen={false}
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <ChartSkeleton />
+            <ChartSkeleton />
+            <ChartSkeleton />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <ChartSkeleton />
-          <ChartSkeleton />
-          <ChartSkeleton />
-        </div>
-      </div>
+      </CollapsibleSection>
     );
   }
 
@@ -50,26 +58,25 @@ export function LibraryAnalyticsSection() {
   const t = data.totals;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Library className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Knowledge base</h3>
-            <p className="text-xs text-muted-foreground">
-              {data.scope === "platform"
-                ? "Textbook content indexed across the platform"
-                : "Textbooks available for AI-powered Q&A at your school"}
-            </p>
-          </div>
-        </div>
+    <CollapsibleSection
+      id="dash-library"
+      title="Knowledge base"
+      description={
+        data.scope === "platform"
+          ? "Textbook content indexed across the platform"
+          : "Textbooks available for AI-powered Q&A at your school"
+      }
+      defaultOpen={false}
+      action={
         <Link
           to="/rag/documents"
           className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80"
         >
           Manage <ArrowRight className="h-3 w-3" />
         </Link>
-      </div>
+      }
+    >
+    <div className="space-y-4">
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -152,5 +159,6 @@ export function LibraryAnalyticsSection() {
         </Card>
       </div>
     </div>
+    </CollapsibleSection>
   );
 }
