@@ -12,20 +12,8 @@ export default {
         background: "oklch(var(--background) / <alpha-value>)",
         foreground: "oklch(var(--foreground) / <alpha-value>)",
         primary: {
-          DEFAULT: "hsl(var(--primary) / <alpha-value>)",
-          foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
-          // Scale derived from the brand hue (--primary: 212 80.5% 38.2%) so
-          // primary-N and bg-primary are the same color family. 600 == DEFAULT.
-          50: "hsl(212 88% 97%)",
-          100: "hsl(212 86% 93%)",
-          200: "hsl(212 84% 85%)",
-          300: "hsl(212 82% 73%)",
-          400: "hsl(212 81% 58%)",
-          500: "hsl(212 80% 47%)",
-          600: "hsl(212 80.5% 38.2%)",
-          700: "hsl(212 82% 31%)",
-          800: "hsl(213 78% 25%)",
-          900: "hsl(214 75% 20%)",
+          DEFAULT: "oklch(var(--primary) / <alpha-value>)",
+          foreground: "oklch(var(--primary-foreground) / <alpha-value>)",
         },
         secondary: {
           DEFAULT: "oklch(var(--secondary) / <alpha-value>)",
@@ -61,6 +49,8 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        // Headings, greetings, and stat values only — body copy stays Inter.
+        display: ["Bricolage Grotesque", "Inter", "system-ui", "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.2s ease-in-out",

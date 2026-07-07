@@ -74,6 +74,24 @@ export function roleCanAccess(path: string, role?: UserRole | null): boolean {
   return allowed.includes(role);
 }
 
+/**
+ * Modules that operate on a school's data. An admin must pick an active school
+ * (Dashboard → SchoolSwitcherPill) before these routes mean anything. Single
+ * source for the sidebar gating, quick-action gating, and any future guard.
+ */
+const SCHOOL_SCOPED_PREFIXES = [
+  "/attendance",
+  "/recording",
+  "/rag",
+  "/survey",
+  "/students",
+];
+
+export function needsActiveSchool(path?: string | null): boolean {
+  if (!path) return false;
+  return SCHOOL_SCOPED_PREFIXES.some((p) => path.startsWith(p));
+}
+
 export const STAFF_ROLES: UserRole[] = ["admin", "principal", "teacher"];
 
 export function isStaff(role?: UserRole | null): boolean {
