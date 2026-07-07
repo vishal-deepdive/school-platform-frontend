@@ -38,6 +38,8 @@ import { LibraryAnalyticsSection } from "@/features/dashboard/components/Library
 import { SurveyAnalyticsSection } from "@/features/dashboard/components/SurveyAnalyticsSection";
 import { SchoolSwitcherPill } from "@/app/layouts/SchoolSwitcher";
 import { roleCanAccess } from "@/shared/lib/permissions";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { toast } from "@/shared/lib/toast";
 
 const quickLinks = [
   {
@@ -286,11 +288,25 @@ function StaffDashboard() {
 export function DashboardPage() {
   const { user } = useAuthStore();
   const role = user?.role;
-  const isAdmin = role === "admin";
+  const { isAdmin, ready } = useActiveSchool();
   // Principals and teachers get school/class analytics; admins get the
   // platform-wide view; students and parents get their personal analytics.
   const isSchoolStaff = role === "principal" || role === "teacher";
   const isConsumer = role === "student" || role === "parent";
+
+  const handleQuickLinkClick = (e: React.MouseEvent, href: string) => {
+    const isGated = (h: string) => 
+      h.startsWith("/attendance") || 
+      h.startsWith("/recording") || 
+      h.startsWith("/rag") || 
+      h.startsWith("/survey") || 
+      h.startsWith("/students");
+
+    if (isAdmin && !ready && isGated(href)) {
+      e.preventDefault();
+      toast.warning("Please select a school first to access this module.");
+    }
+  };
 
   const greeting = useMemo(() => {
     const h = new Date().getHours();
@@ -381,7 +397,7 @@ export function DashboardPage() {
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleLinks.map((link) => (
-            <Link key={link.href} to={link.href} className="group block h-full">
+            <Link key={link.href} to={link.href} className="group block h-full" onClick={(e) => handleQuickLinkClick(e, link.href)}>
               <Card className="relative h-full overflow-hidden" padding="md" hoverable>
                 <ArrowRight
                   className="absolute right-5 top-5 h-4 w-4 -translate-x-1 text-muted-foreground/0 transition-all duration-200 group-hover:translate-x-0 group-hover:text-primary"

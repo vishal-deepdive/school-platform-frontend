@@ -9,6 +9,8 @@ import { UserProfileMenu } from "./UserProfileMenu";
 import { MobileSidebarItem } from "./MobileSidebarItem";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import type { UserRole } from "@/features/auth/types";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { toast } from "@/shared/lib/toast";
 
 /**
  * Filter nav items by the user's role. A leaf item is kept only if the user may
@@ -48,6 +50,9 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   }, [user?.role]);
 
   const [activeCategory, setActiveCategory] = useState<NavItem | null>(null);
+
+  // Check if admin has selected a school
+  const { isAdmin, ready } = useActiveSchool();
 
   // Sliding tab indicator (desktop rail): one floating surface translated to
   // the active item, so tab changes glide up/down instead of popping.
@@ -101,6 +106,20 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   }, [location.pathname, allItems]);
 
   const handleCategoryClick = (item: NavItem) => {
+    const targetHref = item.href || (item.children && item.children[0]?.href);
+    
+    const isGated = (href: string) => 
+      href.startsWith("/attendance") || 
+      href.startsWith("/recording") || 
+      href.startsWith("/rag") || 
+      href.startsWith("/survey") || 
+      href.startsWith("/students");
+
+    if (isAdmin && !ready && targetHref && isGated(targetHref)) {
+      toast.warning("Please select a school first to access this module.");
+      return;
+    }
+
     const wasActive = activeCategory === item;
     setActiveCategory(item);
     setCollapsed(false);
