@@ -39,3 +39,4 @@ export { Avatar } from "./Avatar";
 export { SearchInput } from "./SearchInput";
 export { FilterBar } from "./FilterBar";
 export { Panel } from "./Panel";
+export { Tooltip, TooltipProvider } from "./Tooltip";

@@ -69,10 +69,12 @@ export function TabContainer({ className }: TabContainerProps) {
   const isDashboard = pathname === "/dashboard";
 
   return (
-    <div
-      className={cn(
-        // Cancel AppLayout <main> padding: px-4 py-4 md:px-6 md:pt-5 md:pb-3
-        "-mx-4 -my-4 h-[calc(100%+2rem)] md:-mx-6 md:-mb-3 md:-mt-5",
+    <>
+      <style>{`#app-main-layout { overflow: hidden !important; }`}</style>
+      <div
+        className={cn(
+          // Cancel AppLayout <main> padding: px-4 py-4 md:px-6 md:pt-5 md:pb-3
+          "-mx-4 -my-4 h-[calc(100%+2rem)] md:-mx-6 md:-mb-3 md:-mt-5",
         "flex min-h-0 flex-col bg-background/80",
         isDashboard ? "p-0" : "p-1",
         (!active && !isDashboard) && "pt-3 md:pt-4",
@@ -130,5 +132,6 @@ export function TabContainer({ className }: TabContainerProps) {
         </div>
       </div>
     </div>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -292,12 +292,14 @@ export function DashboardPage() {
   const isSchoolStaff = role === "principal" || role === "teacher";
   const isConsumer = role === "student" || role === "parent";
 
-  const greeting = (() => {
+  const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return "Good morning";
     if (h < 17) return "Good afternoon";
     return "Good evening";
-  })();
+  }, []);
+
+  const todayFormatted = useMemo(() => format(new Date(), "EEEE, d MMMM"), []);
 
   const todayLine = (() => {
     if (isSchoolStaff) return "Here's how your school is doing today.";
@@ -322,7 +324,7 @@ export function DashboardPage() {
             <SchoolSwitcherPill />
             <span className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />
-              {format(new Date(), "EEEE, d MMMM")}
+              {todayFormatted}
             </span>
           </>
         }
