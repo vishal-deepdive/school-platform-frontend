@@ -14,7 +14,6 @@ import type { AuditLogEntry } from "@/features/admin/types";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
 import { Panel } from "@/shared/components/ui/Panel";
-import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
@@ -22,6 +21,7 @@ import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { DatePicker } from "@/shared/components/ui/DatePicker";
 
 const PAGE_SIZE = 30;
 
@@ -189,17 +189,15 @@ export function AuditLogPage() {
             placeholder="All schools"
             searchPlaceholder="Search schools…"
           />
-          <Input
+          <DatePicker
             label="From"
-            type="date"
             value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
+            onChange={(iso) => setDateFrom(iso ?? "")}
           />
-          <Input
+          <DatePicker
             label="To"
-            type="date"
             value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+            onChange={(iso) => setDateTo(iso ?? "")}
           />
         </div>
       </FilterBar>

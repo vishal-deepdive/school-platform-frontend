@@ -1,4 +1,5 @@
 import { apiClient, multipartClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   AdminUser,
   CreateAdminRequest,
@@ -27,7 +28,7 @@ import type {
   AuditLogParams,
 } from "@/features/admin/types";
 
-const ADMIN_BASE = "/api/v1/admin";
+const ADMIN_BASE = `${API_V1}/admin`;
 const enc = encodeURIComponent;
 
 export const adminApi = {

@@ -23,5 +23,19 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      sourcemap: 'hidden',
+      chunkSizeWarningLimit: 800,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-query': ['@tanstack/react-query'],
+            'vendor-charts': ['recharts'],
+            'vendor-markdown': ['react-markdown', 'remark-gfm', 'remark-math', 'rehype-katex'],
+          },
+        },
+      },
+    },
   };
 });

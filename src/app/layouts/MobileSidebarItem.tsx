@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -15,6 +15,12 @@ export function MobileSidebarItem({ item, onClose }: MobileSidebarItemProps) {
     (c) => c.href && location.pathname.startsWith(c.href),
   );
   const [open, setOpen] = useState(isChildActive ?? false);
+
+  // Auto-expand when a child becomes active (e.g. via command palette navigation
+  // while the mobile sidebar is already open).
+  useEffect(() => {
+    if (isChildActive) setOpen(true);
+  }, [isChildActive]);
 
   if (item.href && !item.children) {
     return (
@@ -61,9 +67,9 @@ export function MobileSidebarItem({ item, onClose }: MobileSidebarItemProps) {
 
       {open && (
         <div className="mt-1 flex flex-col gap-0.5 border-l-2 border-border/70 ml-[22px] pl-3 animate-fade-in">
-          {item.children?.map((child, i) => (
+          {item.children?.map((child) => (
             <NavLink
-              key={i}
+              key={child.href || child.label}
               to={child.href || "#"}
               onClick={onClose}
               end={child.end !== undefined ? child.end : child.href === "/"}
