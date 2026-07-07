@@ -39,6 +39,7 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/rag/questions": ["admin", "principal", "teacher"],
   "/rag/notes": ["admin", "principal", "teacher", "student"],
   "/rag/documents": ["admin", "principal", "teacher"],
+  "/rag/insights": ["admin", "principal", "teacher"],
   "/rag/audit": ["admin", "principal"],
 
   // Survey Analytics (sensitive student wellbeing data — staff only)

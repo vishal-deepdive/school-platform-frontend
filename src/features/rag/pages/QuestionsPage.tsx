@@ -101,7 +101,7 @@ export function QuestionsPage() {
           </Button>
         }
       >
-        <RagFilterPanel filters={filters} onChange={setFilters} />
+        <RagFilterPanel filters={filters} onChange={setFilters} showTitle />
 
         <div className="space-y-3">
           {/* <h4 className="text-sm font-semibold text-foreground">Question options</h4> */}

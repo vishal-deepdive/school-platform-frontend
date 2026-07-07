@@ -61,6 +61,7 @@ const QuestionsPage = lazyPage(rag, "QuestionsPage");
 const NotesPage = lazyPage(rag, "NotesPage");
 const RagAuditPage = lazyPage(rag, "RagAuditPage");
 const RagDocumentsPage = lazyPage(rag, "RagDocumentsPage");
+const RagInsightsPage = lazyPage(rag, "RagInsightsPage");
 
 const survey = () => import("@/features/survey");
 const SurveyPage = lazyPage(survey, "SurveyPage");
@@ -209,6 +210,7 @@ export const router = createBrowserRouter([
               { path: "qa", element: <RoleRoute><QAPage /></RoleRoute> },
               { path: "questions", element: <RoleRoute><QuestionsPage /></RoleRoute> },
               { path: "notes", element: <RoleRoute><NotesPage /></RoleRoute> },
+              { path: "insights", element: <RoleRoute><RagInsightsPage /></RoleRoute> },
               { path: "audit", element: <RoleRoute><RagAuditPage /></RoleRoute> },
               { path: "documents", element: <RoleRoute><RagDocumentsPage /></RoleRoute> },
             ],

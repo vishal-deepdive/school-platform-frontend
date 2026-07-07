@@ -11,3 +11,4 @@ export * from "./pages/QAPage";
 export * from "./pages/QuestionsPage";
 export * from "./pages/RagAuditPage";
 export * from "./pages/RagDocumentsPage";
+export * from "./pages/RagInsightsPage";

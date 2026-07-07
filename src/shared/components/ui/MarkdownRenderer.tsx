@@ -17,6 +17,7 @@ import { cn } from "@/shared/lib/utils";
 import { CodeBlock } from "./markdown/CodeBlock";
 import { MermaidDiagram } from "./markdown/MermaidDiagram";
 import { normalizeMath } from "./markdown/normalizeMarkdown";
+import { splitBlocks } from "./markdown/splitBlocks";
 
 interface MarkdownRendererProps {
   content: string;
@@ -189,11 +190,69 @@ type ReactMarkdownProps = ComponentProps<typeof ReactMarkdown>;
 // render on its own line, matching what the model (and the reader) intends. It
 // runs after gfm/math so it never interferes with table/list/math block parsing.
 const REMARK_PLUGINS: ReactMarkdownProps["remarkPlugins"] = [remarkGfm, remarkMath, remarkBreaks];
+
+// Physics/chemistry/quantum shorthands that KaTeX doesn't define out of the box
+// but that models routinely emit. Macros only expand when their token actually
+// appears, so they're inert for content that doesn't use them.
+const KATEX_MACROS: Record<string, string> = {
+  // Blackboard number sets (double-letter form → low collision risk).
+  "\\RR": "\\mathbb{R}",
+  "\\NN": "\\mathbb{N}",
+  "\\ZZ": "\\mathbb{Z}",
+  "\\QQ": "\\mathbb{Q}",
+  "\\CC": "\\mathbb{C}",
+  // Bra–ket / linear algebra (not built into KaTeX).
+  "\\bra": "\\left\\langle #1\\right|",
+  "\\ket": "\\left|#1\\right\\rangle",
+  "\\braket": "\\left\\langle #1\\right\\rangle",
+  "\\ketbra": "\\left|#1\\right\\rangle\\!\\left\\langle #2\\right|",
+  // Magnitudes and the upright differential 'd'.
+  "\\abs": "\\left|#1\\right|",
+  "\\norm": "\\left\\lVert #1\\right\\rVert",
+  "\\dd": "\\mathrm{d}",
+};
+
+// KaTeX commands guarded by `trust`. Model output can be influenced by uploaded
+// documents, so rather than blanket-trusting (which would let `\href` carry a
+// `javascript:` URL), we allow only same-safe protocols and refuse external
+// image loads. Pure math commands never reach this gate.
+const katexTrust = (ctx: { command: string; url?: string }): boolean => {
+  if (ctx.command === "\\href" || ctx.command === "\\url") {
+    return /^(https?:|mailto:)/i.test(ctx.url ?? "");
+  }
+  if (ctx.command === "\\includegraphics") return false;
+  return true;
+};
+
 const REHYPE_PLUGINS: ReactMarkdownProps["rehypePlugins"] = [
   // throwOnError: false — a single malformed formula renders red instead of
-  // blanking the whole message. trust: true — enables macros that require it.
-  [rehypeKatex, { throwOnError: false, strict: false, trust: true }],
+  // blanking the whole message (crucial mid-stream, when formulas are partial).
+  [rehypeKatex, { throwOnError: false, strict: false, trust: katexTrust, macros: KATEX_MACROS }],
 ];
+
+// ── Block-memoised body (streaming only) ─────────────────────────────────────
+
+// One top-level Markdown block. Memoised so that, as tokens stream in, only the
+// block that is still growing re-parses and re-runs KaTeX/Prism — the settled
+// prefix is skipped entirely instead of the whole answer being re-tokenised
+// every frame.
+const MarkdownBlock = memo(function MarkdownBlock({
+  source,
+  components,
+}: {
+  source: string;
+  components: Components;
+}) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={REMARK_PLUGINS}
+      rehypePlugins={REHYPE_PLUGINS}
+      components={components}
+    >
+      {source}
+    </ReactMarkdown>
+  );
+});
 
 // ── Renderer ─────────────────────────────────────────────────────────────────
 
@@ -209,6 +268,12 @@ const REHYPE_PLUGINS: ReactMarkdownProps["rehypePlugins"] = [
  * - GitHub-style callouts: > [!NOTE], > [!WARNING], > [!TIP], etc.
  * - Safe links and lazy-loaded images
  *
+ * Streaming: while `streaming` is true the body is split into top-level blocks
+ * and each is memoised, so only the block still receiving tokens re-parses;
+ * half-typed trailing formulas are hidden until their closer arrives. Once the
+ * message settles we render it as a single pass so cross-block constructs
+ * (footnotes, reference-style links) resolve correctly.
+ *
  * rehype-raw is intentionally NOT used — raw HTML in model output (which can
  * be influenced by uploaded documents) would otherwise be rendered as-is.
  */
@@ -217,8 +282,16 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   className,
   streaming = false,
 }: MarkdownRendererProps) {
-  const normalized = useMemo(() => normalizeMath(content), [content]);
+  const normalized = useMemo(
+    () => normalizeMath(content, { streaming }),
+    [content, streaming],
+  );
   const components = useMemo(() => createComponents(streaming), [streaming]);
+  // Block-split only while streaming; the settled render stays single-pass.
+  const blocks = useMemo(
+    () => (streaming ? splitBlocks(normalized) : null),
+    [streaming, normalized],
+  );
 
   return (
     <div
@@ -230,13 +303,21 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
         className,
       )}
     >
-      <ReactMarkdown
-        remarkPlugins={REMARK_PLUGINS}
-        rehypePlugins={REHYPE_PLUGINS}
-        components={components}
-      >
-        {normalized}
-      </ReactMarkdown>
+      {blocks ? (
+        blocks.map((source, i) => (
+          // Stable key by position: streaming only appends, so block `i` keeps
+          // its identity and settled blocks are skipped by React.memo.
+          <MarkdownBlock key={i} source={source} components={components} />
+        ))
+      ) : (
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
+          components={components}
+        >
+          {normalized}
+        </ReactMarkdown>
+      )}
     </div>
   );
 });

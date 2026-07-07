@@ -13,6 +13,7 @@ export const ragKeys = {
   classLevels: () => ["rag", "classLevels"] as const,
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
   documentStatus: (id: string) => ["rag", "documentStatus", id] as const,
+  analytics: () => ["rag", "analytics"] as const,
 };
 
 export function useRagMetadata() {
@@ -28,6 +29,14 @@ export function useRagClassLevels() {
     queryKey: ragKeys.classLevels(),
     queryFn: () => ragApi.getClassLevels(),
     staleTime: 30 * 60_000,
+  });
+}
+
+export function useRagAnalytics() {
+  return useQuery({
+    queryKey: ragKeys.analytics(),
+    queryFn: () => ragApi.getAnalytics(),
+    staleTime: 2 * 60_000,
   });
 }
 

@@ -4,6 +4,7 @@ import { useRagClassLevels, useRagMetadata } from "@/features/rag/hooks/useRag";
 import {
   subjectsForClass,
   chaptersForClassSubject,
+  titlesForClassSubjectChapter,
 } from "@/features/rag/filters";
 import type { RagFilters } from "@/features/rag/types";
 import type { SelectOption } from "@/shared/types/common";
@@ -13,6 +14,12 @@ interface RagFilterPanelProps {
   onChange: (next: RagFilters) => void;
   /** Render the chapter dropdown (default true). */
   showChapter?: boolean;
+  /**
+   * Render the topic/section dropdown (default false). Narrows retrieval to a
+   * single section within the selected chapter — useful for Notes/Questions
+   * that should focus on one topic rather than the whole chapter.
+   */
+  showTitle?: boolean;
   /**
    * Layout of the select container. Defaults to a responsive grid for use
    * inside a FilterBar; pass `"space-y-4"` for narrow vertical contexts such
@@ -44,6 +51,7 @@ export function RagFilterPanel({
   filters,
   onChange,
   showChapter = true,
+  showTitle = false,
   className = DEFAULT_LAYOUT,
 }: RagFilterPanelProps) {
   const { data: classData, isLoading: classesLoading } = useRagClassLevels();
@@ -55,6 +63,12 @@ export function RagFilterPanel({
     meta,
     filters.class_level,
     filters.subject,
+  );
+  const titleValues = titlesForClassSubjectChapter(
+    meta,
+    filters.class_level,
+    filters.subject,
+    filters.chapter_name?.[0],
   );
 
   const handleClass = (value: string) =>
@@ -68,6 +82,12 @@ export function RagFilterPanel({
       ...filters,
       chapter_name: value ? [value] : undefined,
       title: undefined,
+    });
+
+  const handleTitle = (value: string) =>
+    onChange({
+      ...filters,
+      title: value ? [value] : undefined,
     });
 
   if (classesLoading) {
@@ -102,6 +122,19 @@ export function RagFilterPanel({
           value={filters.chapter_name?.[0] ?? ""}
           onChange={(e) => handleChapter(e.target.value)}
           hint={!filters.subject ? "Select a subject first" : undefined}
+        />
+      )}
+      {showTitle && (
+        <Select
+          label="Topic / Section"
+          options={toOptions(titleValues, "Whole chapter")}
+          value={filters.title?.[0] ?? ""}
+          onChange={(e) => handleTitle(e.target.value)}
+          hint={
+            !filters.chapter_name?.length
+              ? "Select a chapter first"
+              : undefined
+          }
         />
       )}
     </div>

@@ -168,6 +168,11 @@ export const navItems: NavItem[] = [
         icon: <Library className="h-4 w-4" />,
       },
       {
+        label: "Library Insights",
+        href: "/rag/insights",
+        icon: <BarChart2 className="h-4 w-4" />,
+      },
+      {
         label: "Content Coverage",
         href: "/rag/audit",
         icon: <Gauge className="h-4 w-4" />,

@@ -28,3 +28,19 @@ export function chaptersForClassSubject(
   if (!subjectNode || Array.isArray(subjectNode)) return [];
   return subjectNode.chapters ?? [];
 }
+
+export function titlesForClassSubjectChapter(
+  meta: RagMetadata | undefined,
+  cls?: string,
+  subject?: string,
+  chapter?: string,
+): string[] {
+  if (!meta || !cls || !subject || !chapter) return [];
+  const subjectNode = meta.hierarchy?.[cls]?.[subject];
+  if (!subjectNode || Array.isArray(subjectNode)) return [];
+  const chapterNode = subjectNode[chapter];
+  // Only a real chapter node (non-array object) carries titles; the fixed
+  // `chapters` (string[]) key shares the same index signature.
+  if (!chapterNode || Array.isArray(chapterNode)) return [];
+  return chapterNode.titles ?? [];
+}

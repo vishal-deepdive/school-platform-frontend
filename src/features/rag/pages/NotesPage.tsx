@@ -71,7 +71,7 @@ export function NotesPage() {
           </Button>
         }
       >
-        <RagFilterPanel filters={filters} onChange={setFilters} />
+        <RagFilterPanel filters={filters} onChange={setFilters} showTitle />
         {!canGenerate && (
           <p className="text-xs text-muted-foreground">
             Select a class, subject, and chapter to continue.
