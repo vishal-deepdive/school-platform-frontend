@@ -38,9 +38,7 @@ export function FilterBar({
         {!hideHeader && (
           <div className="flex items-center gap-2 text-muted-foreground">
             {icon ?? <SlidersHorizontal className="h-4 w-4" />}
-            <span className="text-xs font-semibold uppercase tracking-wider">
-              {title}
-            </span>
+            <span className="eyebrow">{title}</span>
           </div>
         )}
         {children}

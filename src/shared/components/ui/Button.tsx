@@ -3,8 +3,14 @@ import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/shared/lib/utils";
 import { Loader2 } from "lucide-react";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost" | "outline";
-type Size = "sm" | "md" | "lg";
+type Variant =
+  | "primary"
+  | "secondary"
+  | "danger"
+  | "danger-ghost"
+  | "ghost"
+  | "outline";
+type Size = "sm" | "md" | "lg" | "icon";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -26,6 +32,8 @@ const variantClasses: Record<Variant, string> = {
     "bg-secondary text-secondary-foreground hover:bg-secondary/80 focus-visible:ring-secondary disabled:bg-secondary/50 disabled:text-secondary-foreground/50",
   danger:
     "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 focus-visible:ring-destructive disabled:bg-destructive/50",
+  "danger-ghost":
+    "bg-transparent text-destructive hover:bg-destructive/10 focus-visible:ring-destructive disabled:opacity-50",
   ghost:
     "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-accent",
   outline:
@@ -36,6 +44,7 @@ const sizeClasses: Record<Size, string> = {
   sm: "px-3 py-1.5 text-xs gap-1.5",
   md: "px-4 py-2 text-sm gap-2",
   lg: "px-5 py-2.5 text-base gap-2",
+  icon: "h-9 w-9 p-0",
 };
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(

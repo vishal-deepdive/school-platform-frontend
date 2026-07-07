@@ -334,6 +334,8 @@ export function RecordingsListPage() {
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
+        totalItems={total}
+        itemsLabel="recordings"
         hasNext={hasNext}
         hasPrev={hasPrev}
         onNext={goNext}
