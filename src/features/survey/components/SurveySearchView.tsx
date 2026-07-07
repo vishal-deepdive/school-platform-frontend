@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthStore } from "@/features/auth/store/auth";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -166,8 +166,7 @@ export function SurveySearchView() {
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
-  const role = useAuthStore((s) => s.user?.role);
-  const isAdmin = role === "admin";
+  const { isAdmin, schoolParam } = useActiveSchool();
 
   useQuery({
     queryKey: ["survey", "status"],
@@ -225,6 +224,7 @@ export function SurveySearchView() {
             // backend searches every accessible row (including legacy rows that
             // predate sheet-sources and have a NULL source_id).
             source_ids: selectedSourceIds.length ? selectedSourceIds : undefined,
+            school_name: isAdmin ? schoolParam.school_name : undefined,
           },
           controller.signal,
         )) {
@@ -257,7 +257,7 @@ export function SurveySearchView() {
         abortRef.current = null;
       }
     },
-    [queueToken, flushPending, selectedSourceIds],
+    [queueToken, flushPending, selectedSourceIds, isAdmin, schoolParam.school_name],
   );
 
   const hasResult = intent !== null;
@@ -297,6 +297,7 @@ export function SurveySearchView() {
             onChange={setSelectedSourceIds}
             disabled={streaming}
             showSchoolName={isAdmin}
+            schoolName={isAdmin ? schoolParam.school_name : undefined}
           />
 
           <div className="relative">
