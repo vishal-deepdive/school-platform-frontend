@@ -122,7 +122,7 @@ export function ApplicationDetailPage() {
   const canRequestChanges = canReject; // same guard: anything non-terminal
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="max-w-auto space-y-6">
       <Link
         to="/admin/onboarding"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
