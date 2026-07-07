@@ -148,7 +148,7 @@ export function StatCard({
       </div>
 
       <div className="mt-4">
-        <p className="text-3xl font-semibold text-foreground tracking-tight tabular-nums">
+        <p className="font-display text-3xl font-semibold text-foreground tracking-tight tabular-nums">
           {value}
         </p>
         {description && (

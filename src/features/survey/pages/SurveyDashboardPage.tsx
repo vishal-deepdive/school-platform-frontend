@@ -350,7 +350,7 @@ export function SurveyDashboardPage() {
             }
           >
             <ResponseBars
-              accent="hsl(var(--primary))"
+              accent="oklch(var(--primary))"
               rows={data.by_school.map((s) => {
                 const school = s as Record<string, unknown>;
                 return {
@@ -372,7 +372,7 @@ export function SurveyDashboardPage() {
             }
           >
             <ResponseBars
-              accent="hsl(var(--primary))"
+              accent="oklch(var(--primary))"
               rows={data.by_class.map((c) => {
                 const cls = c as Record<string, unknown>;
                 return {

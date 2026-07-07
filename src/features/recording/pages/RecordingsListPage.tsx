@@ -12,6 +12,7 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
@@ -164,6 +165,17 @@ export function RecordingsListPage() {
 
   return (
     <div className="space-y-6">
+      {/* Primary CTA lives in the fixed module header, above the scroll. */}
+      {canUpload && (
+        <ModuleHeaderActions>
+          <Button asChild size="sm">
+            <Link to="/recording/upload">
+              <FileVideo className="h-4 w-4" />
+              New Recording
+            </Link>
+          </Button>
+        </ModuleHeaderActions>
+      )}
       <FilterBar
         icon={<SlidersHorizontal className="h-4 w-4" />}
         actions={
