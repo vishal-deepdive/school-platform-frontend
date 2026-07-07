@@ -15,6 +15,7 @@ import type { UserRole } from "@/features/auth/types";
  */
 export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/dashboard": ["admin", "principal", "teacher", "student", "parent", "viewer"],
+  "/profile":   ["admin", "principal", "teacher", "student", "parent", "viewer"],
 
   // Attendance
   "/attendance/dashboard": ["admin", "principal", "teacher"],
@@ -62,14 +63,14 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
 };
 
 /**
- * True if `role` may access `path`. Paths not listed in ROUTE_ROLES are treated
- * as open to any authenticated user (matches the "unlisted = no extra gate"
- * convention). An absent role is always denied.
+ * True if `role` may access `path`. Uses a default-deny stance: paths not listed
+ * in ROUTE_ROLES are blocked for everyone. Add the path to ROUTE_ROLES to expose
+ * it. An absent role is always denied.
  */
 export function roleCanAccess(path: string, role?: UserRole | null): boolean {
   if (!role) return false;
   const allowed = ROUTE_ROLES[path];
-  if (!allowed) return true;
+  if (!allowed) return false;  // default deny — add to ROUTE_ROLES to expose
   return allowed.includes(role);
 }
 
