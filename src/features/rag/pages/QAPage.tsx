@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
 import {
   ArrowDown,
   BookOpen,
@@ -22,8 +22,11 @@ import { getErrorMessage } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Modal } from "@/shared/components/ui/Modal";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 import type { RagFilters } from "@/features/rag/types";
+
+const MemoizedChatMessageBubble = memo(ChatMessageBubble);
 
 const MAX_TEXTAREA_HEIGHT = 160;
 const AUTO_SCROLL_THRESHOLD = 96;
@@ -327,7 +330,7 @@ export function QAPage() {
             ) : (
               <div className="mx-auto w-full max-w-3xl space-y-6">
                 {chat.map((msg, i) => (
-                  <ChatMessageBubble
+                  <MemoizedChatMessageBubble
                     key={msg.id}
                     message={msg}
                     isStreaming={
@@ -342,14 +345,16 @@ export function QAPage() {
           </div>
 
           {!autoScroll && chat.length > 0 && (
-            <button
-              type="button"
-              onClick={scrollToBottom}
-              aria-label="Scroll to latest message"
-              className="absolute bottom-4 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-colors hover:border-primary/40 hover:text-foreground"
-            >
-              <ArrowDown className="h-4 w-4" />
-            </button>
+            <Tooltip content="Scroll to latest" side="top">
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                aria-label="Scroll to latest message"
+                className="absolute bottom-4 left-1/2 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-colors hover:border-primary/40 hover:text-foreground"
+              >
+                <ArrowDown className="h-4 w-4" />
+              </button>
+            </Tooltip>
           )}
         </div>
 
@@ -410,16 +415,18 @@ export function QAPage() {
                   Stop
                 </Button>
               ) : (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => void handleSend()}
-                  disabled={!input.trim()}
-                  aria-label="Send question"
-                  className="h-9 w-9 shrink-0 rounded-lg p-0"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
+                <Tooltip content="Send" shortcut="Enter" side="top">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void handleSend()}
+                    disabled={!input.trim()}
+                    aria-label="Send question"
+                    className="h-9 w-9 shrink-0 rounded-lg p-0"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </Tooltip>
               )}
             </div>
             <p className="mt-1.5 hidden px-1 text-[11px] text-muted-foreground sm:block">

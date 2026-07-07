@@ -13,6 +13,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Panel } from "@/shared/components/ui/Panel";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { Alert } from "@/shared/components/ui/Alert";
 import { TableBodySkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
@@ -347,15 +348,17 @@ export function RagDocumentsPage() {
                               Retry
                             </Button>
                           )}
-                          <Button
-                            variant="danger-ghost"
-                            size="sm"
-                            onClick={() => setDocToDelete(doc.id)}
-                            loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
-                            aria-label="Delete document"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Tooltip content="Delete document" side="left">
+                            <Button
+                              variant="danger-ghost"
+                              size="sm"
+                              onClick={() => setDocToDelete(doc.id)}
+                              loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
+                              aria-label="Delete document"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
                         </td>
                       )}
                     </tr>
