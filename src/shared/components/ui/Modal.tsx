@@ -78,21 +78,19 @@ export function Modal({
   const bodyRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   // Kept mounted briefly after `open` flips false so the exit animation plays.
-  const [exiting, setExiting] = useState(false);
-  const prevOpen = useRef(open);
+  const [isMounted, setIsMounted] = useState(open);
   // Whether the body holds a <form> — gates the ⌘↵ hint and submit shortcut.
   const [hasForm, setHasForm] = useState(false);
   // Scroll cues: subtle shadows on the header/footer when content is clipped.
   const [shadow, setShadow] = useState({ top: false, bottom: false });
 
   useEffect(() => {
-    if (prevOpen.current && !open) {
-      setExiting(true);
-      const t = setTimeout(() => setExiting(false), EXIT_MS);
-      prevOpen.current = open;
+    if (open) {
+      setIsMounted(true);
+    } else {
+      const t = setTimeout(() => setIsMounted(false), EXIT_MS);
       return () => clearTimeout(t);
     }
-    prevOpen.current = open;
   }, [open]);
 
   // Escape closes; ⌘/Ctrl+Enter submits the form (matches GitHub/Slack).
@@ -183,7 +181,7 @@ export function Modal({
     }
   }, []);
 
-  if (!open && !exiting) return null;
+  if (!open && !isMounted) return null;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
@@ -192,7 +190,7 @@ export function Modal({
           "absolute inset-0 bg-slate-900/30 dark:bg-slate-950/70 backdrop-blur-sm",
           open
             ? "animate-in fade-in duration-200"
-            : "animate-out fade-out duration-150",
+            : "animate-out fade-out duration-150 fill-mode-forwards",
         )}
         onClick={closeOnBackdrop ? onClose : undefined}
       />
