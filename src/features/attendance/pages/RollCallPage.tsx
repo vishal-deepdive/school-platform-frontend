@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect, memo, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Users, UserCheck, UserX } from "lucide-react";
 import toast from "@/shared/lib/toast";
@@ -46,6 +46,56 @@ const ACTIVE_CLASSES: Record<AttendanceStatus, string> = {
   E: "bg-blue-500 text-white border-blue-500 shadow-sm",
   H: "bg-muted-foreground text-white border-muted-foreground shadow-sm",
 };
+
+interface StudentRowProps {
+  student: RosterStudent;
+  currentStatus: AttendanceStatus;
+  onStatusChange: (rollNo: string, status: AttendanceStatus) => void;
+}
+
+const StudentRow = memo(function StudentRow({
+  student,
+  currentStatus,
+  onStatusChange,
+}: StudentRowProps) {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background p-3 transition-colors hover:border-border">
+      <div className="flex items-center gap-3">
+        <Avatar name={student.name ?? student.roll_no} seed={student.roll_no} size="sm" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">
+            {student.name ?? student.roll_no}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Roll #{student.roll_no}
+          </p>
+        </div>
+      </div>
+      <div className="flex gap-1">
+        {STATUSES.map((st) => {
+          const active = currentStatus === st;
+          return (
+            <button
+              key={st}
+              type="button"
+              onClick={() => onStatusChange(student.roll_no, st)}
+              aria-pressed={active}
+              aria-label={`${STATUS_LABELS[st]} for ${student.name ?? student.roll_no}`}
+              title={STATUS_LABELS[st]}
+              className={`flex-1 rounded-lg border px-0 py-1.5 text-sm font-semibold transition-all ${
+                active
+                  ? ACTIVE_CLASSES[st]
+                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              {st}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
 
 export function RollCallPage() {
   const { schoolId, schoolName, isAdmin } = useActiveSchool();
@@ -144,8 +194,11 @@ export function RollCallPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const setStatus = (rollNo: string, status: AttendanceStatus) =>
-    setStatuses((prev) => ({ ...prev, [rollNo]: status }));
+  const setStatus = useCallback(
+    (rollNo: string, status: AttendanceStatus) =>
+      setStatuses((prev) => ({ ...prev, [rollNo]: status })),
+    [],
+  );
 
   const setAll = (status: AttendanceStatus) => {
     if (!roster) return;
@@ -308,49 +361,14 @@ export function RollCallPage() {
                   />
                 </div>
               ) : (
-                visible.map((s) => {
-                  const current = statuses[s.roll_no] ?? "P";
-                  return (
-                    <div
-                      key={s.roll_no}
-                      className="flex flex-col gap-3 rounded-xl border border-border/60 bg-background p-3 transition-colors hover:border-border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Avatar name={s.name ?? s.roll_no} seed={s.roll_no} size="sm" />
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-foreground">
-                            {s.name ?? s.roll_no}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Roll #{s.roll_no}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1">
-                        {STATUSES.map((st) => {
-                          const active = current === st;
-                          return (
-                            <button
-                              key={st}
-                              type="button"
-                              onClick={() => setStatus(s.roll_no, st)}
-                              aria-pressed={active}
-                              aria-label={`${STATUS_LABELS[st]} for ${s.name ?? s.roll_no}`}
-                              title={STATUS_LABELS[st]}
-                              className={`flex-1 rounded-lg border px-0 py-1.5 text-sm font-semibold transition-all ${
-                                active
-                                  ? ACTIVE_CLASSES[st]
-                                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                              }`}
-                            >
-                              {st}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })
+                visible.map((s) => (
+                  <StudentRow
+                    key={s.roll_no}
+                    student={s}
+                    currentStatus={statuses[s.roll_no] ?? "P"}
+                    onStatusChange={setStatus}
+                  />
+                ))
               )}
             </div>
 

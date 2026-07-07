@@ -1,4 +1,5 @@
 import { multipartClient, apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   OnboardingApplicationResponse,
   OnboardingStatusResponse,
@@ -9,7 +10,7 @@ import type {
   DraftData,
 } from "@/features/onboarding/types";
 
-const BASE = "/api/v1/onboarding";
+const BASE = `${API_V1}/onboarding`;
 
 export const onboardingApi = {
   /**

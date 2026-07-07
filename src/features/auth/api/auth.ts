@@ -1,4 +1,5 @@
 import { apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   LoginRequest,
   RegisterRequest,
@@ -24,7 +25,7 @@ import type {
   PendingParentsResponse,
 } from "@/features/auth/types";
 
-const BASE = "/api/v1/auth";
+const BASE = `${API_V1}/auth`;
 
 export interface CreateInviteResult {
   invite_id: string;
