@@ -1,5 +1,12 @@
-import React, { useState } from "react";
-import { Plus, Trash2, RefreshCw, FileText, Lock } from "lucide-react";
+import React, { useId, useState } from "react";
+import {
+  Plus,
+  Trash2,
+  RefreshCw,
+  FileText,
+  Lock,
+  UploadCloud,
+} from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
@@ -72,6 +79,7 @@ export function RagDocumentsPage() {
   } | null>(null);
 
   const queryClient = useQueryClient();
+  const uploadFormId = useId();
 
   const { data: classData } = useRagClassLevels();
   const sortedClasses = sortClassesDescending(classData?.class_levels ?? []);
@@ -171,6 +179,13 @@ export function RagDocumentsPage() {
     }
 
     submitUpload(payload);
+  };
+
+  // Reset the picked file and fields so a reopened dialog starts clean.
+  const closeUpload = () => {
+    setIsModalOpen(false);
+    setFile(null);
+    setFormData({ ...EMPTY_FORM });
   };
 
   const handleDelete = (id: string) => {
@@ -381,11 +396,33 @@ export function RagDocumentsPage() {
         onPrev={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
       />
 
-      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title="Upload Document">
-        <form onSubmit={handleUpload} className="space-y-4">
+      <Modal
+        open={isModalOpen}
+        onClose={closeUpload}
+        title="Upload Document"
+        size="lg"
+        icon={<UploadCloud />}
+        description="Add a textbook chapter to the knowledge base for retrieval."
+        footer={
+          <>
+            <Button variant="outline" type="button" onClick={closeUpload}>
+              Cancel
+            </Button>
+            <Button type="submit" form={uploadFormId} loading={isUploading}>
+              Upload
+            </Button>
+          </>
+        }
+      >
+        <form
+          id={uploadFormId}
+          onSubmit={handleUpload}
+          className="space-y-5"
+        >
           <FileUpload
-            label="Document File (PDF, DOCX, PPTX, MD, TXT)"
+            label="Document file"
             accept=".pdf,.docx,.pptx,.md,.txt"
+            hint="PDF, DOCX, PPTX, MD or TXT"
             onChange={(files) => setFile(files[0] || null)}
           />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -393,14 +430,23 @@ export function RagDocumentsPage() {
               label="Class"
               options={classOptions}
               value={formData.class_level}
-              onChange={(e) => setFormData({ ...formData, class_level: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, class_level: e.target.value })
+              }
             />
             <Select
               label="Subject"
-              options={[{ value: "", label: "Select subject" }, ...SUBJECT_OPTIONS]}
+              options={[
+                { value: "", label: "Select subject" },
+                ...SUBJECT_OPTIONS,
+              ]}
               value={formData.subject}
               onChange={(e) =>
-                setFormData({ ...formData, subject: e.target.value, subject_other: "" })
+                setFormData({
+                  ...formData,
+                  subject: e.target.value,
+                  subject_other: "",
+                })
               }
             />
           </div>
@@ -409,21 +455,42 @@ export function RagDocumentsPage() {
               label="Subject name"
               placeholder="Enter the subject"
               value={formData.subject_other}
-              onChange={(e) => setFormData({ ...formData, subject_other: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, subject_other: e.target.value })
+              }
             />
           )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Input label="Chapter Number" required value={formData.chapter_number} onChange={(e) => setFormData({ ...formData, chapter_number: e.target.value })} />
-            <Input label="Chapter Name" required value={formData.chapter_name} onChange={(e) => setFormData({ ...formData, chapter_name: e.target.value })} />
+            <Input
+              label="Chapter number"
+              required
+              placeholder="e.g. 4"
+              value={formData.chapter_number}
+              onChange={(e) =>
+                setFormData({ ...formData, chapter_number: e.target.value })
+              }
+            />
+            <Input
+              label="Chapter name"
+              required
+              placeholder="e.g. Photosynthesis"
+              value={formData.chapter_name}
+              onChange={(e) =>
+                setFormData({ ...formData, chapter_name: e.target.value })
+              }
+            />
           </div>
           {isAdmin && (
-            <Input label="School ID (Optional)" placeholder="Leave empty for global content" value={formData.school_id} onChange={(e) => setFormData({ ...formData, school_id: e.target.value })} />
+            <Input
+              label="School ID"
+              hint="Leave empty to make this content global to all schools."
+              placeholder="Optional"
+              value={formData.school_id}
+              onChange={(e) =>
+                setFormData({ ...formData, school_id: e.target.value })
+              }
+            />
           )}
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={isUploading}>Upload</Button>
-          </div>
         </form>
       </Modal>
 
