@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { X, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -7,6 +7,7 @@ import { useAuthStore } from "@/features/auth/store/auth";
 import { navItems, adminNavItems, type NavItem } from "./navConfig";
 import { UserProfileMenu } from "./UserProfileMenu";
 import { MobileSidebarItem } from "./MobileSidebarItem";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import type { UserRole } from "@/features/auth/types";
 
 /**
@@ -30,21 +31,6 @@ function filterNavByRole(items: NavItem[], role?: UserRole | null): NavItem[] {
 
 const ADMIN_LABELS = new Set(adminNavItems.map((i) => i.label));
 
-/** Shared tooltip for the icon rail — shows on hover and keyboard focus. */
-function RailTooltip({ label, shortcut }: { label: string; shortcut?: string }) {
-  return (
-    <div className="pointer-events-none absolute left-[calc(100%+10px)] top-1/2 z-50 flex -translate-x-1 -translate-y-1/2 items-center gap-2 whitespace-nowrap rounded-md bg-foreground px-2.5 py-1.5 text-xs font-medium text-background opacity-0 shadow-lg transition-all duration-150 peer-hover:translate-x-0 peer-hover:opacity-100 peer-focus-visible:translate-x-0 peer-focus-visible:opacity-100">
-      {label}
-      {shortcut && (
-        <kbd className="rounded bg-background/20 px-1 py-0.5 font-sans text-[10px] font-semibold">
-          {shortcut}
-        </kbd>
-      )}
-      <div className="absolute -left-1 top-1/2 -translate-y-1/2 border-[4px] border-transparent border-r-foreground" />
-    </div>
-  );
-}
-
 interface SidebarProps {
   mobile?: boolean;
   onClose?: () => void;
@@ -59,9 +45,26 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   const allItems = useMemo(() => {
     const base = [...navItems, ...(isAdmin ? adminNavItems : [])];
     return filterNavByRole(base, user?.role).filter((item) => !item.hidden);
-  }, [isAdmin, user?.role]);
+  }, [user?.role]);
 
   const [activeCategory, setActiveCategory] = useState<NavItem | null>(null);
+
+  // Sliding tab indicator (desktop rail): one floating surface translated to
+  // the active item, so tab changes glide up/down instead of popping.
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [indicator, setIndicator] = useState<{
+    top: number;
+    height: number;
+  } | null>(null);
+  const activeIdx = activeCategory ? allItems.indexOf(activeCategory) : -1;
+
+  useLayoutEffect(() => {
+    const el = activeIdx >= 0 ? itemRefs.current[activeIdx] : null;
+    // offsetTop/offsetHeight are relative to the positioned <nav>, so the
+    // measurement stays correct when the admin divider shifts items down.
+    setIndicator(el ? { top: el.offsetTop, height: el.offsetHeight } : null);
+  }, [activeIdx, allItems]);
+
   // Collapsed state survives reloads so the layout doesn't jump each session.
   const [isCollapsed, setIsCollapsed] = useState(
     () => localStorage.getItem("sidebar-collapsed") === "1",
@@ -98,12 +101,13 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   }, [location.pathname, allItems]);
 
   const handleCategoryClick = (item: NavItem) => {
+    const wasActive = activeCategory === item;
     setActiveCategory(item);
     setCollapsed(false);
     if (item.href && !item.children) {
       navigate(item.href);
       if (mobile && onClose) onClose();
-    } else if (item.children && item.children.length > 0) {
+    } else if (!wasActive && item.children && item.children.length > 0) {
       const firstChildHref = item.children[0].href;
       if (firstChildHref) {
         navigate(firstChildHref);
@@ -138,8 +142,8 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-thin">
           <p className="eyebrow px-3 pb-2">Menu</p>
-          {allItems.map((item, i) => (
-            <div key={i}>
+          {allItems.map((item) => (
+            <div key={item.label}>
               <MobileSidebarItem item={item} onClose={onClose} />
             </div>
           ))}
@@ -172,22 +176,46 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
 
         {/* Command palette trigger */}
         <div className="relative w-full px-2">
-          <button
-            onClick={() =>
-              window.dispatchEvent(new Event("open-command-palette"))
-            }
-            className="peer flex w-full items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-background/70 p-2.5 text-slate-600 dark:text-slate-400 transition-colors duration-200 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Search pages and actions"
-          >
-            <Search className="h-4 w-4" />
-          </button>
-          <RailTooltip label="Search" shortcut="Ctrl K" />
+          <Tooltip content="Search" shortcut="Ctrl K" side="right" delayDuration={500}>
+            <button
+              onClick={() =>
+                window.dispatchEvent(new Event("open-command-palette"))
+              }
+              className="flex w-full items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-background/70 p-2.5 text-slate-600 dark:text-slate-400 transition-colors duration-200 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label="Search pages and actions"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="my-4 h-px w-8 shrink-0 bg-slate-200 dark:bg-slate-800" aria-hidden="true" />
 
         {/* Primary Nav Items */}
-        <nav className="flex w-full flex-1 flex-col items-center gap-1.5 overflow-visible px-2 pb-4">
+        <nav className="relative flex w-full flex-1 flex-col items-center gap-1.5 overflow-visible px-2 pb-4">
+          {/* Floating active tab: accent bar + merged surface + inverted
+              corners travel together to the active item on a transform, so
+              switching tabs slides smoothly up/down on the GPU. */}
+          {indicator && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 transition-[transform,height] [transition-duration:280ms] [transition-timing-function:cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+              style={{
+                transform: `translateY(${indicator.top}px)`,
+                height: indicator.height,
+              }}
+            >
+              <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+              <span className="absolute inset-y-0 left-2 right-0 rounded-l-lg bg-background">
+                <span className="absolute -top-3 right-0 h-3 w-3 bg-background">
+                  <span className="absolute inset-0 rounded-br-full bg-rail" />
+                </span>
+                <span className="absolute -bottom-3 right-0 h-3 w-3 bg-background">
+                  <span className="absolute inset-0 rounded-tr-full bg-rail" />
+                </span>
+              </span>
+            </div>
+          )}
           {allItems.map((item, idx) => {
             const isActive = activeCategory === item;
             const isFirstAdminItem =
@@ -202,51 +230,25 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                     aria-hidden="true"
                   />
                 )}
-                <div className={cn("relative w-full", isActive && "z-10")}>
-                  {/* Active indicator */}
-                  <span
-                    className={cn(
-                      "absolute -left-2 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary transition-all duration-300",
-                      isActive
-                        ? "scale-y-100 opacity-100"
-                        : "scale-y-0 opacity-0",
-                    )}
-                  />
-                  <button
-                    onClick={() => handleCategoryClick(item)}
-                    className={cn(
-                      "peer flex items-center justify-center p-2.5 transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                      isActive
-                        ? // Tab merged with the adjacent surface (secondary pane
-                          // or the page shell — both bg-background): extends over
-                          // the rail's right edge, flat right side.
-                          "w-[calc(100%+0.5rem)] rounded-l-lg bg-background text-primary"
-                        : "w-full rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/40 hover:text-foreground",
-                    )}
-                    aria-label={item.label}
-                    aria-current={isActive ? "page" : undefined}
-                  >
-                    {item.icon}
-                  </button>
-                  <RailTooltip label={item.label} />
-                  {isActive && (
-                    <>
-                      {/* Inverted corners: surface-colored squares carved back
-                          to the rail color so the tab curves into the surface. */}
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute -right-2 -top-3 h-3 w-3 animate-notch-in bg-background"
-                      >
-                        <span className="absolute inset-0 rounded-br-full bg-rail" />
-                      </span>
-                      <span
-                        aria-hidden="true"
-                        className="pointer-events-none absolute -bottom-3 -right-2 h-3 w-3 animate-notch-in bg-background"
-                      >
-                        <span className="absolute inset-0 rounded-tr-full bg-rail" />
-                      </span>
-                    </>
-                  )}
+                <div
+                  ref={(el) => (itemRefs.current[idx] = el)}
+                  className={cn("relative w-full", isActive && "z-10")}
+                >
+                  <Tooltip content={item.label} side="right" delayDuration={500}>
+                    <button
+                      onClick={() => handleCategoryClick(item)}
+                      className={cn(
+                        "flex items-center justify-center p-2.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        isActive
+                          ? "w-[calc(100%+0.5rem)] rounded-l-lg text-primary"
+                          : "w-full rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/40 hover:text-foreground",
+                      )}
+                      aria-label={item.label}
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {item.icon}
+                    </button>
+                  </Tooltip>
                 </div>
               </div>
             );
@@ -261,14 +263,15 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
 
       {/* Collapse/Expand Floating Button (rendered when collapsed and category has children) */}
       {isCollapsed && hasSecondary && (
-        <button
-          onClick={() => setCollapsed(false)}
-          className="absolute -right-3 top-28 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 bg-background text-slate-500 dark:text-slate-400 shadow-sm transition-all duration-200 hover:bg-accent hover:text-foreground"
-          title="Expand sidebar"
-          aria-label="Expand sidebar"
-        >
-          <ChevronRight className="h-3.5 w-3.5" />
-        </button>
+        <Tooltip content="Expand sidebar" side="right">
+          <button
+            onClick={() => setCollapsed(false)}
+            className="absolute -right-3 top-28 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 bg-background text-slate-500 dark:text-slate-400 shadow-sm transition-all duration-200 hover:bg-accent hover:text-foreground"
+            aria-label="Expand sidebar"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
       )}
 
       {/* Secondary Sidebar (Context Menu) */}
@@ -280,36 +283,38 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
       >
         {hasSecondary && (
           <div className="flex h-full w-60 flex-col">
-            <div className="flex h-16 shrink-0 items-center justify-between pl-5 pr-3">
+            {/* Header title aligns with item text below (24px inset). */}
+            <div className="flex h-16 shrink-0 items-center justify-between pl-6 pr-3">
               <h2
                 key={activeCategory?.label}
-                className="animate-nav-item-in truncate text-sm font-semibold tracking-tight text-foreground"
+                className="animate-nav-item-in truncate text-[15px] font-semibold tracking-tight text-foreground"
               >
                 {activeCategory?.label}
               </h2>
-              <button
-                onClick={() => setCollapsed(true)}
-                className="shrink-0 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 transition-colors duration-200 hover:bg-muted hover:text-foreground"
-                title="Collapse sidebar"
-                aria-label="Collapse sidebar"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
+              <Tooltip content="Collapse sidebar" side="right">
+                <button
+                  onClick={() => setCollapsed(true)}
+                  className="shrink-0 rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition-colors duration-200 hover:bg-muted hover:text-foreground"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              </Tooltip>
             </div>
-            <div className="flex-1 overflow-y-auto px-3 py-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              <nav key={activeCategory?.label} className="space-y-0.5">
+            <div className="flex-1 overflow-y-auto px-3 pb-3 pt-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <nav key={activeCategory?.label} className="space-y-px">
                 {activeCategory?.children?.map((child, i) => (
                   <NavLink
-                    key={i}
+                    key={child.href || child.label}
                     to={child.href || "#"}
                     end={child.end !== undefined ? child.end : child.href === "/"}
-                    style={{ animationDelay: `${i * 30}ms` }}
+                    style={{ animationDelay: `${i * 25}ms` }}
                     className={({ isActive }) =>
                       cn(
-                        "group relative flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 animate-nav-item-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-colors duration-150 animate-nav-item-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-slate-600 dark:text-slate-400 hover:bg-muted/50 hover:text-foreground",
+                          ? "bg-primary/10 font-semibold text-primary"
+                          : "font-medium text-slate-600 dark:text-slate-400 hover:bg-muted/60 hover:text-foreground",
                       )
                     }
                   >
@@ -317,10 +322,10 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                       <>
                         <div
                           className={cn(
-                            "flex items-center justify-center transition-colors",
+                            "flex h-4 w-4 shrink-0 items-center justify-center transition-colors duration-150 [&>svg]:h-4 [&>svg]:w-4",
                             isActive
                               ? "text-primary"
-                              : "text-slate-500 dark:text-slate-400 group-hover:text-foreground",
+                              : "text-slate-400 dark:text-slate-500 group-hover:text-foreground",
                           )}
                         >
                           {child.icon}

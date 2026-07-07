@@ -11,7 +11,6 @@ import {
   StickyNote,
   Shield,
   ClipboardList,
-  UserCog,
   LayoutDashboard,
   Wand2,
   FileQuestion,
@@ -29,9 +28,6 @@ import {
   User,
   AudioLines,
   SmilePlus,
-  Building2,
-  ScrollText,
-  UserRoundCheck,
 } from "lucide-react";
 
 export interface NavItem {
@@ -200,11 +196,11 @@ export const navItems: NavItem[] = [
       },
     ],
   },
-  {
-    label: "Parent Approvals",
-    href: "/approvals/parents",
-    icon: <UserRoundCheck className="h-5 w-5" />,
-  },
+  // {
+  //   label: "Parent Approvals",
+  //   href: "/approvals/parents",
+  //   icon: <UserRoundCheck className="h-5 w-5" />,
+  // },
   {
     label: "My Profile",
     href: "/profile",
@@ -223,26 +219,26 @@ export const adminNavItems: NavItem[] = [
         href: "/admin/onboarding",
         icon: <ClipboardList className="h-4 w-4" />,
       },
-      {
-        label: "Schools",
-        href: "/admin/schools",
-        icon: <Building2 className="h-4 w-4" />,
-      },
-      {
-        label: "Users",
-        href: "/admin/users",
-        icon: <Users className="h-4 w-4" />,
-      },
-      {
-        label: "Audit Log",
-        href: "/admin/audit-log",
-        icon: <ScrollText className="h-4 w-4" />,
-      },
-      {
-        label: "Manage Admins",
-        href: "/admin/admins",
-        icon: <UserCog className="h-4 w-4" />,
-      },
+      // {
+      //   label: "Schools",
+      //   href: "/admin/schools",
+      //   icon: <Building2 className="h-4 w-4" />,
+      // },
+      // {
+      //   label: "Users",
+      //   href: "/admin/users",
+      //   icon: <Users className="h-4 w-4" />,
+      // },
+      // {
+      //   label: "Audit Log",
+      //   href: "/admin/audit-log",
+      //   icon: <ScrollText className="h-4 w-4" />,
+      // },
+      // {
+      //   label: "Manage Admins",
+      //   href: "/admin/admins",
+      //   icon: <UserCog className="h-4 w-4" />,
+      // },
       {
         label: "Prompts",
         href: "/admin/prompts",
