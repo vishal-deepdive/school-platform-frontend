@@ -143,11 +143,10 @@ export function RecordingListItem({
         </Button>
         {canManage && (
           <Button
-            variant="ghost"
+            variant="danger-ghost"
             size="sm"
-            icon={<Trash2 className="h-4 w-4 text-destructive" />}
+            icon={<Trash2 className="h-4 w-4" />}
             onClick={() => onDelete(rec.id)}
-            className="text-destructive hover:bg-destructive/10"
           >
             Delete
           </Button>

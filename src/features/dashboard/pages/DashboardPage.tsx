@@ -181,6 +181,7 @@ function StaffDashboard() {
           <>
             <Link to="/attendance/view" className="block h-full">
               <StatCard
+                hoverable
                 label="Present Today"
                 value={analytics?.today.present ?? 0}
                 icon={<UserCheck className="h-5 w-5" />}
@@ -194,6 +195,7 @@ function StaffDashboard() {
             </Link>
             <Link to="/attendance/view" className="block h-full">
               <StatCard
+                hoverable
                 label="Absent Today"
                 value={analytics?.today.absent ?? 0}
                 icon={<UserX className="h-5 w-5" />}
@@ -207,6 +209,7 @@ function StaffDashboard() {
             </Link>
             <Link to="/attendance/stats" className="block h-full">
               <StatCard
+                hoverable
                 label="Attendance Today"
                 value={
                   analytics && analytics.today.total_marked > 0
@@ -225,6 +228,7 @@ function StaffDashboard() {
             </Link>
             <Link to="/attendance/leave" className="block h-full">
               <StatCard
+                hoverable
                 label="Pending Leaves"
                 value={analytics?.pending_leaves_total ?? 0}
                 icon={<CalendarClock className="h-5 w-5" />}

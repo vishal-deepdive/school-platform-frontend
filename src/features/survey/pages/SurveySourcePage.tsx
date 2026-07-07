@@ -284,9 +284,8 @@ function SourceCard({
               </Button>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="danger-ghost"
                 onClick={() => setConfirmDelete(true)}
-                className="text-destructive hover:text-destructive"
                 icon={<Trash2 className="h-3.5 w-3.5" />}
               >
                 Remove
@@ -304,9 +303,8 @@ function SourceCard({
               </Button>
               <Button
                 size="sm"
-                variant="ghost"
+                variant="danger-ghost"
                 onClick={() => setConfirmDelete(true)}
-                className="text-destructive hover:text-destructive"
                 icon={<Trash2 className="h-3.5 w-3.5" />}
               >
                 Remove

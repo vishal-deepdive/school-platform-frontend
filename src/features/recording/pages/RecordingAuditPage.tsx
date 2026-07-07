@@ -101,6 +101,8 @@ export function RecordingAuditPage() {
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
+        totalItems={total}
+        itemsLabel="events"
         hasNext={hasNext}
         hasPrev={hasPrev}
         onNext={goNext}
