@@ -7,7 +7,7 @@ import type { AnalyticsTrendPoint } from "@/features/attendance/types";
 
 /** Traffic-light color for a day's attendance %, gray when nothing was marked. */
 function tileColor(marked: number, pct: number): string {
-  if (marked <= 0) return "hsl(var(--muted))";
+  if (marked <= 0) return "oklch(var(--muted))";
   if (pct >= 90) return "#10b981"; // emerald-500
   if (pct >= 75) return "#f59e0b"; // amber-500
   return "#ef4444"; // red-500
@@ -23,7 +23,7 @@ const LEGEND = [
   { label: "≥90%", color: "#10b981" },
   { label: "75–89%", color: "#f59e0b" },
   { label: "<75%", color: "#ef4444" },
-  { label: "Not marked", color: "hsl(var(--muted))" },
+  { label: "Not marked", color: "oklch(var(--muted))" },
 ];
 
 /**

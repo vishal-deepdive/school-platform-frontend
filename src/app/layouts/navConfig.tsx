@@ -32,6 +32,8 @@ import {
 
 export interface NavItem {
   label: string;
+  /** Short caption under the rail icon (≤10 chars); defaults to `label`. */
+  railLabel?: string;
   href?: string;
   icon: React.ReactNode;
   children?: NavItem[];
@@ -51,6 +53,7 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   {
     label: "Dashboard",
+    railLabel: "Home",
     href: "/dashboard",
     icon: <LayoutDashboard className="h-5 w-5" />,
     noHeader: true,
@@ -113,6 +116,7 @@ export const navItems: NavItem[] = [
   },
   {
     label: "Lecture Capture",
+    railLabel: "Lectures",
     icon: <AudioLines className="h-5 w-5" />,
     children: [
       {
@@ -139,6 +143,7 @@ export const navItems: NavItem[] = [
   },
   {
     label: "Study Assistant",
+    railLabel: "Study",
     icon: <BookOpen className="h-5 w-5" />,
     children: [
       {
@@ -171,6 +176,7 @@ export const navItems: NavItem[] = [
   },
   {
     label: "Feedback Insights",
+    railLabel: "Feedback",
     icon: <BarChart2 className="h-5 w-5" />,
     children: [
       {
@@ -196,11 +202,6 @@ export const navItems: NavItem[] = [
       },
     ],
   },
-  // {
-  //   label: "Parent Approvals",
-  //   href: "/approvals/parents",
-  //   icon: <UserRoundCheck className="h-5 w-5" />,
-  // },
   {
     label: "My Profile",
     href: "/profile",
@@ -212,6 +213,7 @@ export const navItems: NavItem[] = [
 export const adminNavItems: NavItem[] = [
   {
     label: "Platform Admin",
+    railLabel: "Admin",
     icon: <Shield className="h-5 w-5" />,
     children: [
       {
@@ -219,26 +221,6 @@ export const adminNavItems: NavItem[] = [
         href: "/admin/onboarding",
         icon: <ClipboardList className="h-4 w-4" />,
       },
-      // {
-      //   label: "Schools",
-      //   href: "/admin/schools",
-      //   icon: <Building2 className="h-4 w-4" />,
-      // },
-      // {
-      //   label: "Users",
-      //   href: "/admin/users",
-      //   icon: <Users className="h-4 w-4" />,
-      // },
-      // {
-      //   label: "Audit Log",
-      //   href: "/admin/audit-log",
-      //   icon: <ScrollText className="h-4 w-4" />,
-      // },
-      // {
-      //   label: "Manage Admins",
-      //   href: "/admin/admins",
-      //   icon: <UserCog className="h-4 w-4" />,
-      // },
       {
         label: "Prompts",
         href: "/admin/prompts",

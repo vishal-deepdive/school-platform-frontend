@@ -9,10 +9,9 @@
     --radius: 1rem;
     --background: 0.985 0 0;
     --foreground: 0.145 0 0;
-    --primary: 212 80.5% 38.2%;
-    --primary-foreground: 0 0% 100%;
-    /* --primary: 0.205 0 0;
-    --primary-foreground: 0.985 0 0; */
+    /* Brand blue (was hsl(212 80.5% 38.2%)) — oklch like every other token. */
+    --primary: 0.482 0.149 255.6;
+    --primary-foreground: 1 0 0;
     --secondary: 0.97 0 0;
     --secondary-foreground: 0.205 0 0;
     --muted: 0.97 0 0;
@@ -23,8 +22,8 @@
     --destructive-foreground: 0.985 0 0;
     --border: 0.922 0 0;
     --input: 0.922 0 0;
-    /* Brand-blue focus ring (oklch approximation of --primary). */
-    --ring: 0.5 0.13 252;
+    /* Focus ring == brand blue. */
+    --ring: 0.482 0.149 255.6;
     --card: 1 0 0;
     --card-foreground: 0.145 0 0;
     --popover: 1 0 0;
@@ -39,8 +38,9 @@
   .dark {
     --background: 0.15 0.02 260;
     --foreground: 0.985 0 0;
-    --primary: 212 100% 60%;
-    --primary-foreground: 0 0% 100%;
+    /* Lighter brand blue (was hsl(212 100% 60%)) for dark surfaces. */
+    --primary: 0.661 0.184 254.5;
+    --primary-foreground: 1 0 0;
     --secondary: 0.26 0.02 260;
     --secondary-foreground: 0.985 0 0;
     --muted: 0.26 0.02 260;
@@ -51,8 +51,8 @@
     --destructive-foreground: 0.985 0 0;
     --border: 0.26 0.02 260;
     --input: 0.26 0.02 260;
-    /* Lighter brand blue so the ring stays visible on dark surfaces. */
-    --ring: 0.66 0.15 252;
+    /* Focus ring == brand blue (dark variant). */
+    --ring: 0.661 0.184 254.5;
     --card: 0.20 0.02 260;
     --card-foreground: 0.985 0 0;
     --popover: 0.20 0.02 260;
@@ -84,8 +84,15 @@
   }
 
   :focus-visible {
-    outline: 2px solid hsl(var(--primary));
+    outline: 2px solid oklch(var(--primary));
     outline-offset: 2px;
+  }
+
+  /* Module pages (TabContainer) own their scroll area, so the app <main>
+     behind them must not scroll too. Replaces the old per-page inline
+     <style> override — the #id selector outwins the .overflow-y-auto class. */
+  #app-main-layout:has(.module-shell) {
+    overflow: hidden;
   }
 
   /* Respect reduced-motion globally: collapse every animation/transition to a
@@ -219,8 +226,8 @@
      (see SpotlightGrid), where it reads as the timetable lighting up. */
   .bg-grid-primary {
     background-image:
-      linear-gradient(to right, hsl(var(--primary) / 0.32) 1px, transparent 1px),
-      linear-gradient(to bottom, hsl(var(--primary) / 0.32) 1px, transparent 1px);
+      linear-gradient(to right, oklch(var(--primary) / 0.32) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(var(--primary) / 0.32) 1px, transparent 1px);
     background-size: 44px 44px;
   }
 

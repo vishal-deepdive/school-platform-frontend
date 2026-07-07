@@ -1,8 +1,8 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { X, ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { X, ChevronLeft, ChevronRight, Search, Lock } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { roleCanAccess } from "@/shared/lib/permissions";
+import { roleCanAccess, needsActiveSchool } from "@/shared/lib/permissions";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { navItems, adminNavItems, type NavItem } from "./navConfig";
 import { UserProfileMenu } from "./UserProfileMenu";
@@ -105,17 +105,14 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
     });
   }, [location.pathname, allItems]);
 
-  const handleCategoryClick = (item: NavItem) => {
+  /** Admin without an active school: school-scoped modules are locked. */
+  const isItemGated = (item: NavItem) => {
     const targetHref = item.href || (item.children && item.children[0]?.href);
-    
-    const isGated = (href: string) => 
-      href.startsWith("/attendance") || 
-      href.startsWith("/recording") || 
-      href.startsWith("/rag") || 
-      href.startsWith("/survey") || 
-      href.startsWith("/students");
+    return isAdmin && !ready && needsActiveSchool(targetHref);
+  };
 
-    if (isAdmin && !ready && targetHref && isGated(targetHref)) {
+  const handleCategoryClick = (item: NavItem) => {
+    if (isItemGated(item)) {
       toast.warning("Please select a school first to access this module.");
       return;
     }
@@ -146,7 +143,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
             <img
               src="/logo.png"
               alt="DeepDive Logo"
-              className="w-36 h-18 object-contain"
+              className="h-10 w-36 object-contain"
             />
           </div>
           {onClose && (
@@ -182,8 +179,8 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
 
   return (
     <div className="relative flex h-full bg-background">
-      {/* Primary Sidebar (Icons only) */}
-      <aside className="relative z-20 flex h-full w-16 flex-col items-center bg-rail py-4">
+      {/* Primary Sidebar (icon + caption rail) */}
+      <aside className="relative z-20 flex h-full w-[4.5rem] flex-col items-center bg-rail py-4">
         {/* Logo */}
         <div className="mb-4 flex h-10 w-8 shrink-0 items-center justify-center">
           <img
@@ -195,15 +192,18 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
 
         {/* Command palette trigger */}
         <div className="relative w-full px-2">
-          <Tooltip content="Search" shortcut="Ctrl K" side="right" delayDuration={500}>
+          <Tooltip content="Search" shortcut="Ctrl K" side="right" delayDuration={200}>
             <button
               onClick={() =>
                 window.dispatchEvent(new Event("open-command-palette"))
               }
-              className="flex w-full items-center justify-center rounded-lg border border-slate-200 dark:border-slate-700 bg-background/70 p-2.5 text-slate-600 dark:text-slate-400 transition-colors duration-200 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-full flex-col items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-background/70 py-2 text-slate-600 dark:text-slate-400 transition-colors duration-200 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Search pages and actions"
             >
               <Search className="h-4 w-4" />
+              <span className="text-[9px] font-semibold leading-none">
+                Search
+              </span>
             </button>
           </Tooltip>
         </div>
@@ -237,6 +237,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
           )}
           {allItems.map((item, idx) => {
             const isActive = activeCategory === item;
+            const gated = isItemGated(item);
             const isFirstAdminItem =
               isAdmin &&
               ADMIN_LABELS.has(item.label) &&
@@ -253,19 +254,40 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
                   ref={(el) => (itemRefs.current[idx] = el)}
                   className={cn("relative w-full", isActive && "z-10")}
                 >
-                  <Tooltip content={item.label} side="right" delayDuration={500}>
+                  <Tooltip
+                    content={
+                      gated
+                        ? `${item.label} — select a school first`
+                        : item.label
+                    }
+                    side="right"
+                    delayDuration={200}
+                  >
                     <button
                       onClick={() => handleCategoryClick(item)}
                       className={cn(
-                        "flex items-center justify-center p-2.5 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                        "flex flex-col items-center gap-1 py-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         isActive
                           ? "w-[calc(100%+0.5rem)] rounded-l-lg text-primary"
                           : "w-full rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/40 hover:text-foreground",
+                        gated && "opacity-45",
                       )}
                       aria-label={item.label}
+                      aria-disabled={gated || undefined}
                       aria-current={isActive ? "page" : undefined}
                     >
-                      {item.icon}
+                      <span className="relative">
+                        {item.icon}
+                        {gated && (
+                          <Lock
+                            className="absolute -right-2 -top-1 h-2.5 w-2.5"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </span>
+                      <span className="max-w-full truncate px-0.5 text-[9px] font-semibold leading-none">
+                        {item.railLabel ?? item.label}
+                      </span>
                     </button>
                   </Tooltip>
                 </div>
@@ -306,9 +328,18 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
             <div className="flex h-16 shrink-0 items-center justify-between pl-6 pr-3">
               <h2
                 key={activeCategory?.label}
-                className="animate-nav-item-in truncate text-[15px] font-semibold tracking-tight text-foreground"
+                className="animate-nav-item-in min-w-0 font-display text-[15px] font-semibold tracking-tight text-foreground"
               >
-                {activeCategory?.label}
+                {activeCategory?.children?.[0]?.href ? (
+                  <Link
+                    to={activeCategory.children[0].href}
+                    className="block truncate rounded transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {activeCategory.label}
+                  </Link>
+                ) : (
+                  <span className="block truncate">{activeCategory?.label}</span>
+                )}
               </h2>
               <Tooltip content="Collapse sidebar" side="right">
                 <button
