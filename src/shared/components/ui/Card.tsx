@@ -99,6 +99,12 @@ interface StatCardProps {
   color?: StatCardColor;
   className?: string;
   description?: React.ReactNode;
+  /**
+   * Only set when the card is actually clickable (wrapped in a Link/button) —
+   * it adds cursor-pointer + lift, and a hover affordance that does nothing
+   * when clicked erodes trust in every real one.
+   */
+  hoverable?: boolean;
 }
 
 const statColors: Record<StatCardColor, string> = {
@@ -116,6 +122,7 @@ export function StatCard({
   color = "primary",
   className,
   description,
+  hoverable = false,
 }: StatCardProps) {
   return (
     <Card
@@ -124,12 +131,10 @@ export function StatCard({
         className,
       )}
       padding="md"
-      hoverable
+      hoverable={hoverable}
     >
       <div className="flex items-start justify-between w-full">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider leading-none mt-1">
-          {label}
-        </p>
+        <p className="eyebrow leading-none mt-1">{label}</p>
         {icon && (
           <div
             className={cn(
@@ -143,7 +148,7 @@ export function StatCard({
       </div>
 
       <div className="mt-4">
-        <p className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight tabular-nums">
+        <p className="text-3xl font-semibold text-foreground tracking-tight tabular-nums">
           {value}
         </p>
         {description && (

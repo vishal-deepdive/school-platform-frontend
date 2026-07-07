@@ -7,6 +7,11 @@ interface EmptyStateProps {
   description?: string;
   action?: React.ReactNode;
   className?: string;
+  /**
+   * "card" (default) renders a dashed standalone card for page-level empties;
+   * "plain" renders bare centered content for use inside an existing Card.
+   */
+  variant?: "card" | "plain";
 }
 
 /**
@@ -18,14 +23,10 @@ export function EmptyState({
   description,
   action,
   className,
+  variant = "card",
 }: EmptyStateProps) {
-  return (
-    <Card
-      className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border py-16 text-center",
-        className,
-      )}
-    >
+  const content = (
+    <>
       <div className="text-muted-foreground/40">{icon}</div>
       <div>
         <p className="font-semibold text-foreground">{title}</p>
@@ -34,6 +35,30 @@ export function EmptyState({
         )}
       </div>
       {action}
+    </>
+  );
+
+  if (variant === "plain") {
+    return (
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center gap-3 py-10 text-center",
+          className,
+        )}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Card
+      className={cn(
+        "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border py-16 text-center",
+        className,
+      )}
+    >
+      {content}
     </Card>
   );
 }

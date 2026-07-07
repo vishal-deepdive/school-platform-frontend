@@ -20,7 +20,8 @@ export {
 } from "./Skeleton";
 export { Alert } from "./Alert";
 export { Toaster } from "./Toaster";
-export { Modal } from "./Modal";
+export { Modal, ModalFooter } from "./Modal";
+export { ConfirmDialog } from "./ConfirmDialog";
 export { Table } from "./Table";
 export { Tabs } from "./Tabs";
 export { FileUpload } from "./FileUpload";
