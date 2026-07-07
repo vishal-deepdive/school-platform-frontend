@@ -1,5 +1,5 @@
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -85,6 +85,60 @@ interface AppliedFilters {
   start: string; // ISO
   end: string; // ISO
 }
+
+const pctBadge = (p: number): "success" | "warning" | "danger" =>
+  p >= 75 ? "success" : p >= 70 ? "warning" : "danger";
+
+interface AttendanceRangeRowProps {
+  student: AttendanceRangeStudent;
+  dates: string[];
+  sundaySet: Set<string>;
+}
+
+const AttendanceRangeRow = memo(function AttendanceRangeRow({
+  student,
+  dates,
+  sundaySet,
+}: AttendanceRangeRowProps) {
+  return (
+    <tr className="hover:bg-muted/50">
+      <td className="sticky left-0 z-10 bg-background px-4 py-3 font-medium">
+        <div className="flex items-center gap-2">
+          {student.below_75_percent === "Yes" && (
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          )}
+          <div>
+            <p>{student.name}</p>
+            <p className="text-xs text-muted-foreground">
+              #{student.roll_number}
+            </p>
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <Badge variant={pctBadge(student.attendance_percentage)}>
+          {student.attendance_percentage.toFixed(0)}%
+        </Badge>
+      </td>
+      {dates.map((d, i) => {
+        const val = student.cells[i] ?? "-";
+        return (
+          <td
+            key={d}
+            className={`px-2 py-3 text-center ${
+              sundaySet.has(d) ? "bg-muted-foreground/5" : ""
+            }`}
+            title={val !== "-" ? `${d}: ${statusLabel(val)}` : d}
+          >
+            <span className={`font-bold ${statusTextClass(val)}`}>
+              {val}
+            </span>
+          </td>
+        );
+      })}
+    </tr>
+  );
+});
 
 export function AttendanceRangeView() {
   const { schoolId, schoolName, ready: scopeReady } = useActiveSchool();
@@ -203,9 +257,6 @@ export function AttendanceRangeView() {
   const avgPct = Math.round(summary?.avg_percentage ?? 0);
   const belowCount = summary?.below_75_count ?? 0;
   const pageCount = pagination?.total_pages ?? 1;
-
-  const pctBadge = (p: number) =>
-    p >= 75 ? "success" : p >= 70 ? "warning" : "danger";
 
   const QUICK_RANGES: { label: string; start: () => string; end: () => string }[] = [
     { label: "Last 7 days", start: () => isoDaysAgo(6), end: todayIso },
@@ -366,42 +417,12 @@ export function AttendanceRangeView() {
                 </thead>
                 <tbody className="divide-y divide-border bg-background">
                   {pageRows.map((student: AttendanceRangeStudent) => (
-                    <tr key={student.roll_number} className="hover:bg-muted/50">
-                      <td className="sticky left-0 z-10 bg-background px-4 py-3 font-medium">
-                        <div className="flex items-center gap-2">
-                          {student.below_75_percent === "Yes" && (
-                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                          )}
-                          <div>
-                            <p>{student.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              #{student.roll_number}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={pctBadge(student.attendance_percentage)}>
-                          {student.attendance_percentage.toFixed(0)}%
-                        </Badge>
-                      </td>
-                      {dates.map((d, i) => {
-                        const val = student.cells[i] ?? "-";
-                        return (
-                          <td
-                            key={d}
-                            className={`px-2 py-3 text-center ${
-                              sundaySet.has(d) ? "bg-muted-foreground/5" : ""
-                            }`}
-                            title={val !== "-" ? `${d}: ${statusLabel(val)}` : d}
-                          >
-                            <span className={`font-bold ${statusTextClass(val)}`}>
-                              {val}
-                            </span>
-                          </td>
-                        );
-                      })}
-                    </tr>
+                    <AttendanceRangeRow
+                      key={student.roll_number}
+                      student={student}
+                      dates={dates}
+                      sundaySet={sundaySet}
+                    />
                   ))}
                 </tbody>
               </table>

@@ -1,4 +1,5 @@
 import { multipartClient, apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   EnrollResponse,
   MarkAttendanceResponse,
@@ -26,7 +27,7 @@ import type {
 } from "@/features/attendance/types";
 import { buildQueryString } from "@/shared/lib/utils";
 
-const BASE = "/api/v1/attendance";
+const BASE = `${API_V1}/attendance`;
 
 export const attendanceApi = {
   enroll: (file: File, params: Record<string, string>) => {

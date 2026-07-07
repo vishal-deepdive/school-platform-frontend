@@ -1,5 +1,6 @@
 import { isAxiosError } from "axios";
 import { multipartClient, apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   JobResponse,
   JobStatusResponse,
@@ -14,7 +15,7 @@ import type {
 } from "@/features/recording/types";
 import { buildQueryString, getErrorMessage } from "@/shared/lib/utils";
 
-const BASE = "/api/v1/recording";
+const BASE = `${API_V1}/recording`;
 
 /**
  * Maps a markdown-endpoint response (or error) to a discriminated state. The
