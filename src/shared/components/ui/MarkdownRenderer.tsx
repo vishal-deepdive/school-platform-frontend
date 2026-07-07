@@ -4,6 +4,7 @@ import { memo, useMemo, Children, type ComponentProps } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import remarkBreaks from "remark-breaks";
 import rehypeKatex from "rehype-katex";
 import {
   Info,
@@ -181,7 +182,13 @@ function createComponents(streaming: boolean): Components {
 // ── Plugin arrays — module-level constants so identity is stable ─────────────
 
 type ReactMarkdownProps = ComponentProps<typeof ReactMarkdown>;
-const REMARK_PLUGINS: ReactMarkdownProps["remarkPlugins"] = [remarkGfm, remarkMath];
+// remarkBreaks renders a single newline as a line break. LLMs (and our prompts)
+// routinely put logically-separate lines — MCQ options "A) …\nB) …", key/value
+// pairs, address-style blocks — on consecutive lines with only a single `\n`.
+// Plain CommonMark collapses those into one run-on line; remarkBreaks makes each
+// render on its own line, matching what the model (and the reader) intends. It
+// runs after gfm/math so it never interferes with table/list/math block parsing.
+const REMARK_PLUGINS: ReactMarkdownProps["remarkPlugins"] = [remarkGfm, remarkMath, remarkBreaks];
 const REHYPE_PLUGINS: ReactMarkdownProps["rehypePlugins"] = [
   // throwOnError: false — a single malformed formula renders red instead of
   // blanking the whole message. trust: true — enables macros that require it.

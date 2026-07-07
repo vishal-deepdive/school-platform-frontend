@@ -141,14 +141,28 @@
   .prose p {
     @apply text-sm text-foreground mb-3 leading-relaxed;
   }
+  /* list-outside (not inside) so the marker sits in a left gutter and wrapped /
+     multi-line item text stays aligned under the first line. list-inside (the
+     previous value) pulled the marker into the text flow, which made wrapped
+     lines and nested lists look ragged and inconsistently indented. */
   .prose ul {
-    @apply list-disc list-inside text-sm text-foreground mb-3 space-y-1;
+    @apply list-disc list-outside text-sm text-foreground mb-3 space-y-1 pl-6;
   }
   .prose ol {
-    @apply list-decimal list-inside text-sm text-foreground mb-3 space-y-1;
+    @apply list-decimal list-outside text-sm text-foreground mb-3 space-y-1 pl-6;
   }
   .prose li {
-    @apply text-sm text-foreground;
+    @apply text-sm text-foreground pl-1 marker:text-muted-foreground;
+  }
+  /* Nested lists: small top gap, no doubled bottom margin. */
+  .prose li > ul,
+  .prose li > ol {
+    @apply mt-1 mb-0;
+  }
+  /* "Loose" lists wrap each item's text in a <p>; kill that paragraph's bottom
+     margin so items aren't spaced apart like separate paragraphs. */
+  .prose li > p {
+    @apply mb-0;
   }
   .prose strong {
     @apply font-semibold text-foreground;
