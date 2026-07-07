@@ -137,9 +137,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
           )}
         </div>
         <div className="flex-1 space-y-1 overflow-y-auto px-3 py-4 scrollbar-thin">
-          <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-            Menu
-          </p>
+          <p className="eyebrow px-3 pb-2">Menu</p>
           {allItems.map((item, i) => (
             <div key={i}>
               <MobileSidebarItem item={item} onClose={onClose} />

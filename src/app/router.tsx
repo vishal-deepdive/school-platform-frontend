@@ -80,6 +80,10 @@ const ApplicationDetailPage = lazyPage(admin, "ApplicationDetailPage");
 const AdminManagementPage = lazyPage(admin, "AdminManagementPage");
 const PromptsPage = lazyPage(admin, "PromptsPage");
 const StudentImportPage = lazyPage(admin, "StudentImportPage");
+const SchoolsPage = lazyPage(admin, "SchoolsPage");
+const SchoolDetailPage = lazyPage(admin, "SchoolDetailPage");
+const UsersPage = lazyPage(admin, "UsersPage");
+const AuditLogPage = lazyPage(admin, "AuditLogPage");
 
 /** Full-viewport fallback for routes that render outside AppLayout. */
 function FullPageFallback() {
@@ -265,6 +269,10 @@ export const router = createBrowserRouter([
               { index: true, element: <Navigate to="onboarding" replace /> },
               { path: "onboarding", element: <OnboardingApplicationsPage /> },
               { path: "onboarding/:applicationId", element: <ApplicationDetailPage /> },
+              { path: "schools", element: <SchoolsPage /> },
+              { path: "schools/:schoolId", element: <SchoolDetailPage /> },
+              { path: "users", element: <UsersPage /> },
+              { path: "audit-log", element: <AuditLogPage /> },
               { path: "admins", element: <AdminManagementPage /> },
               { path: "prompts", element: <PromptsPage /> },
             ],

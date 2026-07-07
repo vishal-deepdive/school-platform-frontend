@@ -14,16 +14,18 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary) / <alpha-value>)",
           foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
-          50: "#eef2ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81",
+          // Scale derived from the brand hue (--primary: 212 80.5% 38.2%) so
+          // primary-N and bg-primary are the same color family. 600 == DEFAULT.
+          50: "hsl(212 88% 97%)",
+          100: "hsl(212 86% 93%)",
+          200: "hsl(212 84% 85%)",
+          300: "hsl(212 82% 73%)",
+          400: "hsl(212 81% 58%)",
+          500: "hsl(212 80% 47%)",
+          600: "hsl(212 80.5% 38.2%)",
+          700: "hsl(212 82% 31%)",
+          800: "hsl(213 78% 25%)",
+          900: "hsl(214 75% 20%)",
         },
         secondary: {
           DEFAULT: "oklch(var(--secondary) / <alpha-value>)",
@@ -102,5 +104,5 @@ export default {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography")],
+  plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
 } satisfies Config;

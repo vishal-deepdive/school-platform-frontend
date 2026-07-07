@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    /* Controls (rounded-lg) render at 1rem — the soft, rounded look is a
+       deliberate brand choice, even though cards (rounded-xl) sit at 12px. */
     --radius: 1rem;
     --background: 0.985 0 0;
     --foreground: 0.145 0 0;
@@ -21,7 +23,8 @@
     --destructive-foreground: 0.985 0 0;
     --border: 0.922 0 0;
     --input: 0.922 0 0;
-    --ring: 0.87 0 0;
+    /* Brand-blue focus ring (oklch approximation of --primary). */
+    --ring: 0.5 0.13 252;
     --card: 1 0 0;
     --card-foreground: 0.145 0 0;
     --popover: 1 0 0;
@@ -48,7 +51,8 @@
     --destructive-foreground: 0.985 0 0;
     --border: 0.26 0.02 260;
     --input: 0.26 0.02 260;
-    --ring: 0.87 0 0;
+    /* Lighter brand blue so the ring stays visible on dark surfaces. */
+    --ring: 0.66 0.15 252;
     --card: 0.20 0.02 260;
     --card-foreground: 0.985 0 0;
     --popover: 0.20 0.02 260;
@@ -80,8 +84,20 @@
   }
 
   :focus-visible {
-    outline: 2px solid theme("colors.indigo.500");
+    outline: 2px solid hsl(var(--primary));
     outline-offset: 2px;
+  }
+
+  /* Respect reduced-motion globally: collapse every animation/transition to a
+     single imperceptible frame instead of auditing each component. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   /* Global scrollbars styling with theme support */
@@ -107,6 +123,12 @@
 }
 
 @layer utilities {
+  /* The one uppercase micro-label style used app-wide (sidebar section labels,
+     filter captions, stat-card labels, module eyebrows). */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
   .prose h1 {
     @apply text-xl font-bold text-foreground mb-3 mt-4;
   }
