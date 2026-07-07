@@ -86,7 +86,7 @@ export function TabContainer({ className }: TabContainerProps) {
           </div>
           <div className="min-w-0">
             {active.module !== active.tab && (
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+              <p className="eyebrow text-muted-foreground/70">
                 {active.module.label}
               </p>
             )}
