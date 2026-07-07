@@ -25,7 +25,8 @@ import {
 } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import type { PlatformTrendPoint } from "@/features/admin/types";
-import { Card, StatCard } from "@/shared/components/ui/Card";
+import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
 import { StatCardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
 import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
@@ -183,32 +184,30 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card padding="md" className="lg:col-span-2">
-          <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">
-                Platform attendance activity
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Across all schools, last 14 days
-              </p>
-            </div>
-            <SegmentedControl
-              aria-label="Trend metric"
-              options={[
-                { value: "total_marked" as const, label: "Records" },
-                { value: "percentage" as const, label: "Attendance %" },
-              ]}
-              value={trendMetric}
-              onChange={setTrendMetric}
-            />
-          </div>
+          <CardHeader
+            title="Platform attendance activity"
+            description="Across all schools, last 14 days"
+            className="mb-4"
+            action={
+              <SegmentedControl
+                aria-label="Trend metric"
+                options={[
+                  { value: "total_marked" as const, label: "Records" },
+                  { value: "percentage" as const, label: "Attendance %" },
+                ]}
+                value={trendMetric}
+                onChange={setTrendMetric}
+              />
+            }
+          />
           {trend.length === 0 ? (
-            <div className="flex h-56 flex-col items-center justify-center gap-2 text-center">
-              <TrendingUp className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                No attendance activity in the last 14 days.
-              </p>
-            </div>
+            <EmptyState
+              variant="plain"
+              className="h-56 py-0"
+              icon={<TrendingUp className="h-8 w-8" />}
+              title="No attendance activity"
+              description="Nothing has been marked in the last 14 days."
+            />
           ) : (
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -266,18 +265,18 @@ export function AdminDashboard() {
         </Card>
 
         <Card padding="md">
-          <div className="mb-4">
-            <h2 className="text-base font-semibold text-foreground">
-              Users by role
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Active accounts across the platform
-            </p>
-          </div>
+          <CardHeader
+            title="Users by role"
+            description="Active accounts across the platform"
+            className="mb-4"
+          />
           {roles.length === 0 ? (
-            <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">
-              No users yet.
-            </div>
+            <EmptyState
+              variant="plain"
+              className="h-56 py-0"
+              icon={<Users className="h-8 w-8" />}
+              title="No users yet"
+            />
           ) : (
             <div className="h-56 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -325,29 +324,26 @@ export function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card padding="md">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">
-                Largest schools
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                By enrolled students
-              </p>
-            </div>
-            <Link
-              to="/attendance/stats"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
-            >
-              View all <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
+          <CardHeader
+            title="Largest schools"
+            description="By enrolled students"
+            className="mb-4"
+            action={
+              <Link
+                to="/attendance/stats"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+              >
+                View all <ArrowRight className="h-3 w-3" />
+              </Link>
+            }
+          />
           {(data?.top_schools ?? []).length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <BookOpen className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                No students enrolled yet.
-              </p>
-            </div>
+            <EmptyState
+              variant="plain"
+              className="py-8"
+              icon={<BookOpen className="h-8 w-8" />}
+              title="No students enrolled yet"
+            />
           ) : (
             <ul className="space-y-3">
               {data!.top_schools.map((s) => (
@@ -373,29 +369,26 @@ export function AdminDashboard() {
         </Card>
 
         <Card padding="md">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-foreground">
-                Onboarding pipeline
-              </h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                School applications by status
-              </p>
-            </div>
-            <Link
-              to="/admin/onboarding"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
-            >
-              Review <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
+          <CardHeader
+            title="Onboarding pipeline"
+            description="School applications by status"
+            className="mb-4"
+            action={
+              <Link
+                to="/admin/onboarding"
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-primary transition-colors hover:text-primary/80"
+              >
+                Review <ArrowRight className="h-3 w-3" />
+              </Link>
+            }
+          />
           {(data?.onboarding_by_status ?? []).length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-              <ClipboardCheck className="h-8 w-8 text-muted-foreground/40" />
-              <p className="text-sm text-muted-foreground">
-                No onboarding applications yet.
-              </p>
-            </div>
+            <EmptyState
+              variant="plain"
+              className="py-8"
+              icon={<ClipboardCheck className="h-8 w-8" />}
+              title="No onboarding applications yet"
+            />
           ) : (
             <ul className="divide-y divide-border">
               {data!.onboarding_by_status.map((s) => {

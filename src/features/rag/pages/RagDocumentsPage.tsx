@@ -5,6 +5,7 @@ import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
@@ -61,6 +62,12 @@ export function RagDocumentsPage() {
   const [pendingRow, setPendingRow] = useState<{
     id: string;
     action: "delete" | "retry";
+  } | null>(null);
+  const [docToDelete, setDocToDelete] = useState<string | null>(null);
+  // Set when an upload hits a 409 (duplicate) and needs a replace decision.
+  const [replaceRequest, setReplaceRequest] = useState<{
+    payload: FormData;
+    detail: string;
   } | null>(null);
 
   const queryClient = useQueryClient();
@@ -125,15 +132,7 @@ export function RagDocumentsPage() {
       },
       onError: (err) => {
         if (isAxiosError(err) && err.response?.status === 409) {
-          const detail = getErrorMessage(err);
-          if (
-            confirm(
-              `${detail}\n\nDo you want to replace the existing document?`,
-            )
-          ) {
-            submitUpload(payload, true);
-            return;
-          }
+          setReplaceRequest({ payload, detail: getErrorMessage(err) });
           return;
         }
         toast.error(getErrorMessage(err));
@@ -174,12 +173,7 @@ export function RagDocumentsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this document? All associated chunks will be removed.",
-      )
-    )
-      return;
+    setDocToDelete(null);
     setPendingRow({ id, action: "delete" });
     deleteDoc(id, {
       onSuccess: () => {
@@ -354,11 +348,11 @@ export function RagDocumentsPage() {
                             </Button>
                           )}
                           <Button
-                            variant="ghost"
+                            variant="danger-ghost"
                             size="sm"
-                            onClick={() => handleDelete(doc.id)}
+                            onClick={() => setDocToDelete(doc.id)}
                             loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
-                            className="text-destructive hover:text-destructive/80"
+                            aria-label="Delete document"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -376,6 +370,8 @@ export function RagDocumentsPage() {
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
+        totalItems={total}
+        itemsLabel="documents"
         hasNext={hasNext}
         hasPrev={hasPrev}
         onNext={() => setOffset((o) => o + PAGE_SIZE)}
@@ -427,6 +423,38 @@ export function RagDocumentsPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={docToDelete !== null}
+        title="Delete document?"
+        description="This removes the document and all of its indexed chunks from the knowledge base. Questions can no longer cite it. This cannot be undone."
+        confirmLabel="Delete document"
+        onConfirm={() => docToDelete && handleDelete(docToDelete)}
+        onClose={() => setDocToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={replaceRequest !== null}
+        title="Replace existing document?"
+        variant="primary"
+        description={
+          replaceRequest && (
+            <>
+              {replaceRequest.detail} Uploading again replaces the existing
+              document and re-indexes its content.
+            </>
+          )
+        }
+        confirmLabel="Replace document"
+        loading={isUploading}
+        onConfirm={() => {
+          if (replaceRequest) {
+            submitUpload(replaceRequest.payload, true);
+            setReplaceRequest(null);
+          }
+        }}
+        onClose={() => setReplaceRequest(null)}
+      />
     </div>
   );
 }

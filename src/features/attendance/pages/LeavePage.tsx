@@ -215,11 +215,11 @@ export function LeavePage() {
                     </Button>
                     <Button
                       size="sm"
-                      variant="ghost"
+                      variant="danger-ghost"
                       onClick={() =>
                         reviewMutation.mutate({ id: lr.id, decision: "rejected" })
                       }
-                      icon={<X className="h-4 w-4 text-destructive" />}
+                      icon={<X className="h-4 w-4" />}
                     >
                       Reject
                     </Button>

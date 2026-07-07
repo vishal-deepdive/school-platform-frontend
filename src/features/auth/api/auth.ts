@@ -35,6 +35,17 @@ export interface CreateInviteResult {
   expires_at: string;
 }
 
+export interface PendingInvite {
+  invite_id: string;
+  school_id: string;
+  role: string;
+  email: string | null;
+  invited_by_email: string | null;
+  invited_by_name: string | null;
+  expires_at: string | null;
+  created_at: string | null;
+}
+
 export const authApi = {
   /**
    * Create a time-limited invite for a teacher or co-principal. The school is
@@ -44,9 +55,29 @@ export const authApi = {
     email?: string;
     role: "teacher" | "principal";
     expires_hours?: number;
+    /** Admins only — target school. Ignored for principals (own school). */
+    school_id?: string;
   }) =>
     apiClient
       .post<CreateInviteResult>(`${BASE}/invite`, data)
+      .then((r) => r.data),
+
+  /** List pending (unused, unexpired) invites for a school. Admins pass the id. */
+  listInvites: (schoolId: string) =>
+    apiClient
+      .get<PendingInvite[]>(`${BASE}/invites`, { params: { school_id: schoolId } })
+      .then((r) => r.data),
+
+  /** Re-issue a pending invite with a fresh token + expiry (old link stops working). */
+  resendInvite: (invitationId: string) =>
+    apiClient
+      .post<CreateInviteResult>(`${BASE}/invites/${encodeURIComponent(invitationId)}/resend`)
+      .then((r) => r.data),
+
+  /** Revoke a pending invite so its link can no longer be used. */
+  revokeInvite: (invitationId: string) =>
+    apiClient
+      .delete<MessageResponse>(`${BASE}/invites/${encodeURIComponent(invitationId)}`)
       .then((r) => r.data),
 
   register: (data: RegisterRequest) =>

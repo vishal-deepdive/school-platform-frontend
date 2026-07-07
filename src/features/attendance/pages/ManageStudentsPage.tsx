@@ -16,6 +16,7 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { getErrorMessage } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
 
@@ -28,6 +29,9 @@ export function ManageStudentsPage() {
   const [session, setSession] = useState("2025-26");
   const [roster, setRoster] = useState<RosterStudent[] | null>(null);
   const [search, setSearch] = useState("");
+  const [studentToDelete, setStudentToDelete] = useState<RosterStudent | null>(
+    null,
+  );
 
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
@@ -58,19 +62,10 @@ export function ManageStudentsPage() {
       setRoster((prev) => prev?.filter((s) => s.roll_no !== rollNo) ?? null);
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       toast.success(`Student ${rollNo} deleted`);
+      setStudentToDelete(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
-
-  const confirmDelete = (s: RosterStudent) => {
-    if (
-      window.confirm(
-        `Permanently delete ${s.name ?? s.roll_no} (#${s.roll_no}) and all their attendance records? This cannot be undone.`,
-      )
-    ) {
-      deleteMutation.mutate(s.roll_no);
-    }
-  };
 
   const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
 
@@ -191,13 +186,9 @@ export function ManageStudentsPage() {
                   </div>
                   <Button
                     size="sm"
-                    variant="ghost"
-                    loading={
-                      deleteMutation.isPending &&
-                      deleteMutation.variables === s.roll_no
-                    }
-                    onClick={() => confirmDelete(s)}
-                    icon={<Trash2 className="h-4 w-4 text-destructive" />}
+                    variant="danger-ghost"
+                    onClick={() => setStudentToDelete(s)}
+                    icon={<Trash2 className="h-4 w-4" />}
                     className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     Delete
@@ -208,6 +199,29 @@ export function ManageStudentsPage() {
           )}
         </Panel>
       )}
+
+      <ConfirmDialog
+        open={studentToDelete !== null}
+        title="Delete student?"
+        description={
+          studentToDelete && (
+            <>
+              This permanently deletes{" "}
+              <span className="font-medium text-foreground">
+                {studentToDelete.name ?? studentToDelete.roll_no}
+              </span>{" "}
+              (Roll #{studentToDelete.roll_no}) and all their attendance
+              records. This cannot be undone.
+            </>
+          )
+        }
+        confirmLabel="Delete student"
+        loading={deleteMutation.isPending}
+        onConfirm={() =>
+          studentToDelete && deleteMutation.mutate(studentToDelete.roll_no)
+        }
+        onClose={() => setStudentToDelete(null)}
+      />
     </div>
   );
 }
