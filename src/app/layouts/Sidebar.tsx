@@ -52,7 +52,7 @@ export function Sidebar({ mobile, onClose }: SidebarProps) {
   const [activeCategory, setActiveCategory] = useState<NavItem | null>(null);
 
   // Check if admin has selected a school
-  const { isAdmin, ready } = useActiveSchool();
+  const { ready } = useActiveSchool();
 
   // Sliding tab indicator (desktop rail): one floating surface translated to
   // the active item, so tab changes glide up/down instead of popping.
