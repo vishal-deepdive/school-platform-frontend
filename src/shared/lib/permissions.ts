@@ -54,6 +54,9 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
 
   // Platform admin
   "/admin/onboarding": ["admin"],
+  "/admin/schools": ["admin"],
+  "/admin/users": ["admin"],
+  "/admin/audit-log": ["admin"],
   "/admin/admins": ["admin"],
   "/admin/prompts": ["admin"],
 };
