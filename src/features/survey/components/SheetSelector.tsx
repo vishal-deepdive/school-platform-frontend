@@ -134,7 +134,7 @@ export function SheetSelector({
               </div>
             ) : sheets.length === 0 ? (
               <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                No active sheets. Add one in the Data Source tab.
+                No active sheets for this school. Add one in the Data Source tab.
               </div>
             ) : (
               <>

@@ -5,7 +5,7 @@
  * admin register a fully-formed school manually (partner/pilot schools that skip
  * onboarding). Click through to the School Detail page to manage everything else.
  */
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -18,6 +18,7 @@ import {
   Users as UsersIcon,
   MapPin,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import { getErrorMessage } from "@/shared/lib/utils";
@@ -28,7 +29,7 @@ import {
   MEDIUM_OPTIONS,
   GRADE_OPTIONS,
 } from "@/features/admin/constants";
-import { Modal, ModalFooter } from "@/shared/components/ui/Modal";
+import { Modal } from "@/shared/components/ui/Modal";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
@@ -122,11 +123,32 @@ const clean = (v?: string) => {
 
 // ── Create-school modal ─────────────────────────────────────────────────────
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function FormSection({
+  icon,
+  title,
+  description,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <p className="sm:col-span-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-      {children}
-    </p>
+    <section className="space-y-4">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary [&_svg]:h-4 [&_svg]:w-4">
+          {icon}
+        </span>
+        <div>
+          <h4 className="text-sm font-semibold text-foreground">{title}</h4>
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">{children}</div>
+    </section>
   );
 }
 
@@ -153,6 +175,7 @@ function CreateSchoolModal({
   const board = watch("board");
   const schoolType = watch("school_type");
   const medium = watch("medium_of_instruction");
+  const formId = useId();
 
   const createMutation = useMutation({
     mutationFn: (data: CreateSchoolRequest) => adminApi.createSchool(data),
@@ -225,16 +248,46 @@ function CreateSchoolModal({
   ];
 
   return (
-    <Modal open={open} onClose={close} title="Add School" size="lg">
-      <form onSubmit={submit} className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SectionHeading>Identity</SectionHeading>
-          <Input
-            label="School Name *"
-            placeholder="Springfield Elementary School"
-            error={errors.name?.message}
-            {...register("name")}
-          />
+    <Modal
+      open={open}
+      onClose={close}
+      title="Add School"
+      size="2xl"
+      icon={<Building2 />}
+      description="Register a partner or pilot school that skips onboarding."
+      footer={
+        <>
+          <Button variant="outline" type="button" onClick={close}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form={formId}
+            loading={createMutation.isPending}
+          >
+            Create School
+          </Button>
+        </>
+      }
+    >
+      <form id={formId} onSubmit={submit} className="space-y-8">
+        {createMutation.isError && (
+          <Alert variant="error">{getErrorMessage(createMutation.error)}</Alert>
+        )}
+
+        <FormSection
+          icon={<Building2 />}
+          title="Identity"
+          description="How the school is named and classified."
+        >
+          <div className="sm:col-span-2">
+            <Input
+              label="School Name *"
+              placeholder="Springfield Elementary School"
+              error={errors.name?.message}
+              {...register("name")}
+            />
+          </div>
           <Input
             label="Code"
             hint="Optional short identifier, e.g. SPE-001"
@@ -286,7 +339,13 @@ function CreateSchoolModal({
             {...register("udise_code")}
           />
 
-          <SectionHeading>Contact &amp; Address</SectionHeading>
+        </FormSection>
+
+        <FormSection
+          icon={<MapPin />}
+          title="Contact &amp; address"
+          description="Where the school is and how to reach the office."
+        >
           <Input
             label="Email"
             type="email"
@@ -331,14 +390,22 @@ function CreateSchoolModal({
             {...register("pin_code")}
           />
 
-          <SectionHeading>Academics</SectionHeading>
-          <Input
-            label="Academic Session *"
-            hint="e.g. 2025-26 — powers module session dropdowns"
-            placeholder="2025-26"
-            error={errors.current_session?.message}
-            {...register("current_session")}
-          />
+        </FormSection>
+
+        <FormSection
+          icon={<GraduationCap />}
+          title="Academics"
+          description="Session and grade range that power the module dropdowns."
+        >
+          <div className="sm:col-span-2">
+            <Input
+              label="Academic Session *"
+              hint="e.g. 2025-26 — powers module session dropdowns"
+              placeholder="2025-26"
+              error={errors.current_session?.message}
+              {...register("current_session")}
+            />
+          </div>
           <Select
             label="Medium of Instruction"
             options={mediumOptions}
@@ -373,25 +440,15 @@ function CreateSchoolModal({
             error={errors.student_count?.message}
             {...register("student_count")}
           />
-        </div>
+        </FormSection>
 
-        <p className="text-xs text-muted-foreground">
-          After creating, you can generate class codes for the grade range so
-          students can self-register, then provision a principal.
+        <p className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/80" />
+          <span>
+            After creating, generate class codes for the grade range so students
+            can self-register, then provision a principal.
+          </span>
         </p>
-
-        {createMutation.isError && (
-          <Alert variant="error">{getErrorMessage(createMutation.error)}</Alert>
-        )}
-
-        <ModalFooter>
-          <Button variant="outline" type="button" onClick={close}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={createMutation.isPending}>
-            Create School
-          </Button>
-        </ModalFooter>
       </form>
     </Modal>
   );

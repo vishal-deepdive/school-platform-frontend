@@ -35,7 +35,7 @@ export function ViewAttendancePage() {
   return (
     <div className="space-y-6">
       {/* Modern segmented control — clearer than an underline tab row */}
-      <div className="inline-flex w-full gap-1 rounded-xl border border-border/60 bg-muted/40 p-1 sm:w-auto">
+      <div className="inline-flex w-full gap-1 rounded-2xl border border-border/60 bg-muted p-1 sm:w-auto">
         {viewTabs.map((t) => {
           const active = tab === t.id;
           return (
