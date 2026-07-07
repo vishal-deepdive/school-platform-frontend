@@ -140,7 +140,7 @@ export function ClassBreakdownChart({
               <Bar
                 dataKey="today_percentage"
                 name="Today"
-                fill="hsl(var(--primary))"
+                fill="oklch(var(--primary))"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={28}
               />

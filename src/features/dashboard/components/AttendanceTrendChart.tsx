@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -122,6 +123,12 @@ export function AttendanceTrendChart({
             No attendance marked yet — once you mark your first day, the trend
             appears here.
           </p>
+          <Link
+            to="/attendance/mark"
+            className="text-sm font-semibold text-primary transition-colors hover:text-primary/80"
+          >
+            Mark attendance →
+          </Link>
         </div>
       ) : (
         <div
@@ -137,8 +144,8 @@ export function AttendanceTrendChart({
               >
                 <defs>
                   <linearGradient id="attendance-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                    <stop offset="0%" stopColor="oklch(var(--primary))" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="oklch(var(--primary))" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -170,7 +177,7 @@ export function AttendanceTrendChart({
                   type="monotone"
                   dataKey="percentage"
                   name="Present"
-                  stroke="hsl(var(--primary))"
+                  stroke="oklch(var(--primary))"
                   strokeWidth={2}
                   fill="url(#attendance-fill)"
                   dot={false}

@@ -57,7 +57,7 @@ export function BarList({
               className="h-full rounded-full"
               style={{
                 width: `${Math.min(100, Math.round((it.value / scale) * 100))}%`,
-                backgroundColor: it.color ?? "hsl(var(--primary))",
+                backgroundColor: it.color ?? "oklch(var(--primary))",
               }}
             />
           </div>

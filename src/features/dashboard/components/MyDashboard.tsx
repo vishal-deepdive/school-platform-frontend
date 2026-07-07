@@ -115,7 +115,7 @@ function MonthlyChart({ monthly }: { monthly: MyMonthlyStat[] }) {
           <Bar
             dataKey="percentage"
             name="Attendance"
-            fill="hsl(var(--primary))"
+            fill="oklch(var(--primary))"
             radius={[4, 4, 0, 0]}
             maxBarSize={36}
           />
