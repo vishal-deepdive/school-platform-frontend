@@ -69,12 +69,13 @@ export function TabContainer({ className }: TabContainerProps) {
   const isDashboard = pathname === "/dashboard";
 
   return (
-    <>
-      <style>{`#app-main-layout { overflow: hidden !important; }`}</style>
-      <div
-        className={cn(
-          // Cancel AppLayout <main> padding: px-4 py-4 md:px-6 md:pt-5 md:pb-3
-          "-mx-4 -my-4 h-[calc(100%+2rem)] md:-mx-6 md:-mb-3 md:-mt-5",
+    <div
+      className={cn(
+        // "module-shell" flips AppLayout's <main> to overflow:hidden via a
+        // :has() rule in index.css, so the shell owns the only scroll area.
+        "module-shell",
+        // Cancel AppLayout <main> padding: px-4 py-4 md:px-6 md:pt-5 md:pb-3
+        "-mx-4 -my-4 h-[calc(100%+2rem)] md:-mx-6 md:-mb-3 md:-mt-5",
         "flex min-h-0 flex-col bg-background/80",
         isDashboard ? "p-0" : "p-1",
         (!active && !isDashboard) && "pt-3 md:pt-4",
@@ -92,10 +93,16 @@ export function TabContainer({ className }: TabContainerProps) {
                 {active.module.label}
               </p>
             )}
-            <h1 className="truncate text-base font-semibold leading-tight tracking-tight text-foreground">
+            <h1 className="truncate font-display text-base font-semibold leading-tight tracking-tight text-foreground">
               {active.tab.label}
             </h1>
           </div>
+          {/* Pages teleport their primary actions here via <ModuleHeaderActions>
+              so filters/CTAs stay visible while the content scrolls. */}
+          <div
+            id="module-header-actions"
+            className="ml-auto flex min-w-0 items-center gap-2 pr-1 md:pr-2"
+          />
         </div>
       )}
 
@@ -132,6 +139,5 @@ export function TabContainer({ className }: TabContainerProps) {
         </div>
       </div>
     </div>
-    </>
   );
 }
