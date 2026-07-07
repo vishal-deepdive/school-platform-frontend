@@ -104,8 +104,8 @@ export function QuestionsPage() {
         <RagFilterPanel filters={filters} onChange={setFilters} />
 
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-foreground">Question options</h4>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* <h4 className="text-sm font-semibold text-foreground">Question options</h4> */}
+          <div className="grid grid-cols-1 gap-4 items-start sm:grid-cols-2 lg:grid-cols-3">
             <Select
               label="Question Type"
               options={qTypeOptions}

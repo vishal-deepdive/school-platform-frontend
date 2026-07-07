@@ -254,11 +254,11 @@ export function RagDocumentsPage() {
         flush
         actions={
           <>
-            {total > 0 && (
+            {/* {total > 0 && (
               <Badge variant="primary">
                 {total} indexed
               </Badge>
-            )}
+            )} */}
             <div className="w-40">
               <Select
                 options={STATUS_FILTER_OPTIONS}
@@ -268,7 +268,6 @@ export function RagDocumentsPage() {
             </div>
             <Button
               variant="outline"
-              size="sm"
               onClick={() => refetch()}
               loading={isFetching}
               icon={<RefreshCw className="h-4 w-4" />}
@@ -276,7 +275,7 @@ export function RagDocumentsPage() {
               Refresh
             </Button>
             {canManage && (
-              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+              <Button icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
                 Upload Document
               </Button>
             )}

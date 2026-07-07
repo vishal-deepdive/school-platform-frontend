@@ -21,7 +21,7 @@ interface RagFilterPanelProps {
   className?: string;
 }
 
-const DEFAULT_LAYOUT = "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3";
+const DEFAULT_LAYOUT = "grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3";
 
 const toOptions = (values: string[], allLabel: string): SelectOption[] => [
   { value: "", label: allLabel },
