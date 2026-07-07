@@ -64,7 +64,7 @@ export function isDefinitiveAuthFailure(err: unknown): boolean {
 // failures, not expired-session failures).
 
 const AUTH_ENDPOINT_PATTERN =
-  /\/auth\/(login|register|verify-otp|forgot-password|reset-password|resend-otp|refresh)/;
+  /\/auth\/(login|register|verify-otp|forgot-password|reset-password|resend-otp|refresh|oauth)/;
 
 // ─── Single-flight refresh ────────────────────────────────────────────────────
 // One in-flight refresh is shared by every caller — concurrent 401s, the
@@ -204,10 +204,21 @@ function withAuthInterceptors(client: AxiosInstance): AxiosInstance {
     async (error: unknown) => {
       if (!axios.isAxiosError(error)) return Promise.reject(error);
 
-      // Transport-level failure (request never reached the server). Let the
-      // OfflineGate verify connectivity and take over the screen if the user
-      // is actually offline.
-      if (error.code === "ERR_NETWORK" && typeof window !== "undefined") {
+      // Infrastructure-level failure: the request either never reached the
+      // server (ERR_NETWORK) or died at a gateway (502/504) or the server is
+      // temporarily refusing service (503). Signal the OfflineGate, which
+      // diagnoses the exact cause and takes over the screen if the whole app is
+      // unreachable. A 503 from a single unconfigured feature is harmless here —
+      // the gate re-checks /health (which stays 200) and dismisses itself.
+      const infraStatus = error.response?.status;
+      const isInfraFailure =
+        error.code === "ERR_NETWORK" ||
+        infraStatus === 502 ||
+        infraStatus === 503 ||
+        infraStatus === 504;
+      // String literal (not the exported constant) to keep OfflineGate's React
+      // module out of the API client's import graph — see NETWORK_ERROR_EVENT.
+      if (isInfraFailure && typeof window !== "undefined") {
         window.dispatchEvent(new Event("app:network-error"));
       }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { Tooltip } from "./Tooltip";
 
 interface ModalProps {
   open: boolean;
@@ -130,13 +131,15 @@ export function Modal({
           >
             {title}
           </h3>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <Tooltip content="Close" side="left">
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </Tooltip>
         </div>
         <div className="p-4 text-foreground overflow-y-auto min-h-0 flex-1 scrollbar-custom sm:p-6">
           {children}
