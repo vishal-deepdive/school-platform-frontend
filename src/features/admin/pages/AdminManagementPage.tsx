@@ -9,6 +9,7 @@ import { useAuthStore } from "@/features/auth/store/auth";
 import { emailField, passwordField } from "@/shared/lib/validators";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { Modal } from "@/shared/components/ui/Modal";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
@@ -65,17 +66,13 @@ function AdminRow({
         {isMyCreator && !isSelf && <Badge variant="default">Your creator</Badge>}
         {canRemove && (
           <Button
-            variant="ghost"
+            variant="danger-ghost"
             size="sm"
             onClick={() => onRemove(admin.id)}
             disabled={removing}
             loading={removing}
-            icon={
-              !removing ? (
-                <Trash2 className="h-4 w-4 text-destructive" />
-              ) : undefined
-            }
-            className="text-destructive opacity-0 transition-opacity hover:text-destructive/80 focus-visible:opacity-100 group-hover:opacity-100"
+            icon={!removing ? <Trash2 className="h-4 w-4" /> : undefined}
+            className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
           >
             Remove
           </Button>
@@ -91,6 +88,7 @@ export function AdminManagementPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [adminToRemove, setAdminToRemove] = useState<AdminUser | null>(null);
 
   const {
     data: admins,
@@ -132,6 +130,7 @@ export function AdminManagementPage() {
   } = useForm<CreateAdminForm>({ resolver: zodResolver(createAdminSchema) });
 
   const handleRemove = (id: string) => {
+    setAdminToRemove(null);
     setRemoveError(null);
     setRemovingId(id);
     removeMutation.mutate(id);
@@ -172,7 +171,7 @@ export function AdminManagementPage() {
                 admin={admin}
                 currentUserId={user?.id}
                 currentUserCreatedBy={currentUserCreatedBy}
-                onRemove={handleRemove}
+                onRemove={() => setAdminToRemove(admin)}
                 removing={removingId === admin.id && removeMutation.isPending}
               />
             ))}
@@ -240,6 +239,25 @@ export function AdminManagementPage() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={adminToRemove !== null}
+        title="Remove admin?"
+        description={
+          adminToRemove && (
+            <>
+              <span className="font-medium text-foreground">
+                {adminToRemove.full_name || adminToRemove.email}
+              </span>{" "}
+              will immediately lose all platform admin access. They can only be
+              re-added by another admin.
+            </>
+          )
+        }
+        confirmLabel="Remove admin"
+        onConfirm={() => adminToRemove && handleRemove(adminToRemove.id)}
+        onClose={() => setAdminToRemove(null)}
+      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { DatePicker } from "@/shared/components/ui/DatePicker";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Panel } from "@/shared/components/ui/Panel";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { getErrorMessage, isoToIndianDate } from "@/shared/lib/utils";
 
 function todayIso(): string {
@@ -41,6 +42,10 @@ export function HolidaysPage() {
   const [session, setSession] = useState("2025-26");
   const [newDate, setNewDate] = useState(todayIso());
   const [name, setName] = useState("");
+  const [holidayToDelete, setHolidayToDelete] = useState<{
+    date: string;
+    name?: string | null;
+  } | null>(null);
 
   const { data } = useQuery({
     queryKey: ["attendance", "holidays", schoolName, session],
@@ -72,6 +77,7 @@ export function HolidaysPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance", "holidays"] });
       toast.success("Holiday removed");
+      setHolidayToDelete(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -159,9 +165,9 @@ export function HolidaysPage() {
                   </div>
                   <Button
                     size="sm"
-                    variant="ghost"
-                    onClick={() => deleteMutation.mutate(h.date)}
-                    icon={<Trash2 className="h-4 w-4 text-destructive" />}
+                    variant="danger-ghost"
+                    onClick={() => setHolidayToDelete(h)}
+                    icon={<Trash2 className="h-4 w-4" />}
                     className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                   >
                     Remove
@@ -172,6 +178,28 @@ export function HolidaysPage() {
           </ul>
         )}
       </Panel>
+
+      <ConfirmDialog
+        open={holidayToDelete !== null}
+        title="Remove holiday?"
+        description={
+          holidayToDelete && (
+            <>
+              <span className="font-medium text-foreground">
+                {holidayToDelete.name || "Holiday"}
+              </span>{" "}
+              on {holidayToDelete.date} will no longer be treated as a holiday —
+              attendance can be marked on that day again.
+            </>
+          )
+        }
+        confirmLabel="Remove holiday"
+        loading={deleteMutation.isPending}
+        onConfirm={() =>
+          holidayToDelete && deleteMutation.mutate(holidayToDelete.date)
+        }
+        onClose={() => setHolidayToDelete(null)}
+      />
     </div>
   );
 }
