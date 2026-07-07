@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useRef,
   useCallback,
+  useId,
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/shared/lib/utils";
@@ -24,7 +25,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     { label, error, options, placeholder, hint, className, id, ...props },
     ref,
   ) => {
-    const selectId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+    const reactId = useId();
+    const selectId = id ?? label?.toLowerCase().replace(/\s+/g, "-") ?? reactId;
+    const listboxId = `${reactId}-listbox`;
+    const labelId = `${reactId}-label`;
+    const optionId = (index: number) => `${reactId}-option-${index}`;
     const [isOpen, setIsOpen] = useState(false);
     const [displayValue, setDisplayValue] = useState("");
     const internalRef = useRef<HTMLSelectElement | null>(null);
@@ -174,6 +179,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
+            id={labelId}
             className={cn("text-sm font-medium leading-none", props.disabled && "cursor-not-allowed opacity-70")}
           >
             {label}
@@ -197,7 +203,17 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         {/* Custom UI */}
         <div
           ref={triggerRef}
-          tabIndex={0}
+          tabIndex={props.disabled ? -1 : 0}
+          role="combobox"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          aria-controls={isOpen ? listboxId : undefined}
+          aria-labelledby={label ? labelId : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-disabled={props.disabled || undefined}
+          aria-activedescendant={
+            isOpen && focusedIndex >= 0 ? optionId(focusedIndex) : undefined
+          }
           onClick={() => !props.disabled && setIsOpen(!isOpen)}
           onKeyDown={handleKeyDown}
           className={cn(
@@ -233,6 +249,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           createPortal(
             <div
               ref={menuRef}
+              id={listboxId}
+              role="listbox"
+              aria-labelledby={label ? labelId : undefined}
               style={{
                 position: "fixed",
                 top: pos.top,
@@ -247,6 +266,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
               {options.map((opt, index) => (
                 <div
                   key={opt.value}
+                  id={optionId(index)}
+                  role="option"
+                  aria-selected={internalRef.current?.value === opt.value}
                   ref={(el) => { optionsRef.current[index] = el; }}
                   title={opt.label}
                   className={cn(
