@@ -1,4 +1,5 @@
 import { Menu, Search } from "lucide-react";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -15,20 +16,24 @@ export function Header({ onMenuToggle }: HeaderProps) {
         />
       </div>
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          aria-label="Search pages and actions"
-        >
-          <Search className="h-5 w-5" />
-        </button>
-        <button
-          onClick={onMenuToggle}
-          className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          aria-label="Toggle menu"
-        >
-          <Menu className="h-6 w-6" />
-        </button>
+        <Tooltip content="Search" shortcut="Ctrl K" side="bottom">
+          <button
+            onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
+            className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            aria-label="Search pages and actions"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+        </Tooltip>
+        <Tooltip content="Toggle menu" side="bottom">
+          <button
+            onClick={onMenuToggle}
+            className="rounded-full p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            aria-label="Toggle menu"
+          >
+            <Menu className="h-6 w-6" />
+          </button>
+        </Tooltip>
       </div>
     </header>
   );
