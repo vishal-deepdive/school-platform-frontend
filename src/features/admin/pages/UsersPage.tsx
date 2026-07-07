@@ -27,6 +27,7 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 
 const ROLE_OPTIONS = [
   { value: "", label: "All roles" },
@@ -265,16 +266,18 @@ export function UsersPage() {
                           ) : (
                             <div className="flex items-center justify-end gap-1.5">
                               {u.is_active && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={busy}
-                                  icon={<LogOut className="h-4 w-4" />}
-                                  onClick={() => setConfirm({ user: u, action: "revoke" })}
-                                  title="Revoke sessions (force logout)"
-                                >
-                                  <span className="sr-only">Revoke sessions</span>
-                                </Button>
+                                <Tooltip content="Revoke sessions (force logout)" side="top">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={busy}
+                                    icon={<LogOut className="h-4 w-4" />}
+                                    onClick={() => setConfirm({ user: u, action: "revoke" })}
+                                    aria-label="Revoke sessions (force logout)"
+                                  >
+                                    <span className="sr-only">Revoke sessions</span>
+                                  </Button>
+                                </Tooltip>
                               )}
                               {u.is_active ? (
                                 <Button
