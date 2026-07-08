@@ -97,8 +97,7 @@ export function Footer() {
             reserved.
           </div>
           <Link
-            // to="/onboarding/apply"
-            to="/"
+            to="/onboarding/apply"
             className="group inline-flex items-center gap-1 text-sm font-medium text-primary"
           >
             <span className="underline-offset-4 group-hover:underline">
