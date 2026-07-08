@@ -5,31 +5,60 @@ import {
   ChevronDown,
   Copy,
   FileText,
+  Quote,
   Sparkles,
   ThumbsUp,
   ThumbsDown,
   Bookmark,
   BookmarkCheck,
+  Lightbulb,
+  Languages,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Button } from "@/shared/components/ui/Button";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Modal } from "@/shared/components/ui/Modal";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { cn } from "@/shared/lib/utils";
 import type { ChatMessage, QASource } from "@/features/rag/types";
 
 const PREVIEW_COUNT = 3;
 
-function SourceCard({ src, index }: { src: QASource; index: number }) {
-  const label = src.chapter_name || src.title || src.file || "Source";
+function sourceLabel(src: QASource): string {
+  return src.chapter_name || src.title || src.file || "Source";
+}
+
+function SourceCard({
+  src,
+  index,
+  onView,
+}: {
+  src: QASource;
+  index: number;
+  onView?: () => void;
+}) {
+  const label = sourceLabel(src);
   const subtitle = [
     src.title && src.chapter_name ? src.title : null,
     src.page ? `p. ${src.page}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
+  const clickable = !!src.snippet && !!onView;
 
   return (
-    <div className="flex min-w-[150px] max-w-[220px] flex-col gap-1 rounded-lg border border-border bg-background p-2.5 text-xs transition-colors hover:border-primary/40 hover:bg-primary/5">
+    <button
+      type="button"
+      onClick={clickable ? onView : undefined}
+      aria-disabled={!clickable}
+      title={clickable ? "View the passage this cites" : undefined}
+      className={cn(
+        "flex min-w-[150px] max-w-[220px] flex-col gap-1 rounded-lg border border-border bg-background p-2.5 text-left text-xs transition-colors",
+        clickable
+          ? "cursor-pointer hover:border-primary/40 hover:bg-primary/5 active:scale-[0.99]"
+          : "cursor-default",
+      )}
+    >
       <div className="flex items-start gap-2">
         <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
           {index + 1}
@@ -43,17 +72,25 @@ function SourceCard({ src, index }: { src: QASource; index: number }) {
           {subtitle}
         </span>
       )}
-      {src.similarity && (
-        <span className="pl-7 text-[10px] font-medium text-primary">
-          {src.similarity} match
-        </span>
-      )}
-    </div>
+      <span className="flex items-center gap-2 pl-7">
+        {src.similarity && (
+          <span className="text-[10px] font-medium text-primary">
+            {src.similarity} match
+          </span>
+        )}
+        {clickable && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-muted-foreground">
+            <Quote className="h-2.5 w-2.5" /> passage
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 
 function SourcesPanel({ sources }: { sources: QASource[] }) {
   const [expanded, setExpanded] = useState(false);
+  const [preview, setPreview] = useState<QASource | null>(null);
   const hasMore = sources.length > PREVIEW_COUNT;
   const visible = expanded ? sources : sources.slice(0, PREVIEW_COUNT);
 
@@ -83,7 +120,7 @@ function SourcesPanel({ sources }: { sources: QASource[] }) {
         )}
       >
         {visible.map((src, i) => (
-          <SourceCard key={i} src={src} index={i} />
+          <SourceCard key={i} src={src} index={i} onView={() => setPreview(src)} />
         ))}
 
         {!expanded && hasMore && (
@@ -96,6 +133,40 @@ function SourcesPanel({ sources }: { sources: QASource[] }) {
           </button>
         )}
       </div>
+
+      <Modal
+        open={!!preview}
+        onClose={() => setPreview(null)}
+        title={preview ? sourceLabel(preview) : "Source"}
+        description={
+          preview
+            ? [preview.title && preview.chapter_name ? preview.title : null, preview.page ? `Page ${preview.page}` : null]
+                .filter(Boolean)
+                .join(" · ") || undefined
+            : undefined
+        }
+        icon={<Quote className="h-5 w-5" />}
+        size="lg"
+      >
+        {preview && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {preview.similarity && <Badge variant="info">{preview.similarity} match</Badge>}
+              {preview.file && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <FileText className="h-3.5 w-3.5" /> {preview.file}
+                </span>
+              )}
+            </div>
+            <blockquote className="rounded-lg border-l-2 border-primary/40 bg-muted/40 px-4 py-3 text-sm leading-relaxed text-foreground">
+              {preview.snippet}
+            </blockquote>
+            <p className="text-xs text-muted-foreground">
+              This is the textbook passage the answer drew from.
+            </p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -109,6 +180,10 @@ interface ChatMessageBubbleProps {
   /** Whether this answer is bookmarked. */
   isSaved?: boolean;
   onToggleSave?: () => void;
+  /** Re-ask the same question for a simpler explanation. */
+  onExplainSimpler?: () => void;
+  /** Re-ask the same question, answered in a regional language. */
+  onTranslate?: () => void;
 }
 
 export const ChatMessageBubble = memo(function ChatMessageBubble({
@@ -118,6 +193,8 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   onFeedback,
   isSaved,
   onToggleSave,
+  onExplainSimpler,
+  onTranslate,
 }: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
 
@@ -251,6 +328,36 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                   )}
                 </button>
               </Tooltip>
+            )}
+
+            {(onExplainSimpler || onTranslate) && (
+              <span className="mx-0.5 h-4 w-px bg-border" aria-hidden />
+            )}
+
+            {onExplainSimpler && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onExplainSimpler}
+                icon={<Lightbulb className="h-3 w-3" />}
+                className="px-1.5 py-0.5 text-muted-foreground"
+              >
+                Explain simpler
+              </Button>
+            )}
+
+            {onTranslate && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onTranslate}
+                icon={<Languages className="h-3 w-3" />}
+                className="px-1.5 py-0.5 text-muted-foreground"
+              >
+                Hindi
+              </Button>
             )}
           </div>
         )}
