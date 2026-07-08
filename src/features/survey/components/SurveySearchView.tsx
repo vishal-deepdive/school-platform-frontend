@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
@@ -36,7 +36,6 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Table } from "@/shared/components/ui/Table";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { SurveyChart } from "./SurveyChart";
 import { SheetSelector } from "./SheetSelector";
 import type {
@@ -173,31 +172,11 @@ export function SurveySearchView() {
   // "All sheets" checked. A background refetch that returns the same set leaves
   // the user's own choices untouched.
   const seededKeyRef = useRef<string>("");
+  const { isAdmin, schoolName } = useActiveSchool();
 
-  const { isAdmin, schoolParam } = useActiveSchool();
-
-  // ── Admin school scoping ──────────────────────────────────────────────────
-  // Admins search one school at a time and may only pick sheets within it.
-  const [adminSchool, setAdminSchool] = useState("");
-  const { data: schoolsData, isLoading: isLoadingSchools } = useQuery({
-    queryKey: ["schools", "list"],
-    queryFn: () => authApi.searchSchools(""),
-    enabled: isAdmin,
-  });
-  const schoolOptions = useMemo(
-    () =>
-      (schoolsData ?? []).map((s) => ({
-        label: s.name,
-        value: s.name,
-        sublabel: [s.address, s.city, s.state, s.pin_code]
-          .filter(Boolean)
-          .join(", "),
-      })),
-    [schoolsData],
-  );
   // The school scope sent to the backend / used to list sheets. Non-admins are
   // always locked to their own school (undefined → backend uses own school).
-  const schoolParam = isAdmin ? adminSchool.trim() || undefined : undefined;
+  const schoolParam = isAdmin ? schoolName || undefined : undefined;
   const adminReady = !isAdmin || !!schoolParam;
 
   // Switching school drops the previous school's selection; it re-seeds to "all"
@@ -268,6 +247,8 @@ export function SurveySearchView() {
       const allSelected =
         availableSheetIds.length > 0 &&
         availableSheetIds.every((id) => selectedSourceIds.includes(id));
+      
+      const source_ids = allSelected ? undefined : selectedSourceIds;
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -292,8 +273,8 @@ export function SurveySearchView() {
             // Empty selection = "All sheets" → omit the filter entirely so the
             // backend searches every accessible row (including legacy rows that
             // predate sheet-sources and have a NULL source_id).
-            source_ids: selectedSourceIds.length ? selectedSourceIds : undefined,
-            school_name: isAdmin ? schoolParam.school_name : undefined,
+            source_ids,
+            school_name: isAdmin ? schoolParam : undefined,
           },
           controller.signal,
         )) {
@@ -326,7 +307,7 @@ export function SurveySearchView() {
         abortRef.current = null;
       }
     },
-    [queueToken, flushPending, selectedSourceIds, isAdmin, schoolParam.school_name],
+    [queueToken, flushPending, selectedSourceIds, availableSheetIds, isAdmin, schoolParam],
   );
 
   const hasResult = intent !== null;
@@ -366,7 +347,8 @@ export function SurveySearchView() {
             onChange={setSelectedSourceIds}
             disabled={streaming}
             showSchoolName={isAdmin}
-            schoolName={isAdmin ? schoolParam.school_name : undefined}
+            schoolName={isAdmin ? schoolParam : undefined}
+            onSheetsLoaded={handleSheetsLoaded}
           />
 
           <div className="relative">

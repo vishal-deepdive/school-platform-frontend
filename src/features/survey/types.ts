@@ -24,8 +24,6 @@ export interface SearchRequest {
   filters?: Record<string, unknown>;
   /** Restrict the search to these survey source (sheet) ids. */
   source_ids?: string[];
-  /** School name context (required for admins) */
-  school_name?: string;
 }
 
 export interface ChartData {

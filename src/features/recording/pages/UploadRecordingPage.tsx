@@ -273,7 +273,7 @@ export function UploadRecordingPage() {
 
     // Enforce the server's hard limit up front so the user gets an instant,
     // actionable error instead of a 413 after a long upload.
-    if (!withinLimit) {
+    if (toUpload.size > MAX_UPLOAD_BYTES) {
       toast.error(
         `This recording is ${formatFileSize(toUpload.size)} after optimization, ` +
           `over the ${formatFileSize(MAX_UPLOAD_BYTES)} limit. ` +

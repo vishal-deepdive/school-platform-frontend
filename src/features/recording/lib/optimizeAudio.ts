@@ -42,6 +42,15 @@ export const MAX_UPLOAD_BYTES = 500 * 1024 * 1024; // 500 MB
  */
 const MAX_DECODE_BYTES = 300 * 1024 * 1024; // 300 MB
 
+export interface OptimizeProgress {
+  stage: string;
+  percent: number | null;
+}
+
+export type ProgressCb = (progress: OptimizeProgress) => void;
+
+const yieldToBrowser = () => new Promise((resolve) => setTimeout(resolve, 0));
+
 export interface OptimizeResult {
   /** The file to upload — the optimized WAV, or the original when skipped. */
   file: File;
@@ -165,7 +174,6 @@ export async function optimizeAudioForUpload(
     optimized: false,
     originalBytes: input.size,
     outputBytes: input.size,
-    withinUploadLimit: input.size <= MAX_UPLOAD_BYTES,
   });
 
   const AudioCtx = getAudioContextCtor();
@@ -219,11 +227,10 @@ export async function optimizeAudioForUpload(
       ? Math.round(decoded.duration)
       : undefined;
 
-    onStage?.("Optimizing for speech…");
-    const frameCount = Math.max(
-      1,
-      Math.ceil(decoded.duration * TARGET_SAMPLE_RATE),
+    const wav = await encodeWav16Mono(samples, TARGET_SAMPLE_RATE, (percent) =>
+      onProgress?.({ stage: "Encoding audio…", percent }),
     );
+
     // Only adopt the conversion when it genuinely reduces bandwidth.
     if (wav.byteLength >= input.size) {
       return { ...passthrough(), durationSeconds };
