@@ -100,7 +100,7 @@ export const AuthInput = React.forwardRef<
         aria-invalid={!!error}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
         className={cn(
-          "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-all placeholder:text-muted-foreground/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
+          "flex min-w-0 h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-all placeholder:text-muted-foreground/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
           error &&
             "border-destructive focus:border-destructive focus:ring-destructive/20",
           className,
@@ -148,7 +148,7 @@ export const AuthPasswordInput = React.forwardRef<
           aria-invalid={!!error}
           aria-describedby={error ? errorId : hint ? hintId : undefined}
           className={cn(
-            "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-all placeholder:text-muted-foreground/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 pe-10",
+            "flex min-w-0 h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-all placeholder:text-muted-foreground/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 pe-10",
             error &&
               "border-destructive focus:border-destructive focus:ring-destructive/20",
             className,
@@ -287,7 +287,7 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
           aria-describedby={error ? errorId : hint ? hintId : undefined}
           onClick={() => setIsOpen((o) => !o)}
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer",
+            "flex min-w-0 h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer",
             "text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200",
             "hover:border-primary/50 focus-visible:bg-accent focus-visible:outline-none",
             isOpen && "ring-2 ring-primary/20 border-primary",
@@ -330,7 +330,7 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
                 )}
                 onClick={() => handleSelect(opt.value, opt.label)}
               >
-                {opt.label || " "}
+                <span className="truncate">{opt.label || " "}</span>
               </div>
             ))}
           </div>

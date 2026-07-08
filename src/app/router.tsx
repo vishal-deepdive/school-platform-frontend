@@ -62,6 +62,12 @@ const NotesPage = lazyPage(rag, "NotesPage");
 const RagAuditPage = lazyPage(rag, "RagAuditPage");
 const RagDocumentsPage = lazyPage(rag, "RagDocumentsPage");
 const RagInsightsPage = lazyPage(rag, "RagInsightsPage");
+const PracticePage = lazyPage(rag, "PracticePage");
+const AssignmentsPage = lazyPage(rag, "AssignmentsPage");
+const FlashcardsPage = lazyPage(rag, "FlashcardsPage");
+const LessonPlanPage = lazyPage(rag, "LessonPlanPage");
+const FeedbackReviewPage = lazyPage(rag, "FeedbackReviewPage");
+const ContentRequestsPage = lazyPage(rag, "ContentRequestsPage");
 
 const survey = () => import("@/features/survey");
 const SurveyPage = lazyPage(survey, "SurveyPage");
@@ -208,9 +214,15 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="qa" replace /> },
               { path: "qa", element: <RoleRoute><QAPage /></RoleRoute> },
+              { path: "practice", element: <RoleRoute><PracticePage /></RoleRoute> },
+              { path: "flashcards", element: <RoleRoute><FlashcardsPage /></RoleRoute> },
               { path: "questions", element: <RoleRoute><QuestionsPage /></RoleRoute> },
+              { path: "assignments", element: <RoleRoute><AssignmentsPage /></RoleRoute> },
               { path: "notes", element: <RoleRoute><NotesPage /></RoleRoute> },
+              { path: "lesson-plan", element: <RoleRoute><LessonPlanPage /></RoleRoute> },
               { path: "insights", element: <RoleRoute><RagInsightsPage /></RoleRoute> },
+              { path: "requests", element: <RoleRoute><ContentRequestsPage /></RoleRoute> },
+              { path: "review", element: <RoleRoute><FeedbackReviewPage /></RoleRoute> },
               { path: "audit", element: <RoleRoute><RagAuditPage /></RoleRoute> },
               { path: "documents", element: <RoleRoute><RagDocumentsPage /></RoleRoute> },
             ],

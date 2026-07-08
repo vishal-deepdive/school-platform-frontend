@@ -11,6 +11,10 @@ export interface RagFilters {
 export interface QARequest {
   query: string;
   filters?: RagFilters;
+  /** 'simpler' re-explains at a lower reading level. */
+  explain_mode?: "simpler";
+  /** Answer in this language (e.g. "Hindi"). Defaults to English. */
+  language?: string;
 }
 
 export interface QASource {
@@ -22,6 +26,10 @@ export interface QASource {
   page?: string;
   /** Pre-formatted similarity percentage (e.g. "82%"). */
   similarity?: string;
+  /** Excerpt of the grounding passage — powers the "cite & jump" source preview. */
+  snippet?: string | null;
+  /** Provenance document id, when the chunk is linked to an uploaded document. */
+  document_id?: string | null;
 }
 
 /** A single message in the Q&A chat transcript. */
@@ -270,4 +278,319 @@ export interface DocumentChunksResponse {
   document_id: string;
   total: number;
   chunks: DocumentChunk[];
+}
+
+// ── Learning loop: practice / assignments ───────────────────────────────────
+
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  /** Present only when the answer key is visible (teacher / after submit). */
+  answer_index?: number | null;
+  explanation?: string | null;
+  topic?: string | null;
+}
+
+export interface GenerateQuizRequest {
+  filters: RagFilters;
+  difficulty: Difficulty;
+  num_questions: number;
+  /** Optional sub-topic focus (weak-topic remediation). */
+  topic?: string;
+}
+
+export type AssignmentScoring = "last" | "best";
+
+export interface GenerateQuizResponse {
+  questions: QuizQuestion[];
+}
+
+export type AssignmentKind = "assignment" | "self_quiz";
+
+export interface CreateAssignmentRequest {
+  title: string;
+  kind: AssignmentKind;
+  class_level?: string;
+  subject?: string;
+  chapter_name?: string;
+  difficulty?: Difficulty;
+  questions: QuizQuestion[];
+  filters?: RagFilters;
+  due_at?: string | null;
+  /** null = unlimited retakes. */
+  attempts_allowed?: number | null;
+  scoring?: AssignmentScoring;
+  allow_late?: boolean;
+  /** null = untimed. */
+  time_limit_seconds?: number | null;
+}
+
+export interface AssignmentSummary {
+  id: string;
+  kind: AssignmentKind;
+  title: string;
+  class_level?: string | null;
+  subject?: string | null;
+  chapter_name?: string | null;
+  difficulty?: string | null;
+  num_questions: number;
+  status: string;
+  due_at?: string | null;
+  created_at?: string | null;
+  created_by_name?: string | null;
+  // Attempt policy + pacing
+  attempts_allowed?: number | null;
+  scoring?: AssignmentScoring | null;
+  allow_late?: boolean | null;
+  time_limit_seconds?: number | null;
+  // Student context
+  submitted?: boolean | null;
+  my_score?: number | null;
+  my_total?: number | null;
+  my_percentage?: number | null;
+  my_attempt_count?: number | null;
+  my_is_late?: boolean | null;
+  // Teacher context
+  submission_count?: number | null;
+  avg_percentage?: number | null;
+}
+
+export interface AssignmentListResponse {
+  items: AssignmentSummary[];
+  total: number;
+}
+
+export interface PerQuestionResult {
+  question_id: string;
+  question: string;
+  options: string[];
+  topic?: string | null;
+  selected_index?: number | null;
+  answer_index: number;
+  correct: boolean;
+  explanation?: string | null;
+}
+
+export interface SubmissionResult {
+  submission_id: string;
+  score: number;
+  total: number;
+  percentage: number;
+  attempt_count: number;
+  is_late?: boolean;
+  submitted_at?: string | null;
+  results: PerQuestionResult[];
+}
+
+export interface AssignmentDetail {
+  id: string;
+  kind: AssignmentKind;
+  title: string;
+  class_level?: string | null;
+  subject?: string | null;
+  chapter_name?: string | null;
+  difficulty?: string | null;
+  num_questions: number;
+  status: string;
+  due_at?: string | null;
+  created_at?: string | null;
+  created_by_name?: string | null;
+  attempts_allowed?: number | null;
+  scoring?: AssignmentScoring | null;
+  allow_late?: boolean | null;
+  time_limit_seconds?: number | null;
+  can_view_answers: boolean;
+  can_attempt?: boolean;
+  questions: QuizQuestion[];
+  my_submission?: SubmissionResult | null;
+}
+
+export interface SubmitAnswer {
+  question_id: string;
+  selected_index?: number | null;
+  /** Approx. time attributed to this question (ms, best-effort). */
+  time_ms?: number | null;
+}
+
+export interface SubmitAssignmentRequest {
+  answers: SubmitAnswer[];
+  time_spent_seconds?: number;
+}
+
+export interface QuestionStat {
+  question_id: string;
+  question: string;
+  topic?: string | null;
+  correct_count: number;
+  total_count: number;
+  accuracy_pct?: number | null;
+  avg_time_seconds?: number | null;
+}
+
+export interface TopicStat {
+  topic: string;
+  correct: number;
+  total: number;
+  accuracy_pct?: number | null;
+}
+
+export interface StudentResultRow {
+  student_id: string;
+  student_name?: string | null;
+  score: number;
+  total: number;
+  percentage: number;
+  attempt_count: number;
+  submitted_at?: string | null;
+}
+
+export interface AssignmentResultsResponse {
+  assignment: AssignmentSummary;
+  submission_count: number;
+  avg_percentage?: number | null;
+  question_stats: QuestionStat[];
+  weak_topics: TopicStat[];
+  students: StudentResultRow[];
+}
+
+// ── Flashcards ──────────────────────────────────────────────────────────────
+
+export interface Flashcard {
+  id: string;
+  front: string;
+  back: string;
+  hint?: string | null;
+}
+
+export interface GenerateFlashcardsRequest {
+  filters: RagFilters;
+  num_cards: number;
+  title?: string;
+  /** Optional sub-topic focus (weak-topic remediation). */
+  topic?: string;
+}
+
+export interface FlashcardDeckSummary {
+  id: string;
+  title: string;
+  class_level?: string | null;
+  subject?: string | null;
+  chapter_name?: string | null;
+  card_count: number;
+  created_at?: string | null;
+  created_by_name?: string | null;
+  /** Cards the current user has mastered (server-side progress). */
+  mastered_count?: number;
+}
+
+export interface FlashcardDeckListResponse {
+  items: FlashcardDeckSummary[];
+  total: number;
+}
+
+export interface FlashcardDeckDetail extends FlashcardDeckSummary {
+  cards: Flashcard[];
+  mastered_card_ids?: string[];
+}
+
+export interface FlashcardProgressResponse {
+  deck_id: string;
+  mastered_card_ids: string[];
+}
+
+// ── Lesson plan ─────────────────────────────────────────────────────────────
+
+export interface LessonPlanRequest {
+  filters: RagFilters;
+}
+
+// ── Content requests ────────────────────────────────────────────────────────
+
+export type ContentRequestStatus =
+  | "open"
+  | "in_progress"
+  | "fulfilled"
+  | "dismissed";
+
+export interface CreateContentRequestRequest {
+  class_level?: string;
+  subject?: string;
+  chapter_name?: string;
+  note?: string;
+}
+
+export interface ContentRequestItem {
+  id: string;
+  class_level?: string | null;
+  subject?: string | null;
+  chapter_name?: string | null;
+  note?: string | null;
+  status: ContentRequestStatus;
+  requested_by_name?: string | null;
+  resolved_by_name?: string | null;
+  created_at?: string | null;
+  resolved_at?: string | null;
+}
+
+export interface ContentRequestListResponse {
+  items: ContentRequestItem[];
+  total: number;
+  open_count: number;
+}
+
+// ── Feedback review queue ───────────────────────────────────────────────────
+
+export interface FeedbackItem {
+  id: string;
+  rating: number;
+  question?: string | null;
+  answer?: string | null;
+  comment?: string | null;
+  filters?: Record<string, unknown> | null;
+  sources?: Record<string, unknown>[] | null;
+  user_name?: string | null;
+  created_at?: string | null;
+}
+
+export interface FeedbackListResponse {
+  items: FeedbackItem[];
+  total: number;
+  up: number;
+  down: number;
+}
+
+// ── Usage / adoption analytics ──────────────────────────────────────────────
+
+export interface UsageEventStat {
+  event_type: string;
+  count: number;
+}
+
+export interface UsageDailyPoint {
+  date: string;
+  count: number;
+}
+
+export interface UsageSubjectStat {
+  subject: string;
+  count: number;
+}
+
+export interface UsageTopUser {
+  user_id?: string | null;
+  user_name?: string | null;
+  role?: string | null;
+  count: number;
+}
+
+export interface UsageAnalyticsResponse {
+  scope: "platform" | "school";
+  total_events: number;
+  active_users: number;
+  by_event: UsageEventStat[];
+  by_day: UsageDailyPoint[];
+  by_subject: UsageSubjectStat[];
+  top_users: UsageTopUser[];
+  window_days: number;
 }

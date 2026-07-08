@@ -134,7 +134,10 @@ export function QAPage() {
     setAutoScroll(true);
   }, []);
 
-  const runQuery = async (query: string) => {
+  const runQuery = async (
+    query: string,
+    opts?: { explain_mode?: "simpler"; language?: string },
+  ) => {
     if (streamingRef.current) return;
     streamingRef.current = true;
 
@@ -155,7 +158,7 @@ export function QAPage() {
     const controller = begin();
 
     try {
-      for await (const event of ragApi.qaStream({ query, filters }, controller.signal)) {
+      for await (const event of ragApi.qaStream({ query, filters, ...opts }, controller.signal)) {
         if (event.type === "token") {
           queueToken(event.content);
         } else if (event.type === "done") {
@@ -185,7 +188,7 @@ export function QAPage() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (isStreaming) return;
     const result = qaSchema.safeParse({ query: input.trim() });
     if (!result.success) {
@@ -194,7 +197,9 @@ export function QAPage() {
     }
     setInput("");
     await runQuery(result.data.query);
-  };
+    // runQuery is a stable closure over store setters; input/isStreaming drive it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming, input]);
 
   // Re-run the most recent question after a failed answer.
   const handleRetry = () => {
@@ -216,9 +221,6 @@ export function QAPage() {
         void handleSend();
       }
     },
-    // handleSend re-creates when input/isStreaming change, but the
-    // ref-like closure inside ensures we always call the latest version.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [handleSend],
   );
 
@@ -485,6 +487,22 @@ export function QAPage() {
                                 msg.content,
                                 msg.sources,
                               )
+                          : undefined
+                      }
+                      onExplainSimpler={
+                        msg.role === "assistant" && !msg.isError && question
+                          ? () => {
+                              if (!isStreaming)
+                                void runQuery(question, { explain_mode: "simpler" });
+                            }
+                          : undefined
+                      }
+                      onTranslate={
+                        msg.role === "assistant" && !msg.isError && question
+                          ? () => {
+                              if (!isStreaming)
+                                void runQuery(question, { language: "Hindi" });
+                            }
                           : undefined
                       }
                     />

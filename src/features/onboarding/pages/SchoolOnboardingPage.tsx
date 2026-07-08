@@ -470,7 +470,7 @@ export function SchoolOnboardingPage() {
   const StepIcon = stepInfo.icon;
 
   return (
-    <div className="mx-auto grid w-full max-w-[440px] lg:max-w-[640px] gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto grid w-full max-w-[500px] lg:max-w-[650px] gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
           <Building2 className="h-7 w-7 text-primary" />

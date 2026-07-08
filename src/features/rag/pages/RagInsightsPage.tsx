@@ -13,6 +13,9 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
+  Activity,
+  Zap,
+  UserCheck,
 } from "lucide-react";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Panel } from "@/shared/components/ui/Panel";
@@ -22,7 +25,7 @@ import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { useRagAnalytics } from "@/features/rag/hooks/useRag";
+import { useRagAnalytics, useUsageAnalytics } from "@/features/rag/hooks/useRag";
 
 /** A horizontal breakdown list with a proportional fill bar per row. */
 function BreakdownList({
@@ -376,8 +379,125 @@ export function RagInsightsPage() {
               </ul>
             )}
           </Panel>
+
+          {/* Adoption analytics */}
+          <AdoptionSection />
         </>
       )}
+    </div>
+  );
+}
+
+const EVENT_LABELS: Record<string, string> = {
+  qa: "Doubts asked",
+  questions: "Worksheets",
+  notes: "Smart notes",
+  quiz: "Practice generated",
+  self_quiz_create: "Self-quizzes made",
+  assignment_create: "Assignments set",
+  practice_submit: "Practice attempts",
+  self_quiz_submit: "Self-quiz attempts",
+  flashcards: "Flashcard decks",
+  lesson_plan: "Lesson plans",
+};
+
+/** Trailing-30-day RAG adoption: totals, by-feature/day breakdown, top users. */
+function AdoptionSection() {
+  const { data, isLoading } = useUsageAnalytics(30);
+
+  if (isLoading) {
+    return <div className="h-40 animate-pulse rounded-xl bg-muted/60" />;
+  }
+  if (!data || data.total_events === 0) return null;
+
+  const eventRows = data.by_event.map((e) => ({
+    label: EVENT_LABELS[e.event_type] ?? e.event_type,
+    count: e.count,
+  }));
+  const maxDay = Math.max(...data.by_day.map((d) => d.count), 1);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-2 pt-2">
+        <Activity className="h-4 w-4 text-primary" />
+        <h2 className="font-display text-lg font-semibold text-foreground">Adoption</h2>
+        <Badge variant="default">Last {data.window_days} days</Badge>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <StatCard
+          label="Total activity"
+          value={data.total_events.toLocaleString()}
+          icon={<Zap className="h-5 w-5" />}
+          color="primary"
+          description="Actions across all Study Assistant tools"
+        />
+        <StatCard
+          label="Active users"
+          value={data.active_users.toLocaleString()}
+          icon={<UserCheck className="h-5 w-5" />}
+          color="success"
+          description="Distinct people using it"
+        />
+        <StatCard
+          label="Features used"
+          value={data.by_event.length}
+          icon={<Activity className="h-5 w-5" />}
+          color="info"
+        />
+      </div>
+
+      {/* Activity over time */}
+      <Panel icon={<Activity className="h-4 w-4" />} title="Activity over time">
+        <div className="flex h-28 items-end gap-1">
+          {data.by_day.map((d) => (
+            <div
+              key={d.date}
+              className="group relative flex-1 rounded-t bg-primary/70 transition-colors hover:bg-primary"
+              style={{ height: `${Math.max((d.count / maxDay) * 100, 3)}%` }}
+              title={`${d.date}: ${d.count}`}
+            />
+          ))}
+        </div>
+      </Panel>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Panel flush icon={<Zap className="h-4 w-4" />} title="By feature">
+          <BreakdownList rows={eventRows} total={data.total_events} emptyLabel="No activity yet." />
+        </Panel>
+
+        <Panel flush icon={<UserCheck className="h-4 w-4" />} title="Most active users">
+          {data.top_users.length === 0 ? (
+            <p className="px-4 py-4 text-sm text-muted-foreground md:px-5">No users yet.</p>
+          ) : (
+            <ul className="divide-y divide-border/50">
+              {data.top_users.map((u, i) => (
+                <li
+                  key={u.user_id ?? i}
+                  className="flex items-center justify-between gap-3 px-4 py-3 md:px-5"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary tabular-nums">
+                      {i + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {u.user_name || "User"}
+                      </p>
+                      {u.role && (
+                        <p className="text-xs capitalize text-muted-foreground">{u.role}</p>
+                      )}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                    {u.count.toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
     </div>
   );
 }

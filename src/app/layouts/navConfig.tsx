@@ -28,6 +28,13 @@ import {
   User,
   AudioLines,
   SmilePlus,
+  Dumbbell,
+  Layers,
+  GraduationCap,
+  Inbox,
+  MessageSquareWarning,
+  Building,
+  UserCog,
 } from "lucide-react";
 
 export interface NavItem {
@@ -153,14 +160,34 @@ export const navItems: NavItem[] = [
         fullBleed: true,
       },
       {
+        label: "Practice",
+        href: "/rag/practice",
+        icon: <Dumbbell className="h-4 w-4" />,
+      },
+      {
+        label: "Flashcards",
+        href: "/rag/flashcards",
+        icon: <Layers className="h-4 w-4" />,
+      },
+      {
         label: "Practice Test Generator",
         href: "/rag/questions",
         icon: <FileQuestion className="h-4 w-4" />,
       },
       {
+        label: "Assignments",
+        href: "/rag/assignments",
+        icon: <ClipboardList className="h-4 w-4" />,
+      },
+      {
         label: "Smart Notes",
         href: "/rag/notes",
         icon: <StickyNote className="h-4 w-4" />,
+      },
+      {
+        label: "Lesson Plans",
+        href: "/rag/lesson-plan",
+        icon: <GraduationCap className="h-4 w-4" />,
       },
       {
         label: "Textbook Library",
@@ -176,6 +203,16 @@ export const navItems: NavItem[] = [
         label: "Content Coverage",
         href: "/rag/audit",
         icon: <Gauge className="h-4 w-4" />,
+      },
+      {
+        label: "Content Requests",
+        href: "/rag/requests",
+        icon: <Inbox className="h-4 w-4" />,
+      },
+      {
+        label: "Answer Reviews",
+        href: "/rag/review",
+        icon: <MessageSquareWarning className="h-4 w-4" />,
       },
     ],
   },
@@ -225,6 +262,26 @@ export const adminNavItems: NavItem[] = [
         label: "School Applications",
         href: "/admin/onboarding",
         icon: <ClipboardList className="h-4 w-4" />,
+      },
+      {
+        label: "Schools",
+        href: "/admin/schools",
+        icon: <Building className="h-4 w-4" />,
+      },
+      {
+        label: "Users",
+        href: "/admin/users",
+        icon: <Users className="h-4 w-4" />,
+      },
+      {
+        label: "Admins",
+        href: "/admin/admins",
+        icon: <UserCog className="h-4 w-4" />,
+      },
+      {
+        label: "Audit Log",
+        href: "/admin/audit-log",
+        icon: <History className="h-4 w-4" />,
       },
       {
         label: "Prompts",
