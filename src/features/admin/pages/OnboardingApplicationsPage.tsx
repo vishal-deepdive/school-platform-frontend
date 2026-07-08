@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Inbox } from "lucide-react";
+import { Inbox, Clock, Hourglass, CheckCircle2, Timer } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { formatDate, getErrorMessage } from "@/shared/lib/utils";
+import { formatDate, getErrorMessage, cn } from "@/shared/lib/utils";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
@@ -31,6 +31,65 @@ const FILTER_OPTIONS: { value: string; label: string }[] = [
 
 const PAGE_LIMIT = 50;
 
+// Aging thresholds for applications sitting in the review queue.
+const AGING_WARN_DAYS = 3;
+const AGING_CRITICAL_DAYS = 7;
+
+function daysSince(iso: string | null): number | null {
+  if (!iso) return null;
+  const ms = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(ms) || ms < 0) return null;
+  return Math.floor(ms / 86_400_000);
+}
+
+/** "Waiting Nd" chip for queue rows that are actionable by the admin —
+ *  turns amber past the SLA warning threshold, red when critical. */
+function AgingChip({ appliedAt }: { appliedAt: string | null }) {
+  const days = daysSince(appliedAt);
+  if (days === null || days < 1) return null;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+        days >= AGING_CRITICAL_DAYS
+          ? "bg-red-100 text-red-700"
+          : days >= AGING_WARN_DAYS
+            ? "bg-amber-100 text-amber-700"
+            : "bg-muted text-muted-foreground",
+      )}
+      title={`In queue since ${appliedAt ? formatDate(appliedAt) : "—"}`}
+    >
+      <Hourglass className="h-3 w-3" aria-hidden />
+      Waiting {days}d
+    </span>
+  );
+}
+
+function StatTile({
+  icon,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string | number;
+  hint?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card px-4 py-3 transition-shadow hover:shadow-sm">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        {icon}
+        <span className="text-xs font-medium">{label}</span>
+      </div>
+      <p className="mt-1 text-xl font-semibold text-foreground tabular-nums">
+        {value}
+      </p>
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 export function OnboardingApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("email_verified");
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,25 +100,75 @@ export function OnboardingApplicationsPage() {
     setPage(1);
   }, [statusFilter, debouncedSearch]);
 
+  // The review queue is triaged oldest-first so the longest-waiting school is
+  // always at the top; history views stay newest-first.
+  const sort = statusFilter === "email_verified" ? "oldest" : "newest";
+
   const {
     data: applications,
     isLoading,
     error,
     isPlaceholderData,
   } = useQuery({
-    queryKey: ["onboarding-applications", statusFilter, debouncedSearch, page],
+    queryKey: ["onboarding-applications", statusFilter, debouncedSearch, page, sort],
     queryFn: () =>
       adminApi.listApplications(
         statusFilter || undefined,
         debouncedSearch || undefined,
         PAGE_LIMIT,
         (page - 1) * PAGE_LIMIT,
+        sort,
       ),
     placeholderData: (prev) => prev,
   });
 
+  const { data: stats } = useQuery({
+    queryKey: ["onboarding-stats"],
+    queryFn: adminApi.getOnboardingStats,
+  });
+
+  const oldestWaitingDays = daysSince(stats?.oldest_needs_review_at ?? null);
+
   return (
     <div className="space-y-6">
+      {/* ── KPI strip ── */}
+      {stats && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <StatTile
+            icon={<Inbox className="h-3.5 w-3.5" aria-hidden />}
+            label="Needs review"
+            value={stats.needs_review}
+            hint={
+              oldestWaitingDays !== null && oldestWaitingDays >= 1
+                ? `Oldest waiting ${oldestWaitingDays}d`
+                : undefined
+            }
+          />
+          <StatTile
+            icon={<Clock className="h-3.5 w-3.5" aria-hidden />}
+            label="Waiting on applicant"
+            value={stats.pending_verification + stats.changes_requested}
+            hint={`${stats.pending_verification} unverified · ${stats.changes_requested} changes requested`}
+          />
+          <StatTile
+            icon={<CheckCircle2 className="h-3.5 w-3.5" aria-hidden />}
+            label="Approved this month"
+            value={stats.approved_this_month}
+            hint={`${stats.approved} all-time`}
+          />
+          <StatTile
+            icon={<Timer className="h-3.5 w-3.5" aria-hidden />}
+            label="Avg. time to decision"
+            value={
+              stats.avg_decision_days !== null
+                ? `${stats.avg_decision_days}d`
+                : "—"
+            }
+            hint="Across approved & rejected"
+          />
+        </div>
+      )}
+
       <FilterBar hideHeader>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-2">
@@ -135,6 +244,9 @@ export function OnboardingApplicationsPage() {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
+                    {app.onboarding_status === "email_verified" && (
+                      <AgingChip appliedAt={app.applied_at} />
+                    )}
                     <Badge
                       variant={
                         APPLICATION_STATUS_BADGE_VARIANTS[

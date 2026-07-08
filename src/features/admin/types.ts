@@ -41,6 +41,17 @@ export interface OnboardingApplicationSummary {
   rejection_reason: string | null;
 }
 
+export interface OnboardingStats {
+  pending_verification: number;
+  needs_review: number;
+  changes_requested: number;
+  approved: number;
+  rejected: number;
+  approved_this_month: number;
+  avg_decision_days: number | null;
+  oldest_needs_review_at: string | null;
+}
+
 export interface OnboardingApplicationDetail {
   application_id: string;
   school_name: string;

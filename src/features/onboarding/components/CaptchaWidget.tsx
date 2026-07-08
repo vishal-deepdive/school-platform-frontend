@@ -46,10 +46,17 @@ export function CaptchaWidget({
   siteKey,
   onVerify,
   onExpire,
+  resetKey = 0,
 }: {
   siteKey: string | null | undefined;
   onVerify: (token: string) => void;
   onExpire?: () => void;
+  /**
+   * Turnstile tokens are single-use — bump this counter after consuming one
+   * (e.g. after a resend/lookup call) to remove and re-render the widget so
+   * the user can obtain a fresh token.
+   */
+  resetKey?: number;
 }) {
   const containerId = `turnstile-${useId().replace(/:/g, "")}`;
   const widgetIdRef = useRef<string | null>(null);
@@ -83,7 +90,7 @@ export function CaptchaWidget({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteKey, containerId]);
+  }, [siteKey, containerId, resetKey]);
 
   if (!siteKey) return null;
 

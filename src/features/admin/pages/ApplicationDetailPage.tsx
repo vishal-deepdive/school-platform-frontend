@@ -41,6 +41,95 @@ function InfoRow({
   );
 }
 
+// ── Canned review reasons ─────────────────────────────────────────────────────
+// The vast majority of decisions repeat a handful of reasons — templates keep
+// applicant communication consistent while staying editable before sending.
+const REJECTION_TEMPLATES = [
+  "We could not verify the school's registration with the details provided.",
+  "This school already appears to be registered on the platform (duplicate application).",
+  "The UDISE code provided does not match the school details submitted.",
+  "The application is incomplete or contains information we could not validate.",
+];
+
+const CHANGE_REQUEST_TEMPLATES = [
+  "The uploaded certificate is illegible — please re-upload a clearer scan.",
+  "Please add your school's registration certificate so we can verify the school.",
+  "Please provide your school's 11-digit UDISE code so we can verify the school.",
+  "The school address appears incomplete — please provide the full registered address.",
+];
+
+function TemplatePicker({
+  templates,
+  onPick,
+}: {
+  templates: string[];
+  onPick: (text: string) => void;
+}) {
+  return (
+    <select
+      className="mt-3 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+      defaultValue=""
+      onChange={(e) => {
+        if (e.target.value) onPick(e.target.value);
+        e.target.value = "";
+      }}
+      aria-label="Insert a common reason"
+    >
+      <option value="" disabled>
+        Insert a common reason…
+      </option>
+      {templates.map((t) => (
+        <option key={t} value={t}>
+          {t}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// ── Inline certificate preview ────────────────────────────────────────────────
+function certificateKind(url: string): "pdf" | "image" | "other" {
+  try {
+    const path = new URL(url, window.location.origin).pathname.toLowerCase();
+    if (path.endsWith(".pdf")) return "pdf";
+    if (/\.(jpe?g|png)$/.test(path)) return "image";
+  } catch {
+    // Malformed URL — fall through to link-only.
+  }
+  return "other";
+}
+
+function CertificatePreview({ url }: { url: string }) {
+  const kind = certificateKind(url);
+  return (
+    <div className="grid gap-3">
+      {kind === "pdf" && (
+        <iframe
+          src={url}
+          title="Certificate preview"
+          className="h-[480px] w-full rounded-lg border border-border bg-muted/20"
+        />
+      )}
+      {kind === "image" && (
+        <img
+          src={url}
+          alt="Registration certificate"
+          className="max-h-[480px] w-auto max-w-full rounded-lg border border-border object-contain"
+        />
+      )}
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+      >
+        <FileText className="h-4 w-4" />
+        Open certificate in a new tab
+      </a>
+    </div>
+  );
+}
+
 export function ApplicationDetailPage() {
   const { applicationId } = useParams<{ applicationId: string }>();
   const navigate = useNavigate();
@@ -63,6 +152,7 @@ export function ApplicationDetailPage() {
 
   const invalidateAll = () => {
     queryClient.invalidateQueries({ queryKey: ["onboarding-applications"] });
+    queryClient.invalidateQueries({ queryKey: ["onboarding-stats"] });
     queryClient.invalidateQueries({
       queryKey: ["onboarding-application", applicationId],
     });
@@ -311,15 +401,7 @@ export function ApplicationDetailPage() {
             approving, rather than rejecting.
           </Alert>
         ) : app.certificate_url ? (
-          <a
-            href={app.certificate_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-          >
-            <FileText className="h-4 w-4" />
-            View Certificate
-          </a>
+          <CertificatePreview url={app.certificate_url} />
         ) : (
           <p className="text-sm text-muted-foreground">
             No certificate was provided (optional at submission).
@@ -337,6 +419,12 @@ export function ApplicationDetailPage() {
         <p className="text-sm text-muted-foreground">
           Optionally provide a reason — it will be shown to the applicant.
         </p>
+        <TemplatePicker
+          templates={REJECTION_TEMPLATES}
+          onPick={(t) =>
+            setRejectionReason((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t))
+          }
+        />
         <Textarea
           value={rejectionReason}
           onChange={(e) => setRejectionReason(e.target.value)}
@@ -374,6 +462,12 @@ export function ApplicationDetailPage() {
           The application stays open under the same ID — the applicant edits and
           resubmits instead of starting over. Describe what needs to change.
         </p>
+        <TemplatePicker
+          templates={CHANGE_REQUEST_TEMPLATES}
+          onPick={(t) =>
+            setChangesMessage((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t))
+          }
+        />
         <Textarea
           value={changesMessage}
           onChange={(e) => setChangesMessage(e.target.value)}

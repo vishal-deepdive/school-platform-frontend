@@ -5,8 +5,8 @@ import type { StepPropsExtra } from "./types";
 
 export function PrincipalStep({ register, errors }: StepPropsExtra) {
   return (
-    <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
-      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+    <div className="grid gap-4 lg:grid-cols-2 animate-in fade-in zoom-in-95 duration-300">
+      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 lg:col-span-2">
         <p className="text-xs text-muted-foreground leading-relaxed">
           This is the{" "}
           <strong className="text-foreground">principal account</strong> for the
@@ -35,33 +35,37 @@ export function PrincipalStep({ register, errors }: StepPropsExtra) {
         {...register("principal_email")}
       />
 
-      <AuthInput
-        label="Your email (if filling on the principal's behalf)"
-        type="email"
-        autoComplete="email"
-        placeholder="office@yourschool.edu.in (optional)"
-        error={errors.filled_by_email?.message}
-        hint="Leave blank if you are the principal"
-        {...register("filled_by_email")}
-      />
+      <div className="lg:col-span-2">
+        <AuthInput
+          label="Your email (if filling on the principal's behalf)"
+          type="email"
+          autoComplete="email"
+          placeholder="office@yourschool.edu.in (optional)"
+          error={errors.filled_by_email?.message}
+          hint="Leave blank if you are the principal"
+          {...register("filled_by_email")}
+        />
+      </div>
 
-      <TermsCheckbox
-        error={errors.terms?.message}
-        label={
-          <>
-            I confirm that all provided details are accurate and I accept the{" "}
-            <Link
-              to="/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-medium text-primary hover:text-primary/80 transition-colors"
-            >
-              Terms &amp; Conditions
-            </Link>
-          </>
-        }
-        {...register("terms")}
-      />
+      <div className="lg:col-span-2">
+        <TermsCheckbox
+          error={errors.terms?.message}
+          label={
+            <>
+              I confirm that all provided details are accurate and I accept the{" "}
+              <Link
+                to="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                Terms &amp; Conditions
+              </Link>
+            </>
+          }
+          {...register("terms")}
+        />
+      </div>
     </div>
   );
 }

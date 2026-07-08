@@ -9,15 +9,17 @@ export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
   const yearReg = register("established_year");
 
   return (
-    <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
-      <AuthInput
-        label="School Name *"
-        type="text"
-        placeholder="e.g. Springfield Elementary School"
-        autoComplete="organization"
-        error={errors.school_name?.message}
-        {...register("school_name")}
-      />
+    <div className="grid gap-4 lg:grid-cols-2 animate-in fade-in zoom-in-95 duration-300">
+      <div className="lg:col-span-2">
+        <AuthInput
+          label="School Name *"
+          type="text"
+          placeholder="e.g. Springfield Elementary School"
+          autoComplete="organization"
+          error={errors.school_name?.message}
+          {...register("school_name")}
+        />
+      </div>
 
       <AuthSelect
         label="Curriculum Board *"
@@ -33,7 +35,7 @@ export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
       </AuthSelect>
 
       {selectedBoard === "OTHER" && (
-        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="lg:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
           <AuthInput
             label="Please specify board *"
             type="text"
@@ -58,7 +60,7 @@ export function SchoolInfoStep({ register, errors, watch }: StepPropsExtra) {
       </AuthSelect>
 
       {selectedSchoolType === "other" && (
-        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="lg:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
           <AuthInput
             label="Please specify school type *"
             type="text"

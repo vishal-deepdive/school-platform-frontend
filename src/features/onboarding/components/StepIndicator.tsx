@@ -21,7 +21,7 @@ export function StepIndicator({
 }: StepIndicatorProps) {
   return (
     <ol
-      className="flex items-center w-full list-none"
+      className="flex items-start w-full list-none"
       aria-label={`Step ${current} of ${total}`}
     >
       {Array.from({ length: total }, (_, i) => {
@@ -46,6 +46,24 @@ export function StepIndicator({
           </span>
         );
 
+        // Short label under each circle (≥sm) so the applicant can see what's
+        // ahead — reduces "how long is this?" abandonment on a 5-step form.
+        const label = labels?.[i] && (
+          <span
+            aria-hidden
+            className={cn(
+              "hidden sm:block mt-1.5 max-w-[76px] text-center text-[10px] font-medium leading-tight",
+              isActive
+                ? "text-primary"
+                : isDone
+                  ? "text-foreground/70"
+                  : "text-muted-foreground",
+            )}
+          >
+            {labels[i]}
+          </span>
+        );
+
         return (
           <React.Fragment key={step}>
             <li
@@ -57,13 +75,19 @@ export function StepIndicator({
                   type="button"
                   onClick={() => onStepClick!(step)}
                   aria-label={`Go back to ${name}`}
-                  className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="flex flex-col items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   {circle}
+                  {label}
                 </button>
               ) : (
-                <span aria-label={name} title={name}>
+                <span
+                  aria-label={name}
+                  title={name}
+                  className="flex flex-col items-center"
+                >
                   {circle}
+                  {label}
                 </span>
               )}
             </li>
@@ -71,7 +95,9 @@ export function StepIndicator({
               <div
                 aria-hidden
                 className={cn(
-                  "flex-1 h-0.5 mx-1.5 rounded-full transition-all duration-500",
+                  // mt-[15px] keeps the connector aligned with the circle
+                  // centres (h-8 circles) now that labels sit below them.
+                  "flex-1 h-0.5 mx-1.5 mt-[15px] rounded-full transition-all duration-500",
                   step < current ? "bg-primary" : "bg-muted",
                 )}
               />

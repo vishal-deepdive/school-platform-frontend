@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   useLocation,
   useNavigate,
@@ -11,11 +11,22 @@ import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { AuthInput, AuthButton } from "@/shared/components/ui/auth-fuse";
 import { Button } from "@/shared/components/ui/Button";
+import { CaptchaWidget, OtpInput } from "@/features/onboarding/components";
+import { useOnboardingCapabilities } from "@/features/onboarding/hooks";
 
 // Matches the backend's per-application resend cooldown (service.py
 // _OTP_RESEND_COOLDOWN_SECONDS) — kept in sync as a UX nicety; the server is
-// still the source of truth and returns the exact remaining seconds on 429.
+// still the source of truth and returns retry_after_seconds on 429.
 const RESEND_COOLDOWN_SECONDS = 60;
+
+/** you@school.edu.in → yo•••@school.edu.in — enough to confirm the inbox
+ *  without exposing the full address on a shareable page. */
+function maskEmail(email: string): string {
+  const [user, domain] = email.split("@");
+  if (!user || !domain) return email;
+  const visible = user.slice(0, Math.min(2, user.length));
+  return `${visible}•••@${domain}`;
+}
 
 export function VerifyOnboardingOtpPage() {
   const location = useLocation();
@@ -35,6 +46,21 @@ export function VerifyOnboardingOtpPage() {
   const [isResending, setIsResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const cooldownTimerRef = useRef<number | null>(null);
+
+  // Anti-abuse CAPTCHA for the resend action — the backend requires a token
+  // (when CAPTCHA is enabled) because /resend-otp dispatches email/SMS.
+  const { data: capabilities } = useOnboardingCapabilities();
+  const captchaEnabled = Boolean(
+    capabilities?.captcha_enabled && capabilities.captcha_site_key,
+  );
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+
+  const consumeCaptcha = () => {
+    // Turnstile tokens are single-use — force a fresh challenge for the next attempt.
+    setCaptchaToken(null);
+    setCaptchaResetKey((k) => k + 1);
+  };
 
   const startCooldown = (seconds: number) => {
     setCooldown(seconds);
@@ -58,33 +84,39 @@ export function VerifyOnboardingOtpPage() {
     return () => {
       if (cooldownTimerRef.current !== null) clearInterval(cooldownTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefilledId]);
+
+  const verify = useCallback(
+    async (code: string) => {
+      if (!applicationId.trim()) {
+        toast.error("Application ID is required");
+        return;
+      }
+      if (!code.trim() || code.length !== 6) {
+        toast.error("Please enter the 6-digit code from your email");
+        return;
+      }
+
+      try {
+        setIsVerifying(true);
+        await onboardingApi.verifyEmail(applicationId.trim(), code.trim());
+        toast.success("Email verified successfully!");
+        navigate(
+          `/onboarding/status?id=${encodeURIComponent(applicationId.trim())}`,
+        );
+      } catch (err) {
+        toast.error(getErrorMessage(err));
+        setOtp(""); // clear for a clean retry
+      } finally {
+        setIsVerifying(false);
+      }
+    },
+    [applicationId, navigate],
+  );
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!applicationId.trim()) {
-      toast.error("Application ID is required");
-      return;
-    }
-    if (!otp.trim() || otp.length !== 6) {
-      toast.error("Please enter a valid 6-digit OTP");
-      return;
-    }
-
-    try {
-      setIsVerifying(true);
-      await onboardingApi.verifyEmail(applicationId.trim(), otp.trim());
-      toast.success("Email verified successfully!");
-      navigate(
-        `/onboarding/status?id=${encodeURIComponent(applicationId.trim())}`,
-      );
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setIsVerifying(false);
-    }
+    await verify(otp);
   };
 
   const handleResend = async () => {
@@ -92,21 +124,28 @@ export function VerifyOnboardingOtpPage() {
       toast.error("Application ID is required to resend OTP");
       return;
     }
+    if (captchaEnabled && !captchaToken) {
+      toast.error("Please complete the verification challenge first.");
+      return;
+    }
 
     try {
       setIsResending(true);
-      await onboardingApi.resendOtp(applicationId.trim());
+      await onboardingApi.resendOtp(applicationId.trim(), captchaToken ?? undefined);
       toast.success("A new OTP has been sent to your email.");
       startCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
-      // On a 429 the backend returns the exact remaining seconds — sync the
-      // countdown to it (e.g. if the applicant has two tabs open) instead of
-      // guessing with the default cooldown.
-      const message = getErrorMessage(err);
-      const match = message.match(/wait (\d+) seconds/);
-      if (match) startCooldown(parseInt(match[1], 10));
-      toast.error(message);
+      // On a 429 the backend returns machine-readable retry_after_seconds —
+      // sync the countdown to it (e.g. if the applicant has two tabs open).
+      const retryAfter = (
+        err as { response?: { data?: { retry_after_seconds?: unknown } } }
+      )?.response?.data?.retry_after_seconds;
+      if (typeof retryAfter === "number" && retryAfter > 0) {
+        startCooldown(Math.ceil(retryAfter));
+      }
+      toast.error(getErrorMessage(err));
     } finally {
+      if (captchaEnabled) consumeCaptcha();
       setIsResending(false);
     }
   };
@@ -123,8 +162,15 @@ export function VerifyOnboardingOtpPage() {
           Verify School Email
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Enter the 6-digit code sent to your email to verify your onboarding
-          application.
+          {state?.email ? (
+            <>
+              Enter the 6-digit code sent to{" "}
+              <strong className="text-foreground">{maskEmail(state.email)}</strong>{" "}
+              to verify your onboarding application.
+            </>
+          ) : (
+            "Enter the 6-digit code sent to the principal's email to verify your onboarding application."
+          )}
         </p>
       </div>
 
@@ -141,25 +187,29 @@ export function VerifyOnboardingOtpPage() {
           />
         </div>
 
-        <div>
-          <AuthInput
-            label="OTP Code"
-            type="text"
-            inputMode="numeric"
-            maxLength={6}
-            placeholder="123456"
+        <div className="grid gap-2">
+          <label className="text-sm font-medium text-foreground">
+            OTP Code
+          </label>
+          <OtpInput
             value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-            hint="Check your email inbox (and spam folder)"
-            className="font-mono text-center text-lg tracking-widest"
-            required
+            onChange={setOtp}
+            onComplete={(code) => {
+              // Auto-submit the moment the last digit lands (typed or pasted).
+              if (!isVerifying) void verify(code);
+            }}
+            disabled={isVerifying}
+            className="justify-start"
           />
+          <p className="text-xs text-muted-foreground">
+            Check your email inbox (and spam folder). You can paste the code.
+          </p>
         </div>
 
         <div className="pt-2">
           <AuthButton
             type="submit"
-            disabled={isVerifying}
+            disabled={isVerifying || otp.length !== 6}
             className="w-full mt-2"
           >
             {isVerifying ? (
@@ -171,13 +221,30 @@ export function VerifyOnboardingOtpPage() {
           </AuthButton>
         </div>
 
+        {captchaEnabled && cooldown === 0 && (
+          <div className="mt-1">
+            <CaptchaWidget
+              siteKey={capabilities?.captcha_site_key}
+              onVerify={setCaptchaToken}
+              onExpire={() => setCaptchaToken(null)}
+              resetKey={captchaResetKey}
+            />
+          </div>
+        )}
+
         <div className="text-center mt-2">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={handleResend}
-            disabled={isResending || isVerifying || !applicationId.trim() || cooldown > 0}
+            disabled={
+              isResending ||
+              isVerifying ||
+              !applicationId.trim() ||
+              cooldown > 0 ||
+              (captchaEnabled && !captchaToken)
+            }
             loading={isResending}
             className="text-primary hover:text-primary/80 hover:bg-transparent disabled:opacity-60"
           >
