@@ -429,6 +429,8 @@ function AddSourceWizard({
     mutationFn: () => {
       const columnMap =
         Object.keys(customMap).length > 0 ? customMap : undefined;
+      // The backend registers AND auto-syncs the source in one call, returning
+      // the sync outcome in `res.sync` — no separate sync request needed.
       return surveyApi.registerSource({
         sheet_url: sheetUrl.trim(),
         label: label.trim() || undefined,
@@ -438,8 +440,23 @@ function AddSourceWizard({
         column_map: columnMap,
       });
     },
-    onSuccess: () => {
-      toast.success("Source registered successfully.");
+    onSuccess: (res) => {
+      const sync = res.sync;
+      if (sync?.ok) {
+        toast.success(
+          `Source added & synced: +${sync.records_added} rows imported` +
+            (sync.records_skipped ? `, ${sync.records_skipped} skipped` : ""),
+        );
+      } else if (sync && !sync.ok) {
+        toast.success("Source registered.");
+        toast.error(
+          `Auto-sync failed: ${sync.error ?? "unknown error"}. ` +
+            "Use “Sync” on the source to retry.",
+          { duration: 7000 },
+        );
+      } else {
+        toast.success("Source registered.");
+      }
       qc.invalidateQueries({ queryKey: ["survey"] });
       handleClose();
     },
@@ -619,7 +636,7 @@ function AddSourceWizard({
               loading={registering}
               icon={<Plus className="h-4 w-4" />}
             >
-              Add Source
+              {registering ? "Adding & syncing…" : "Add & Sync Source"}
             </Button>
           </div>
         </div>

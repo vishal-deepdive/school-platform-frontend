@@ -16,6 +16,8 @@ export interface SurveyStatusResponse {
 
 export interface SearchRequest {
   query: string;
+  /** School to scope the search to. Required for admins; ignored for other roles. */
+  school_name?: string;
   class_name?: string;
   feedback_column?: FeedbackColumn;
   limit?: number;
@@ -175,6 +177,17 @@ export interface SourceItem {
   created_at?: string | null;
 }
 
+/** Outcome of the auto-sync run when a source is registered (POST /source). */
+export interface SourceSyncResult {
+  ok: boolean;
+  records_added: number;
+  records_skipped: number;
+  records_failed: number;
+  embedding_status?: string | null;
+  job_id?: string | null;
+  error?: string | null;
+}
+
 export interface SurveySourceResponse {
   status: string;
   configured: boolean;
@@ -188,6 +201,8 @@ export interface SurveySourceResponse {
   column_map?: Record<string, string> | null;
   last_synced_at?: string | null;
   updated_at?: string | null;
+  /** Present only on the register response. */
+  sync?: SourceSyncResult | null;
 }
 
 export interface SourceListResponse {
