@@ -1,19 +1,20 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, Trash2, CalendarDays } from "lucide-react";
-import toast from "react-hot-toast";
-import { useAuthStore } from "@/features/auth/store/auth";
+import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { getErrorMessage, isoToIndianDate } from "@/shared/lib/utils";
 
 function todayIso(): string {
@@ -23,28 +24,28 @@ function todayIso(): string {
   ).padStart(2, "0")}`;
 }
 
+// "DD-MM-YYYY" → short weekday + day chip for the holiday row marker.
+function dateChip(dmy: string): { day: string; month: string } {
+  const [d, m, y] = dmy.split("-").map(Number);
+  if (!d || !m || !y) return { day: "—", month: "" };
+  const date = new Date(y, m - 1, d);
+  return {
+    day: String(d).padStart(2, "0"),
+    month: date.toLocaleDateString("en-IN", { month: "short" }),
+  };
+}
+
 export function HolidaysPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolName, ready, schoolParam } = useActiveSchool();
   const queryClient = useQueryClient();
 
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
-  const [schoolName, setSchoolName] = useState("");
   const [session, setSession] = useState("2025-26");
   const [newDate, setNewDate] = useState(todayIso());
   const [name, setName] = useState("");
-
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
-
-  const ready = !isAdmin || !!schoolName;
-  const schoolParam: Record<string, string> =
-    isAdmin && schoolName ? { school_name: schoolName } : {};
+  const [holidayToDelete, setHolidayToDelete] = useState<{
+    date: string;
+    name?: string | null;
+  } | null>(null);
 
   const { data } = useQuery({
     queryKey: ["attendance", "holidays", schoolName, session],
@@ -76,36 +77,30 @@ export function HolidaysPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance", "holidays"] });
       toast.success("Holiday removed");
+      setHolidayToDelete(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
-
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    setSchoolName(schoolOptions.find((o) => o.value === id)?.label ?? "");
-  };
 
   const holidays = useHolidayDates({ session, schoolName, enabled: ready });
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader
-          title="Holiday Calendar"
-          description="Mark non-working days. Attendance can't be recorded on these dates (unless overridden), and reports treat them as holidays."
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {isAdmin && (
-            <SearchableSelect
-              label="School"
-              placeholder="Select school..."
-              options={schoolOptions}
-              value={schoolId}
-              onChange={handleSchoolChange}
-              onSearchChange={setSchoolQuery}
-              isLoading={schoolsLoading}
-            />
-          )}
+      <FilterBar
+        title="Add a holiday"
+        icon={<CalendarPlus className="h-4 w-4" />}
+        actions={
+          <Button
+            onClick={() => addMutation.mutate()}
+            loading={addMutation.isPending}
+            disabled={!ready}
+            icon={<CalendarPlus className="h-4 w-4" />}
+          >
+            Add Holiday
+          </Button>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Select
             label="Session"
             options={SESSION_OPTIONS}
@@ -126,57 +121,85 @@ export function HolidaysPage() {
             onChange={(e) => setName(e.target.value)}
           />
         </div>
-        <div className="mt-4">
-          <Button
-            onClick={() => addMutation.mutate()}
-            loading={addMutation.isPending}
-            disabled={!ready}
-            icon={<CalendarPlus className="h-4 w-4" />}
-          >
-            Add Holiday
-          </Button>
-        </div>
-      </Card>
+      </FilterBar>
 
-      <Card padding="none">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h3 className="flex items-center gap-2 font-semibold text-foreground">
-            <CalendarDays className="h-4 w-4" /> Holidays — {session}
-          </h3>
-          <Badge>{data?.total ?? 0}</Badge>
-        </div>
-        <div className="divide-y divide-border/40">
-          {!data || data.holidays.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-muted-foreground">
-              No holidays configured for this session.
-            </p>
-          ) : (
-            data.holidays.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center justify-between px-6 py-3"
-              >
-                <div>
-                  <span className="font-medium text-foreground">{h.date}</span>
-                  {h.name && (
-                    <span className="ml-2 text-sm text-muted-foreground">
-                      {h.name}
-                    </span>
-                  )}
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => deleteMutation.mutate(h.date)}
-                  icon={<Trash2 className="h-4 w-4 text-destructive" />}
+      <Panel
+        flush
+        icon={<CalendarDays className="h-4 w-4" />}
+        title={`Holidays · ${session}`}
+        description="Days excluded from attendance for this session"
+        actions={<Badge variant="primary">{data?.total ?? 0} total</Badge>}
+      >
+        {!data || data.holidays.length === 0 ? (
+          <div className="p-4">
+            <EmptyState
+              icon={<CalendarDays className="h-9 w-9" />}
+              title="No holidays configured"
+              description="Add school holidays so they're skipped when marking attendance."
+            />
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/50">
+            {data.holidays.map((h) => {
+              const chip = dateChip(h.date);
+              return (
+                <li
+                  key={h.id}
+                  className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
                 >
-                  Remove
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg border border-primary/15 bg-primary/5 leading-none">
+                      <span className="text-sm font-bold text-primary tabular-nums">
+                        {chip.day}
+                      </span>
+                      <span className="text-[10px] font-medium uppercase text-primary/70">
+                        {chip.month}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {h.name || "Holiday"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{h.date}</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="danger-ghost"
+                    onClick={() => setHolidayToDelete(h)}
+                    icon={<Trash2 className="h-4 w-4" />}
+                    className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                  >
+                    Remove
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
+
+      <ConfirmDialog
+        open={holidayToDelete !== null}
+        title="Remove holiday?"
+        description={
+          holidayToDelete && (
+            <>
+              <span className="font-medium text-foreground">
+                {holidayToDelete.name || "Holiday"}
+              </span>{" "}
+              on {holidayToDelete.date} will no longer be treated as a holiday —
+              attendance can be marked on that day again.
+            </>
+          )
+        }
+        confirmLabel="Remove holiday"
+        loading={deleteMutation.isPending}
+        onConfirm={() =>
+          holidayToDelete && deleteMutation.mutate(holidayToDelete.date)
+        }
+        onClose={() => setHolidayToDelete(null)}
+      />
     </div>
   );
 }

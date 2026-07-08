@@ -8,3 +8,7 @@ export * from "./pages/ApplicationDetailPage";
 export * from "./pages/OnboardingApplicationsPage";
 export * from "./pages/PromptsPage";
 export * from "./pages/StudentImportPage";
+export * from "./pages/SchoolsPage";
+export * from "./pages/SchoolDetailPage";
+export * from "./pages/UsersPage";
+export * from "./pages/AuditLogPage";

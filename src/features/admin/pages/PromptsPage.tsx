@@ -5,7 +5,8 @@ import { promptsApi } from "@/features/admin/api/prompts";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { Panel } from "@/shared/components/ui/Panel";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage } from "@/shared/lib/utils";
 import type { PromptSummary, PromptRefreshResponse } from "@/features/admin/types";
 
@@ -278,20 +279,12 @@ export function PromptsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Prompt Management</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Live version shows what the backend is currently serving (bypasses the
-            60s in-process cache).{" "}
-            {checkedCount > 0 && (
-              <span className="text-foreground/70">
-                {checkedCount} / {totalCount} checked.
-              </span>
-            )}
+      <div className="flex flex-wrap items-center justify-end gap-4">
+        {checkedCount > 0 && (
+          <p className="text-sm text-muted-foreground">
+            {checkedCount} / {totalCount} checked
           </p>
-        </div>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -308,26 +301,19 @@ export function PromptsPage() {
         <Alert variant="error">{refreshAllError}</Alert>
       )}
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <ListSkeleton items={4} />}
       {promptsError && <Alert variant="error">{getErrorMessage(promptsQueryError) || "Failed to load prompts."}</Alert>}
 
       {!isLoading && !promptsError && prompts && (
         <div className="space-y-6">
           {Object.entries(grouped).map(([module, rows]) => (
-            <div
+            <Panel
               key={module}
-              className="overflow-hidden rounded-xl border border-border bg-background shadow-sm"
+              flush
+              title={<span className="uppercase tracking-wide">{module}</span>}
+              actions={<Badge variant="default">{rows.length}</Badge>}
+              bodyClassName="overflow-x-auto"
             >
-              {/* Module section header */}
-              <div className="flex items-center gap-3 border-b border-border bg-muted/40 px-5 py-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  {module}
-                </span>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  {rows.length}
-                </span>
-              </div>
-
               <table className="min-w-full divide-y divide-border">
                 <thead>
                   <tr className="bg-muted/20">
@@ -360,7 +346,7 @@ export function PromptsPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </Panel>
           ))}
         </div>
       )}

@@ -8,7 +8,7 @@ interface AuthPageHeaderProps {
   className?: string;
 }
 
-/** Consistent header for auth & onboarding pages: gradient icon tile + title + subtitle. */
+/** Consistent header for auth & onboarding pages: soft icon tile + title + subtitle. */
 export function AuthPageHeader({
   icon: Icon,
   title,
@@ -23,7 +23,7 @@ export function AuthPageHeader({
       )}
     >
       {Icon && (
-        <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-sky-500 text-white shadow-lg shadow-primary/25">
+        <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
           <Icon className="h-7 w-7" />
         </div>
       )}

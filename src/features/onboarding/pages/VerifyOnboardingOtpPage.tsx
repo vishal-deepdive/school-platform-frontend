@@ -6,7 +6,7 @@ import {
   Link,
 } from "react-router-dom";
 import { ShieldCheck, Loader2 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { AuthInput, AuthButton } from "@/shared/components/ui/auth-fuse";

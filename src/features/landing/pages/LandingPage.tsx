@@ -2,6 +2,7 @@ import { MotionConfig, motion, useScroll, useSpring } from "framer-motion";
 import { LandingNavbar } from "@/features/landing/components/LandingNavbar";
 import { HeroSection } from "@/features/landing/components/HeroSection";
 import { FeatureSection } from "@/features/landing/components/FeatureSection";
+import { RolesSection } from "@/features/landing/components/RolesSection";
 import { HowItWorksSection } from "@/features/landing/components/HowItWorksSection";
 import { FutureGrowthSection } from "@/features/landing/components/FutureGrowthSection";
 import { TestimonialsSection } from "@/features/landing/components/TestimonialsSection";
@@ -20,7 +21,7 @@ function ScrollProgressBar() {
   return (
     <motion.div
       style={{ scaleX }}
-      className="fixed inset-x-0 top-0 z-[60] h-[3px] origin-left bg-gradient-to-r from-primary via-sky-400 to-cyan-400"
+      className="fixed inset-x-0 top-0 z-[60] h-[2px] origin-left bg-primary"
     />
   );
 }
@@ -28,12 +29,13 @@ function ScrollProgressBar() {
 export function LandingPage() {
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen w-full overflow-x-clip bg-background font-sans text-foreground antialiased selection:bg-primary/20">
+      <div className="min-h-screen w-full overflow-x-clip bg-background dark:bg-[#0b0e14] font-sans text-foreground antialiased selection:bg-primary/20">
         <ScrollProgressBar />
         <LandingNavbar />
         <main>
           <HeroSection />
           <FeatureSection />
+          <RolesSection />
           <HowItWorksSection />
           <FutureGrowthSection />
           <TestimonialsSection />

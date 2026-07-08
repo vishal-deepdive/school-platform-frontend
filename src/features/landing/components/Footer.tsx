@@ -6,27 +6,19 @@ const FOOTER_LINKS = [
     heading: "Product",
     links: [
       { label: "Features", href: "#features" },
-      { label: "How It Works", href: "#how-it-works" },
+      { label: "For every role", href: "#roles" },
+      { label: "How it works", href: "#how-it-works" },
       { label: "Analytics", href: "#growth" },
-      { label: "Testimonials", href: "#testimonials" },
+      { label: "FAQ", href: "#faq" },
     ],
   },
   {
-    heading: "Resources",
+    heading: "Get started",
     links: [
-      { label: "Help Center", href: "#" },
-      { label: "Documentation", href: "#" },
-      { label: "Community", href: "#" },
-      { label: "Blog", href: "#" },
-    ],
-  },
-  {
-    heading: "Company",
-    links: [
-      { label: "About Us", href: "#" },
-      { label: "Careers", href: "#" },
-      { label: "Privacy Policy", href: "#" },
-      { label: "Terms of Service", href: "#" },
+      { label: "Onboard your school", href: "/onboarding/apply" },
+      { label: "Track your application", href: "/onboarding/status" },
+      { label: "Log in", href: "/login" },
+      { label: "Create an account", href: "/register" },
     ],
   },
 ];
@@ -40,11 +32,10 @@ const SOCIALS = [
 
 export function Footer() {
   return (
-    <footer className="w-full bg-background">
-      <div className="h-px w-full bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+    <footer className="w-full border-t border-border bg-background">
 
       <div className="mx-auto max-w-[1180px] px-4 py-14 xl:px-0">
-        <div className="mb-10 grid grid-cols-1 gap-10 md:grid-cols-5">
+        <div className="mb-10 grid grid-cols-1 gap-10 md:grid-cols-4">
           <div className="md:col-span-2">
             <img
               src="/logo.png"
@@ -62,7 +53,7 @@ export function Footer() {
                   key={social.label}
                   href={social.href}
                   aria-label={social.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground shadow-sm ring-1 ring-border transition-all hover:-translate-y-0.5 hover:text-primary hover:shadow-md hover:ring-primary/30"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground ring-1 ring-border transition-all hover:text-primary hover:shadow-md hover:ring-primary/30"
                 >
                   <social.icon className="h-4 w-4" />
                 </a>
@@ -78,12 +69,21 @@ export function Footer() {
               <ul className="space-y-2.5 text-sm text-muted-foreground">
                 {group.links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="transition hover:text-primary"
-                    >
-                      {link.label}
-                    </a>
+                    {link.href.startsWith("#") ? (
+                      <a
+                        href={link.href}
+                        className="transition hover:text-primary"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.href}
+                        className="transition hover:text-primary"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -97,7 +97,8 @@ export function Footer() {
             reserved.
           </div>
           <Link
-            to="/onboarding/apply"
+            // to="/onboarding/apply"
+            to="/"
             className="group inline-flex items-center gap-1 text-sm font-medium text-primary"
           >
             <span className="underline-offset-4 group-hover:underline">

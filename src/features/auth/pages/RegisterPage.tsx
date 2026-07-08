@@ -8,6 +8,7 @@ import {
   MailOpen,
 } from "lucide-react";
 import { AuthButton } from "@/shared/components/ui/auth-fuse";
+import { AuthPageHeader } from "@/shared/components/common/AuthPageHeader";
 import { isValidInviteToken } from "@/shared/lib/validators";
 import {
   TeacherInviteRegisterForm,
@@ -115,19 +116,16 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-[400px] gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex flex-col items-center gap-2 text-center mb-4">
-        <h1 className="text-2xl font-bold text-foreground">
-          Create an account
-        </h1>
-        <p className="text-balance text-sm text-muted-foreground">
-          Enter your details below to sign up
-        </p>
-      </div>
+    <div className="mx-auto grid w-full max-w-[400px] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <AuthPageHeader
+        title="Create an account"
+        subtitle="Enter your details below to sign up"
+        className="mb-4"
+      />
 
       <div
         role="tablist"
-        className="mb-6 flex gap-1 p-1.5 bg-muted rounded-3xl border border-border/50"
+        className="mb-6 flex gap-1 p-1.5 bg-muted rounded-xl border border-border/50"
       >
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -140,20 +138,18 @@ export function RegisterPage() {
               aria-selected={isActive}
               aria-controls={`tabpanel-register-${tab.id}`}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-1.5 px-2 text-sm font-semibold rounded-lg transition-all duration-300 relative focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive
                   ? "text-primary bg-background shadow-sm border border-border/50"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/50"
               }`}
             >
-              <div className="relative flex items-center gap-2 z-10">
-                <Icon
-                  className={`h-4.5 w-4.5 transition-colors ${
-                    isActive ? "text-primary" : "text-muted-foreground"
-                  }`}
-                />
-                <span>{tab.label}</span>
-              </div>
+              <Icon
+                className={`h-4 w-4 transition-colors ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
+              <span>{tab.label}</span>
             </button>
           );
         })}

@@ -1,34 +1,42 @@
 import { motion } from "framer-motion";
-import { FileText, MailCheck, Rocket, ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SectionHeading } from "@/features/landing/components/SectionHeading";
-import {
-  fadeUp,
-  staggerContainer,
-  EASE_OUT_EXPO,
-} from "@/features/landing/animations";
+import { fadeUp, staggerContainer } from "@/features/landing/animations";
 
 const STEPS = [
   {
-    icon: FileText,
-    step: "01",
-    title: "Apply Online",
+    duration: "~10 minutes",
+    title: "Apply online",
     description:
-      "Fill out our guided application with your school's details, classes, and documents. It takes less than ten minutes.",
+      "Fill out the guided application with your school's details, classes, and registration documents.",
+    checklist: [
+      "School profile & contact details",
+      "Classes and sections setup",
+      "Registration documents",
+    ],
   },
   {
-    icon: MailCheck,
-    step: "02",
-    title: "Verify & Review",
+    duration: "~2 business days",
+    title: "Verify & review",
     description:
-      "Confirm your email with a one-time code while our team reviews your application — usually within two business days.",
+      "Confirm your email with a one-time code while our team reviews the application and documents.",
+    checklist: [
+      "One-time email verification",
+      "Document review by our team",
+      "Approval notification",
+    ],
   },
   {
-    icon: Rocket,
-    step: "03",
-    title: "Go Live",
+    duration: "Day one",
+    title: "Go live",
     description:
-      "Admin accounts are provisioned and your staff onboarded. Attendance, recordings, and AI Q&A from day one.",
+      "Admin accounts are provisioned and staff onboarded. Attendance, recordings, and AI Q&A from the first bell.",
+    checklist: [
+      "Admin accounts provisioned",
+      "Staff & student onboarding",
+      "Full platform access",
+    ],
   },
 ];
 
@@ -36,68 +44,74 @@ export function HowItWorksSection() {
   return (
     <section
       id="how-it-works"
-      className="w-full scroll-mt-24 border-t border-border bg-secondary/30 py-24"
+      className="w-full scroll-mt-24 border-t border-border bg-secondary/30 py-16 sm:py-20 lg:py-24"
     >
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <SectionHeading
           eyebrow="Onboarding"
-          title="From application to live in three steps"
-          subtitle="No lengthy contracts, no complicated migrations. Our team guides your school through every step of the journey."
+          title="Application to live classes, in under a week"
+          subtitle="No lengthy contracts, no complicated migrations. The whole process is measured in days — here is exactly how it goes."
         />
 
-        <div className="relative">
-          {/* Connector line (desktop) */}
-          <motion.div
-            initial={{ scaleX: 0 }}
-            whileInView={{ scaleX: 1 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 1.2, ease: EASE_OUT_EXPO, delay: 0.3 }}
-            className="absolute left-[16%] right-[16%] top-10 hidden h-0.5 origin-left bg-gradient-to-r from-primary/60 via-sky-400/60 to-cyan-400/60 lg:block"
-          />
+        <motion.ol
+          variants={staggerContainer}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-80px" }}
+          className="grid grid-cols-1 gap-x-10 gap-y-12 lg:grid-cols-3"
+        >
+          {STEPS.map((step, index) => (
+            <motion.li key={step.title} variants={fadeUp} className="relative">
+              {/* Timeline marker: dot + connecting line to the next step */}
+              <div className="flex items-center gap-4" aria-hidden="true">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary ring-4 ring-primary/15" />
+                {index < STEPS.length - 1 && (
+                  <span className="hidden h-px flex-1 bg-border lg:block" />
+                )}
+              </div>
 
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-80px" }}
-            className="grid grid-cols-1 gap-10 lg:grid-cols-3"
-          >
-            {STEPS.map((step) => (
-              <motion.div
-                key={step.step}
-                variants={fadeUp}
-                className="relative flex flex-col items-center text-center"
-              >
-                <div className="relative z-10 mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-card shadow-lg shadow-black/5 ring-1 ring-border">
-                  <step.icon className="h-8 w-8 text-primary" />
-                  <span className="absolute -right-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-primary to-sky-500 text-[11px] font-bold text-white shadow-md">
-                    {step.step.slice(-1)}
-                  </span>
-                </div>
-                <h3 className="mb-2 text-xl font-semibold text-card-foreground">
-                  {step.title}
-                </h3>
-                <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-                  {step.description}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
+              <div className="mt-6 text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+                {step.duration}
+              </div>
+              <h3 className="mt-1 text-sm font-semibold uppercase tracking-[0.14em] text-primary">
+                {step.title}
+              </h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                {step.description}
+              </p>
+
+              <ul className="mt-5 space-y-2.5">
+                {step.checklist.map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-center gap-2.5 text-sm text-foreground/80"
+                  >
+                    <Check
+                      className="h-4 w-4 shrink-0 text-primary"
+                      strokeWidth={2.5}
+                    />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </motion.li>
+          ))}
+        </motion.ol>
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          variants={fadeUp}
+          initial="hidden"
+          whileInView="visible"
           viewport={{ once: true }}
-          transition={{ delay: 0.4, duration: 0.6, ease: EASE_OUT_EXPO }}
-          className="mt-14 flex flex-col items-center justify-center gap-4 sm:flex-row"
+          className="mt-16 flex flex-col items-start gap-4 border-t border-border pt-8 sm:flex-row sm:items-center"
         >
           <Link
-            to="/onboarding/apply"
-            className="group inline-flex items-center gap-1.5 rounded-full bg-primary px-7 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30"
+            // to="/onboarding/apply"
+            to="/"
+            className="group inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
           >
-            Start Your Application
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            Start your application
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
             to="/onboarding/status"

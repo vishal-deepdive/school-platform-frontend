@@ -8,11 +8,10 @@ function readIsDark(): boolean {
 /**
  * Reactive dark-mode flag sourced from the `.dark` class on <html>.
  *
- * Unlike {@link useTheme}, which owns the toggle and keeps per-instance state,
- * this hook only *observes* the document class, so any component (e.g. a code
- * block or Mermaid diagram that must bake theme colours into its output) stays
- * in sync no matter which component flipped the theme. Backed by a
- * MutationObserver so it updates without prop drilling.
+ * Observes the document class via MutationObserver so any component that
+ * needs to bake theme colours into its output (e.g. Mermaid diagrams, code
+ * highlighters) stays in sync without prop drilling. Prefer {@link useTheme}
+ * when you also need the toggle action.
  */
 export function useIsDark(): boolean {
   const [isDark, setIsDark] = useState(readIsDark);

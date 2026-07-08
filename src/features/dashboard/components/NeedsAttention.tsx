@@ -34,6 +34,8 @@ interface NeedsAttentionProps {
   analytics: AnalyticsResponse | undefined;
   loading?: boolean;
   className?: string;
+  /** Lay the three sections out side by side (for a full-width row). */
+  wide?: boolean;
 }
 
 /**
@@ -41,7 +43,7 @@ interface NeedsAttentionProps {
  * requests, and students trending toward low attendance — each with a direct
  * link to the page where it gets fixed.
  */
-export function NeedsAttention({ analytics, loading, className }: NeedsAttentionProps) {
+export function NeedsAttention({ analytics, loading, className, wide }: NeedsAttentionProps) {
   const unmarked = analytics?.unmarked_classes ?? [];
   const pendingTotal = analytics?.pending_leaves_total ?? 0;
   const pending = analytics?.pending_leaves ?? [];
@@ -83,7 +85,13 @@ export function NeedsAttention({ analytics, loading, className }: NeedsAttention
           )}
         </div>
       ) : (
-        <div className="flex flex-col divide-y divide-border">
+        <div
+          className={cn(
+            "flex flex-col divide-y divide-border",
+            wide &&
+              "lg:grid lg:grid-cols-3 lg:divide-x lg:divide-y-0 [&>div]:lg:px-6 [&>div]:lg:py-0 [&>div:first-child]:lg:pl-0 [&>div:last-child]:lg:pr-0",
+          )}
+        >
           {unmarked.length > 0 && (
             <div className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
               <div className="mt-0.5 rounded-lg bg-amber-500/10 p-1.5 text-amber-600 dark:text-amber-400">

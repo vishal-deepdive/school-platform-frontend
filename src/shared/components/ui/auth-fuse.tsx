@@ -29,7 +29,7 @@ Label.displayName = LabelPrimitive.Root.displayName;
 // ─── Button ───────────────────────────────────────────────────────────────────
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -100,8 +100,9 @@ export const AuthInput = React.forwardRef<
         aria-invalid={!!error}
         aria-describedby={error ? errorId : hint ? hintId : undefined}
         className={cn(
-          "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-shadow placeholder:text-muted-foreground/70 focus-visible:bg-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
-          error && "border-destructive focus-visible:ring-destructive",
+          "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-all placeholder:text-muted-foreground/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
+          error &&
+            "border-destructive focus:border-destructive focus:ring-destructive/20",
           className,
         )}
         ref={ref}
@@ -147,8 +148,9 @@ export const AuthPasswordInput = React.forwardRef<
           aria-invalid={!!error}
           aria-describedby={error ? errorId : hint ? hintId : undefined}
           className={cn(
-            "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-shadow placeholder:text-muted-foreground/70 focus-visible:bg-accent focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 pe-10",
-            error && "border-destructive focus-visible:ring-destructive",
+            "flex h-10 w-full rounded-lg border border-input dark:border-input/50 bg-background px-3 py-3 text-sm text-foreground shadow-sm shadow-black/5 transition-all placeholder:text-muted-foreground/70 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50 pe-10",
+            error &&
+              "border-destructive focus:border-destructive focus:ring-destructive/20",
             className,
           )}
           ref={ref}

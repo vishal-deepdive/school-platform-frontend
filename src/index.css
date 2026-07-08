@@ -4,13 +4,14 @@
 
 @layer base {
   :root {
+    /* Controls (rounded-lg) render at 1rem — the soft, rounded look is a
+       deliberate brand choice, even though cards (rounded-xl) sit at 12px. */
     --radius: 1rem;
     --background: 0.985 0 0;
     --foreground: 0.145 0 0;
-    --primary: 212 80.5% 38.2%;
-    --primary-foreground: 0 0% 100%;
-    /* --primary: 0.205 0 0;
-    --primary-foreground: 0.985 0 0; */
+    /* Brand blue (was hsl(212 80.5% 38.2%)) — oklch like every other token. */
+    --primary: 0.482 0.149 255.6;
+    --primary-foreground: 1 0 0;
     --secondary: 0.97 0 0;
     --secondary-foreground: 0.205 0 0;
     --muted: 0.97 0 0;
@@ -21,33 +22,43 @@
     --destructive-foreground: 0.985 0 0;
     --border: 0.922 0 0;
     --input: 0.922 0 0;
-    --ring: 0.87 0 0;
+    /* Focus ring == brand blue. */
+    --ring: 0.482 0.149 255.6;
     --card: 1 0 0;
     --card-foreground: 0.145 0 0;
     --popover: 1 0 0;
     --popover-foreground: 0.145 0 0;
+    /* App shell surfaces: canvas = main content area (solid equivalent of the
+       old bg-muted/30 composite), rail = icon sidebar strip. Solid values so
+       the sidebar "connected tab" notches can match them exactly. */
+    --canvas: 0.9805 0 0;
+    --rail: 0.955 0 0;
   }
 
   .dark {
     --background: 0.15 0.02 260;
     --foreground: 0.985 0 0;
-    --primary: 212 100% 60%;
-    --primary-foreground: 0 0% 100%;
+    /* Lighter brand blue (was hsl(212 100% 60%)) for dark surfaces. */
+    --primary: 0.661 0.184 254.5;
+    --primary-foreground: 1 0 0;
     --secondary: 0.26 0.02 260;
     --secondary-foreground: 0.985 0 0;
     --muted: 0.26 0.02 260;
     --muted-foreground: 0.65 0.02 260;
     --accent: 0.26 0.02 260;
     --accent-foreground: 0.985 0 0;
-    --destructive: 0.577 0.245 27.325;
+    --destructive: 0.645 0.246 16.3;
     --destructive-foreground: 0.985 0 0;
     --border: 0.26 0.02 260;
     --input: 0.26 0.02 260;
-    --ring: 0.87 0 0;
+    /* Focus ring == brand blue (dark variant). */
+    --ring: 0.661 0.184 254.5;
     --card: 0.20 0.02 260;
     --card-foreground: 0.985 0 0;
     --popover: 0.20 0.02 260;
     --popover-foreground: 0.985 0 0;
+    --canvas: 0.183 0.02 260;
+    --rail: 0.21 0.02 260;
   }
 
   *,
@@ -73,8 +84,27 @@
   }
 
   :focus-visible {
-    outline: 2px solid theme("colors.indigo.500");
+    outline: 2px solid oklch(var(--primary));
     outline-offset: 2px;
+  }
+
+  /* Module pages (TabContainer) own their scroll area, so the app <main>
+     behind them must not scroll too. Replaces the old per-page inline
+     <style> override — the #id selector outwins the .overflow-y-auto class. */
+  #app-main-layout:has(.module-shell) {
+    overflow: hidden;
+  }
+
+  /* Respect reduced-motion globally: collapse every animation/transition to a
+     single imperceptible frame instead of auditing each component. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   /* Global scrollbars styling with theme support */
@@ -100,6 +130,12 @@
 }
 
 @layer utilities {
+  /* The one uppercase micro-label style used app-wide (sidebar section labels,
+     filter captions, stat-card labels, module eyebrows). */
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
   .prose h1 {
     @apply text-xl font-bold text-foreground mb-3 mt-4;
   }
@@ -112,14 +148,28 @@
   .prose p {
     @apply text-sm text-foreground mb-3 leading-relaxed;
   }
+  /* list-outside (not inside) so the marker sits in a left gutter and wrapped /
+     multi-line item text stays aligned under the first line. list-inside (the
+     previous value) pulled the marker into the text flow, which made wrapped
+     lines and nested lists look ragged and inconsistently indented. */
   .prose ul {
-    @apply list-disc list-inside text-sm text-foreground mb-3 space-y-1;
+    @apply list-disc list-outside text-sm text-foreground mb-3 space-y-1 pl-6;
   }
   .prose ol {
-    @apply list-decimal list-inside text-sm text-foreground mb-3 space-y-1;
+    @apply list-decimal list-outside text-sm text-foreground mb-3 space-y-1 pl-6;
   }
   .prose li {
-    @apply text-sm text-foreground;
+    @apply text-sm text-foreground pl-1 marker:text-muted-foreground;
+  }
+  /* Nested lists: small top gap, no doubled bottom margin. */
+  .prose li > ul,
+  .prose li > ol {
+    @apply mt-1 mb-0;
+  }
+  /* "Loose" lists wrap each item's text in a <p>; kill that paragraph's bottom
+     margin so items aren't spaced apart like separate paragraphs. */
+  .prose li > p {
+    @apply mb-0;
   }
   .prose strong {
     @apply font-semibold text-foreground;
@@ -169,6 +219,31 @@
       linear-gradient(to right, rgb(255 255 255 / 0.06) 1px, transparent 1px),
       linear-gradient(to bottom, rgb(255 255 255 / 0.06) 1px, transparent 1px);
     background-size: 44px 44px;
+  }
+
+  /* Brighter, brand-tinted register lines. Shares the 44px cell of the base
+     grids so it overlays them exactly; only revealed under the cursor spotlight
+     (see SpotlightGrid), where it reads as the timetable lighting up. */
+  .bg-grid-primary {
+    background-image:
+      linear-gradient(to right, oklch(var(--primary) / 0.32) 1px, transparent 1px),
+      linear-gradient(to bottom, oklch(var(--primary) / 0.32) 1px, transparent 1px);
+    background-size: 44px 44px;
+  }
+
+  /* Fades a decorative backdrop (grid / glow) into the surface from the top,
+     so it reads as ambient texture rather than a hard-edged panel. */
+  .mask-radial-fade {
+    -webkit-mask-image: radial-gradient(
+      ellipse 78% 62% at 50% 0%,
+      black 55%,
+      transparent 100%
+    );
+    mask-image: radial-gradient(
+      ellipse 78% 62% at 50% 0%,
+      black 55%,
+      transparent 100%
+    );
   }
 
   .mask-fade-edges-x {
@@ -224,6 +299,110 @@
   }
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
     background-color: theme("colors.muted.foreground / 40%");
+  }
+}
+
+/* ── Sonner toast theming ──────────────────────────────────────────────────
+   Sonner self-injects its base stylesheet at runtime, so these overrides use
+   a `.dd-toaster` class + extra attribute to out-specify its defaults. The
+   neutral toast borrows the app's card/foreground/border tokens (so it tracks
+   light/dark automatically); the semantic variants mirror `Alert.tsx`. */
+[data-sonner-toaster].dd-toaster {
+  font-family: "Inter", system-ui, sans-serif;
+  --border-radius: 12px;
+  --width: 380px;
+}
+
+/* Neutral (default / loading) toast → app surface tokens. Higher specificity
+   than sonner's `[data-sonner-toaster][data-sonner-theme='…']` base rule. */
+[data-sonner-toaster].dd-toaster[data-sonner-theme] {
+  --normal-bg: oklch(var(--card));
+  --normal-text: oklch(var(--foreground));
+  --normal-border: oklch(var(--border));
+}
+
+/* Semantic palette — light. Mirrors Alert.tsx (green / red / amber / blue). */
+[data-sonner-toaster].dd-toaster[data-sonner-theme="light"] {
+  --success-bg: #f0fdf4;
+  --success-border: #bbf7d0;
+  --success-text: #15803d;
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+  --error-text: #b91c1c;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --warning-text: #b45309;
+  --info-bg: #eff6ff;
+  --info-border: #bfdbfe;
+  --info-text: #1d4ed8;
+}
+
+/* Semantic palette — dark. Tints lifted off the navy surface for legibility. */
+[data-sonner-toaster].dd-toaster[data-sonner-theme="dark"] {
+  --success-bg: #0c2a1c;
+  --success-border: #166534;
+  --success-text: #4ade80;
+  --error-bg: #2c1416;
+  --error-border: #991b1b;
+  --error-text: #f87171;
+  --warning-bg: #2a2008;
+  --warning-border: #92400e;
+  --warning-text: #fbbf24;
+  --info-bg: #0f1d38;
+  --info-border: #1e40af;
+  --info-text: #60a5fa;
+}
+
+/* Toast card: radius, padding, type scale, and a soft elevated shadow. */
+[data-sonner-toaster].dd-toaster [data-sonner-toast] {
+  padding: 14px 16px;
+  gap: 10px;
+  font-size: 13.5px;
+  box-shadow:
+    0 6px 24px -4px rgba(15, 23, 42, 0.12),
+    0 2px 6px -2px rgba(15, 23, 42, 0.08);
+}
+[data-sonner-toaster].dd-toaster[data-sonner-theme="dark"] [data-sonner-toast] {
+  box-shadow:
+    0 10px 30px -6px rgba(0, 0, 0, 0.55),
+    0 2px 8px -2px rgba(0, 0, 0, 0.45);
+}
+
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-title] {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.45;
+}
+
+/* Icon sized to match Alert; colour is inherited from the toast text token. */
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-icon] {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+}
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-icon] > svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Close button: quiet until the toast is hovered/focused. */
+[data-sonner-toaster].dd-toaster [data-sonner-toast] [data-close-button] {
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+[data-sonner-toaster].dd-toaster [data-sonner-toast]:hover [data-close-button],
+[data-sonner-toaster].dd-toaster
+  [data-sonner-toast]:focus-within
+  [data-close-button] {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  [data-sonner-toaster].dd-toaster {
+    --width: 100%;
   }
 }
 

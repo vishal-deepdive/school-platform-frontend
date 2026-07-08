@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useId } from "react";
 import { cn } from "@/shared/lib/utils";
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -9,7 +9,10 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ label, error, hint, className, id, ...props }, ref) => {
-    const textareaId = id ?? label?.toLowerCase().replace(/\s+/g, "-");
+    const reactId = useId();
+    const textareaId = id ?? label?.toLowerCase().replace(/\s+/g, "-") ?? reactId;
+    const messageId = `${reactId}-message`;
+    const hasMessage = !!(error || hint);
     return (
       <div className="flex flex-col gap-1.5">
         {label && (
@@ -23,6 +26,8 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         <textarea
           ref={ref}
           id={textareaId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={hasMessage ? messageId : undefined}
           className={cn(
             "flex w-full rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground",
             "transition-colors duration-200 resize-none",
@@ -36,10 +41,14 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           {...props}
         />
         {error && (
-          <p className="text-xs font-medium text-destructive mt-0.5">{error}</p>
+          <p id={messageId} className="text-xs font-medium text-destructive mt-0.5">
+            {error}
+          </p>
         )}
         {hint && !error && (
-          <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
+          <p id={messageId} className="text-xs text-muted-foreground mt-0.5">
+            {hint}
+          </p>
         )}
       </div>
     );

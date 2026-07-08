@@ -15,6 +15,7 @@ import type { UserRole } from "@/features/auth/types";
  */
 export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/dashboard": ["admin", "principal", "teacher", "student", "parent", "viewer"],
+  "/profile":   ["admin", "principal", "teacher", "student", "parent", "viewer"],
 
   // Attendance
   "/attendance/dashboard": ["admin", "principal", "teacher"],
@@ -38,6 +39,7 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/rag/questions": ["admin", "principal", "teacher"],
   "/rag/notes": ["admin", "principal", "teacher", "student"],
   "/rag/documents": ["admin", "principal", "teacher"],
+  "/rag/insights": ["admin", "principal", "teacher"],
   "/rag/audit": ["admin", "principal"],
 
   // Survey Analytics (sensitive student wellbeing data — staff only)
@@ -46,25 +48,49 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/survey/data": ["admin", "principal"],
   "/survey/source": ["admin", "principal"],
 
+  // Roster management
+  "/students/import": ["admin", "principal"],
+
   // Parent account approvals (principal/admin)
   "/approvals/parents": ["admin", "principal"],
 
   // Platform admin
   "/admin/onboarding": ["admin"],
+  "/admin/schools": ["admin"],
+  "/admin/users": ["admin"],
+  "/admin/audit-log": ["admin"],
   "/admin/admins": ["admin"],
   "/admin/prompts": ["admin"],
 };
 
 /**
- * True if `role` may access `path`. Paths not listed in ROUTE_ROLES are treated
- * as open to any authenticated user (matches the "unlisted = no extra gate"
- * convention). An absent role is always denied.
+ * True if `role` may access `path`. Uses a default-deny stance: paths not listed
+ * in ROUTE_ROLES are blocked for everyone. Add the path to ROUTE_ROLES to expose
+ * it. An absent role is always denied.
  */
 export function roleCanAccess(path: string, role?: UserRole | null): boolean {
   if (!role) return false;
   const allowed = ROUTE_ROLES[path];
-  if (!allowed) return true;
+  if (!allowed) return false;  // default deny — add to ROUTE_ROLES to expose
   return allowed.includes(role);
+}
+
+/**
+ * Modules that operate on a school's data. An admin must pick an active school
+ * (Dashboard → SchoolSwitcherPill) before these routes mean anything. Single
+ * source for the sidebar gating, quick-action gating, and any future guard.
+ */
+const SCHOOL_SCOPED_PREFIXES = [
+  "/attendance",
+  "/recording",
+  "/rag",
+  "/survey",
+  "/students",
+];
+
+export function needsActiveSchool(path?: string | null): boolean {
+  if (!path) return false;
+  return SCHOOL_SCOPED_PREFIXES.some((p) => path.startsWith(p));
 }
 
 export const STAFF_ROLES: UserRole[] = ["admin", "principal", "teacher"];

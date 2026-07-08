@@ -2,13 +2,14 @@ import { Link, useNavigate } from "react-router-dom";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   forgotPasswordSchema,
   type ForgotPasswordFormData,
 } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { writeOtpFlow } from "@/shared/lib/session";
 import { AuthInput, AuthSubmitButton } from "@/shared/components/ui/auth-fuse";
 import { useOtpCooldown } from "../hooks/useOtpCooldown";
 
@@ -22,6 +23,7 @@ export function ForgotPasswordForm() {
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordFormData>({
     resolver: zodResolver(forgotPasswordSchema),
+    mode: "onTouched",
   });
 
   const watchEmail = useWatch({ control, name: "email", defaultValue: "" });
@@ -32,6 +34,7 @@ export function ForgotPasswordForm() {
       await authApi.forgotPassword(data);
       toast.success("OTP sent to your email!");
       startCooldown();
+      writeOtpFlow({ email: data.email, purpose: "reset_password" });
       navigate("/verify-otp", {
         state: { email: data.email, purpose: "reset_password" },
       });
@@ -46,21 +49,19 @@ export function ForgotPasswordForm() {
       className="flex flex-col gap-5"
       noValidate
     >
-      <div>
-        <AuthInput
-          type="email"
-          autoComplete="email"
-          placeholder="Email Address"
-          error={errors.email?.message}
-          {...register("email")}
-        />
-      </div>
+      <AuthInput
+        label="Email"
+        type="email"
+        autoComplete="email"
+        autoFocus
+        placeholder="Email Address"
+        error={errors.email?.message}
+        {...register("email")}
+      />
 
-      <div className="pt-2">
-        <AuthSubmitButton icon={Mail} isLoading={isSubmitting} className="mt-2">
-          Send reset OTP
-        </AuthSubmitButton>
-      </div>
+      <AuthSubmitButton icon={Mail} isLoading={isSubmitting} className="mt-2">
+        Send reset code
+      </AuthSubmitButton>
 
       <p className="text-center text-sm text-muted-foreground mt-2">
         Remembered it?{" "}

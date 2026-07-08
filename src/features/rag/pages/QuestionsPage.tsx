@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { HelpCircle } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 import type { QuestionType, Difficulty } from "@/features/rag/types";
 import type { SelectOption } from "@/shared/types/common";
@@ -86,13 +87,25 @@ export function QuestionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className={`grid grid-cols-1 gap-6 ${(result !== null || isPending) ? "lg:grid-cols-3" : ""}`}>
-        <Card className={(result !== null || isPending) ? "lg:col-span-1" : "w-full"}>
-          <CardHeader title="Configuration" />
+      <FilterBar
+        title="Test setup"
+        icon={<HelpCircle className="h-4 w-4" />}
+        actions={
+          <Button
+            onClick={() => generate()}
+            loading={isPending}
+            disabled={!canGenerate}
+            icon={<HelpCircle className="h-4 w-4" />}
+          >
+            {isPending ? "Generating…" : "Generate Questions"}
+          </Button>
+        }
+      >
+        <RagFilterPanel filters={filters} onChange={setFilters} showTitle />
 
-          <RagFilterPanel filters={filters} onChange={setFilters} />
-
-          <div className="mt-4 space-y-4">
+        <div className="space-y-3">
+          {/* <h4 className="text-sm font-semibold text-foreground">Question options</h4> */}
+          <div className="grid grid-cols-1 gap-4 items-start sm:grid-cols-2 lg:grid-cols-3">
             <Select
               label="Question Type"
               options={qTypeOptions}
@@ -154,48 +167,43 @@ export function QuestionsPage() {
                 }}
               />
             )}
-
-            <Button
-              onClick={() => generate()}
-              loading={isPending}
-              disabled={!canGenerate}
-              icon={<HelpCircle className="h-4 w-4" />}
-              className="w-full"
-            >
-              {isPending ? "Generating…" : "Generate Questions"}
-            </Button>
-            {!canGenerate && (
-              <p className="text-xs text-muted-foreground">
-                Select a class and subject
-                {qType === "BRIEF" ? ", and set marks per question," : ""} to
-                continue.
-              </p>
-            )}
           </div>
-        </Card>
+        </div>
 
-        {(result !== null || isPending) && (
-          <div className="lg:col-span-2">
-            <StreamingResultPanel
-              error={error}
-              isPending={isPending}
-              result={result}
-              canRetry={canGenerate}
-              onRetry={() => generate()}
-              Icon={HelpCircle}
-              title="Generated Questions"
-              pendingMessage="Generating your questions..."
-              actions={
-                <>
-                  <Badge variant={difficultyBadge[difficulty]}>{difficulty}</Badge>
-                  <Badge variant="info">{qType}</Badge>
-                </>
-              }
-              filename={`questions-${qType}-${difficulty}.md`}
-            />
-          </div>
+        {!canGenerate && (
+          <p className="text-xs text-muted-foreground">
+            Select a class and subject
+            {qType === "BRIEF" ? ", and set marks per question," : ""} to
+            continue.
+          </p>
         )}
-      </div>
+      </FilterBar>
+
+      {result !== null || isPending ? (
+        <StreamingResultPanel
+          error={error}
+          isPending={isPending}
+          result={result}
+          canRetry={canGenerate}
+          onRetry={() => generate()}
+          Icon={HelpCircle}
+          title="Generated Questions"
+          pendingMessage="Generating your questions..."
+          actions={
+            <>
+              <Badge variant={difficultyBadge[difficulty]}>{difficulty}</Badge>
+              <Badge variant="info">{qType}</Badge>
+            </>
+          }
+          filename={`questions-${qType}-${difficulty}.md`}
+        />
+      ) : (
+        <EmptyState
+          icon={<HelpCircle className="h-12 w-12" />}
+          title="No questions generated yet"
+          description="Set your class, subject and options above, then generate a practice test."
+        />
+      )}
     </div>
   );
 }

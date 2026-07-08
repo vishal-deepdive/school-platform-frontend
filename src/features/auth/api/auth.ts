@@ -1,4 +1,5 @@
 import { apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   LoginRequest,
   RegisterRequest,
@@ -24,7 +25,7 @@ import type {
   PendingParentsResponse,
 } from "@/features/auth/types";
 
-const BASE = "/api/v1/auth";
+const BASE = `${API_V1}/auth`;
 
 export interface CreateInviteResult {
   invite_id: string;
@@ -33,6 +34,17 @@ export interface CreateInviteResult {
   invite_url: string;
   email: string | null;
   expires_at: string;
+}
+
+export interface PendingInvite {
+  invite_id: string;
+  school_id: string;
+  role: string;
+  email: string | null;
+  invited_by_email: string | null;
+  invited_by_name: string | null;
+  expires_at: string | null;
+  created_at: string | null;
 }
 
 export const authApi = {
@@ -44,9 +56,29 @@ export const authApi = {
     email?: string;
     role: "teacher" | "principal";
     expires_hours?: number;
+    /** Admins only — target school. Ignored for principals (own school). */
+    school_id?: string;
   }) =>
     apiClient
       .post<CreateInviteResult>(`${BASE}/invite`, data)
+      .then((r) => r.data),
+
+  /** List pending (unused, unexpired) invites for a school. Admins pass the id. */
+  listInvites: (schoolId: string) =>
+    apiClient
+      .get<PendingInvite[]>(`${BASE}/invites`, { params: { school_id: schoolId } })
+      .then((r) => r.data),
+
+  /** Re-issue a pending invite with a fresh token + expiry (old link stops working). */
+  resendInvite: (invitationId: string) =>
+    apiClient
+      .post<CreateInviteResult>(`${BASE}/invites/${encodeURIComponent(invitationId)}/resend`)
+      .then((r) => r.data),
+
+  /** Revoke a pending invite so its link can no longer be used. */
+  revokeInvite: (invitationId: string) =>
+    apiClient
+      .delete<MessageResponse>(`${BASE}/invites/${encodeURIComponent(invitationId)}`)
       .then((r) => r.data),
 
   register: (data: RegisterRequest) =>
@@ -94,15 +126,13 @@ export const authApi = {
       .post<MessageResponse>(`${BASE}/resend-otp`, data)
       .then((r) => r.data),
 
-  refresh: (refresh_token: string) =>
-    apiClient
-      .post<TokenResponse>(`${BASE}/refresh`, { refresh_token })
-      .then((r) => r.data),
+  /** Rotate tokens. The refresh token travels via the HttpOnly cookie. */
+  refresh: () =>
+    apiClient.post<TokenResponse>(`${BASE}/refresh`, {}).then((r) => r.data),
 
-  logout: (refresh_token: string) =>
-    apiClient
-      .post<MessageResponse>(`${BASE}/logout`, { refresh_token })
-      .then((r) => r.data),
+  /** Revoke the current session. The refresh token travels via the cookie. */
+  logout: () =>
+    apiClient.post<MessageResponse>(`${BASE}/logout`, {}).then((r) => r.data),
 
   /** Fetch the current user's profile (requires Bearer token). */
   me: () => apiClient.get<UserResponse>(`${BASE}/me`).then((r) => r.data),

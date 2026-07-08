@@ -1,50 +1,81 @@
 import {
   UserCheck,
-  Mic,
   BookOpen,
   BarChart2,
   Users,
-  CheckSquare,
-  List,
   TrendingUp,
   Upload,
-  FileText,
   Search,
   Activity,
   MessageSquare,
-  HelpCircle,
   StickyNote,
-  Database,
   Shield,
   ClipboardList,
-  UserCog,
   LayoutDashboard,
   Wand2,
-  Link2,
+  FileQuestion,
+  Library,
+  Gauge,
+  PlayCircle,
+  Sparkles,
+  Trash2,
+  FileSpreadsheet,
+  History,
+  CalendarClock,
+  CalendarDays,
+  CheckSquare,
+  FileUp,
+  User,
+  AudioLines,
+  SmilePlus,
 } from "lucide-react";
 
 export interface NavItem {
   label: string;
+  /** Short caption under the rail icon (≤10 chars); defaults to `label`. */
+  railLabel?: string;
   href?: string;
   icon: React.ReactNode;
   children?: NavItem[];
   end?: boolean;
+  /** Hidden from the sidebar but included in TabContainer route matching. */
+  hidden?: boolean;
+  /** Skip the TabContainer breadcrumb header for this route. */
+  noHeader?: boolean;
+  /**
+   * Full-height "app" page (e.g. the Q&A chat): the TabContainer content area
+   * gives it an exact height and trims its own vertical padding so the page
+   * owns its internal scroll instead of the shell scrolling.
+   */
+  fullBleed?: boolean;
 }
 
 export const navItems: NavItem[] = [
   {
     label: "Dashboard",
+    railLabel: "Home",
     href: "/dashboard",
     icon: <LayoutDashboard className="h-5 w-5" />,
+    noHeader: true,
   },
   {
     label: "Attendance",
     icon: <UserCheck className="h-5 w-5" />,
     children: [
       {
-        label: "Enroll Students",
+        label: "Overview",
+        href: "/attendance/dashboard",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+      },
+      {
+        label: "Face Enrollment",
         href: "/attendance/enroll",
-        icon: <Users className="h-4 w-4" />,
+        icon: <SmilePlus className="h-4 w-4" />,
+      },
+      {
+        label: "Roll Call",
+        href: "/attendance/roll-call",
+        icon: <ClipboardList className="h-4 w-4" />,
       },
       {
         label: "Mark Attendance",
@@ -52,122 +83,148 @@ export const navItems: NavItem[] = [
         icon: <CheckSquare className="h-4 w-4" />,
       },
       {
-        label: "View Records",
+        label: "Attendance Records",
         href: "/attendance/view",
-        icon: <List className="h-4 w-4" />,
+        icon: <History className="h-4 w-4" />,
       },
       {
-        label: "Statistics",
+        label: "Leave Requests",
+        href: "/attendance/leave",
+        icon: <CalendarClock className="h-4 w-4" />,
+      },
+      {
+        label: "Attendance Reports",
         href: "/attendance/stats",
         icon: <TrendingUp className="h-4 w-4" />,
+      },
+      {
+        label: "Holiday Calendar",
+        href: "/attendance/holidays",
+        icon: <CalendarDays className="h-4 w-4" />,
+      },
+      {
+        label: "Student Roster",
+        href: "/attendance/manage",
+        icon: <Users className="h-4 w-4" />,
+      },
+      {
+        label: "Import Students",
+        href: "/students/import",
+        icon: <FileUp className="h-4 w-4" />,
       },
     ],
   },
   {
-    label: "Recording",
-    icon: <Mic className="h-5 w-5" />,
+    label: "Lecture Capture",
+    railLabel: "Lectures",
+    icon: <AudioLines className="h-5 w-5" />,
     children: [
       {
-        label: "Upload Audio",
+        label: "New Recording",
         href: "/recording/upload",
         icon: <Upload className="h-4 w-4" />,
       },
       {
-        label: "My Recordings",
+        label: "My Lectures",
         href: "/recording/list",
-        icon: <FileText className="h-4 w-4" />,
+        icon: <PlayCircle className="h-4 w-4" />,
       },
       {
-        label: "Search Notes",
+        label: "Find in Notes",
         href: "/recording/search",
         icon: <Search className="h-4 w-4" />,
       },
       {
-        label: "Audit Logs",
+        label: "Activity Log",
         href: "/recording/audit",
         icon: <Activity className="h-4 w-4" />,
       },
     ],
   },
   {
-    label: "RAG Assistant",
+    label: "Study Assistant",
+    railLabel: "Study",
     icon: <BookOpen className="h-5 w-5" />,
     children: [
       {
-        label: "Q&A Chat",
+        label: "Ask a Doubt",
         href: "/rag/qa",
         icon: <MessageSquare className="h-4 w-4" />,
+        fullBleed: true,
       },
       {
-        label: "Generate Questions",
+        label: "Practice Test Generator",
         href: "/rag/questions",
-        icon: <HelpCircle className="h-4 w-4" />,
+        icon: <FileQuestion className="h-4 w-4" />,
       },
       {
-        label: "Generate Notes",
+        label: "Smart Notes",
         href: "/rag/notes",
         icon: <StickyNote className="h-4 w-4" />,
       },
       {
-        label: "Manage Documents",
+        label: "Textbook Library",
         href: "/rag/documents",
-        icon: <FileText className="h-4 w-4" />,
+        icon: <Library className="h-4 w-4" />,
       },
       {
-        label: "Knowledge Audit",
+        label: "Library Insights",
+        href: "/rag/insights",
+        icon: <BarChart2 className="h-4 w-4" />,
+      },
+      {
+        label: "Content Coverage",
         href: "/rag/audit",
-        icon: <Database className="h-4 w-4" />,
+        icon: <Gauge className="h-4 w-4" />,
       },
     ],
   },
   {
-    label: "Survey Analytics",
+    label: "Feedback Insights",
+    railLabel: "Feedback",
     icon: <BarChart2 className="h-5 w-5" />,
     children: [
       {
-        label: "Dashboard",
+        label: "Overview",
         href: "/survey",
-        icon: <BarChart2 className="h-4 w-4" />,
+        icon: <LayoutDashboard className="h-4 w-4" />,
         end: true,
       },
       {
-        label: "AI Search",
+        label: "Ask Insights",
         href: "/survey/search",
-        icon: <Search className="h-4 w-4" />,
+        icon: <Sparkles className="h-4 w-4" />,
       },
       {
-        label: "Data Management",
+        label: "Data Cleanup",
         href: "/survey/data",
-        icon: <Database className="h-4 w-4" />,
+        icon: <Trash2 className="h-4 w-4" />,
       },
       {
-        label: "Data Source",
+        label: "Sheet Connections",
         href: "/survey/source",
-        icon: <Link2 className="h-4 w-4" />,
+        icon: <FileSpreadsheet className="h-4 w-4" />,
       },
     ],
   },
-  // {
-  //   label: "Parent Approvals",
-  //   href: "/approvals/parents",
-  //   icon: <UserCheck className="h-5 w-5" />,
-  // },
+  {
+    label: "My Profile",
+    href: "/profile",
+    icon: <User className="h-5 w-5" />,
+    hidden: true,
+  },
 ];
 
 export const adminNavItems: NavItem[] = [
   {
     label: "Platform Admin",
+    railLabel: "Admin",
     icon: <Shield className="h-5 w-5" />,
     children: [
       {
         label: "School Applications",
         href: "/admin/onboarding",
         icon: <ClipboardList className="h-4 w-4" />,
-      },
-      {
-        label: "Manage Admins",
-        href: "/admin/admins",
-        icon: <UserCog className="h-4 w-4" />,
       },
       {
         label: "Prompts",

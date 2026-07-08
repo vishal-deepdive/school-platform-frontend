@@ -1,4 +1,5 @@
 import { multipartClient, apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   EnrollResponse,
   MarkAttendanceResponse,
@@ -22,10 +23,11 @@ import type {
   LeaveReviewRequest,
   DashboardResponse,
   AnalyticsResponse,
+  MyAnalyticsResponse,
 } from "@/features/attendance/types";
 import { buildQueryString } from "@/shared/lib/utils";
 
-const BASE = "/api/v1/attendance";
+const BASE = `${API_V1}/attendance`;
 
 export const attendanceApi = {
   enroll: (file: File, params: Record<string, string>) => {
@@ -43,6 +45,15 @@ export const attendanceApi = {
     Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
     return multipartClient
       .post<EnrollResponse>(`${BASE}/enroll-new-student/`, form)
+      .then((r) => r.data);
+  },
+
+  enrollNewStudentPhotos: (files: File[], params: Record<string, string>) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("photos", f));
+    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
+    return multipartClient
+      .post<EnrollResponse>(`${BASE}/enroll-new-student-photos/`, form)
       .then((r) => r.data);
   },
 
@@ -76,6 +87,15 @@ export const attendanceApi = {
       .then((r) => r.data);
   },
 
+  markAttendancePhotos: (files: File[], params: Record<string, string>) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("photos", f));
+    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
+    return multipartClient
+      .post<MarkAttendanceResponse>(`${BASE}/mark-attendance-photos/`, form)
+      .then((r) => r.data);
+  },
+
   correctAttendance: (params: Record<string, string>) => {
     const form = new FormData();
     Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
@@ -102,6 +122,11 @@ export const attendanceApi = {
   getAnalytics: (params: Record<string, string> = {}) =>
     apiClient
       .get<AnalyticsResponse>(`${BASE}/analytics/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  getMyAnalytics: (params: Record<string, string> = {}) =>
+    apiClient
+      .get<MyAnalyticsResponse>(`${BASE}/my-analytics/${buildQueryString(params)}`)
       .then((r) => r.data),
 
   // ── Holidays ──

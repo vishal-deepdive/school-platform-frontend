@@ -49,23 +49,11 @@ export interface OptimizeResult {
   optimized: boolean;
   originalBytes: number;
   outputBytes: number;
-  /** False when the output still exceeds MAX_UPLOAD_BYTES — do not upload. */
-  withinUploadLimit: boolean;
-}
-
-/** Progress update emitted during optimization. */
-export interface OptimizeProgress {
-  /** Human-readable stage label, e.g. "Decoding audio…". */
-  stage: string;
-  /** 0–100 when measurable; null for an indeterminate (spinner) stage. */
-  percent: number | null;
-}
-
-type ProgressCb = (p: OptimizeProgress) => void;
-
-/** Yield to the event loop so the browser can repaint between work chunks. */
-function yieldToBrowser(): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, 0));
+  /**
+   * Media duration in whole seconds, when it could be decoded. Undefined for
+   * pass-through uploads (too large / decode failed) — duration is best-effort.
+   */
+  durationSeconds?: number;
 }
 
 type AudioContextCtor = typeof AudioContext;
@@ -226,12 +214,19 @@ export async function optimizeAudioForUpload(
       samples = rendered.getChannelData(0);
     }
 
-    const wav = await encodeWav16Mono(samples, TARGET_SAMPLE_RATE, (percent) =>
-      onProgress?.({ stage: "Compressing audio…", percent }),
+    // Capture the media length now that we have decoded PCM — best-effort metadata.
+    const durationSeconds = Number.isFinite(decoded.duration)
+      ? Math.round(decoded.duration)
+      : undefined;
+
+    onStage?.("Optimizing for speech…");
+    const frameCount = Math.max(
+      1,
+      Math.ceil(decoded.duration * TARGET_SAMPLE_RATE),
     );
     // Only adopt the conversion when it genuinely reduces bandwidth.
     if (wav.byteLength >= input.size) {
-      return passthrough();
+      return { ...passthrough(), durationSeconds };
     }
 
     const baseName = input.name.replace(/\.[^./\\]+$/, "") || "recording";
@@ -241,7 +236,7 @@ export async function optimizeAudioForUpload(
       optimized: true,
       originalBytes: input.size,
       outputBytes: file.size,
-      withinUploadLimit: file.size <= MAX_UPLOAD_BYTES,
+      durationSeconds,
     };
   } catch {
     // Unsupported/corrupt container, OOM, etc. — upload the original untouched.

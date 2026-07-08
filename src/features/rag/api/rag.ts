@@ -1,5 +1,6 @@
 import { apiClient } from "@/shared/api/client";
 import { streamSSE } from "@/shared/api/streaming";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   QARequest,
   QAStreamEvent,
@@ -14,9 +15,10 @@ import type {
   DocumentStatusResponse,
   DocumentListResponse,
   ClassLevelsResponse,
+  RagAnalyticsResponse,
 } from "@/features/rag/types";
 
-const BASE = "/api/v1/rag";
+const BASE = `${API_V1}/rag`;
 
 export const ragApi = {
   getMetadata: () =>
@@ -83,4 +85,8 @@ export const ragApi = {
     apiClient
       .post<IngestJobResponse>(`${BASE}/documents/${documentId}/retry`)
       .then((r) => r.data),
+
+  /** Knowledge-base corpus analytics for the dashboard (staff-scoped). */
+  getAnalytics: () =>
+    apiClient.get<RagAnalyticsResponse>(`${BASE}/analytics`).then((r) => r.data),
 };

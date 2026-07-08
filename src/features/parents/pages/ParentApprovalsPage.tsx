@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { UserCheck } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import type { PendingParentItem } from "@/features/auth/types";
 
@@ -47,18 +47,9 @@ export function ParentApprovalsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Parent Approvals</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review parents who have registered and verified their email. Approving
-          links them to their child and lets them sign in to view that child's
-          records.
-        </p>
-      </div>
-
       {error && <Alert variant="error">{getErrorMessage(error) || "Failed to load pending parents."}</Alert>}
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <ListSkeleton items={4} />}
 
       {!isLoading && !error && items.length === 0 && (
         <EmptyState
@@ -70,13 +61,14 @@ export function ParentApprovalsPage() {
 
       {!isLoading && items.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+          <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-muted/50">
               <tr>
                 {["Parent", "Child", "Relation", "Requested", ""].map((h, i) => (
                   <th
                     key={i}
-                    className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    className="whitespace-nowrap px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                   >
                     {h || <span className="sr-only">Actions</span>}
                   </th>
@@ -108,7 +100,7 @@ export function ParentApprovalsPage() {
                     <td className="px-6 py-4 text-sm capitalize text-muted-foreground">
                       {p.relation}
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       {p.requested_at ? formatDate(p.requested_at) : "—"}
                     </td>
                     <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
@@ -134,6 +126,7 @@ export function ParentApprovalsPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

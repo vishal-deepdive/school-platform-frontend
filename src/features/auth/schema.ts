@@ -107,8 +107,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    email: emailField,
-    otp: otpField,
+    reset_token: z.string().min(1, "Reset token is missing"),
     new_password: passwordField,
     confirm_password: z.string(),
   })

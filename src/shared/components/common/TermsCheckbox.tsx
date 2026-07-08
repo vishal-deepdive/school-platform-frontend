@@ -24,8 +24,10 @@ export const TermsCheckbox = forwardRef<HTMLInputElement, TermsCheckboxProps>(
       <>
         I accept the{" "}
         <Link
-          to="#"
-          className="font-medium text-primary hover:text-primary/80 transition-colors"
+          to="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-primary hover:text-primary/80 transition-colors underline-offset-2 hover:underline"
         >
           Terms &amp; Conditions
         </Link>

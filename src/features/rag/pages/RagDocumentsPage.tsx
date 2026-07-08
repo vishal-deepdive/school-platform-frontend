@@ -1,17 +1,28 @@
-import React, { useState } from "react";
-import { Plus, Trash2, RefreshCw, FileText, Lock } from "lucide-react";
-import toast from "react-hot-toast";
+import React, { useId, useState } from "react";
+import {
+  Plus,
+  Trash2,
+  RefreshCw,
+  FileText,
+  Lock,
+  UploadCloud,
+} from "lucide-react";
+import toast from "@/shared/lib/toast";
 import { isAxiosError } from "axios";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
+import { Alert } from "@/shared/components/ui/Alert";
+import { TableBodySkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
 import { SUBJECT_OPTIONS, RAG_OTHER_SUBJECT } from "@/features/rag/constants";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -60,8 +71,15 @@ export function RagDocumentsPage() {
     id: string;
     action: "delete" | "retry";
   } | null>(null);
+  const [docToDelete, setDocToDelete] = useState<string | null>(null);
+  // Set when an upload hits a 409 (duplicate) and needs a replace decision.
+  const [replaceRequest, setReplaceRequest] = useState<{
+    payload: FormData;
+    detail: string;
+  } | null>(null);
 
   const queryClient = useQueryClient();
+  const uploadFormId = useId();
 
   const { data: classData } = useRagClassLevels();
   const sortedClasses = sortClassesDescending(classData?.class_levels ?? []);
@@ -79,7 +97,7 @@ export function RagDocumentsPage() {
         ...(statusFilter && { status: statusFilter }),
       },
       {
-        refetchInterval: (query) => {
+        refetchInterval: (query: any) => {
           const items = query.state.data?.items ?? [];
           const stillWorking = items.some(
             (d: { status: string }) =>
@@ -123,15 +141,7 @@ export function RagDocumentsPage() {
       },
       onError: (err) => {
         if (isAxiosError(err) && err.response?.status === 409) {
-          const detail = getErrorMessage(err);
-          if (
-            confirm(
-              `${detail}\n\nDo you want to replace the existing document?`,
-            )
-          ) {
-            submitUpload(payload, true);
-            return;
-          }
+          setReplaceRequest({ payload, detail: getErrorMessage(err) });
           return;
         }
         toast.error(getErrorMessage(err));
@@ -171,13 +181,15 @@ export function RagDocumentsPage() {
     submitUpload(payload);
   };
 
+  // Reset the picked file and fields so a reopened dialog starts clean.
+  const closeUpload = () => {
+    setIsModalOpen(false);
+    setFile(null);
+    setFormData({ ...EMPTY_FORM });
+  };
+
   const handleDelete = (id: string) => {
-    if (
-      !confirm(
-        "Are you sure you want to delete this document? All associated chunks will be removed.",
-      )
-    )
-      return;
+    setDocToDelete(null);
     setPendingRow({ id, action: "delete" });
     deleteDoc(id, {
       onSuccess: () => {
@@ -238,45 +250,46 @@ export function RagDocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <Card padding="none">
-        <CardHeader
-          title="Documents"
-          description={`${total} document(s) in the knowledge base`}
-          className="px-6 pt-6"
-          action={
-            <div className="flex flex-wrap items-end gap-2">
-              <div className="w-40">
-                <Select
-                  options={STATUS_FILTER_OPTIONS}
-                  value={statusFilter}
-                  onChange={(e) => handleStatusFilter(e.target.value)}
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => refetch()}
-                loading={isFetching}
-                icon={<RefreshCw className="h-4 w-4" />}
-              >
-                Refresh
-              </Button>
-              {canManage && (
-                <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
-                  Upload Document
-                </Button>
-              )}
+      <Panel
+        flush
+        actions={
+          <>
+            {/* {total > 0 && (
+              <Badge variant="primary">
+                {total} indexed
+              </Badge>
+            )} */}
+            <div className="w-40">
+              <Select
+                options={STATUS_FILTER_OPTIONS}
+                value={statusFilter}
+                onChange={(e) => handleStatusFilter(e.target.value)}
+              />
             </div>
-          }
-        />
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              loading={isFetching}
+              icon={<RefreshCw className="h-4 w-4" />}
+            >
+              Refresh
+            </Button>
+            {canManage && (
+              <Button icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+                Upload Document
+              </Button>
+            )}
+          </>
+        }
+      >
         {isError ? (
-          <div className="px-6 pb-8 pt-2">
-            <p className="text-center text-sm text-destructive">
+          <div className="p-4">
+            <Alert variant="error">
               Failed to load documents. {getErrorMessage(error)}
-            </p>
+            </Alert>
           </div>
         ) : !isLoading && items.length === 0 ? (
-          <div className="px-6 pb-8 pt-2">
+          <div className="p-4">
             <EmptyState
               icon={<FileText className="h-12 w-12" />}
               title={statusFilter ? "No matching documents" : "No documents yet"}
@@ -298,26 +311,28 @@ export function RagDocumentsPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
+            <table className="min-w-full divide-y divide-border/50">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Class / Chapter</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">File</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Class / Chapter</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                   {canManage && (
-                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                   )}
                 </tr>
               </thead>
-              <tbody className="bg-background divide-y divide-border">
+              <tbody className="bg-card divide-y divide-border/30">
                 {isLoading ? (
-                  <tr><td colSpan={colSpan} className="px-6 py-4 text-center text-sm text-muted-foreground">Loading documents...</td></tr>
+                  <TableBodySkeleton rows={6} columns={colSpan} />
                 ) : (
                   items.map((doc) => (
-                    <tr key={doc.id}>
+                    <tr key={doc.id} className="transition-colors hover:bg-muted/40">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <FileText className="h-5 w-5 text-muted-foreground mr-2" />
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+                            <FileText className="h-4 w-4" />
+                          </span>
                           <div>
                             <div className="text-sm font-medium text-foreground">{doc.original_filename}</div>
                             <div className="text-xs text-muted-foreground">{(doc.file_size / 1024).toFixed(1)} KB • {doc.parser}</div>
@@ -347,15 +362,17 @@ export function RagDocumentsPage() {
                               Retry
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(doc.id)}
-                            loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
-                            className="text-destructive hover:text-destructive/80"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <Tooltip content="Delete document" side="left">
+                            <Button
+                              variant="danger-ghost"
+                              size="sm"
+                              onClick={() => setDocToDelete(doc.id)}
+                              loading={pendingRow?.id === doc.id && pendingRow.action === "delete"}
+                              aria-label="Delete document"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </Tooltip>
                         </td>
                       )}
                     </tr>
@@ -365,37 +382,70 @@ export function RagDocumentsPage() {
             </table>
           </div>
         )}
-      </Card>
+      </Panel>
 
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}
+        totalItems={total}
+        itemsLabel="documents"
         hasNext={hasNext}
         hasPrev={hasPrev}
         onNext={() => setOffset((o) => o + PAGE_SIZE)}
         onPrev={() => setOffset((o) => Math.max(0, o - PAGE_SIZE))}
       />
 
-      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} title="Upload Document">
-        <form onSubmit={handleUpload} className="space-y-4">
+      <Modal
+        open={isModalOpen}
+        onClose={closeUpload}
+        title="Upload Document"
+        size="lg"
+        icon={<UploadCloud />}
+        description="Add a textbook chapter to the knowledge base for retrieval."
+        footer={
+          <>
+            <Button variant="outline" type="button" onClick={closeUpload}>
+              Cancel
+            </Button>
+            <Button type="submit" form={uploadFormId} loading={isUploading}>
+              Upload
+            </Button>
+          </>
+        }
+      >
+        <form
+          id={uploadFormId}
+          onSubmit={handleUpload}
+          className="space-y-5"
+        >
           <FileUpload
-            label="Document File (PDF, DOCX, PPTX, MD, TXT)"
+            label="Document file"
             accept=".pdf,.docx,.pptx,.md,.txt"
+            hint="PDF, DOCX, PPTX, MD or TXT"
             onChange={(files) => setFile(files[0] || null)}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
               label="Class"
               options={classOptions}
               value={formData.class_level}
-              onChange={(e) => setFormData({ ...formData, class_level: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, class_level: e.target.value })
+              }
             />
             <Select
               label="Subject"
-              options={[{ value: "", label: "Select subject" }, ...SUBJECT_OPTIONS]}
+              options={[
+                { value: "", label: "Select subject" },
+                ...SUBJECT_OPTIONS,
+              ]}
               value={formData.subject}
               onChange={(e) =>
-                setFormData({ ...formData, subject: e.target.value, subject_other: "" })
+                setFormData({
+                  ...formData,
+                  subject: e.target.value,
+                  subject_other: "",
+                })
               }
             />
           </div>
@@ -404,23 +454,76 @@ export function RagDocumentsPage() {
               label="Subject name"
               placeholder="Enter the subject"
               value={formData.subject_other}
-              onChange={(e) => setFormData({ ...formData, subject_other: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, subject_other: e.target.value })
+              }
             />
           )}
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Chapter Number" required value={formData.chapter_number} onChange={(e) => setFormData({ ...formData, chapter_number: e.target.value })} />
-            <Input label="Chapter Name" required value={formData.chapter_name} onChange={(e) => setFormData({ ...formData, chapter_name: e.target.value })} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Input
+              label="Chapter number"
+              required
+              placeholder="e.g. 4"
+              value={formData.chapter_number}
+              onChange={(e) =>
+                setFormData({ ...formData, chapter_number: e.target.value })
+              }
+            />
+            <Input
+              label="Chapter name"
+              required
+              placeholder="e.g. Photosynthesis"
+              value={formData.chapter_name}
+              onChange={(e) =>
+                setFormData({ ...formData, chapter_name: e.target.value })
+              }
+            />
           </div>
           {isAdmin && (
-            <Input label="School ID (Optional)" placeholder="Leave empty for global content" value={formData.school_id} onChange={(e) => setFormData({ ...formData, school_id: e.target.value })} />
+            <Input
+              label="School ID"
+              hint="Leave empty to make this content global to all schools."
+              placeholder="Optional"
+              value={formData.school_id}
+              onChange={(e) =>
+                setFormData({ ...formData, school_id: e.target.value })
+              }
+            />
           )}
-
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" loading={isUploading}>Upload</Button>
-          </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        open={docToDelete !== null}
+        title="Delete document?"
+        description="This removes the document and all of its indexed chunks from the knowledge base. Questions can no longer cite it. This cannot be undone."
+        confirmLabel="Delete document"
+        onConfirm={() => docToDelete && handleDelete(docToDelete)}
+        onClose={() => setDocToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={replaceRequest !== null}
+        title="Replace existing document?"
+        variant="primary"
+        description={
+          replaceRequest && (
+            <>
+              {replaceRequest.detail} Uploading again replaces the existing
+              document and re-indexes its content.
+            </>
+          )
+        }
+        confirmLabel="Replace document"
+        loading={isUploading}
+        onConfirm={() => {
+          if (replaceRequest) {
+            submitUpload(replaceRequest.payload, true);
+            setReplaceRequest(null);
+          }
+        }}
+        onClose={() => setReplaceRequest(null)}
+      />
     </div>
   );
 }

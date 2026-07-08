@@ -13,7 +13,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { authApi } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { decodeJwt, buildUserFromJwt } from "@/shared/lib/jwt";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { SESSION_KEYS, writeSession } from "@/shared/lib/session";
 
@@ -78,9 +78,9 @@ export function AuthCallbackPage() {
 
   return (
     <div className="flex h-full min-h-[50vh] flex-col items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600" />
-      <p className="mt-4 text-sm text-gray-500 font-medium">
-        Completing login…
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/25 border-t-primary" />
+      <p className="mt-4 text-sm text-muted-foreground font-medium">
+        Completing sign in…
       </p>
     </div>
   );

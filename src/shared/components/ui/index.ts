@@ -7,9 +7,21 @@ export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from "./Popove
 export { Card, CardHeader, StatCard } from "./Card";
 export { Badge } from "./Badge";
 export { Spinner, PageSpinner } from "./Spinner";
-export { Skeleton } from "./Skeleton";
+export {
+  Skeleton,
+  SkeletonText,
+  StatCardSkeleton,
+  CardSkeleton,
+  TableSkeleton,
+  TableBodySkeleton,
+  ListSkeleton,
+  ChartSkeleton,
+  PageSkeleton,
+} from "./Skeleton";
 export { Alert } from "./Alert";
-export { Modal } from "./Modal";
+export { Toaster } from "./Toaster";
+export { Modal, ModalFooter } from "./Modal";
+export { ConfirmDialog } from "./ConfirmDialog";
 export { Table } from "./Table";
 export { Tabs } from "./Tabs";
 export { FileUpload } from "./FileUpload";
@@ -21,5 +33,10 @@ export { MarkdownRenderer } from "./MarkdownRenderer";
 export { PageHeader } from "./PageHeader";
 export { EmptyState } from "./EmptyState";
 export { Pagination } from "./Pagination";
-export { TabContainer, type TabRoute } from "./TabContainer";
+export { TabContainer } from "./TabContainer";
 export { ModulePageLayout } from "./ModulePageLayout";
+export { Avatar } from "./Avatar";
+export { SearchInput } from "./SearchInput";
+export { FilterBar } from "./FilterBar";
+export { Panel } from "./Panel";
+export { Tooltip, TooltipProvider } from "./Tooltip";

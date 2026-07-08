@@ -1,5 +1,5 @@
-import { useAuthStore } from "@/features/auth/store/auth";
-import { useEffect, useMemo, useState } from "react";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { useEffect, useMemo, useState, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -8,8 +8,9 @@ import {
   CalendarX,
   Users,
   Percent,
+  Grid3x3,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   isoToIndianDate,
   downloadBlob,
@@ -18,14 +19,17 @@ import {
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { statusTextClass, statusLabel } from "@/features/attendance/lib/status";
 import {
   AttendanceScopeFilters,
@@ -82,12 +86,64 @@ interface AppliedFilters {
   end: string; // ISO
 }
 
+const pctBadge = (p: number): "success" | "warning" | "danger" =>
+  p >= 75 ? "success" : p >= 70 ? "warning" : "danger";
+
+interface AttendanceRangeRowProps {
+  student: AttendanceRangeStudent;
+  dates: string[];
+  sundaySet: Set<string>;
+}
+
+const AttendanceRangeRow = memo(function AttendanceRangeRow({
+  student,
+  dates,
+  sundaySet,
+}: AttendanceRangeRowProps) {
+  return (
+    <tr className="hover:bg-muted/50">
+      <td className="sticky left-0 z-10 bg-background px-4 py-3 font-medium">
+        <div className="flex items-center gap-2">
+          {student.below_75_percent === "Yes" && (
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+          )}
+          <div>
+            <p>{student.name}</p>
+            <p className="text-xs text-muted-foreground">
+              #{student.roll_number}
+            </p>
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <Badge variant={pctBadge(student.attendance_percentage)}>
+          {student.attendance_percentage.toFixed(0)}%
+        </Badge>
+      </td>
+      {dates.map((d, i) => {
+        const val = student.cells[i] ?? "-";
+        return (
+          <td
+            key={d}
+            className={`px-2 py-3 text-center ${
+              sundaySet.has(d) ? "bg-muted-foreground/5" : ""
+            }`}
+            title={val !== "-" ? `${d}: ${statusLabel(val)}` : d}
+          >
+            <span className={`font-bold ${statusTextClass(val)}`}>
+              {val}
+            </span>
+          </td>
+        );
+      })}
+    </tr>
+  );
+});
+
 export function AttendanceRangeView() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, ready: scopeReady } = useActiveSchool();
 
   const [scope, setScope] = usePersistedState<ScopeValue>("att.rangeview.scope", {
-    schoolName: "",
     className: "",
     section: "",
     subject: "",
@@ -112,12 +168,13 @@ export function AttendanceRangeView() {
   // Filter/search/sort changes restart at page 0; the server owns pagination.
   useEffect(() => setPage(0), [applied, filter, debouncedSearch, sortBy]);
 
-  const scopeReady = !isAdmin || !!scope.schoolName;
+  // Switching the active school invalidates any applied search from the old one.
+  useEffect(() => setApplied(null), [schoolId]);
 
   const holidays = useHolidayDates({
     session: "2025-26",
-    schoolName: scope.schoolName || undefined,
-    enabled: !!scope.schoolName,
+    schoolName: schoolName || undefined,
+    enabled: !!schoolName,
   });
 
   const { data, isLoading, isError, error, isFetching } = useQuery({
@@ -125,6 +182,7 @@ export function AttendanceRangeView() {
       "attendance",
       "range",
       applied,
+      schoolName,
       page,
       sortBy,
       filter,
@@ -140,7 +198,7 @@ export function AttendanceRangeView() {
         sort_by: sortBy,
         student_filter: filter,
         ...(debouncedSearch ? { search: debouncedSearch } : {}),
-        ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+        ...(schoolName ? { school_name: schoolName } : {}),
         ...(s.className ? { class_name: s.className } : {}),
         ...(s.section ? { section: s.section } : {}),
         ...(s.subject ? { subject: s.subject } : {}),
@@ -173,7 +231,7 @@ export function AttendanceRangeView() {
     const blob = await attendanceApi.exportAttendanceRange({
       start_date: isoToIndianDate(applied.start),
       end_date: isoToIndianDate(applied.end),
-      ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+      ...(schoolName ? { school_name: schoolName } : {}),
       ...(s.className ? { class_name: s.className } : {}),
       ...(s.section ? { section: s.section } : {}),
       ...(s.subject ? { subject: s.subject } : {}),
@@ -187,7 +245,7 @@ export function AttendanceRangeView() {
   // The server does aggregation, filtering, sorting and pagination; rows arrive
   // ready to render. `pageRows` is just the current page's students.
   const pageRows = data?.data ?? [];
-  const dates = data?.dates ?? [];
+  const dates = useMemo(() => data?.dates ?? [], [data]);
   const summary = data?.summary;
   const pagination = data?.pagination;
   const sundaySet = useMemo(
@@ -200,77 +258,17 @@ export function AttendanceRangeView() {
   const belowCount = summary?.below_75_count ?? 0;
   const pageCount = pagination?.total_pages ?? 1;
 
-  const pctBadge = (p: number) =>
-    p >= 75 ? "success" : p >= 70 ? "warning" : "danger";
+  const QUICK_RANGES: { label: string; start: () => string; end: () => string }[] = [
+    { label: "Last 7 days", start: () => isoDaysAgo(6), end: todayIso },
+    { label: "Last 30 days", start: () => isoDaysAgo(29), end: todayIso },
+    { label: "This month", start: firstOfMonthIso, end: todayIso },
+  ];
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader
-          title="Attendance Over Date Range"
-          description="Per-student daily grid with attendance percentages. Max 92 days per query."
-        />
-        <div className="space-y-4">
-          <AttendanceScopeFilters value={scope} onChange={setScope} showSubject />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <DatePicker
-              label="Start date"
-              max={todayIso()}
-              value={startIso}
-              onChange={(iso) => setStartIso(iso ?? isoDaysAgo(7))}
-              fadeSundays
-              holidays={holidays}
-            />
-            <DatePicker
-              label="End date"
-              max={todayIso()}
-              value={endIso}
-              onChange={(iso) => setEndIso(iso ?? todayIso())}
-              fadeSundays
-              holidays={holidays}
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-foreground">Quick range:</span>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setStartIso(isoDaysAgo(6));
-                setEndIso(todayIso());
-              }}
-            >
-              Last 7 days
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setStartIso(isoDaysAgo(29));
-                setEndIso(todayIso());
-              }}
-            >
-              Last 30 days
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setStartIso(firstOfMonthIso());
-                setEndIso(todayIso());
-              }}
-            >
-              This month
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={runSearch}
-              disabled={!scopeReady}
-              icon={<Search className="h-4 w-4" />}
-            >
-              Search
-            </Button>
+      <FilterBar
+        actions={
+          <>
             <Button
               variant="outline"
               onClick={handleExportCSV}
@@ -279,11 +277,59 @@ export function AttendanceRangeView() {
             >
               Export CSV
             </Button>
-          </div>
+            <Button
+              onClick={runSearch}
+              disabled={!scopeReady}
+              icon={<Search className="h-4 w-4" />}
+            >
+              Search
+            </Button>
+          </>
+        }
+      >
+        <AttendanceScopeFilters value={scope} onChange={setScope} showSubject />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <DatePicker
+            label="Start date"
+            max={todayIso()}
+            value={startIso}
+            onChange={(iso) => setStartIso(iso ?? isoDaysAgo(7))}
+            fadeSundays
+            holidays={holidays}
+          />
+          <DatePicker
+            label="End date"
+            max={todayIso()}
+            value={endIso}
+            onChange={(iso) => setEndIso(iso ?? todayIso())}
+            fadeSundays
+            holidays={holidays}
+          />
         </div>
-      </Card>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            Quick range
+          </span>
+          {QUICK_RANGES.map((q) => (
+            <button
+              key={q.label}
+              type="button"
+              onClick={() => {
+                setStartIso(q.start());
+                setEndIso(q.end());
+              }}
+              className="rounded-full border border-border/70 bg-background px-3 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+            >
+              {q.label}
+            </button>
+          ))}
+          <span className="ml-auto text-xs text-muted-foreground/70">
+            Max {MAX_RANGE_DAYS} days
+          </span>
+        </div>
+      </FilterBar>
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <TableSkeleton rows={6} columns={5} />}
       {isError && (
         <Alert variant="error">
           {getErrorMessage(error) || "Failed to fetch attendance range."}
@@ -302,9 +348,9 @@ export function AttendanceRangeView() {
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard label="Students" value={summary.total_students} icon={<Users className="h-5 w-5" />} color="primary" />
-            <StatCard label="Days" value={data.date_range.total_days} color="blue" />
-            <StatCard label="Avg attendance" value={`${avgPct}%`} icon={<Percent className="h-5 w-5" />} color={avgPct >= 75 ? "green" : "amber"} />
-            <StatCard label="Below 75%" value={belowCount} icon={<AlertTriangle className="h-5 w-5" />} color="red" />
+            <StatCard label="Days" value={data.date_range.total_days} color="info" />
+            <StatCard label="Avg attendance" value={`${avgPct}%`} icon={<Percent className="h-5 w-5" />} color={avgPct >= 75 ? "success" : "warning"} />
+            <StatCard label="Below 75%" value={belowCount} icon={<AlertTriangle className="h-5 w-5" />} color="danger" />
           </div>
 
           {belowCount > 0 && filter !== "below75" && (
@@ -320,29 +366,29 @@ export function AttendanceRangeView() {
             </Alert>
           )}
 
-          <Card padding="none">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
-              <p className="text-sm text-muted-foreground">
-                {data.date_range.start_date} – {data.date_range.end_date} ·{" "}
-                {pagination.filtered_students} student(s) match
-                {isFetching ? " · updating…" : ""}
-              </p>
+          <Panel
+            flush
+            icon={<Grid3x3 className="h-4 w-4" />}
+            title="Daily grid"
+            description={`${data.date_range.start_date} – ${data.date_range.end_date} · ${pagination.filtered_students} student(s)${isFetching ? " · updating…" : ""}`}
+            actions={
               <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search roll or name…"
-                    className="w-48 rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground"
-                  />
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search roll or name…"
+                  className="w-full sm:w-48"
+                />
+                <div className="w-36">
+                  <Select options={FILTER_OPTIONS} value={filter} onChange={(e) => setFilter(e.target.value)} />
                 </div>
-                <Select options={FILTER_OPTIONS} value={filter} onChange={(e) => setFilter(e.target.value)} />
-                <Select options={SORT_OPTIONS} value={sortBy} onChange={(e) => setSortBy(e.target.value)} />
+                <div className="w-44">
+                  <Select options={SORT_OPTIONS} value={sortBy} onChange={(e) => setSortBy(e.target.value)} />
+                </div>
               </div>
-            </div>
-
-            <div className="px-4 py-3">
+            }
+          >
+            <div className="border-b border-border/50 px-4 py-3">
               <StatusLegend />
             </div>
 
@@ -371,42 +417,12 @@ export function AttendanceRangeView() {
                 </thead>
                 <tbody className="divide-y divide-border bg-background">
                   {pageRows.map((student: AttendanceRangeStudent) => (
-                    <tr key={student.roll_number} className="hover:bg-muted/50">
-                      <td className="sticky left-0 z-10 bg-background px-4 py-3 font-medium">
-                        <div className="flex items-center gap-2">
-                          {student.below_75_percent === "Yes" && (
-                            <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-                          )}
-                          <div>
-                            <p>{student.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              #{student.roll_number}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={pctBadge(student.attendance_percentage)}>
-                          {student.attendance_percentage.toFixed(0)}%
-                        </Badge>
-                      </td>
-                      {dates.map((d, i) => {
-                        const val = student.cells[i] ?? "-";
-                        return (
-                          <td
-                            key={d}
-                            className={`px-2 py-3 text-center ${
-                              sundaySet.has(d) ? "bg-muted-foreground/5" : ""
-                            }`}
-                            title={val !== "-" ? `${d}: ${statusLabel(val)}` : d}
-                          >
-                            <span className={`font-bold ${statusTextClass(val)}`}>
-                              {val}
-                            </span>
-                          </td>
-                        );
-                      })}
-                    </tr>
+                    <AttendanceRangeRow
+                      key={student.roll_number}
+                      student={student}
+                      dates={dates}
+                      sundaySet={sundaySet}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -442,7 +458,7 @@ export function AttendanceRangeView() {
                 </div>
               </div>
             )}
-          </Card>
+          </Panel>
         </>
       )}
     </div>

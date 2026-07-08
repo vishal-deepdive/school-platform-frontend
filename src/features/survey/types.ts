@@ -24,6 +24,8 @@ export interface SearchRequest {
   filters?: Record<string, unknown>;
   /** Restrict the search to these survey source (sheet) ids. */
   source_ids?: string[];
+  /** School name context (required for admins) */
+  school_name?: string;
 }
 
 export interface ChartData {
@@ -252,4 +254,59 @@ export interface ChartsListResponse {
   status: string;
   total_charts: number;
   charts: ChartFile[];
+}
+
+// ── Satisfaction analytics (GET /survey/analytics) ──────────────────────────
+
+export interface SurveyDimensionStat {
+  key: string;
+  label: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  total: number;
+  positive_pct: number | null;
+}
+
+export interface SurveyRecScore {
+  score: number;
+  count: number;
+}
+
+export interface SurveyRecommendation {
+  average: number | null;
+  responses: number;
+  promoters_pct: number | null;
+  detractors_pct: number | null;
+  distribution: SurveyRecScore[];
+}
+
+export interface SurveySentiment {
+  positive: number;
+  neutral: number;
+  negative: number;
+  no_response: number;
+}
+
+export interface SurveyClassStat {
+  class_name: string;
+  count: number;
+  positive_pct: number | null;
+}
+
+export interface SurveySubjectStat {
+  subject: string;
+  count: number;
+}
+
+export interface SurveyAnalyticsResponse {
+  scope: "platform" | "school";
+  school_name: string | null;
+  total_responses: number;
+  responded_classes: number;
+  recommendation: SurveyRecommendation;
+  overall_satisfaction: SurveySentiment;
+  dimensions: SurveyDimensionStat[];
+  by_class: SurveyClassStat[];
+  toughest_subjects: SurveySubjectStat[];
 }

@@ -10,19 +10,76 @@ import {
   Inbox,
   FileSpreadsheet,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { surveyApi } from "@/features/survey/api/survey";
 import type { SourceItem } from "@/features/survey/types";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
+import { Panel } from "@/shared/components/ui/Panel";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 
 const SYNC_POLL_MS = 3000;
+
+interface RankedRow {
+  label: string;
+  count: number;
+}
+
+/**
+ * Ranked horizontal proportion bars — reads a list of {label, count} rows as a
+ * magnitude comparison rather than a flat badge list, so the biggest
+ * contributors stand out at a glance. Bars are normalized to the largest row.
+ */
+function ResponseBars({
+  rows,
+  accent,
+  limit = 8,
+}: {
+  rows: RankedRow[];
+  accent: string;
+  limit?: number;
+}) {
+  const sorted = [...rows].sort((a, b) => b.count - a.count);
+  const shown = sorted.slice(0, limit);
+  const hidden = sorted.length - shown.length;
+  const max = Math.max(1, ...shown.map((r) => r.count));
+
+  return (
+    <div className="px-4 py-4 md:px-5">
+      <ul className="space-y-3">
+        {shown.map((r) => (
+          <li key={r.label}>
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-sm text-foreground">{r.label}</p>
+              <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
+                {r.count}
+              </span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full transition-[width] duration-500 ease-out"
+                style={{
+                  width: `${Math.round((r.count / max) * 100)}%`,
+                  backgroundColor: accent,
+                }}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          +{hidden} more not shown
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function SurveyDashboardPage() {
   const qc = useQueryClient();
@@ -133,7 +190,7 @@ export function SurveyDashboardPage() {
     }
   }, [syncJob, syncJobId, qc]);
 
-  if (isLoading) return <PageSpinner />;
+  if (isLoading) return <PageSkeleton />;
   if (isError)
     return (
       <Alert variant="error">
@@ -199,25 +256,25 @@ export function SurveyDashboardPage() {
           label="Total Responses"
           value={data?.total_records ?? 0}
           icon={<Users className="h-5 w-5" />}
-          color="indigo"
+          color="primary"
         />
         <StatCard
           label="Schools"
           value={data?.by_school?.length ?? 0}
           icon={<BarChart2 className="h-5 w-5" />}
-          color="blue"
+          color="info"
         />
         <StatCard
           label="Classes"
           value={data?.by_class?.length ?? 0}
           icon={<Database className="h-5 w-5" />}
-          color="green"
+          color="success"
         />
         <StatCard
           label="Active Sources"
           value={activeSources.length}
           icon={<FileSpreadsheet className="h-5 w-5" />}
-          color="indigo"
+          color="primary"
         />
       </div>
 
@@ -248,8 +305,10 @@ export function SurveyDashboardPage() {
       )}
 
       {embeddingFields.length > 0 && (
-        <Card>
-          <CardHeader title="Embeddings Coverage" />
+        <Panel
+          title="Embeddings Coverage"
+          icon={<Database className="h-4 w-4" />}
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {embeddingFields.map(([field, count]) => (
               <div
@@ -277,58 +336,54 @@ export function SurveyDashboardPage() {
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {data?.by_school && data.by_school.length > 0 && (
-          <Card padding="none">
-            <CardHeader title="Responses by School" className="px-6 pt-6" bordered />
-            <div className="divide-y divide-border pb-2">
-              {data.by_school.map((s, i) => {
+          <Panel
+            flush
+            title="Responses by School"
+            icon={<BarChart2 className="h-4 w-4" />}
+            actions={
+              <Badge variant="info">{data.by_school.length} schools</Badge>
+            }
+          >
+            <ResponseBars
+              accent="oklch(var(--primary))"
+              rows={data.by_school.map((s) => {
                 const school = s as Record<string, unknown>;
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-6 py-3"
-                  >
-                    <p className="text-sm text-foreground">
-                      {String(school.school_name ?? "—")}
-                    </p>
-                    <Badge variant="info">
-                      {String(school.count ?? 0)} responses
-                    </Badge>
-                  </div>
-                );
+                return {
+                  label: String(school.school_name ?? "—"),
+                  count: Number(school.count ?? 0),
+                };
               })}
-            </div>
-          </Card>
+            />
+          </Panel>
         )}
 
         {data?.by_class && data.by_class.length > 0 && (
-          <Card padding="none">
-            <CardHeader title="Responses by Class" className="px-6 pt-6" bordered />
-            <div className="divide-y divide-border pb-2">
-              {data.by_class.map((c, i) => {
+          <Panel
+            flush
+            title="Responses by Class"
+            icon={<Database className="h-4 w-4" />}
+            actions={
+              <Badge variant="success">{data.by_class.length} classes</Badge>
+            }
+          >
+            <ResponseBars
+              accent="oklch(var(--primary))"
+              rows={data.by_class.map((c) => {
                 const cls = c as Record<string, unknown>;
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-6 py-3"
-                  >
-                    <p className="text-sm text-foreground">
-                      {String(
-                        cls.class ?? cls.class_name ?? "",
-                      ).trim() || "Unknown Class"}
-                    </p>
-                    <Badge variant="success">
-                      {String(cls.count ?? 0)} responses
-                    </Badge>
-                  </div>
-                );
+                return {
+                  label:
+                    String(cls.class ?? cls.class_name ?? "").trim() ||
+                    "Unknown Class",
+                  count: Number(cls.count ?? 0),
+                };
               })}
-            </div>
-          </Card>
+            />
+          </Panel>
         )}
       </div>
     </div>

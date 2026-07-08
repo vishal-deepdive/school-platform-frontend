@@ -1,12 +1,19 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ragApi } from "@/features/rag/api/rag";
 
+interface DocumentParams {
+  limit?: number;
+  offset?: number;
+  status?: string;
+}
+
 export const ragKeys = {
   all: ["rag"] as const,
   metadata: () => ["rag", "metadata"] as const,
   classLevels: () => ["rag", "classLevels"] as const,
-  documents: (params?: any) => ["rag", "documents", params] as const,
+  documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
   documentStatus: (id: string) => ["rag", "documentStatus", id] as const,
+  analytics: () => ["rag", "analytics"] as const,
 };
 
 export function useRagMetadata() {
@@ -17,7 +24,6 @@ export function useRagMetadata() {
   });
 }
 
-/** Class levels the current user may select (school grades, or full list for admin). */
 export function useRagClassLevels() {
   return useQuery({
     queryKey: ragKeys.classLevels(),
@@ -26,11 +32,17 @@ export function useRagClassLevels() {
   });
 }
 
+export function useRagAnalytics() {
+  return useQuery({
+    queryKey: ragKeys.analytics(),
+    queryFn: () => ragApi.getAnalytics(),
+    staleTime: 2 * 60_000,
+  });
+}
+
 export function useRagDocuments(
-  params: { limit?: number; offset?: number; status?: string },
-  options?: {
-    refetchInterval?: number | false | ((query: any) => number | false);
-  },
+  params: DocumentParams,
+  options?: { refetchInterval?: number | false | ((query: any) => number | false) },
 ) {
   return useQuery({
     queryKey: ragKeys.documents(params),
@@ -39,7 +51,10 @@ export function useRagDocuments(
   });
 }
 
-export function useRagDocumentStatus(documentId: string, options?: { enabled?: boolean; refetchInterval?: number }) {
+export function useRagDocumentStatus(
+  documentId: string,
+  options?: { enabled?: boolean; refetchInterval?: number },
+) {
   return useQuery({
     queryKey: ragKeys.documentStatus(documentId),
     queryFn: () => ragApi.getDocumentStatus(documentId),

@@ -1,35 +1,51 @@
-import { motion } from "framer-motion";
-import { TrendingUp, Users, Activity } from "lucide-react";
-import {
-  fadeUp,
-  staggerContainer,
-  scaleIn,
-} from "@/features/landing/animations";
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { TrendingUp, Users, Activity, ArrowUpRight } from "lucide-react";
+import { fadeUp, staggerContainer, scaleIn } from "@/features/landing/animations";
+import { TrendChart } from "@/features/landing/components/DashboardPreview";
+import { CountUp } from "@/features/landing/components/interactive";
 
 const HIGHLIGHTS = [
   {
     icon: TrendingUp,
-    title: "Predictive Analytics",
+    title: "Catch slipping attendance early",
     description:
-      "Forecast student enrollment trends and resource needs months in advance.",
+      "See which class is drifting before mid-term — not in the end-of-term report.",
   },
   {
     icon: Users,
-    title: "Engagement Metrics",
+    title: "Know what students rewatch",
     description:
-      "Track classroom participation and interactive learning success rates.",
+      "The lectures students return to most show exactly where a topic didn't land.",
   },
   {
     icon: Activity,
-    title: "Real-time Activity",
+    title: "The school day, live",
     description:
-      "Monitor live attendance and daily active usage across your entire platform.",
+      "Registers, uploads, and logins across every class — as they happen, on one screen.",
   },
 ];
 
+const PANEL_STATS = [
+  { label: "Avg. attendance", value: 96.4, suffix: "%", decimals: 1 },
+  { label: "Active teachers", value: 640, suffix: "+", decimals: 0 },
+  { label: "Partner schools", value: 1200, suffix: "+", decimals: 0 },
+];
+
 export function FutureGrowthSection() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start end", "end start"],
+  });
+  const parallaxY = useTransform(scrollYProgress, [0, 1], [36, -36]);
+
   return (
-    <section id="growth" className="w-full scroll-mt-24 bg-background py-24">
+    <section
+      ref={sectionRef}
+      id="growth"
+      className="w-full scroll-mt-24 bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24"
+    >
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <div className="grid grid-cols-1 items-center gap-14 lg:grid-cols-2">
           {/* Left: text content */}
@@ -41,31 +57,33 @@ export function FutureGrowthSection() {
             className="space-y-8 lg:pr-4"
           >
             <motion.div variants={fadeUp}>
-              <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-primary ring-1 ring-primary/15">
+              <span className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
+                <span className="h-px w-7 bg-primary/60" aria-hidden="true" />
                 Analytics
               </span>
-              <h2 className="mt-5 text-3xl font-bold tracking-tight text-foreground md:text-[2.6rem] md:leading-[1.15]">
+              <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-4xl md:leading-[1.15]">
                 See your institution's growth before it happens
               </h2>
-              <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-                Gain actionable insights into your institution's performance.
-                Predict student success and streamline administrative
-                efficiency with beautiful, real-time analytics.
+              <p className="mt-4 text-base leading-relaxed text-muted-foreground md:text-lg">
+                Actionable insight into how your institution is performing —
+                enrollment, engagement, and attendance in real time, not at
+                the end of term.
               </p>
             </motion.div>
 
-            <div className="space-y-6">
+            <div className="divide-y divide-border border-y border-border">
               {HIGHLIGHTS.map((item) => (
                 <motion.div
                   key={item.title}
                   variants={fadeUp}
-                  className="group flex gap-4"
+                  className="flex gap-4 py-5"
                 >
-                  <div className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/10 transition-all duration-300 group-hover:bg-primary group-hover:text-white group-hover:shadow-lg group-hover:shadow-primary/25">
-                    <item.icon className="h-5 w-5" />
-                  </div>
+                  <item.icon
+                    className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                    aria-hidden="true"
+                  />
                   <div>
-                    <h3 className="font-semibold text-foreground">
+                    <h3 className="text-sm font-semibold text-foreground">
                       {item.title}
                     </h3>
                     <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
@@ -77,7 +95,7 @@ export function FutureGrowthSection() {
             </div>
           </motion.div>
 
-          {/* Right: dashboard preview */}
+          {/* Right: drawn analytics panel */}
           <motion.div
             variants={scaleIn}
             initial="hidden"
@@ -85,52 +103,62 @@ export function FutureGrowthSection() {
             viewport={{ once: true, margin: "-80px" }}
             className="relative"
           >
-            <div className="pointer-events-none absolute -inset-8 rounded-[3rem] bg-gradient-to-br from-primary/10 via-sky-300/10 to-transparent blur-2xl" />
+            <div className="pointer-events-none absolute -inset-8 rounded-[3rem] bg-primary/5 blur-2xl" />
 
-            <div className="relative rounded-3xl bg-card p-2 shadow-2xl shadow-black/10 ring-1 ring-border">
-              <img
-                src="/images/demo-chart.png"
-                alt="DeepDive analytics dashboard"
-                className="h-auto w-full rounded-2xl object-cover"
-                loading="lazy"
-              />
-            </div>
-
-            {/* Floating accent: monthly growth */}
             <motion.div
-              initial={{ y: 24, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-              className="absolute -bottom-6 -left-6 hidden animate-float items-center gap-4 rounded-2xl bg-card p-4 shadow-xl ring-1 ring-border md:flex"
+              style={{ y: parallaxY }}
+              className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5"
             >
-              <div className="rounded-xl bg-emerald-100 dark:bg-emerald-900/30 p-2.5 text-emerald-600 dark:text-emerald-400">
-                <TrendingUp className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-xs font-medium text-muted-foreground">
-                  Monthly Growth
+              <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                <div>
+                  <div className="text-sm font-semibold text-card-foreground">
+                    Enrollment growth
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Academic year 2025–26
+                  </div>
                 </div>
-                <div className="text-lg font-bold text-foreground">+14.2%</div>
+                <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:ring-emerald-800">
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  14.2% YoY
+                </span>
               </div>
-            </motion.div>
 
-            {/* Floating accent: active today */}
-            <motion.div
-              initial={{ y: -24, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.7, duration: 0.5 }}
-              className="absolute -right-5 -top-6 hidden animate-float items-center gap-4 rounded-2xl bg-card p-4 shadow-xl ring-1 ring-border [animation-delay:1.5s] md:flex"
-            >
-              <div className="rounded-xl bg-sky-100 dark:bg-sky-900/30 p-2.5 text-sky-600 dark:text-sky-400">
-                <Users className="h-5 w-5" />
-              </div>
-              <div>
+              <div className="px-6 pt-6">
                 <div className="text-xs font-medium text-muted-foreground">
-                  Active Today
+                  Students enrolled
                 </div>
-                <div className="text-lg font-bold text-foreground">12,480</div>
+                <div className="mt-1 text-4xl font-semibold tracking-tight text-card-foreground">
+                  <CountUp to={12480} />
+                </div>
+              </div>
+
+              <div className="px-4 pb-2 pt-4">
+                <TrendChart className="h-40 w-full" delay={0.3} />
+                <div className="mt-1 flex justify-between px-2 text-[10px] font-medium text-muted-foreground">
+                  {["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"].map(
+                    (m) => (
+                      <span key={m}>{m}</span>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 divide-x divide-border border-t border-border">
+                {PANEL_STATS.map((stat) => (
+                  <div key={stat.label} className="px-4 py-4 text-center">
+                    <div className="text-lg font-semibold tracking-tight text-card-foreground">
+                      <CountUp
+                        to={stat.value}
+                        suffix={stat.suffix}
+                        decimals={stat.decimals}
+                      />
+                    </div>
+                    <div className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                      {stat.label}
+                    </div>
+                  </div>
+                ))}
               </div>
             </motion.div>
           </motion.div>

@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { StickyNote } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { getErrorMessage } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
 
 export function NotesPage() {
@@ -56,44 +57,47 @@ export function NotesPage() {
 
   return (
     <div className="space-y-6">
-      <div className={`grid grid-cols-1 gap-6 ${(result !== null || isPending) ? "lg:grid-cols-3" : ""}`}>
-        <Card className={(result !== null || isPending) ? "lg:col-span-1" : "w-full"}>
-          <CardHeader title="Select Content" />
-          <div className="space-y-4">
-            <RagFilterPanel filters={filters} onChange={setFilters} />
-            <Button
-              onClick={() => generate()}
-              loading={isPending}
-              disabled={!canGenerate}
-              icon={<StickyNote className="h-4 w-4" />}
-              className="w-full"
-            >
-              {isPending ? "Generating…" : "Generate Notes"}
-            </Button>
-            {!canGenerate && (
-              <p className="text-xs text-muted-foreground">
-                Select a class, subject, and chapter to continue.
-              </p>
-            )}
-          </div>
-        </Card>
-
-        {(result !== null || isPending) && (
-          <div className="lg:col-span-2">
-            <StreamingResultPanel
-              error={error}
-              isPending={isPending}
-              result={result}
-              canRetry={canGenerate}
-              onRetry={() => generate()}
-              Icon={StickyNote}
-              title="Lecture Notes"
-              pendingMessage="Generating your notes..."
-              filename={`notes-${filters.chapter_name?.[0] ?? "chapter"}.md`}
-            />
-          </div>
+      <FilterBar
+        title="Chapter scope"
+        icon={<StickyNote className="h-4 w-4" />}
+        actions={
+          <Button
+            onClick={() => generate()}
+            loading={isPending}
+            disabled={!canGenerate}
+            icon={<StickyNote className="h-4 w-4" />}
+          >
+            {isPending ? "Generating…" : "Generate Notes"}
+          </Button>
+        }
+      >
+        <RagFilterPanel filters={filters} onChange={setFilters} showTitle />
+        {!canGenerate && (
+          <p className="text-xs text-muted-foreground">
+            Select a class, subject, and chapter to continue.
+          </p>
         )}
-      </div>
+      </FilterBar>
+
+      {result !== null || isPending ? (
+        <StreamingResultPanel
+          error={error}
+          isPending={isPending}
+          result={result}
+          canRetry={canGenerate}
+          onRetry={() => generate()}
+          Icon={StickyNote}
+          title="Lecture Notes"
+          pendingMessage="Generating your notes..."
+          filename={`notes-${filters.chapter_name?.[0] ?? "chapter"}.md`}
+        />
+      ) : (
+        <EmptyState
+          icon={<StickyNote className="h-12 w-12" />}
+          title="No notes generated yet"
+          description="Pick a class, subject and chapter above, then generate smart notes for the chapter."
+        />
+      )}
     </div>
   );
 }

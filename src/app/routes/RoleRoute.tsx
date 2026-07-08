@@ -25,7 +25,7 @@ export function RoleRoute({ children, allow }: RoleRouteProps) {
   const location = useLocation();
   const roles = allow ?? ROUTE_ROLES[location.pathname];
 
-  if (roles && (!user || !roles.includes(user.role))) {
+  if (!roles || !user || !roles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
   return <>{children}</>;

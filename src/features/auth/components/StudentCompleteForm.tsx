@@ -1,7 +1,7 @@
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   googleCompleteStudentSchema,
   type GoogleCompleteStudentFormData,
@@ -34,6 +34,7 @@ export function StudentCompleteForm({
     formState: { errors, isSubmitting },
   } = useForm<GoogleCompleteStudentFormData>({
     resolver: zodResolver(googleCompleteStudentSchema),
+    mode: "onTouched",
     defaultValues: {
       full_name: prefillName || undefined,
       school_id: hintSchoolId || undefined,
@@ -89,8 +90,10 @@ export function StudentCompleteForm({
       </p>
 
       <AuthInput
+        label="Full Name"
         type="text"
         autoComplete="name"
+        autoFocus
         placeholder="Full name"
         error={errors.full_name?.message}
         {...register("full_name")}

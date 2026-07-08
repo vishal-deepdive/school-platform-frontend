@@ -1,18 +1,21 @@
 import { isAxiosError } from "axios";
 import { multipartClient, apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   JobResponse,
   JobStatusResponse,
   RecordingsListResponse,
   AuditLogsListResponse,
   DeleteRecordingResponse,
+  BulkDeleteResponse,
   SearchResponse,
   MarkdownResult,
   ResultSection,
+  RecordingAnalyticsResponse,
 } from "@/features/recording/types";
 import { buildQueryString, getErrorMessage } from "@/shared/lib/utils";
 
-const BASE = "/api/v1/recording";
+const BASE = `${API_V1}/recording`;
 
 /**
  * Maps a markdown-endpoint response (or error) to a discriminated state. The
@@ -81,6 +84,14 @@ export const recordingApi = {
   deleteAllRecordings: () =>
     apiClient.delete(`${BASE}/recordings`).then((r) => r.data),
 
+  /** Delete a specific set of recordings (school-scoped per id on the backend). */
+  bulkDeleteRecordings: (recordIds: string[]) =>
+    apiClient
+      .post<BulkDeleteResponse>(`${BASE}/recordings/bulk-delete`, {
+        record_ids: recordIds,
+      })
+      .then((r) => r.data),
+
   listAuditLogs: (params: Record<string, string | number>) =>
     apiClient
       .get<AuditLogsListResponse>(
@@ -114,4 +125,10 @@ export const recordingApi = {
 
   getResultSection: (jobId: string, section: ResultSection): Promise<MarkdownResult> =>
     fetchMarkdown(`${BASE}/result/${jobId}/section/${section}`),
+
+  /** Role-scoped recording-activity analytics for the dashboard. */
+  getAnalytics: (params: Record<string, string | number> = {}) =>
+    apiClient
+      .get<RecordingAnalyticsResponse>(`${BASE}/analytics${buildQueryString(params)}`)
+      .then((r) => r.data),
 };

@@ -1,13 +1,14 @@
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserPlus } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   parentRegisterSchema,
   type ParentRegisterFormData,
 } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { writeOtpFlow } from "@/shared/lib/session";
 import {
   AuthInput,
   AuthPasswordInput,
@@ -16,6 +17,9 @@ import {
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Select } from "@/shared/components/ui/Select";
 import { TermsCheckbox } from "@/shared/components/common/TermsCheckbox";
+import { OrDivider } from "@/shared/components/common/OrDivider";
+import { PasswordStrengthMeter } from "@/shared/components/common/PasswordStrengthMeter";
+import { GoogleButton } from "./GoogleButton";
 import {
   useSchoolSearch,
   useStudentSearch,
@@ -36,6 +40,7 @@ export function ParentRegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<ParentRegisterFormData>({
     resolver: zodResolver(parentRegisterSchema),
+    mode: "onTouched",
     defaultValues: {
       school_id: defaultSchoolId,
       relation: "guardian",
@@ -45,6 +50,7 @@ export function ParentRegisterForm({
 
   // useWatch instead of watch — only re-renders on changes to these specific fields
   const watchEmail = useWatch({ control, name: "email", defaultValue: "" });
+  const watchPassword = useWatch({ control, name: "password", defaultValue: "" });
   const selectedSchoolId = useWatch({
     control,
     name: "school_id",
@@ -77,6 +83,7 @@ export function ParentRegisterForm({
         "Parent account registered! Please verify your email address. Approval is pending.",
       );
       startCooldown();
+      writeOtpFlow({ email: data.email, purpose: "verify_email" });
       navigate("/verify-otp", {
         state: { email: data.email, purpose: "verify_email" },
       });
@@ -95,6 +102,7 @@ export function ParentRegisterForm({
         label="Full Name"
         type="text"
         autoComplete="name"
+        autoFocus
         placeholder="Full name"
         error={errors.full_name?.message}
         {...register("full_name")}
@@ -151,14 +159,16 @@ export function ParentRegisterForm({
         {...register("relation")}
       />
 
-      <AuthPasswordInput
-        label="Password"
-        autoComplete="new-password"
-        placeholder="Password"
-        error={errors.password?.message}
-        hint="Min 8 chars, uppercase, lowercase, digit &amp; special char"
-        {...register("password")}
-      />
+      <div className="grid gap-2">
+        <AuthPasswordInput
+          label="Password"
+          autoComplete="new-password"
+          placeholder="Password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        {watchPassword && <PasswordStrengthMeter value={watchPassword} />}
+      </div>
 
       <AuthPasswordInput
         label="Confirm Password"
@@ -177,6 +187,12 @@ export function ParentRegisterForm({
       >
         Register Parent Account
       </AuthSubmitButton>
+
+      <OrDivider />
+
+      <GoogleButton
+        options={{ role: "parent", schoolId: selectedSchoolId ?? "" }}
+      />
     </form>
   );
 }

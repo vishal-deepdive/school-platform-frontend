@@ -12,18 +12,8 @@ export default {
         background: "oklch(var(--background) / <alpha-value>)",
         foreground: "oklch(var(--foreground) / <alpha-value>)",
         primary: {
-          DEFAULT: "hsl(var(--primary) / <alpha-value>)",
-          foreground: "hsl(var(--primary-foreground) / <alpha-value>)",
-          50: "#eef2ff",
-          100: "#e0e7ff",
-          200: "#c7d2fe",
-          300: "#a5b4fc",
-          400: "#818cf8",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
-          800: "#3730a3",
-          900: "#312e81",
+          DEFAULT: "oklch(var(--primary) / <alpha-value>)",
+          foreground: "oklch(var(--primary-foreground) / <alpha-value>)",
         },
         secondary: {
           DEFAULT: "oklch(var(--secondary) / <alpha-value>)",
@@ -49,6 +39,8 @@ export default {
           DEFAULT: "oklch(var(--popover) / <alpha-value>)",
           foreground: "oklch(var(--popover-foreground) / <alpha-value>)",
         },
+        canvas: "oklch(var(--canvas) / <alpha-value>)",
+        rail: "oklch(var(--rail) / <alpha-value>)",
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -57,10 +49,16 @@ export default {
       },
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
+        // Headings, greetings, and stat values only — body copy stays Inter.
+        display: ["Bricolage Grotesque", "Inter", "system-ui", "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.2s ease-in-out",
         "slide-in": "slideIn 0.3s ease-out",
+        "slide-up": "slideUp 0.3s ease-out",
+        "nav-item-in": "navItemIn 0.3s ease-out both",
+        "notch-in": "fadeIn 0.25s ease-out 0.12s both",
+        shimmer: "shimmer 1.8s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
         float: "float 6s ease-in-out infinite",
       },
@@ -68,6 +66,18 @@ export default {
         fadeIn: {
           "0%": { opacity: "0" },
           "100%": { opacity: "1" },
+        },
+        slideUp: {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        navItemIn: {
+          "0%": { opacity: "0", transform: "translateX(-8px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
         },
         slideIn: {
           "0%": { transform: "translateX(-100%)" },
@@ -84,5 +94,5 @@ export default {
       },
     },
   },
-  plugins: [require("@tailwindcss/typography")],
+  plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
 } satisfies Config;

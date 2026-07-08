@@ -1,7 +1,9 @@
 import { type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "react-hot-toast";
 import { ErrorBoundary } from "@/shared/components/errors/ErrorBoundary";
+import { OfflineGate } from "@/shared/components/errors/OfflineGate";
+import { Toaster } from "@/shared/components/ui/Toaster";
+import { TooltipProvider } from "@/shared/components/ui/Tooltip";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,34 +18,14 @@ const queryClient = new QueryClient({
   },
 });
 
-/**
- * App-wide context providers: error boundary, React Query, and the global
- * toast portal. Kept separate from <App> so route composition and provider
- * wiring stay independently testable.
- */
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 4000,
-            style: {
-              borderRadius: "10px",
-              background: "#1e293b",
-              color: "#f8fafc",
-              fontSize: "14px",
-            },
-            success: {
-              iconTheme: { primary: "#10b981", secondary: "#f8fafc" },
-            },
-            error: {
-              iconTheme: { primary: "#ef4444", secondary: "#f8fafc" },
-            },
-          }}
-        />
+        <TooltipProvider delayDuration={300} skipDelayDuration={100}>
+          <OfflineGate>{children}</OfflineGate>
+          <Toaster />
+        </TooltipProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

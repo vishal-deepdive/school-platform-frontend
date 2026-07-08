@@ -1,5 +1,5 @@
-import { useAuthStore } from "@/features/auth/store/auth";
-import { useMemo, useState } from "react";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
@@ -11,6 +11,7 @@ import {
   FileCheck,
   CircleDashed,
   Percent,
+  ListChecks,
 } from "lucide-react";
 import {
   isoToIndianDate,
@@ -20,15 +21,18 @@ import {
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
+import { StatCard } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
-import { PageSpinner } from "@/shared/components/ui/Spinner";
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Table } from "@/shared/components/ui/Table";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { Panel } from "@/shared/components/ui/Panel";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
 import type { Column } from "@/shared/components/ui/Table";
 import {
   statusLabel,
@@ -93,11 +97,9 @@ interface AppliedFilters {
 }
 
 export function AttendanceDateView() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, ready: scopeReady } = useActiveSchool();
 
   const [scope, setScope] = usePersistedState<ScopeValue>("att.dateview.scope", {
-    schoolName: "",
     className: "",
     section: "",
     subject: "",
@@ -109,21 +111,22 @@ export function AttendanceDateView() {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState("roll");
 
-  const scopeReady = !isAdmin || !!scope.schoolName;
+  // Switching the active school invalidates any applied search from the old one.
+  useEffect(() => setApplied(null), [schoolId]);
 
   const holidays = useHolidayDates({
     session: "2025-26",
-    schoolName: scope.schoolName || undefined,
-    enabled: !!scope.schoolName,
+    schoolName: schoolName || undefined,
+    enabled: !!schoolName,
   });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["attendance", "date", applied],
+    queryKey: ["attendance", "date", applied, schoolName],
     queryFn: () => {
       const s = applied!.scope;
       return attendanceApi.getAttendanceOnDate({
         date: isoToIndianDate(applied!.date),
-        ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+        ...(schoolName ? { school_name: schoolName } : {}),
         ...(s.className ? { class_name: s.className } : {}),
         ...(s.section ? { section: s.section } : {}),
         ...(s.subject ? { subject: s.subject } : {}),
@@ -133,7 +136,7 @@ export function AttendanceDateView() {
     staleTime: 60_000,
   });
 
-  const rows = data?.data ?? [];
+  const rows = useMemo(() => data?.data ?? [], [data]);
 
   const counts = useMemo(() => {
     const c: Record<AttendanceStatus, number> = { P: 0, A: 0, L: 0, E: 0, H: 0 };
@@ -177,7 +180,7 @@ export function AttendanceDateView() {
     const s = applied.scope;
     const blob = await attendanceApi.exportAttendanceOnDate({
       date: isoToIndianDate(applied.date),
-      ...(isAdmin && s.schoolName ? { school_name: s.schoolName } : {}),
+      ...(schoolName ? { school_name: schoolName } : {}),
       ...(s.className ? { class_name: s.className } : {}),
       ...(s.section ? { section: s.section } : {}),
       ...(s.subject ? { subject: s.subject } : {}),
@@ -187,31 +190,9 @@ export function AttendanceDateView() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader
-          title="Attendance on a Date"
-          description="Pick a class and day to see who was present."
-        />
-        <div className="space-y-4">
-          <AttendanceScopeFilters value={scope} onChange={setScope} />
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            <DatePicker
-              label="Date"
-              max={todayIso()}
-              value={dateIso}
-              onChange={(iso) => setDateIso(iso ?? todayIso())}
-              fadeSundays
-              holidays={holidays}
-            />
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              onClick={runSearch}
-              disabled={!scopeReady}
-              icon={<Search className="h-4 w-4" />}
-            >
-              Search
-            </Button>
+      <FilterBar
+        actions={
+          <>
             <Button
               variant="outline"
               onClick={handleExportCSV}
@@ -220,11 +201,30 @@ export function AttendanceDateView() {
             >
               Export CSV
             </Button>
-          </div>
+            <Button
+              onClick={runSearch}
+              disabled={!scopeReady}
+              icon={<Search className="h-4 w-4" />}
+            >
+              Search
+            </Button>
+          </>
+        }
+      >
+        <AttendanceScopeFilters value={scope} onChange={setScope} />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <DatePicker
+            label="Date"
+            max={todayIso()}
+            value={dateIso}
+            onChange={(iso) => setDateIso(iso ?? todayIso())}
+            fadeSundays
+            holidays={holidays}
+          />
         </div>
-      </Card>
+      </FilterBar>
 
-      {isLoading && <PageSpinner />}
+      {isLoading && <TableSkeleton rows={6} columns={5} />}
       {isError && (
         <Alert variant="error">
           {getErrorMessage(error) || "Failed to fetch attendance records."}
@@ -242,41 +242,43 @@ export function AttendanceDateView() {
       {data && rows.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-            <StatCard label="Present" value={counts.P} icon={<UserCheck className="h-5 w-5" />} color="green" />
-            <StatCard label="Absent" value={counts.A} icon={<UserX className="h-5 w-5" />} color="red" />
-            <StatCard label="Late" value={counts.L} icon={<Clock className="h-5 w-5" />} color="amber" />
-            <StatCard label="Excused" value={counts.E} icon={<FileCheck className="h-5 w-5" />} color="blue" />
+            <StatCard label="Present" value={counts.P} icon={<UserCheck className="h-5 w-5" />} color="success" />
+            <StatCard label="Absent" value={counts.A} icon={<UserX className="h-5 w-5" />} color="danger" />
+            <StatCard label="Late" value={counts.L} icon={<Clock className="h-5 w-5" />} color="warning" />
+            <StatCard label="Excused" value={counts.E} icon={<FileCheck className="h-5 w-5" />} color="info" />
             <StatCard label="Half Day" value={counts.H} icon={<CircleDashed className="h-5 w-5" />} />
             <StatCard label="Present %" value={`${pct}%`} icon={<Percent className="h-5 w-5" />} color="primary" />
           </div>
 
-          <Card>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground">
-                {data.total_records} record(s) on {data.date} · showing {visible.length}
-              </p>
+          <Panel
+            icon={<ListChecks className="h-4 w-4" />}
+            title={`Records · ${data.date}`}
+            description={`${data.total_records} record(s) · showing ${visible.length}`}
+            actions={
               <div className="flex flex-wrap items-center gap-2">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search roll or name…"
-                    className="w-48 rounded-md border border-input bg-background py-2 pl-8 pr-3 text-sm text-foreground"
+                <SearchInput
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Search roll or name…"
+                  className="w-full sm:w-48"
+                />
+                <div className="w-36">
+                  <Select
+                    options={STATUS_FILTER_OPTIONS}
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
                   />
                 </div>
-                <Select
-                  options={STATUS_FILTER_OPTIONS}
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                />
-                <Select
-                  options={SORT_OPTIONS}
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                />
+                <div className="w-36">
+                  <Select
+                    options={SORT_OPTIONS}
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
+            }
+          >
             <StatusLegend className="mb-4" />
             {visible.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
@@ -285,7 +287,7 @@ export function AttendanceDateView() {
             ) : (
               <Table columns={DATE_COLUMNS} data={visible} />
             )}
-          </Card>
+          </Panel>
         </>
       )}
     </div>

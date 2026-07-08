@@ -1,68 +1,246 @@
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
 import {
-  ClipboardCheck,
-  Mic,
-  BrainCircuit,
-  BarChart3,
-  School,
+  Check,
+  Play,
+  Building2,
   ShieldCheck,
+  ArrowUpRight,
 } from "lucide-react";
 import { SectionHeading } from "@/features/landing/components/SectionHeading";
-import { fadeUp, staggerContainer } from "@/features/landing/animations";
+import { TrendChart } from "@/features/landing/components/DashboardPreview";
+import { fadeUp, staggerContainer, EASE_OUT_EXPO } from "@/features/landing/animations";
 
-const FEATURES = [
+const REGISTER_ROWS = [
+  { roll: "07", name: "Aarav Gupta" },
+  { roll: "18", name: "Diya Sharma" },
+  { roll: "31", name: "Kabir Singh" },
+];
+
+function AttendanceVignette() {
+  const today = new Date().toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+
+  return (
+    <div className="mt-7 rounded-xl border border-border bg-background/60 p-4">
+      <div className="flex items-baseline justify-between text-xs">
+        <span className="font-semibold text-foreground">
+          Class 8B — morning register
+        </span>
+        <span className="text-muted-foreground">{today}</span>
+      </div>
+      <ul className="mt-3 divide-y divide-border/60">
+        {REGISTER_ROWS.map((row, i) => (
+          <li
+            key={row.roll}
+            className="flex items-center gap-3 py-2.5 text-sm"
+          >
+            <span className="w-7 font-medium tabular-nums text-muted-foreground">
+              {row.roll}
+            </span>
+            <span className="flex-1 text-foreground/85">{row.name}</span>
+            <motion.span
+              initial={{ scale: 0, opacity: 0 }}
+              whileInView={{ scale: 1, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{
+                delay: 0.35 + i * 0.18,
+                duration: 0.3,
+                ease: EASE_OUT_EXPO,
+              }}
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+            >
+              <Check className="h-3 w-3" strokeWidth={3} />
+            </motion.span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2 border-t border-border/60 pt-3 text-xs text-muted-foreground">
+        62 of 64 marked · finished in 47 seconds
+      </div>
+    </div>
+  );
+}
+
+const QA_ANSWER =
+  "Light slows down when it enters water, so the rays bend — that's refraction. Ma'am covered this with the coin experiment.";
+
+function QAVignette() {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-60px" });
+  const reduceMotion = useReducedMotion();
+  const [chars, setChars] = useState(0);
+  const done = chars >= QA_ANSWER.length;
+
+  useEffect(() => {
+    if (!inView) return;
+    if (reduceMotion) {
+      setChars(QA_ANSWER.length);
+      return;
+    }
+    // Wait for the question bubble to land, then stream the answer.
+    const start = setTimeout(() => {
+      const id = setInterval(() => {
+        setChars((c) => {
+          if (c >= QA_ANSWER.length) {
+            clearInterval(id);
+            return c;
+          }
+          return c + 1;
+        });
+      }, 18);
+    }, 900);
+    return () => clearTimeout(start);
+  }, [inView, reduceMotion]);
+
+  return (
+    <div ref={ref} className="mt-7 space-y-3">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.3, duration: 0.4, ease: EASE_OUT_EXPO }}
+        className="ml-8 rounded-2xl rounded-br-md bg-primary px-4 py-3 text-sm leading-relaxed text-primary-foreground"
+      >
+        Why does a pencil look bent in water? I missed Friday's class.
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.55, duration: 0.4, ease: EASE_OUT_EXPO }}
+        className="mr-8 rounded-2xl rounded-bl-md border border-border bg-background/60 px-4 py-3"
+      >
+        <p className="min-h-[3lh] text-sm leading-relaxed text-foreground/85">
+          {QA_ANSWER.slice(0, chars)}
+          {!done && (
+            <span
+              className="ml-px inline-block h-[1em] w-[2px] translate-y-[0.15em] animate-pulse bg-primary"
+              aria-hidden="true"
+            />
+          )}
+        </p>
+        <motion.span
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={done ? { opacity: 1, scale: 1 } : {}}
+          transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+          className="mt-2.5 inline-flex items-center gap-1.5 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-muted-foreground"
+        >
+          <Play className="h-3 w-3" />
+          Physics — Light &amp; Refraction, 12:40
+        </motion.span>
+      </motion.div>
+    </div>
+  );
+}
+
+function RecordingVignette() {
+  return (
+    <div className="mt-7 rounded-xl border border-border bg-background/60 p-4">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <Play className="ml-0.5 h-4 w-4" fill="currentColor" />
+        </span>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-foreground">
+            Light &amp; Refraction — Class 8
+          </div>
+          <div className="text-xs text-muted-foreground">
+            42 min · uploaded today
+          </div>
+        </div>
+      </div>
+      <div className="relative mt-4 h-1.5 overflow-hidden rounded-full bg-border">
+        <motion.div
+          initial={{ width: "0%" }}
+          whileInView={{ width: "68%" }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4, duration: 1.1, ease: EASE_OUT_EXPO }}
+          className="h-full rounded-full bg-primary"
+        />
+      </div>
+      <div className="mt-2 flex justify-between text-[11px] font-medium tabular-nums text-muted-foreground">
+        <span>28:33</span>
+        <span>42:10</span>
+      </div>
+    </div>
+  );
+}
+
+function AnalyticsVignette() {
+  return (
+    <div className="mt-7 rounded-xl border border-border bg-background/60 p-4">
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs font-semibold text-foreground">
+          Attendance — Term 1
+        </span>
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          <ArrowUpRight className="h-3.5 w-3.5" />
+          2.1% this month
+        </span>
+      </div>
+      <TrendChart className="mt-2 h-24 w-full" delay={0.3} />
+    </div>
+  );
+}
+
+const CORE_FEATURES = [
   {
-    icon: ClipboardCheck,
-    title: "Smart Attendance",
+    title: "Attendance in seconds, not periods",
     description:
-      "Mark and track attendance in seconds with fast entry, date-range views, and per-student statistics.",
-    gradient: "from-primary to-sky-500",
+      "Teachers mark a full register in under a minute. Date-range views and per-student statistics come free with it.",
+    span: "lg:col-span-7",
+    vignette: AttendanceVignette,
   },
   {
-    icon: Mic,
-    title: "Lecture Recordings",
+    title: "Answers grounded in your lectures",
     description:
-      "Securely record and upload class lectures, searchable and accessible to students anytime, anywhere.",
-    gradient: "from-sky-500 to-cyan-500",
+      "Students ask in plain language; the AI answers from your school's own recordings and points to the exact class.",
+    span: "lg:col-span-5",
+    vignette: QAVignette,
   },
   {
-    icon: BrainCircuit,
-    title: "AI Question Answering",
+    title: "Every lecture, kept and searchable",
     description:
-      "Students ask questions on course material and get instant, AI-powered answers grounded in class content.",
-    gradient: "from-violet-500 to-primary",
+      "Record and upload classes securely. Students revisit any lesson the same evening — no more lost notes.",
+    span: "lg:col-span-5",
+    vignette: RecordingVignette,
   },
   {
-    icon: BarChart3,
-    title: "Analytics & Surveys",
+    title: "Numbers the staff room can act on",
     description:
-      "Gather feedback through surveys and turn it into actionable insights on a unified dashboard.",
-    gradient: "from-emerald-500 to-teal-500",
+      "Attendance trends, survey feedback, and engagement on one dashboard — visible the moment they change.",
+    span: "lg:col-span-7",
+    vignette: AnalyticsVignette,
   },
+];
+
+const SUPPORTING = [
   {
-    icon: School,
-    title: "Guided School Onboarding",
+    icon: Building2,
+    title: "Guided onboarding",
     description:
       "A step-by-step application takes your institution from first contact to fully live in days, not months.",
-    gradient: "from-amber-500 to-orange-500",
   },
   {
     icon: ShieldCheck,
-    title: "Role-Based Security",
+    title: "Role-based access",
     description:
-      "Granular access control ensures admins, teachers, and students each see exactly what they should.",
-    gradient: "from-rose-500 to-pink-500",
+      "Admins, teachers, students, and parents each see exactly what they should — nothing more.",
   },
 ];
 
 export function FeatureSection() {
   return (
-    <section id="features" className="w-full scroll-mt-24 bg-background py-24">
+    <section id="features" className="w-full scroll-mt-24 bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
         <SectionHeading
-          eyebrow="Platform"
-          title="Everything you need to run your school"
-          subtitle="Empower educators, students, and administrators with a comprehensive suite of tools designed for modern learning environments."
+          eyebrow="The platform"
+          title="Everything the school day runs on"
+          subtitle="Four core modules that share one login, one database, and one source of truth — for teachers, students, and administrators alike."
         />
 
         <motion.div
@@ -70,27 +248,44 @@ export function FeatureSection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
-          className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
+          className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-12"
         >
-          {FEATURES.map((feature) => (
+          {CORE_FEATURES.map((feature) => (
             <motion.div
               key={feature.title}
               variants={fadeUp}
-              className="group relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/25 hover:shadow-xl hover:shadow-primary/5"
+              className={`flex flex-col rounded-2xl border border-border bg-card p-7 transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/5 md:col-span-1 ${feature.span}`}
             >
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-
-              <div
-                className={`mb-5 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br ${feature.gradient} text-white shadow-md transition-transform duration-300 group-hover:scale-110`}
-              >
-                <feature.icon className="h-6 w-6" />
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-card-foreground">
+              <h3 className="text-lg font-semibold text-card-foreground">
                 {feature.title}
               </h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
                 {feature.description}
               </p>
+              <div className="mt-auto">
+                <feature.vignette />
+              </div>
+            </motion.div>
+          ))}
+
+          {SUPPORTING.map((item) => (
+            <motion.div
+              key={item.title}
+              variants={fadeUp}
+              className="flex items-start gap-4 rounded-2xl border border-border bg-card p-6 transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/5 md:col-span-1 lg:col-span-6"
+            >
+              <item.icon
+                className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+              <div>
+                <h3 className="text-sm font-semibold text-card-foreground">
+                  {item.title}
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
             </motion.div>
           ))}
         </motion.div>

@@ -1,28 +1,28 @@
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { UserPlus } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import {
   studentRegisterSchema,
   type StudentRegisterFormData,
 } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
 import { getErrorMessage } from "@/shared/lib/utils";
+import { writeOtpFlow } from "@/shared/lib/session";
 import {
   AuthInput,
   AuthPasswordInput,
-  AuthButton,
   AuthSubmitButton,
 } from "@/shared/components/ui/auth-fuse";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { TermsCheckbox } from "@/shared/components/common/TermsCheckbox";
 import { OrDivider } from "@/shared/components/common/OrDivider";
-import { GoogleIcon } from "./GoogleIcon";
+import { PasswordStrengthMeter } from "@/shared/components/common/PasswordStrengthMeter";
+import { GoogleButton } from "./GoogleButton";
 import {
   useSchoolSearch,
   useSchoolClasses,
 } from "@/shared/hooks/useSchoolSearch";
-import { useGoogleAuth } from "@/features/auth/hooks/useGoogleAuth";
 import { useOtpCooldown } from "../hooks/useOtpCooldown";
 import type { NavProps } from "./types";
 
@@ -38,11 +38,13 @@ export function StudentRegisterForm({
     formState: { errors, isSubmitting },
   } = useForm<StudentRegisterFormData>({
     resolver: zodResolver(studentRegisterSchema),
+    mode: "onTouched",
     defaultValues: { school_id: defaultSchoolId, terms: false },
   });
 
   // useWatch instead of watch — only re-renders on changes to these specific fields
   const watchEmail = useWatch({ control, name: "email", defaultValue: "" });
+  const watchPassword = useWatch({ control, name: "password", defaultValue: "" });
   const selectedSchoolId = useWatch({
     control,
     name: "school_id",
@@ -64,14 +66,13 @@ export function StudentRegisterForm({
   const { options: classOptions, isLoading: isLoadingClasses } =
     useSchoolClasses(selectedSchoolId);
 
-  const { handleGoogleLogin } = useGoogleAuth();
-
   const onSubmit = async (data: StudentRegisterFormData) => {
     try {
       const { confirm_password: _, terms: __, ...payload } = data;
       await authApi.registerStudent(payload);
       toast.success("Student account created! Please verify your email.");
       startCooldown();
+      writeOtpFlow({ email: data.email, purpose: "verify_email" });
       navigate("/verify-otp", {
         state: { email: data.email, purpose: "verify_email" },
       });
@@ -90,6 +91,7 @@ export function StudentRegisterForm({
         label="Full Name"
         type="text"
         autoComplete="name"
+        autoFocus
         placeholder="Full name"
         error={errors.full_name?.message}
         {...register("full_name")}
@@ -145,14 +147,16 @@ export function StudentRegisterForm({
         {...register("roll_number")}
       />
 
-      <AuthPasswordInput
-        label="Password"
-        autoComplete="new-password"
-        placeholder="Password"
-        error={errors.password?.message}
-        hint="Min 8 chars, uppercase, lowercase, digit &amp; special char"
-        {...register("password")}
-      />
+      <div className="grid gap-2">
+        <AuthPasswordInput
+          label="Password"
+          autoComplete="new-password"
+          placeholder="Password"
+          error={errors.password?.message}
+          {...register("password")}
+        />
+        {watchPassword && <PasswordStrengthMeter value={watchPassword} />}
+      </div>
 
       <AuthPasswordInput
         label="Confirm Password"
@@ -174,20 +178,9 @@ export function StudentRegisterForm({
 
       <OrDivider />
 
-      <AuthButton
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() =>
-          handleGoogleLogin({
-            role: "student",
-            schoolId: selectedSchoolId ?? "",
-          })
-        }
-      >
-        <GoogleIcon />
-        Continue with Google
-      </AuthButton>
+      <GoogleButton
+        options={{ role: "student", schoolId: selectedSchoolId ?? "" }}
+      />
     </form>
   );
 }

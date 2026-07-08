@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { authApi } from "@/features/auth/api/auth";
 import { useDebounce } from "./useDebounce";
+import { useSchoolClassesQuery } from "./useSchoolClassesQuery";
 import { formatClassName, getClassNameWeight } from "@/shared/lib/utils";
 import type { SearchableSelectOption } from "@/shared/components/ui/SearchableSelect";
 import type {
   SchoolSearchItem,
-  ClassCodeItem,
   StudentSearchItem,
 } from "@/features/auth/types";
 
@@ -51,33 +51,9 @@ export function useSchoolSearch(debounceMs = 500) {
   return { query, setQuery, options, isSearching };
 }
 
-/** Loads class codes for a given school ID. */
+/** Loads class codes for a given school ID, backed by React Query for shared caching. */
 export function useSchoolClasses(schoolId: string | undefined) {
-  const [classes, setClasses] = useState<ClassCodeItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!schoolId) {
-      setClasses([]);
-      return;
-    }
-    let cancelled = false;
-    setIsLoading(true);
-    authApi
-      .getSchoolClasses(schoolId)
-      .then((results) => {
-        if (!cancelled) setClasses(results);
-      })
-      .catch(() => {
-        /* silently ignore */
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [schoolId]);
+  const { data: classes, isLoading } = useSchoolClassesQuery(schoolId);
 
   const options: SearchableSelectOption[] = classes
     .map((c) => ({

@@ -1,0 +1,337 @@
+import { useMemo } from "react";
+import {
+  Library,
+  Database,
+  Layers,
+  BookOpen,
+  RefreshCw,
+  Globe,
+  School,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  FileText,
+} from "lucide-react";
+import { StatCard } from "@/shared/components/ui/Card";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
+import { Alert } from "@/shared/components/ui/Alert";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { getErrorMessage } from "@/shared/lib/utils";
+import { useRagAnalytics } from "@/features/rag/hooks/useRag";
+
+/** A horizontal breakdown list with a proportional fill bar per row. */
+function BreakdownList({
+  rows,
+  total,
+  emptyLabel,
+}: {
+  rows: { label: string; count: number }[];
+  total: number;
+  emptyLabel: string;
+}) {
+  if (!rows.length) {
+    return (
+      <p className="px-4 py-4 text-sm text-muted-foreground md:px-5">
+        {emptyLabel}
+      </p>
+    );
+  }
+  const max = Math.max(...rows.map((r) => r.count), 1);
+  return (
+    <ul className="divide-y divide-border/50">
+      {rows.map((row) => {
+        const barPct = Math.round((row.count / max) * 100);
+        const sharePct = total > 0 ? Math.round((row.count / total) * 100) : null;
+        return (
+          <li key={row.label} className="px-4 py-3 md:px-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="truncate text-sm font-medium text-foreground">
+                {row.label}
+              </p>
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                {row.count.toLocaleString()} docs
+                {sharePct !== null && ` · ${sharePct}%`}
+              </span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all duration-500"
+                style={{ width: `${barPct}%` }}
+              />
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Segmented ingest-health bar: completed / pending / failed. */
+function IngestHealthBar({
+  completed,
+  pending,
+  failed,
+}: {
+  completed: number;
+  pending: number;
+  failed: number;
+}) {
+  const total = completed + pending + failed;
+  if (total === 0) return null;
+  const seg = (n: number) => `${(n / total) * 100}%`;
+  return (
+    <div className="space-y-3">
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+        {completed > 0 && (
+          <div className="h-full bg-green-500" style={{ width: seg(completed) }} />
+        )}
+        {pending > 0 && (
+          <div className="h-full bg-amber-500" style={{ width: seg(pending) }} />
+        )}
+        {failed > 0 && (
+          <div className="h-full bg-destructive" style={{ width: seg(failed) }} />
+        )}
+      </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span className="h-2 w-2 rounded-full bg-green-500" />
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+          {completed.toLocaleString()} completed
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span className="h-2 w-2 rounded-full bg-amber-500" />
+          <Clock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+          {pending.toLocaleString()} processing
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+          <span className="h-2 w-2 rounded-full bg-destructive" />
+          <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+          {failed.toLocaleString()} failed
+        </span>
+      </div>
+    </div>
+  );
+}
+
+const statusBadge = (status: string) => {
+  switch (status.toLowerCase()) {
+    case "completed":
+      return <Badge variant="success">Completed</Badge>;
+    case "failed":
+      return <Badge variant="danger">Failed</Badge>;
+    default:
+      return <Badge variant="warning">{status}</Badge>;
+  }
+};
+
+export function RagInsightsPage() {
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useRagAnalytics();
+
+  const subjectRows = useMemo(
+    () =>
+      (data?.by_subject ?? []).map((s) => ({
+        label: s.subject || "Unspecified",
+        count: s.count,
+      })),
+    [data],
+  );
+  const classRows = useMemo(
+    () =>
+      (data?.by_class ?? []).map((c) => ({
+        label: c.class_level || "Unspecified",
+        count: c.count,
+      })),
+    [data],
+  );
+
+  if (isLoading) return <PageSkeleton />;
+  if (isError)
+    return (
+      <Alert variant="error">
+        {getErrorMessage(error) || "Failed to load knowledge-base analytics."}
+      </Alert>
+    );
+
+  const totals = data?.totals;
+  const isEmpty = !totals || totals.documents === 0;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Badge variant={data?.scope === "platform" ? "primary" : "info"}>
+            {data?.scope === "platform" ? "Platform-wide" : "Your school + global"}
+          </Badge>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => refetch()}
+          loading={isFetching}
+          icon={<RefreshCw className="h-4 w-4" />}
+        >
+          Refresh
+        </Button>
+      </div>
+
+      {isEmpty ? (
+        <EmptyState
+          icon={<Library className="h-12 w-12" />}
+          title="Your knowledge base is empty"
+          description="Upload textbook documents in the Textbook Library to start building searchable content and see insights here."
+        />
+      ) : (
+        <>
+          {/* Corpus totals */}
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard
+              label="Documents"
+              value={totals.documents.toLocaleString()}
+              icon={<Library className="h-5 w-5" />}
+              color="primary"
+              description={`${totals.global_docs.toLocaleString()} global · ${totals.school_docs.toLocaleString()} school`}
+            />
+            <StatCard
+              label="Indexed Chunks"
+              value={totals.chunks.toLocaleString()}
+              icon={<Database className="h-5 w-5" />}
+              color="info"
+              description="Searchable passages"
+            />
+            <StatCard
+              label="Subjects"
+              value={totals.subjects.toLocaleString()}
+              icon={<BookOpen className="h-5 w-5" />}
+              color="success"
+              description="Distinct subjects covered"
+            />
+            <StatCard
+              label="Class Levels"
+              value={totals.class_levels.toLocaleString()}
+              icon={<Layers className="h-5 w-5" />}
+              color="warning"
+              description="Grades with content"
+            />
+          </div>
+
+          {/* Ingest health + source split */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <Panel
+              className="lg:col-span-2"
+              icon={<CheckCircle2 className="h-4 w-4" />}
+              title="Ingestion health"
+              description="Processing status across all uploaded documents"
+            >
+              <IngestHealthBar
+                completed={totals.completed}
+                pending={totals.pending}
+                failed={totals.failed}
+              />
+            </Panel>
+
+            <Panel
+              icon={<Globe className="h-4 w-4" />}
+              title="Content source"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-2 text-sm text-foreground">
+                    <Globe className="h-4 w-4 text-primary" />
+                    Global (NCERT)
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">
+                    {totals.global_docs.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-2 text-sm text-foreground">
+                    <School className="h-4 w-4 text-primary" />
+                    School uploads
+                  </span>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">
+                    {totals.school_docs.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </Panel>
+          </div>
+
+          {/* Breakdowns */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Panel
+              flush
+              icon={<BookOpen className="h-4 w-4" />}
+              title="Documents by subject"
+              actions={<Badge variant="info">{subjectRows.length}</Badge>}
+            >
+              <BreakdownList
+                rows={subjectRows}
+                total={totals.documents}
+                emptyLabel="No subject data yet."
+              />
+            </Panel>
+
+            <Panel
+              flush
+              icon={<Layers className="h-4 w-4" />}
+              title="Documents by class"
+              actions={<Badge variant="info">{classRows.length}</Badge>}
+            >
+              <BreakdownList
+                rows={classRows}
+                total={totals.documents}
+                emptyLabel="No class data yet."
+              />
+            </Panel>
+          </div>
+
+          {/* Recent uploads */}
+          <Panel
+            flush
+            icon={<FileText className="h-4 w-4" />}
+            title="Recent uploads"
+          >
+            {!data?.recent?.length ? (
+              <p className="px-4 py-4 text-sm text-muted-foreground md:px-5">
+                No recent uploads.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border/50">
+                {data.recent.map((doc) => (
+                  <li
+                    key={doc.id}
+                    className="flex items-center justify-between gap-3 px-4 py-3 md:px-5"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+                        <FileText className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {doc.chapter_name || "Untitled chapter"}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {[doc.class_level, doc.subject]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                          {doc.is_global && " · Global"}
+                          {typeof doc.total_chunks === "number" &&
+                            ` · ${doc.total_chunks} chunks`}
+                        </p>
+                      </div>
+                    </div>
+                    {statusBadge(doc.status)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </>
+      )}
+    </div>
+  );
+}

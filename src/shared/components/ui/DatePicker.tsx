@@ -132,7 +132,7 @@ export function DatePicker({
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       {label && (
-        <label htmlFor={inputId} className="text-sm font-medium text-foreground">
+        <label htmlFor={inputId} className="text-sm font-medium leading-none text-foreground">
           {label}
         </label>
       )}
@@ -146,7 +146,7 @@ export function DatePicker({
             aria-haspopup="dialog"
             aria-expanded={open}
             className={cn(
-              "flex w-full items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm",
+              "flex h-10 w-full items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm",
               "transition-colors duration-200",
               "focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-offset-background",
               "disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground",

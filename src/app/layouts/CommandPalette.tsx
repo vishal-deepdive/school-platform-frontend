@@ -50,7 +50,7 @@ export function CommandPalette() {
 
   const actions = useMemo(
     () => buildActions(user?.role, isAdmin),
-    [user?.role, isAdmin],
+    [user?.role],
   );
 
   const results = useMemo(() => {
@@ -70,7 +70,6 @@ export function CommandPalette() {
         e.preventDefault();
         setOpen((v) => !v);
       }
-      if (e.key === "Escape") setOpen(false);
     };
     const onOpen = () => setOpen(true);
     window.addEventListener("keydown", onKey);
@@ -80,6 +79,17 @@ export function CommandPalette() {
       window.removeEventListener("open-command-palette", onOpen);
     };
   }, []);
+
+  // Escape only fires when the palette is open — avoids interfering with other
+  // Escape handlers (modals, drawers) when the palette is closed.
+  useEffect(() => {
+    if (!open) return;
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [open]);
 
   // Reset + focus whenever it opens.
   useEffect(() => {
@@ -91,10 +101,18 @@ export function CommandPalette() {
     }
   }, [open]);
 
-  // Keep the active row clamped and scrolled into view.
+  // Keep the active row clamped when results change.
   useEffect(() => {
     if (active >= results.length) setActive(results.length ? results.length - 1 : 0);
   }, [results, active]);
+
+  // Scroll the active row into view whenever it changes (arrow key nav, result changes).
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const activeEl = list.querySelectorAll('[role="option"]')[active] as HTMLElement | undefined;
+    activeEl?.scrollIntoView({ block: "nearest" });
+  }, [active]);
 
   if (!open) return null;
 

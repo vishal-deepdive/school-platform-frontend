@@ -1,4 +1,3 @@
-import { useAuthStore } from "@/features/auth/store/auth";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -11,7 +10,7 @@ import {
   Copy,
   Check,
 } from "lucide-react";
-import toast from "react-hot-toast";
+import toast from "@/shared/lib/toast";
 import { recordingApi } from "@/features/recording/api/recording";
 import {
   optimizeAudioForUpload,
@@ -19,15 +18,14 @@ import {
   type OptimizeProgress,
 } from "@/features/recording/lib/optimizeAudio";
 import { getErrorMessage, downloadFile, formatFileSize } from "@/shared/lib/utils";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
+import { Panel } from "@/shared/components/ui/Panel";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
-import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
-import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import type { JobStatus, JobStatusResponse } from "@/features/recording/types";
 
@@ -104,15 +102,11 @@ function JobStatusCard({ jobId, jobStatus, deduplicated, markdown }: JobStatusCa
   const config = statusConfig[effectiveStatus] ?? statusConfig.pending;
 
   return (
-    <Card>
-      <CardHeader title="Processing Status" />
+    <Panel icon={config.icon} title="Processing status">
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          {config.icon}
-          <div>
-            <Badge variant={config.color}>{config.label}</Badge>
-            <p className="text-xs text-muted-foreground mt-1">Job ID: {jobId}</p>
-          </div>
+          <Badge variant={config.color}>{config.label}</Badge>
+          <p className="text-xs text-muted-foreground">Job ID: {jobId}</p>
         </div>
 
         {deduplicated && (
@@ -156,13 +150,12 @@ function JobStatusCard({ jobId, jobStatus, deduplicated, markdown }: JobStatusCa
           <p className="text-sm text-muted-foreground">Loading study materials…</p>
         )}
       </div>
-    </Card>
+    </Panel>
   );
 }
 
 export function UploadRecordingPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
+  const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const [file, setFile] = useState<File[]>([]);
   const [jobId, setJobId] = useState<string | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
@@ -176,32 +169,22 @@ export function UploadRecordingPage() {
   // When a re-upload is deduplicated the job is already complete on the
   // backend, so we skip status polling and fetch the existing result directly.
   const [deduplicated, setDeduplicated] = useState(false);
-  const [schoolId, setSchoolId] = useState<string | undefined>(
-    isAdmin ? undefined : user?.school_id ?? undefined,
-  );
   const [params, setParams] = useState({
-    school_name: "",
     class_name: "",
     section: "",
     subject: "",
     recording_subject: "",
   });
 
-  const {
-    options: schoolOptions,
-    setQuery: setSchoolQuery,
-    isSearching: schoolsLoading,
-  } = useSchoolSearch();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = params.class_name
     ? getSectionOptions(params.class_name)
     : [];
 
-  const handleSchoolChange = (id: string) => {
-    setSchoolId(id);
-    const name = schoolOptions.find((o) => o.value === id)?.label ?? "";
-    setParams((p) => ({ ...p, school_name: name, class_name: "", section: "" }));
-  };
+  // Clear the class picker when the active school changes (its classes differ).
+  useEffect(() => {
+    setParams((p) => ({ ...p, class_name: "", section: "" }));
+  }, [schoolId]);
 
   const handleClassChange = (className: string) => {
     setParams((p) => ({ ...p, class_name: className, section: "" }));
@@ -252,7 +235,7 @@ export function UploadRecordingPage() {
       toast.error("Please select an audio file");
       return;
     }
-    if ((user?.role === "admin" && !params.school_name) || !params.class_name) {
+    if ((isAdmin && !schoolName) || !params.class_name) {
       toast.error("School name and class are required");
       return;
     }
@@ -266,13 +249,13 @@ export function UploadRecordingPage() {
     // bandwidth with no transcription-quality loss. Best-effort: on any failure
     // optimizeAudioForUpload returns the original file untouched.
     let toUpload = file[0];
-    let withinLimit = true;
+    let durationSeconds: number | undefined;
     setOptimizing(true);
     setOptimizeProgress({ stage: "Preparing…", percent: null });
     try {
       const res = await optimizeAudioForUpload(file[0], setOptimizeProgress);
       toUpload = res.file;
-      withinLimit = res.withinUploadLimit;
+      durationSeconds = res.durationSeconds;
       if (res.optimized) {
         const saved = Math.round(
           (1 - res.outputBytes / res.originalBytes) * 100,
@@ -299,84 +282,92 @@ export function UploadRecordingPage() {
       return;
     }
 
-    upload({ f: toUpload, p: params });
+    // Attach best-effort duration (seconds) so the backend can store it. The
+    // school comes from the global active-school selection (blank for non-admins,
+    // who are scoped server-side).
+    const payload: Record<string, string> = {
+      ...params,
+      school_name: schoolName || "",
+    };
+    if (durationSeconds != null) {
+      payload.duration_seconds = String(durationSeconds);
+    }
+    upload({ f: toUpload, p: payload });
   };
 
   return (
     <div className="space-y-6">
       <div className={`grid grid-cols-1 gap-6 ${(jobId && (jobStatus || deduplicated)) ? "lg:grid-cols-2" : ""}`}>
-        <Card>
-          <CardHeader title="Recording Details" />
-          <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-4 items-start">
-              {isAdmin && (
-                <SearchableSelect
-                  label="School"
-                  placeholder="Select school..."
-                  options={schoolOptions}
-                  value={schoolId}
-                  onChange={handleSchoolChange}
-                  onSearchChange={setSchoolQuery}
-                  isLoading={schoolsLoading}
-                />
-              )}
-              <Select
-                label="Class"
-                placeholder={schoolId ? "Select class" : "Select a school first"}
-                options={classNameOptions}
-                value={params.class_name}
-                disabled={!schoolId}
-                onChange={(e) => handleClassChange(e.target.value)}
-              />
-              {sectionOptions.length > 0 ? (
+        <Panel>
+          <div className="flex flex-col gap-5">
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-foreground">
+                Class &amp; subject
+              </h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
                 <Select
-                  label="Section (optional)"
-                  placeholder="Select section"
-                  options={sectionOptions}
-                  value={params.section}
-                  onChange={(e) =>
-                    setParams((p) => ({ ...p, section: e.target.value }))
-                  }
+                  label="Class"
+                  placeholder="Select class"
+                  options={classNameOptions}
+                  value={params.class_name}
+                  disabled={!schoolId}
+                  onChange={(e) => handleClassChange(e.target.value)}
                 />
-              ) : (
+                {sectionOptions.length > 0 ? (
+                  <Select
+                    label="Section (optional)"
+                    placeholder="Select section"
+                    options={sectionOptions}
+                    value={params.section}
+                    onChange={(e) =>
+                      setParams((p) => ({ ...p, section: e.target.value }))
+                    }
+                  />
+                ) : (
+                  <Input
+                    label="Section (optional)"
+                    placeholder="A"
+                    value={params.section}
+                    onChange={(e) =>
+                      setParams((p) => ({ ...p, section: e.target.value }))
+                    }
+                  />
+                )}
                 <Input
-                  label="Section (optional)"
-                  placeholder="A"
-                  value={params.section}
+                  label="Subject (optional)"
+                  placeholder="Mathematics"
+                  value={params.subject}
                   onChange={(e) =>
-                    setParams((p) => ({ ...p, section: e.target.value }))
+                    setParams((p) => ({ ...p, subject: e.target.value }))
                   }
                 />
-              )}
-              <Input
-                label="Subject (optional)"
-                placeholder="Mathematics"
-                value={params.subject}
-                onChange={(e) =>
-                  setParams((p) => ({ ...p, subject: e.target.value }))
-                }
-              />
-              <Input
-                label="Recording Topic (optional)"
-                placeholder="Chapter 5: Quadratic Equations"
-                className="col-span-2"
-                value={params.recording_subject}
-                onChange={(e) =>
-                  setParams((p) => ({
-                    ...p,
-                    recording_subject: e.target.value,
-                  }))
-                }
-              />
+                <Input
+                  label="Recording Topic (optional)"
+                  placeholder="Chapter 5: Quadratic Equations"
+                  className="sm:col-span-2"
+                  value={params.recording_subject}
+                  onChange={(e) =>
+                    setParams((p) => ({
+                      ...p,
+                      recording_subject: e.target.value,
+                    }))
+                  }
+                />
+              </div>
             </div>
 
-            <FileUpload
-              label="Audio or Video File"
-              accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/*,video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
-              maxSize={1024 * 1024 * 1024}
-              onChange={setFile}
-              hint="MP3, WAV, M4A, MP4, MOV, MKV, WebM. Max 1 GB. Large files are optimized in your browser before upload."
-            />
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-foreground">
+                Recording file
+              </h4>
+              <FileUpload
+                label="Audio or Video File"
+                accept="audio/mpeg,audio/mp3,audio/wav,audio/m4a,audio/*,video/mp4,video/quicktime,video/x-matroska,video/webm,.mp4,.mov,.mkv,.webm"
+                maxSize={1024 * 1024 * 1024}
+                onChange={setFile}
+                hint="MP3, WAV, M4A, MP4, MOV, MKV, WebM. Max 1 GB. Large files are optimized in your browser before upload."
+              />
+            </div>
 
             {optimizing && (
               <div className="space-y-1">
@@ -428,6 +419,7 @@ export function UploadRecordingPage() {
                   jobStatus?.status === "processing")
               }
               icon={<Mic2 className="h-4 w-4" />}
+              className="self-start"
             >
               {optimizing
                 ? "Optimizing…"
@@ -436,7 +428,7 @@ export function UploadRecordingPage() {
                   : "Process Recording"}
             </Button>
           </div>
-        </Card>
+        </Panel>
 
         {jobId && (jobStatus || deduplicated) && (
           <JobStatusCard
@@ -449,14 +441,10 @@ export function UploadRecordingPage() {
       </div>
 
       {markdown && (
-        <Card className="relative group">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-foreground">
-                Generated Study Materials
-              </h3>
-            </div>
+        <Panel
+          icon={<FileText className="h-4 w-4" />}
+          title="Generated study materials"
+          actions={
             <div className="flex items-center gap-2">
               <CopyButton text={markdown} />
               <Button
@@ -469,11 +457,12 @@ export function UploadRecordingPage() {
                 Download .md
               </Button>
             </div>
-          </div>
+          }
+        >
           <div className="overflow-y-auto max-h-[65vh] rounded-lg bg-muted/30 p-5">
             <MarkdownRenderer content={markdown} />
           </div>
-        </Card>
+        </Panel>
       )}
     </div>
   );

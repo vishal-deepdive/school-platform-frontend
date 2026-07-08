@@ -46,7 +46,41 @@ export interface Recording {
   recording_subject?: string;
   audio_filename: string;
   job_id?: string;
+  /** Uploader user id + resolved display name (from the users join). */
+  uploaded_by?: string;
+  uploader_name?: string;
+  /** Distribution state: draft | pending | published | archived. */
+  visibility?: string;
+  title?: string;
+  duration_seconds?: number;
+  file_size_bytes?: number;
   created_at?: string;
+}
+
+/** Columns the recordings list may be sorted by (must match the backend allow-list). */
+export type RecordingSortBy =
+  | "created_at"
+  | "date"
+  | "class"
+  | "subject"
+  | "title"
+  | "duration_seconds"
+  | "file_size_bytes"
+  | "school_name";
+
+/** Query parameters accepted by the recordings list endpoint. */
+export interface RecordingListQuery {
+  limit: number;
+  offset: number;
+  /** Sent as the `class` query alias expected by the backend. */
+  class?: string;
+  section?: string;
+  subject?: string;
+  recording_subject?: string;
+  date?: string;
+  school_name?: string;
+  sort_by?: RecordingSortBy;
+  order?: "asc" | "desc";
 }
 
 export interface RecordingsListResponse {
@@ -54,6 +88,11 @@ export interface RecordingsListResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface BulkDeleteResponse {
+  message: string;
+  deleted_count: number;
 }
 
 export interface AuditLog {
@@ -121,3 +160,62 @@ export type ResultSection =
   | "actions"
   | "feedback"
   | "misconceptions";
+
+// ── Analytics (GET /recording/analytics) ────────────────────────────────────
+
+export interface RecordingTotals {
+  recordings: number;
+  total_minutes: number;
+  avg_minutes: number;
+  storage_mb: number;
+  processed: number;
+  processing: number;
+  classes: number;
+  subjects: number;
+}
+
+export interface RecordingTrendPoint {
+  date: string; // DD-MM-YYYY
+  count: number;
+}
+
+export interface RecordingSubjectStat {
+  subject: string;
+  count: number;
+  minutes: number;
+}
+
+export interface RecordingClassStat {
+  class_name: string;
+  count: number;
+}
+
+export interface RecordingTeacherStat {
+  teacher: string;
+  count: number;
+}
+
+export interface RecentRecordingItem {
+  id: string;
+  title: string;
+  class_name?: string | null;
+  subject?: string | null;
+  date?: string | null;
+  duration_seconds?: number | null;
+  processed: boolean;
+}
+
+/** `scope`: own (teacher) · school (principal) · platform (admin) · class (student/parent). */
+export type RecordingAnalyticsScope = "own" | "school" | "platform" | "class";
+
+export interface RecordingAnalyticsResponse {
+  scope: RecordingAnalyticsScope;
+  school_name: string | null;
+  days: number;
+  totals: RecordingTotals;
+  trend: RecordingTrendPoint[];
+  by_subject: RecordingSubjectStat[];
+  by_class: RecordingClassStat[];
+  by_teacher: RecordingTeacherStat[];
+  recent: RecentRecordingItem[];
+}
