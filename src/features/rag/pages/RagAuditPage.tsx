@@ -20,6 +20,7 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { canManageRecordings } from "@/shared/lib/permissions";
+import { CoverageMatrix } from "@/features/rag/components/CoverageMatrix";
 
 export function RagAuditPage() {
   const queryClient = useQueryClient();
@@ -185,6 +186,8 @@ export function RagAuditPage() {
               </Panel>
             ))}
           </div>
+
+          <CoverageMatrix />
 
           {hasMissingMetadata ? (
             <Alert variant="warning" title="Missing Metadata Detected">

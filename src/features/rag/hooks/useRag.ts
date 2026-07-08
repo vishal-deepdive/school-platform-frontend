@@ -5,6 +5,7 @@ interface DocumentParams {
   limit?: number;
   offset?: number;
   status?: string;
+  search?: string;
 }
 
 export const ragKeys = {
@@ -13,6 +14,7 @@ export const ragKeys = {
   classLevels: () => ["rag", "classLevels"] as const,
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
   documentStatus: (id: string) => ["rag", "documentStatus", id] as const,
+  documentChunks: (id: string) => ["rag", "documentChunks", id] as const,
   analytics: () => ["rag", "analytics"] as const,
 };
 
@@ -77,5 +79,21 @@ export function useDeleteRagDocument() {
 export function useRetryRagIngest() {
   return useMutation({
     mutationFn: (documentId: string) => ragApi.retryIngest(documentId),
+  });
+}
+
+export function useDocumentChunks(documentId: string | null) {
+  return useQuery({
+    queryKey: ragKeys.documentChunks(documentId ?? ""),
+    queryFn: () => ragApi.getDocumentChunks(documentId as string),
+    enabled: !!documentId,
+    staleTime: 5 * 60_000,
+  });
+}
+
+export function useSubmitRagFeedback() {
+  return useMutation({
+    mutationFn: (data: Parameters<typeof ragApi.submitFeedback>[0]) =>
+      ragApi.submitFeedback(data),
   });
 }

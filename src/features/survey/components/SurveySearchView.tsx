@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
@@ -25,6 +25,7 @@ import {
 } from "@/features/survey/schema";
 import { surveyApi } from "@/features/survey/api/survey";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
+import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card } from "@/shared/components/ui/Card";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
@@ -164,7 +165,7 @@ export function SurveySearchView() {
   const [showSql, setShowSql] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
-  const abortRef = useRef<AbortController | null>(null);
+  const { begin, stop, end } = useStreamAbort();
 
   const { isAdmin, schoolParam } = useActiveSchool();
 
@@ -200,9 +201,7 @@ export function SurveySearchView() {
 
   const runSearch = useCallback(
     async (formData: SurveySearchFormData) => {
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
+      const controller = begin();
 
       setStreaming(true);
       setInsight("");
@@ -246,7 +245,7 @@ export function SurveySearchView() {
         }
       } catch (err) {
         flushPending();
-        if (!(err instanceof DOMException && err.name === "AbortError")) {
+        if (!isAbortError(err)) {
           const msg = getErrorMessage(err);
           setError(msg);
           toast.error(msg);
@@ -254,10 +253,10 @@ export function SurveySearchView() {
       } finally {
         flushPending();
         setStreaming(false);
-        abortRef.current = null;
+        end(controller);
       }
     },
-    [queueToken, flushPending, selectedSourceIds, isAdmin, schoolParam.school_name],
+    [begin, end, queueToken, flushPending, selectedSourceIds, isAdmin, schoolParam.school_name],
   );
 
   const hasResult = intent !== null;
@@ -277,7 +276,7 @@ export function SurveySearchView() {
                 type="button"
                 variant="outline"
                 icon={<StopCircle className="h-4 w-4" />}
-                onClick={() => abortRef.current?.abort()}
+                onClick={stop}
               >
                 Stop
               </Button>

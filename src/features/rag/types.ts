@@ -40,6 +40,23 @@ export interface QuestionsRequest {
   difficulty: Difficulty;
   num_questions: number;
   marks?: number;
+  /** Include the answer key in the output (default true). */
+  include_answers?: boolean;
+}
+
+/** Payload for POST /rag/qa/feedback. */
+export interface FeedbackRequest {
+  rating: "up" | "down";
+  question: string;
+  answer?: string;
+  comment?: string;
+  filters?: RagFilters;
+  sources?: QASource[];
+}
+
+export interface FeedbackResponse {
+  recorded: boolean;
+  feedback_id: string;
 }
 
 export interface NotesRequest {
@@ -221,6 +238,13 @@ export interface RagRecentDocument {
   created_at?: string | null;
 }
 
+export interface RagFeedbackSummary {
+  total: number;
+  up: number;
+  down: number;
+  helpful_pct?: number | null;
+}
+
 export interface RagAnalyticsResponse {
   scope: "platform" | "school";
   totals: RagLibraryTotals;
@@ -228,4 +252,22 @@ export interface RagAnalyticsResponse {
   by_class: RagClassStat[];
   by_status: RagStatusStat[];
   recent: RagRecentDocument[];
+  feedback?: RagFeedbackSummary | null;
+}
+
+// ── Document chunk preview (GET /rag/documents/{id}/chunks) ──────────────────
+
+export interface DocumentChunk {
+  chunk_id?: string | null;
+  chapter?: string | null;
+  chapter_name?: string | null;
+  title?: string | null;
+  page?: string | null;
+  content: string;
+}
+
+export interface DocumentChunksResponse {
+  document_id: string;
+  total: number;
+  chunks: DocumentChunk[];
 }

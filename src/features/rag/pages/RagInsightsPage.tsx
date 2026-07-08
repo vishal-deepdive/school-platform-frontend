@@ -11,6 +11,8 @@ import {
   Clock,
   AlertTriangle,
   FileText,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Panel } from "@/shared/components/ui/Panel";
@@ -259,6 +261,50 @@ export function RagInsightsPage() {
               </div>
             </Panel>
           </div>
+
+          {/* Answer quality feedback */}
+          <Panel
+            icon={<ThumbsUp className="h-4 w-4" />}
+            title="Answer quality"
+            description="Student & teacher ratings on generated Q&A answers"
+          >
+            {!data?.feedback || data.feedback.total === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No answer ratings yet. Thumbs up/down on answers in “Ask a Doubt”
+                will show up here.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-end justify-between gap-3">
+                  <div>
+                    <p className="font-display text-3xl font-semibold tabular-nums text-foreground">
+                      {data.feedback.helpful_pct ?? 0}%
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      rated helpful · {data.feedback.total.toLocaleString()} total
+                    </p>
+                  </div>
+                  <div className="flex gap-4 text-sm">
+                    <span className="inline-flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                      <ThumbsUp className="h-4 w-4" />
+                      {data.feedback.up.toLocaleString()}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-destructive">
+                      <ThumbsDown className="h-4 w-4" />
+                      {data.feedback.down.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full bg-green-500"
+                    style={{ width: `${data.feedback.helpful_pct ?? 0}%` }}
+                  />
+                  <div className="h-full flex-1 bg-destructive" />
+                </div>
+              </div>
+            )}
+          </Panel>
 
           {/* Breakdowns */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -14,8 +14,11 @@ import type {
   IngestJobResponse,
   DocumentStatusResponse,
   DocumentListResponse,
+  DocumentChunksResponse,
   ClassLevelsResponse,
   RagAnalyticsResponse,
+  FeedbackRequest,
+  FeedbackResponse,
 } from "@/features/rag/types";
 
 const BASE = `${API_V1}/rag`;
@@ -64,9 +67,19 @@ export const ragApi = {
       })
       .then((r) => r.data),
 
-  listDocuments: (params: { limit?: number; offset?: number; status?: string }) =>
+  listDocuments: (params: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    search?: string;
+  }) =>
     apiClient
       .get<DocumentListResponse>(`${BASE}/documents`, { params })
+      .then((r) => r.data),
+
+  getDocumentChunks: (documentId: string) =>
+    apiClient
+      .get<DocumentChunksResponse>(`${BASE}/documents/${documentId}/chunks`)
       .then((r) => r.data),
 
   getDocumentStatus: (documentId: string) =>
@@ -89,4 +102,10 @@ export const ragApi = {
   /** Knowledge-base corpus analytics for the dashboard (staff-scoped). */
   getAnalytics: () =>
     apiClient.get<RagAnalyticsResponse>(`${BASE}/analytics`).then((r) => r.data),
+
+  /** Record a thumbs up/down rating on a generated Q&A answer. */
+  submitFeedback: (data: FeedbackRequest) =>
+    apiClient
+      .post<FeedbackResponse>(`${BASE}/qa/feedback`, data)
+      .then((r) => r.data),
 };

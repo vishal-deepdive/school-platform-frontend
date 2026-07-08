@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { HelpCircle } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
+import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
@@ -27,6 +28,11 @@ const difficultyOptions: SelectOption[] = [
   { value: "Hard", label: "Hard" },
 ];
 
+const answerKeyOptions: SelectOption[] = [
+  { value: "teacher", label: "Teacher — include answer key" },
+  { value: "student", label: "Student — questions only" },
+];
+
 const difficultyBadge: Record<Difficulty, "success" | "warning" | "danger"> = {
   Easy: "success",
   Medium: "warning",
@@ -34,30 +40,47 @@ const difficultyBadge: Record<Difficulty, "success" | "warning" | "danger"> = {
 };
 
 export function QuestionsPage() {
-  const { filters, qType, difficulty, numQuestions, marks, result, isPending } =
-    useRagUiStore((s) => s.questions);
+  const {
+    filters,
+    qType,
+    difficulty,
+    numQuestions,
+    marks,
+    includeAnswers,
+    result,
+    isPending,
+  } = useRagUiStore((s) => s.questions);
   const setFilters = useRagUiStore((s) => s.setQuestionsFilters);
   const setConfig = useRagUiStore((s) => s.setQuestionsConfig);
   const setPending = useRagUiStore((s) => s.setQuestionsPending);
   const setResult = useRagUiStore((s) => s.setQuestionsResult);
   const appendResult = useRagUiStore((s) => s.appendQuestionsResult);
   const { push: queueToken, flush: flushPending } = useStreamBatcher(appendResult);
+  const { begin, stop, end } = useStreamAbort();
+  const streamingRef = useRef(false);
 
   // Holds the error from the last failed run so we can offer a retry.
   const [error, setError] = useState<string | null>(null);
 
   const generate = async () => {
+    if (streamingRef.current) return;
+    streamingRef.current = true;
     setResult("");
     setError(null);
     setPending(true);
+    const controller = begin();
     try {
-      for await (const event of ragApi.generateQuestionsStream({
-        filters,
-        q_type: qType,
-        difficulty,
-        num_questions: numQuestions ?? 10,
-        ...(marks != null && { marks }),
-      })) {
+      for await (const event of ragApi.generateQuestionsStream(
+        {
+          filters,
+          q_type: qType,
+          difficulty,
+          num_questions: numQuestions ?? 10,
+          include_answers: includeAnswers,
+          ...(marks != null && { marks }),
+        },
+        controller.signal,
+      )) {
         if (event.type === "token") {
           queueToken(event.content);
         } else if (event.type === "error") {
@@ -71,12 +94,16 @@ export function QuestionsPage() {
       }
     } catch (err) {
       flushPending();
-      const message = getErrorMessage(err);
-      setError(message);
-      toast.error(message);
+      if (!isAbortError(err)) {
+        const message = getErrorMessage(err);
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       flushPending();
       setPending(false);
+      streamingRef.current = false;
+      end(controller);
     }
   };
 
@@ -121,6 +148,15 @@ export function QuestionsPage() {
               onChange={(e) =>
                 setConfig({ difficulty: e.target.value as Difficulty })
               }
+            />
+            <Select
+              label="Worksheet version"
+              options={answerKeyOptions}
+              value={includeAnswers ? "teacher" : "student"}
+              onChange={(e) =>
+                setConfig({ includeAnswers: e.target.value === "teacher" })
+              }
+              hint="Student version hides the answer key"
             />
             <Input
               label="Number of Questions"
@@ -189,13 +225,17 @@ export function QuestionsPage() {
           Icon={HelpCircle}
           title="Generated Questions"
           pendingMessage="Generating your questions..."
+          onStop={stop}
           actions={
             <>
               <Badge variant={difficultyBadge[difficulty]}>{difficulty}</Badge>
               <Badge variant="info">{qType}</Badge>
+              <Badge variant={includeAnswers ? "primary" : "default"}>
+                {includeAnswers ? "With key" : "Student"}
+              </Badge>
             </>
           }
-          filename={`questions-${qType}-${difficulty}.md`}
+          filename={`questions-${qType}-${difficulty}${includeAnswers ? "" : "-student"}.md`}
         />
       ) : (
         <EmptyState

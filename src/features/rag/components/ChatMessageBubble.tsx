@@ -6,9 +6,14 @@ import {
   Copy,
   FileText,
   Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Button } from "@/shared/components/ui/Button";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { cn } from "@/shared/lib/utils";
 import type { ChatMessage, QASource } from "@/features/rag/types";
 
@@ -98,11 +103,21 @@ function SourcesPanel({ sources }: { sources: QASource[] }) {
 interface ChatMessageBubbleProps {
   message: ChatMessage;
   isStreaming?: boolean;
+  /** Current feedback for this answer, if the user already rated it. */
+  feedback?: "up" | "down" | null;
+  onFeedback?: (rating: "up" | "down") => void;
+  /** Whether this answer is bookmarked. */
+  isSaved?: boolean;
+  onToggleSave?: () => void;
 }
 
 export const ChatMessageBubble = memo(function ChatMessageBubble({
   message,
   isStreaming,
+  feedback,
+  onFeedback,
+  isSaved,
+  onToggleSave,
 }: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
 
@@ -160,22 +175,84 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         )}
 
         {!message.isError && message.content && !isStreaming && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleCopy}
-            icon={
-              copied ? (
-                <Check className="h-3 w-3" />
-              ) : (
-                <Copy className="h-3 w-3" />
-              )
-            }
-            className="mt-1.5 px-1.5 py-0.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-          >
-            {copied ? "Copied" : "Copy"}
-          </Button>
+          <div className="mt-1.5 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              icon={
+                copied ? (
+                  <Check className="h-3 w-3" />
+                ) : (
+                  <Copy className="h-3 w-3" />
+                )
+              }
+              className="px-1.5 py-0.5 text-muted-foreground"
+            >
+              {copied ? "Copied" : "Copy"}
+            </Button>
+
+            {onFeedback && (
+              <>
+                <Tooltip content="Helpful" side="top">
+                  <button
+                    type="button"
+                    onClick={() => onFeedback("up")}
+                    aria-label="Mark answer helpful"
+                    aria-pressed={feedback === "up"}
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted",
+                      feedback === "up"
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <ThumbsUp className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
+                <Tooltip content="Not helpful" side="top">
+                  <button
+                    type="button"
+                    onClick={() => onFeedback("down")}
+                    aria-label="Mark answer not helpful"
+                    aria-pressed={feedback === "down"}
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted",
+                      feedback === "down"
+                        ? "text-destructive"
+                        : "text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    <ThumbsDown className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
+              </>
+            )}
+
+            {onToggleSave && (
+              <Tooltip content={isSaved ? "Saved" : "Save answer"} side="top">
+                <button
+                  type="button"
+                  onClick={onToggleSave}
+                  aria-label={isSaved ? "Remove bookmark" : "Save answer"}
+                  aria-pressed={isSaved}
+                  className={cn(
+                    "flex h-7 w-7 items-center justify-center rounded-md transition-colors hover:bg-muted",
+                    isSaved
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {isSaved ? (
+                    <BookmarkCheck className="h-3.5 w-3.5" />
+                  ) : (
+                    <Bookmark className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </Tooltip>
+            )}
+          </div>
         )}
       </div>
     </div>

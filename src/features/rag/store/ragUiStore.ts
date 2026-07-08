@@ -33,6 +33,8 @@ interface QuestionsState {
   difficulty: Difficulty;
   numQuestions?: number;
   marks?: number;
+  /** When false, generate a student worksheet with no answer key. */
+  includeAnswers: boolean;
   result: string | null;
   isPending: boolean;
 }
@@ -48,6 +50,7 @@ interface RagUiState {
   appendToMessage: (id: string, token: string) => void;
   setMessageSources: (id: string, sources: QASource[]) => void;
   setMessageError: (id: string, message: string) => void;
+  removeMessage: (id: string) => void;
   clearQaChat: () => void;
 
   setNotesFilters: (filters: RagFilters) => void;
@@ -58,7 +61,10 @@ interface RagUiState {
   setQuestionsFilters: (filters: RagFilters) => void;
   setQuestionsConfig: (
     partial: Partial<
-      Pick<QuestionsState, "qType" | "difficulty" | "numQuestions" | "marks">
+      Pick<
+        QuestionsState,
+        "qType" | "difficulty" | "numQuestions" | "marks" | "includeAnswers"
+      >
     >,
   ) => void;
   setQuestionsPending: (isPending: boolean) => void;
@@ -75,6 +81,7 @@ export const useRagUiStore = create<RagUiState>((set) => ({
     difficulty: "Medium",
     numQuestions: 10,
     marks: undefined,
+    includeAnswers: true,
     result: null,
     isPending: false,
   },
@@ -109,6 +116,10 @@ export const useRagUiStore = create<RagUiState>((set) => ({
           m.id === id ? { ...m, content: message, isError: true, sources: [] } : m,
         ),
       },
+    })),
+  removeMessage: (id) =>
+    set((s) => ({
+      qa: { ...s.qa, chat: s.qa.chat.filter((m) => m.id !== id) },
     })),
   clearQaChat: () => set((s) => ({ qa: { ...s.qa, chat: [] } })),
 
