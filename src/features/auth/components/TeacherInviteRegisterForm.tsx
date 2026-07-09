@@ -7,6 +7,7 @@ import {
   type TeacherInviteFormData,
 } from "@/features/auth/schema";
 import { authApi } from "@/features/auth/api/auth";
+import { TEACHER_WELCOME_FLAG } from "@/features/auth/constants";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { writeOtpFlow } from "@/shared/lib/session";
 import {
@@ -24,7 +25,15 @@ import type { NavProps } from "./types";
 export function TeacherInviteRegisterForm({
   inviteToken,
   navigate,
-}: NavProps & { inviteToken: string }) {
+  prefillEmail,
+  lockEmail = false,
+}: NavProps & {
+  inviteToken: string;
+  /** Email the invite was bound to — pre-fills the field. */
+  prefillEmail?: string;
+  /** When true, the email is fixed (the invite is bound to it) and read-only. */
+  lockEmail?: boolean;
+}) {
   const {
     register,
     handleSubmit,
@@ -33,7 +42,7 @@ export function TeacherInviteRegisterForm({
   } = useForm<TeacherInviteFormData>({
     resolver: zodResolver(teacherInviteFormSchema),
     mode: "onTouched",
-    defaultValues: { terms: false },
+    defaultValues: { terms: false, email: prefillEmail ?? "" },
   });
 
   const watchEmail = useWatch({ control, name: "email", defaultValue: "" });
@@ -44,6 +53,13 @@ export function TeacherInviteRegisterForm({
     try {
       const { confirm_password: _, terms: __, ...rest } = data;
       await authApi.registerTeacher({ ...rest, invite_token: inviteToken });
+      // First-run flag: the teacher auto-logs-in after OTP verify and lands on
+      // the dashboard, where TeacherWelcomeCard reads this to greet them once.
+      try {
+        localStorage.setItem(TEACHER_WELCOME_FLAG, "1");
+      } catch {
+        /* private-mode / storage disabled — welcome card is a nice-to-have */
+      }
       toast.success("Teacher account created! Please verify your email.");
       startCooldown();
       writeOtpFlow({ email: data.email, purpose: "verify_email" });
@@ -78,7 +94,15 @@ export function TeacherInviteRegisterForm({
         placeholder="Email Address"
         error={errors.email?.message}
         {...register("email")}
+        readOnly={lockEmail}
+        aria-describedby={lockEmail ? "invite-email-note" : undefined}
+        className={lockEmail ? "cursor-not-allowed bg-muted/50" : undefined}
       />
+      {lockEmail && (
+        <p id="invite-email-note" className="-mt-2 text-xs text-muted-foreground">
+          This is the email your invite was sent to.
+        </p>
+      )}
 
       <div className="grid gap-2">
         <AuthPasswordInput

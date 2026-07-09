@@ -98,7 +98,9 @@ export function SetupChecklist() {
         email: inviteEmail.trim() || undefined,
         role: inviteRole,
       });
-      setInviteUrl(res.invite_url);
+      // Emailed invites no longer echo the link back (the token stays server-side);
+      // only shareable (no-email) invites return a URL to copy.
+      setInviteUrl(res.invite_url ?? "");
       if (inviteEmail.trim()) {
         toast.success(`Invite emailed to ${inviteEmail.trim()}`);
         setInviteEmail("");
