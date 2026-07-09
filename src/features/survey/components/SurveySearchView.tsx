@@ -43,6 +43,7 @@ import type {
   SearchIntent,
   SearchData,
   ChartData,
+  SourceItem,
 } from "@/features/survey/types";
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -222,8 +223,8 @@ export function SurveySearchView() {
             // Empty selection = "All sheets" → omit the filter entirely so the
             // backend searches every accessible row (including legacy rows that
             // predate sheet-sources and have a NULL source_id).
-            source_ids: selectedSourceIds.length ? selectedSourceIds : undefined,
-            school_name: isAdmin ? schoolParam.school_name : undefined,
+            source_ids,
+            school_name: isAdmin ? schoolParam : undefined,
           },
           controller.signal,
         )) {
@@ -296,7 +297,8 @@ export function SurveySearchView() {
             onChange={setSelectedSourceIds}
             disabled={streaming}
             showSchoolName={isAdmin}
-            schoolName={isAdmin ? schoolParam.school_name : undefined}
+            schoolName={isAdmin ? schoolParam : undefined}
+            onSheetsLoaded={handleSheetsLoaded}
           />
 
           <div className="relative">
@@ -314,7 +316,7 @@ export function SurveySearchView() {
               <button
                 key={q}
                 type="button"
-                disabled={streaming}
+                disabled={streaming || !adminReady}
                 onClick={() => setValue("query", q)}
                 className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary transition-colors disabled:opacity-40 disabled:pointer-events-none"
               >
