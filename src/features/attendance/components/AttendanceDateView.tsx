@@ -285,7 +285,7 @@ export function AttendanceDateView() {
                 No students match the current filters.
               </p>
             ) : (
-              <Table columns={DATE_COLUMNS} data={visible} />
+              <Table columns={DATE_COLUMNS} data={visible} stickyHeader />
             )}
           </Panel>
         </>

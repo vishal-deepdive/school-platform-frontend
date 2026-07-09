@@ -30,8 +30,10 @@ const BASE = `${API_V1}/auth`;
 export interface CreateInviteResult {
   invite_id: string;
   role: string;
-  invite_token: string;
-  invite_url: string;
+  /** Present only for shareable (no-email) invites; null when the link was emailed. */
+  invite_token: string | null;
+  /** Present only for shareable (no-email) invites; null when the link was emailed. */
+  invite_url: string | null;
   email: string | null;
   expires_at: string;
 }
@@ -44,6 +46,26 @@ export interface PendingInvite {
   invited_by_email: string | null;
   invited_by_name: string | null;
   expires_at: string | null;
+  created_at: string | null;
+  last_sent_at: string | null;
+}
+
+/** Token-gated context for the invite-claim page (school, role, bound email). */
+export interface InvitePreview {
+  role: string;
+  school_name: string;
+  email: string | null;
+  expires_at: string | null;
+}
+
+export interface StaffMember {
+  id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  account_status: string;
+  is_email_verified: boolean;
+  avatar_url: string | null;
   created_at: string | null;
 }
 
@@ -79,6 +101,23 @@ export const authApi = {
   revokeInvite: (invitationId: string) =>
     apiClient
       .delete<MessageResponse>(`${BASE}/invites/${encodeURIComponent(invitationId)}`)
+      .then((r) => r.data),
+
+  /**
+   * Public: resolve a raw invite token to the school/role/bound-email so the
+   * registration page can pre-fill and confirm the invite before submit.
+   */
+  previewInvite: (token: string) =>
+    apiClient
+      .get<InvitePreview>(`${BASE}/invite/preview`, { params: { token } })
+      .then((r) => r.data),
+
+  /** List active teaching staff for a school. Admins pass the id; principals omit it. */
+  listStaff: (schoolId?: string) =>
+    apiClient
+      .get<StaffMember[]>(`${BASE}/staff`, {
+        params: schoolId ? { school_id: schoolId } : undefined,
+      })
       .then((r) => r.data),
 
   register: (data: RegisterRequest) =>
