@@ -59,14 +59,14 @@ export function SheetSelector({
   }, [sheets]);
 
   const selectedSet = useMemo(() => new Set(value), [value]);
-  // Empty selection means "no source filter" → search every sheet the caller can
-  // access (the backend treats source_ids=None as all). This is also the robust
-  // default for data imported before sheet-sources existed (source_id IS NULL),
-  // which an explicit id filter would exclude.
-  const allMode = value.length === 0;
+  // "All sheets" = every available sheet is explicitly selected (all checkboxes
+  // ticked). An empty selection is NOT "all" — it means nothing is selected, and
+  // the search view blocks the query with a toast until the user picks a sheet.
+  const allMode = sheets.length > 0 && sheets.every((s) => selectedSet.has(s.id));
 
-  const selectAll = () => {
-    onChange([]);
+  // Toggle: select every sheet (check all boxes), or clear if already all-on.
+  const toggleAll = () => {
+    onChange(allMode ? [] : sheets.map((s) => s.id));
   };
 
   const toggleOne = (id: string) => {
@@ -105,6 +105,8 @@ export function SheetSelector({
             <span className="text-muted-foreground/70">Loading sheets…</span>
           ) : allMode ? (
             <Badge variant="primary">All sheets</Badge>
+          ) : selectedSheets.length === 0 ? (
+            <span className="text-muted-foreground/70">Select sheets…</span>
           ) : (
             <>
               {visibleChips.map((s) => (
@@ -138,12 +140,12 @@ export function SheetSelector({
               </div>
             ) : (
               <>
-                {/* All-sheets shortcut — clears the filter (searches everything) */}
+                {/* All-sheets shortcut — selects every sheet (ticks all boxes) */}
                 <OptionRow
                   label="All sheets"
-                  sublabel="Search across every sheet"
+                  sublabel="Select every sheet"
                   checked={allMode}
-                  onClick={selectAll}
+                  onClick={toggleAll}
                   emphasized
                 />
                 <div className="my-1 border-t border-border/50" />
