@@ -39,6 +39,7 @@ const PrivacyPage = lazyPage(legal, "PrivacyPage");
 const DashboardPage = lazyPage(() => import("@/features/dashboard"), "DashboardPage");
 const ProfilePage = lazyPage(() => import("@/features/profile"), "ProfilePage");
 const ParentApprovalsPage = lazyPage(() => import("@/features/parents"), "ParentApprovalsPage");
+const StaffManagementPage = lazyPage(() => import("@/features/staff"), "StaffManagementPage");
 
 const attendance = () => import("@/features/attendance");
 const AttendancePage = lazyPage(attendance, "AttendancePage");
@@ -182,6 +183,16 @@ export const router = createBrowserRouter([
             path: "/profile",
             element: <ModulePageLayout />,
             children: [{ index: true, element: <ProfilePage /> }],
+          },
+          // ── Staff management (principal / admin) ─────────────────────────
+          {
+            path: "/staff",
+            element: (
+              <RoleRoute allow={["admin", "principal"]}>
+                <ModulePageLayout />
+              </RoleRoute>
+            ),
+            children: [{ index: true, element: <StaffManagementPage /> }],
           },
           // ── Attendance ───────────────────────────────────────────────────
           {

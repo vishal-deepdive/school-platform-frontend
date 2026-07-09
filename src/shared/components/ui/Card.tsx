@@ -1,4 +1,35 @@
 import { cn } from "@/shared/lib/utils";
+import { useCountUp } from "@/shared/hooks/useCountUp";
+
+/**
+ * Renders a stat value, easing the number up on mount/change. Animates only a
+ * single, clean numeric core (e.g. `42`, `85%`, `1,234`) so prefix/suffix and
+ * multi-number strings like "2h 30m" or em-dashes render verbatim.
+ */
+function AnimatedStat({ value }: { value: string | number }) {
+  const raw = typeof value === "number" ? String(value) : value;
+  const match = raw.match(/^(\D*)(\d[\d,]*(?:\.\d+)?)(\D*)$/);
+  const target = match ? Number(match[2].replace(/,/g, "")) : NaN;
+  const animated = useCountUp(Number.isFinite(target) ? target : 0);
+
+  if (!match || !Number.isFinite(target)) return <>{raw}</>;
+
+  const [, prefix, numStr, suffix] = match;
+  const decimals = numStr.includes(".") ? numStr.split(".")[1].length : 0;
+  const grouped = numStr.includes(",");
+  const shown = animated.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    useGrouping: grouped,
+  });
+  return (
+    <>
+      {prefix}
+      {shown}
+      {suffix}
+    </>
+  );
+}
 
 interface CardProps {
   children: React.ReactNode;
@@ -149,7 +180,7 @@ export function StatCard({
 
       <div className="mt-4">
         <p className="font-display text-3xl font-semibold text-foreground tracking-tight tabular-nums">
-          {value}
+          <AnimatedStat value={value} />
         </p>
         {description && (
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">

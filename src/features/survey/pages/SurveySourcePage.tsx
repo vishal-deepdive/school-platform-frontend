@@ -24,6 +24,7 @@ import type {
   SurveyType,
 } from "@/features/survey/types";
 import { Button } from "@/shared/components/ui/Button";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -713,14 +714,15 @@ export function SurveySourcePage() {
     <div className="space-y-6">
       {ready && (
         <>
-          <div className="flex justify-end">
+          <ModuleHeaderActions>
             <Button
+              size="sm"
               onClick={() => setWizardOpen(true)}
               icon={<Plus className="h-4 w-4" />}
             >
               Add Source
             </Button>
-          </div>
+          </ModuleHeaderActions>
 
           {/* Empty state */}
           {sources.length === 0 ? (

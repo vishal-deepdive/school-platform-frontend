@@ -1016,10 +1016,14 @@ function InvitesTab({
   const resend = useMutation({
     mutationFn: (id: string) => authApi.resendInvite(id),
     onSuccess: (res) => {
+      // Emailed invites no longer return the link (token stays server-side);
+      // only shareable (no-email) invites include a URL to copy.
       if (res.email) toast.success(`Invite re-sent to ${res.email}`);
-      else {
+      else if (res.invite_url) {
         navigator.clipboard?.writeText(res.invite_url);
         toast.success("New invite link copied to clipboard");
+      } else {
+        toast.success("Invite refreshed");
       }
       invalidate();
     },

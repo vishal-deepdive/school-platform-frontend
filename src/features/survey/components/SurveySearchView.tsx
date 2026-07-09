@@ -43,7 +43,6 @@ import type {
   SearchIntent,
   SearchData,
   ChartData,
-  SourceItem,
 } from "@/features/survey/types";
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -168,7 +167,7 @@ export function SurveySearchView() {
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const { begin, stop, end } = useStreamAbort();
 
-  const { isAdmin, schoolId, schoolParam } = useActiveSchool();
+  const { isAdmin, schoolId, schoolParam, ready: adminReady } = useActiveSchool();
 
   useQuery({
     queryKey: ["survey", "status", schoolId ?? "platform"],
@@ -223,8 +222,8 @@ export function SurveySearchView() {
             // Empty selection = "All sheets" → omit the filter entirely so the
             // backend searches every accessible row (including legacy rows that
             // predate sheet-sources and have a NULL source_id).
-            source_ids,
-            school_name: isAdmin ? schoolParam : undefined,
+            source_ids: selectedSourceIds.length ? selectedSourceIds : undefined,
+            school_name: isAdmin ? schoolParam.school_name : undefined,
           },
           controller.signal,
         )) {
@@ -297,8 +296,7 @@ export function SurveySearchView() {
             onChange={setSelectedSourceIds}
             disabled={streaming}
             showSchoolName={isAdmin}
-            schoolName={isAdmin ? schoolParam : undefined}
-            onSheetsLoaded={handleSheetsLoaded}
+            schoolName={isAdmin ? schoolParam.school_name : undefined}
           />
 
           <div className="relative">
@@ -451,7 +449,7 @@ export function SurveySearchView() {
               open={showData}
               onToggle={() => setShowData((v) => !v)}
             >
-              <Table columns={columns} data={dataRows} />
+              <Table columns={columns} data={dataRows} stickyHeader />
             </CollapsibleSection>
           )}
 

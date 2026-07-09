@@ -21,6 +21,7 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Panel } from "@/shared/components/ui/Panel";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { Alert } from "@/shared/components/ui/Alert";
 import { TableBodySkeleton, SkeletonText } from "@/shared/components/ui/Skeleton";
@@ -270,6 +271,13 @@ export function RagDocumentsPage() {
 
   return (
     <div className="space-y-6">
+      {canManage && (
+        <ModuleHeaderActions>
+          <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={openUploadModal}>
+            Upload Document
+          </Button>
+        </ModuleHeaderActions>
+      )}
       <Panel
         flush
         actions={
@@ -301,11 +309,6 @@ export function RagDocumentsPage() {
             >
               Refresh
             </Button>
-            {canManage && (
-              <Button icon={<Plus className="h-4 w-4" />} onClick={openUploadModal}>
-                Upload Document
-              </Button>
-            )}
           </>
         }
       >

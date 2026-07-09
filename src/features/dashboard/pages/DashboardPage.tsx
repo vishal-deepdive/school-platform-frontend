@@ -27,6 +27,7 @@ import { StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { SetupChecklist } from "@/features/dashboard/components/SetupChecklist";
+import { TeacherWelcomeCard } from "@/features/dashboard/components/TeacherWelcomeCard";
 import { AttendanceTrendChart } from "@/features/dashboard/components/AttendanceTrendChart";
 import { NeedsAttention } from "@/features/dashboard/components/NeedsAttention";
 import { StatusDonut } from "@/features/dashboard/components/StatusDonut";
@@ -427,6 +428,9 @@ export function DashboardPage() {
           <SchoolSwitcherPill />
         }
       />
+
+      {/* One-time getting-started card for a freshly-onboarded teacher */}
+      <TeacherWelcomeCard />
 
       {/* Post-approval setup checklist — self-hides once the school is set up */}
       <SetupChecklist />

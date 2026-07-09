@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, CornerDownLeft } from "lucide-react";
+import {
+  Search,
+  CornerDownLeft,
+  UserCheck,
+  Upload,
+  MessageSquare,
+  ClipboardCheck,
+  FileQuestion,
+  CalendarDays,
+  FileUp,
+  FileSpreadsheet,
+} from "lucide-react";
 import { navItems, adminNavItems, type NavItem } from "./navConfig";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { roleCanAccess } from "@/shared/lib/permissions";
@@ -11,12 +22,79 @@ interface Action {
   href: string;
   group: string;
   icon: React.ReactNode;
+  /** Extra search terms so a verb-first action matches natural phrasing. */
+  keywords?: string;
 }
+
+/**
+ * Verb-first shortcuts to the thing you came to *do*, not just the page name.
+ * Role-filtered by href (same source of truth as everything else) and shown
+ * first so the palette is a doer's tool, not only a page switcher.
+ */
+const QUICK_ACTIONS: Omit<Action, "group">[] = [
+  {
+    label: "Mark today's attendance",
+    href: "/attendance/mark",
+    icon: <UserCheck className="h-4 w-4" />,
+    keywords: "take register present absent photo",
+  },
+  {
+    label: "Take roll call",
+    href: "/attendance/roll-call",
+    icon: <ClipboardCheck className="h-4 w-4" />,
+    keywords: "attendance manual class",
+  },
+  {
+    label: "Upload a recording",
+    href: "/recording/upload",
+    icon: <Upload className="h-4 w-4" />,
+    keywords: "lecture audio new transcribe",
+  },
+  {
+    label: "Ask a question",
+    href: "/rag/qa",
+    icon: <MessageSquare className="h-4 w-4" />,
+    keywords: "doubt query textbook study assistant",
+  },
+  {
+    label: "Generate a practice test",
+    href: "/rag/questions",
+    icon: <FileQuestion className="h-4 w-4" />,
+    keywords: "quiz exam questions create",
+  },
+  {
+    label: "Add a holiday",
+    href: "/attendance/holidays",
+    icon: <CalendarDays className="h-4 w-4" />,
+    keywords: "calendar day off",
+  },
+  {
+    label: "Import students",
+    href: "/students/import",
+    icon: <FileUp className="h-4 w-4" />,
+    keywords: "roster upload csv add",
+  },
+  {
+    label: "Connect a survey sheet",
+    href: "/survey/source",
+    icon: <FileSpreadsheet className="h-4 w-4" />,
+    keywords: "google feedback data source add",
+  },
+];
 
 /** Flatten the nav tree into role-filtered leaf actions for the palette. */
 function buildActions(role: string | null | undefined, isAdmin: boolean): Action[] {
-  const source: NavItem[] = [...navItems, ...(isAdmin ? adminNavItems : [])];
   const out: Action[] = [];
+
+  // Quick actions first — the doer's shortcuts.
+  for (const qa of QUICK_ACTIONS) {
+    if (roleCanAccess(qa.href, role as never)) {
+      out.push({ ...qa, group: "Quick actions" });
+    }
+  }
+
+  // Then every reachable page, grouped by its module.
+  const source: NavItem[] = [...navItems, ...(isAdmin ? adminNavItems : [])];
   const push = (item: NavItem, group: string) => {
     if (item.href && roleCanAccess(item.href, role as never)) {
       out.push({ label: item.label, href: item.href, group, icon: item.icon });
@@ -58,7 +136,9 @@ export function CommandPalette() {
     if (!q) return actions;
     return actions.filter(
       (a) =>
-        a.label.toLowerCase().includes(q) || a.group.toLowerCase().includes(q),
+        a.label.toLowerCase().includes(q) ||
+        a.group.toLowerCase().includes(q) ||
+        a.keywords?.toLowerCase().includes(q),
     );
   }, [actions, query]);
 
@@ -179,7 +259,11 @@ export function CommandPalette() {
             </li>
           ) : (
             results.map((a, i) => (
-              <li key={a.href} role="option" aria-selected={i === active}>
+              <li
+                key={`${a.group}:${a.href}`}
+                role="option"
+                aria-selected={i === active}
+              >
                 <button
                   type="button"
                   onMouseEnter={() => setActive(i)}
