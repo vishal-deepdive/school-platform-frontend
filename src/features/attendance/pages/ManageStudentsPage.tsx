@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2 } from "lucide-react";
+import { Users, Trash2, FileUp } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
@@ -12,6 +13,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Alert } from "@/shared/components/ui/Alert";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
@@ -82,6 +84,14 @@ export function ManageStudentsPage() {
 
   return (
     <div className="space-y-6">
+      <ModuleHeaderActions>
+        <Button asChild size="sm" variant="outline">
+          <Link to="/students/import">
+            <FileUp className="h-4 w-4" />
+            Import Students
+          </Link>
+        </Button>
+      </ModuleHeaderActions>
       <FilterBar
         title="Find a class"
         icon={<Users className="h-4 w-4" />}

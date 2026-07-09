@@ -3,7 +3,6 @@ import {
   emailField,
   passwordField,
   optionalNameField,
-  inviteTokenField,
   termsField,
   otpField,
 } from "@/shared/lib/validators";
@@ -43,19 +42,6 @@ export const studentRegisterSchema = z
     class_code: z.string().trim().min(1, "Class code is required").max(16),
     roll_number: z.string().trim().min(1, "Roll number is required").max(50),
     terms: termsField,
-  })
-  .refine((d) => d.password === d.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
-  });
-
-export const teacherRegisterSchema = z
-  .object({
-    email: emailField,
-    password: passwordField,
-    confirm_password: z.string(),
-    full_name: optionalNameField,
-    invite_token: inviteTokenField,
   })
   .refine((d) => d.password === d.confirm_password, {
     message: "Passwords do not match",
@@ -125,11 +111,6 @@ export const googleCompleteStudentSchema = z.object({
   roll_number: z.string().trim().min(1, "Roll number is required").max(50),
 });
 
-export const googleCompleteTeacherSchema = z.object({
-  full_name: optionalNameField,
-  invite_token: inviteTokenField,
-});
-
 /** Teacher-via-invite OAuth completion — token comes from sessionStorage, not the form. */
 export const googleCompleteTeacherInviteSchema = z.object({
   full_name: optionalNameField,
@@ -147,7 +128,6 @@ export const googleCompleteParentSchema = z.object({
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type StudentRegisterFormData = z.infer<typeof studentRegisterSchema>;
-export type TeacherRegisterFormData = z.infer<typeof teacherRegisterSchema>;
 export type TeacherInviteFormData = z.infer<typeof teacherInviteFormSchema>;
 export type ParentRegisterFormData = z.infer<typeof parentRegisterSchema>;
 export type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>;
@@ -155,9 +135,6 @@ export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 export type GoogleCompleteStudentFormData = z.infer<
   typeof googleCompleteStudentSchema
->;
-export type GoogleCompleteTeacherFormData = z.infer<
-  typeof googleCompleteTeacherSchema
 >;
 export type GoogleCompleteTeacherInviteFormData = z.infer<
   typeof googleCompleteTeacherInviteSchema
