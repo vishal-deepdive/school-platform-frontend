@@ -5,6 +5,7 @@ import type {
   CreateAdminRequest,
   OnboardingApplicationSummary,
   OnboardingApplicationDetail,
+  OnboardingStats,
   ApproveApplicationResponse,
   RejectApplicationRequest,
   RequestChangesRequest,
@@ -61,6 +62,7 @@ export const adminApi = {
     search?: string,
     limit = 50,
     offset = 0,
+    sort: "newest" | "oldest" = "newest",
   ) =>
     apiClient
       .get<OnboardingApplicationSummary[]>(
@@ -71,9 +73,15 @@ export const adminApi = {
             ...(search ? { search } : {}),
             limit,
             offset,
+            sort,
           },
         },
       )
+      .then((r) => r.data),
+
+  getOnboardingStats: () =>
+    apiClient
+      .get<OnboardingStats>(`${ADMIN_BASE}/onboarding/stats`)
       .then((r) => r.data),
 
   getApplication: (applicationId: string) =>

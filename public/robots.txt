@@ -1,0 +1,20 @@
+# DeepDive — https://ddai.work
+# Public marketing pages are crawlable; the authenticated app is not.
+
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /profile
+Disallow: /attendance
+Disallow: /students
+Disallow: /recording
+Disallow: /rag
+Disallow: /survey
+Disallow: /approvals
+Disallow: /admin
+Disallow: /auth/
+Disallow: /verify-otp
+Disallow: /reset-password
+Disallow: /complete-profile
+
+Sitemap: https://ddai.work/sitemap.xml

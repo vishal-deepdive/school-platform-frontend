@@ -22,6 +22,8 @@ export function useOnboardingForm() {
     board: "" as never,
     school_type: "" as never,
     state: "",
+    area: "",
+    area_required: "",
     established_year: "",
     phone: "",
     address_line_2: "",

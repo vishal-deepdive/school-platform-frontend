@@ -36,10 +36,16 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
 
   // RAG Assistant
   "/rag/qa": ["admin", "principal", "teacher", "student"],
+  "/rag/practice": ["admin", "principal", "teacher", "student"],
+  "/rag/flashcards": ["admin", "principal", "teacher", "student"],
   "/rag/questions": ["admin", "principal", "teacher"],
+  "/rag/assignments": ["admin", "principal", "teacher"],
   "/rag/notes": ["admin", "principal", "teacher", "student"],
+  "/rag/lesson-plan": ["admin", "principal", "teacher"],
   "/rag/documents": ["admin", "principal", "teacher"],
   "/rag/insights": ["admin", "principal", "teacher"],
+  "/rag/requests": ["admin", "principal", "teacher"],
+  "/rag/review": ["admin", "principal"],
   "/rag/audit": ["admin", "principal"],
 
   // Survey Analytics (sensitive student wellbeing data — staff only)
@@ -100,6 +106,17 @@ export function isStaff(role?: UserRole | null): boolean {
 }
 
 export function canManageRecordings(role?: UserRole | null): boolean {
+  return role === "admin" || role === "principal";
+}
+
+/**
+ * School-level administrators: the platform admin and the school's principal.
+ * The canonical set for management surfaces that a teacher must NOT see —
+ * survey sync, data cleanup, content-request triage, feedback review. Prefer
+ * this over ad-hoc `role === "admin" || role === "principal"` checks so the
+ * definition lives in one place.
+ */
+export function isSchoolAdmin(role?: UserRole | null): boolean {
   return role === "admin" || role === "principal";
 }
 

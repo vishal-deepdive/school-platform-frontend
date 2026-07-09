@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StickyNote } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { StreamingResultPanel } from "@/features/rag/components/StreamingResultPanel";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
+import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
@@ -18,16 +19,21 @@ export function NotesPage() {
   const setResult = useRagUiStore((s) => s.setNotesResult);
   const appendResult = useRagUiStore((s) => s.appendNotesResult);
   const { push: queueToken, flush: flushPending } = useStreamBatcher(appendResult);
+  const { begin, stop, end } = useStreamAbort();
+  const streamingRef = useRef(false);
 
   // Holds the error from the last failed run so we can offer a retry.
   const [error, setError] = useState<string | null>(null);
 
   const generate = async () => {
+    if (streamingRef.current) return;
+    streamingRef.current = true;
     setResult("");
     setError(null);
     setPending(true);
+    const controller = begin();
     try {
-      for await (const event of ragApi.generateNotesStream({ filters })) {
+      for await (const event of ragApi.generateNotesStream({ filters }, controller.signal)) {
         if (event.type === "token") {
           queueToken(event.content);
         } else if (event.type === "error") {
@@ -41,12 +47,16 @@ export function NotesPage() {
       }
     } catch (err) {
       flushPending();
-      const message = getErrorMessage(err);
-      setError(message);
-      toast.error(message);
+      if (!isAbortError(err)) {
+        const message = getErrorMessage(err);
+        setError(message);
+        toast.error(message);
+      }
     } finally {
       flushPending();
       setPending(false);
+      streamingRef.current = false;
+      end(controller);
     }
   };
 
@@ -89,6 +99,7 @@ export function NotesPage() {
           Icon={StickyNote}
           title="Lecture Notes"
           pendingMessage="Generating your notes..."
+          onStop={stop}
           filename={`notes-${filters.chapter_name?.[0] ?? "chapter"}.md`}
         />
       ) : (

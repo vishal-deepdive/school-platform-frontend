@@ -1,0 +1,44 @@
+# DeepDive — Smart School Management Platform
+
+> DeepDive is a school management platform for Indian schools that unifies
+> attendance, lecture recordings, AI-powered question answering, and
+> real-time analytics in one secure, role-based system. Schools apply
+> online and are typically live within a week.
+
+## What the platform does
+
+- **Attendance**: Teachers mark a full class register in under a minute.
+  Date-range views, per-student statistics, leave and holiday management
+  come built in.
+- **Lecture recordings**: Classes are recorded and uploaded securely.
+  Students can rewatch any lesson the same evening; every recording is
+  searchable.
+- **AI Q&A (Study Assistant)**: Students ask questions in plain language
+  and get answers grounded in their own school's lecture recordings and
+  course material, with references to the exact class. Includes practice
+  questions, flashcards, notes, assignments, and lesson planning tools.
+- **Analytics**: Administrators see attendance trends, enrollment,
+  engagement, and survey feedback in real time on one dashboard.
+- **Roles**: Administrators, teachers, students, and parents each get a
+  tailored view. Parent accounts are linked to a student and approved by
+  the school. Access is role-based and default-deny.
+
+## Getting started
+
+- Schools apply at https://ddai.work/onboarding/apply
+  (about 10 minutes), verify by email OTP, and are reviewed within
+  ~2 business days. Onboarding is guided and free.
+- Application status: https://ddai.work/onboarding/status
+
+## Pages
+
+- [Home](https://ddai.work/): product overview, features, FAQ
+- [About](https://ddai.work/about): mission and company
+- [Contact](https://ddai.work/contact): how to reach the team
+- [Privacy](https://ddai.work/privacy): privacy policy
+- [Terms](https://ddai.work/terms): terms of service
+
+## Contact
+
+- Email: hello@ddai.work
+- Support: 24/7 for partner institutions via chat, email, and phone

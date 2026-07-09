@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Bar,
@@ -16,6 +15,8 @@ import { Card, StatCard } from "@/shared/components/ui/Card";
 import { CollapsibleSection } from "@/shared/components/ui/CollapsibleSection";
 import { ChartSkeleton, StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { BarList } from "@/features/dashboard/components/BarList";
+import { useSchoolScopedQuery } from "@/shared/hooks/useSchoolScopedQuery";
+import { SelectSchoolPrompt } from "@/features/dashboard/components/SelectSchoolPrompt";
 
 /** Traffic-light color for a "% positive" satisfaction value. */
 function pctColor(pct: number): string {
@@ -51,12 +52,28 @@ function RecTooltip({ active, payload }: RecTooltipProps) {
  * an access error.
  */
 export function SurveyAnalyticsSection() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["survey", "analytics"],
-    queryFn: () => surveyApi.getAnalytics(),
+  // Admins scope to the active school; without a selection there is nothing
+  // school-specific to show (platform totals live in the AdminDashboard above).
+  const { data, isLoading, isError, needsSchool } = useSchoolScopedQuery({
+    key: ["survey", "analytics"],
+    queryFn: ({ schoolParam }) => surveyApi.getAnalytics(schoolParam.school_name),
     staleTime: 5 * 60_000,
     retry: false,
+    requireSchool: true,
   });
+
+  if (needsSchool) {
+    return (
+      <CollapsibleSection
+        id="dash-survey"
+        title="Student feedback"
+        description="Select a school to view its feedback"
+        defaultOpen={false}
+      >
+        <SelectSchoolPrompt label="student feedback analytics" />
+      </CollapsibleSection>
+    );
+  }
 
   if (isLoading) {
     return (

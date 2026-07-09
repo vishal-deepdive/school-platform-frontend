@@ -7,8 +7,12 @@
  * Status progression:
  *   pending_verification → email_verified → approved
  *                                         ↘ rejected  (with reason)
+ *                                         ↘ changes_requested (edit & resubmit)
+ *
+ * While the application is in a non-terminal status the page silently polls
+ * every 30 s, so an applicant watching it sees approval land without refreshing.
  */
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -19,15 +23,25 @@ import {
   Mail,
   AlertCircle,
   Building2,
+  Check,
+  FileText,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { getErrorMessage, formatDateTime, cn } from "@/shared/lib/utils";
 import { AuthInput, AuthButton } from "@/shared/components/ui/auth-fuse";
+import { CaptchaWidget } from "@/features/onboarding/components";
+import { useOnboardingCapabilities } from "@/features/onboarding/hooks";
 import type {
   OnboardingStatus,
   OnboardingStatusResponse,
 } from "@/features/onboarding/types";
+
+const POLL_INTERVAL_MS = 30_000;
+const NON_TERMINAL: ReadonlySet<OnboardingStatus> = new Set([
+  "pending_verification",
+  "email_verified",
+] as OnboardingStatus[]);
 
 // ── Status display configuration ─────────────────────────────────────────────
 type StatusCfg = {
@@ -103,6 +117,133 @@ function formatStatus(s: string) {
   return s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// ── Application journey timeline ──────────────────────────────────────────────
+type TimelineStepState = "done" | "active" | "upcoming" | "attention";
+
+interface TimelineStep {
+  label: string;
+  sublabel?: string;
+  state: TimelineStepState;
+  Icon: React.ElementType;
+}
+
+/** Derive the 4-node journey (Submitted → Email verified → Under review →
+ *  Decision) from the single status value + applied_at timestamp. */
+function buildTimeline(data: OnboardingStatusResponse): TimelineStep[] {
+  const status = data.onboarding_status;
+  const appliedLabel = data.applied_at
+    ? formatDateTime(data.applied_at)
+    : undefined;
+
+  const submitted: TimelineStep = {
+    label: "Submitted",
+    sublabel: appliedLabel,
+    state: "done",
+    Icon: FileText,
+  };
+
+  switch (status) {
+    case "pending_verification":
+      return [
+        submitted,
+        { label: "Email verification", sublabel: "Waiting for OTP", state: "active", Icon: Mail },
+        { label: "Admin review", state: "upcoming", Icon: Clock },
+        { label: "Decision", state: "upcoming", Icon: CheckCircle2 },
+      ];
+    case "email_verified":
+      return [
+        submitted,
+        { label: "Email verified", state: "done", Icon: Mail },
+        { label: "Admin review", sublabel: "Usually 1–2 business days", state: "active", Icon: Clock },
+        { label: "Decision", state: "upcoming", Icon: CheckCircle2 },
+      ];
+    case "changes_requested":
+      return [
+        submitted,
+        { label: "Email verified", state: "done", Icon: Mail },
+        { label: "Changes requested", sublabel: "Action needed from you", state: "attention", Icon: AlertCircle },
+        { label: "Decision", state: "upcoming", Icon: CheckCircle2 },
+      ];
+    case "approved":
+      return [
+        submitted,
+        { label: "Email verified", state: "done", Icon: Mail },
+        { label: "Admin review", state: "done", Icon: Clock },
+        { label: "Approved", state: "done", Icon: CheckCircle2 },
+      ];
+    case "rejected":
+      return [
+        submitted,
+        { label: "Email verified", state: "done", Icon: Mail },
+        { label: "Admin review", state: "done", Icon: Clock },
+        { label: "Rejected", sublabel: "See reason below", state: "attention", Icon: XCircle },
+      ];
+  }
+}
+
+function StatusTimeline({ data }: { data: OnboardingStatusResponse }) {
+  const steps = buildTimeline(data);
+  return (
+    <ol className="rounded-xl border border-border bg-muted/20 px-4 py-4 grid gap-0 list-none">
+      {steps.map((step, i) => {
+        const isLast = i === steps.length - 1;
+        const { Icon } = step;
+        return (
+          <li key={step.label} className="relative flex gap-3 pb-0">
+            {/* Connector */}
+            {!isLast && (
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute left-[13px] top-7 h-[calc(100%-16px)] w-0.5 rounded-full",
+                  step.state === "done" ? "bg-primary/60" : "bg-border",
+                )}
+              />
+            )}
+            {/* Node */}
+            <span
+              className={cn(
+                "relative z-10 mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border",
+                step.state === "done" &&
+                  "border-primary/30 bg-primary text-primary-foreground",
+                step.state === "active" &&
+                  "border-primary/40 bg-primary/10 text-primary ring-4 ring-primary/10",
+                step.state === "attention" &&
+                  "border-amber-300 bg-amber-100 text-amber-700",
+                step.state === "upcoming" &&
+                  "border-border bg-muted text-muted-foreground",
+              )}
+            >
+              {step.state === "done" ? (
+                <Check className="h-3.5 w-3.5" aria-hidden />
+              ) : (
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+              )}
+            </span>
+            <div className={cn("min-w-0 pb-4", isLast && "pb-0")}>
+              <p
+                className={cn(
+                  "text-xs font-semibold",
+                  step.state === "upcoming"
+                    ? "text-muted-foreground"
+                    : "text-foreground",
+                )}
+              >
+                {step.label}
+              </p>
+              {step.sublabel && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {step.sublabel}
+                </p>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -116,7 +257,13 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 // ── Status Result Card ────────────────────────────────────────────────────────
-function StatusCard({ data }: { data: OnboardingStatusResponse }) {
+function StatusCard({
+  data,
+  polling,
+}: {
+  data: OnboardingStatusResponse;
+  polling: boolean;
+}) {
   const cfg = STATUS_CFG[data.onboarding_status];
   const { Icon } = cfg;
 
@@ -138,6 +285,14 @@ function StatusCard({ data }: { data: OnboardingStatusResponse }) {
           </p>
         </div>
       </div>
+
+      {/* Journey timeline */}
+      <StatusTimeline data={data} />
+      {polling && (
+        <p className="-mt-2 text-center text-[11px] text-muted-foreground">
+          This page refreshes automatically — no need to reload.
+        </p>
+      )}
 
       {/* Detail rows */}
       <div className="rounded-xl border border-border bg-muted/20 px-4 py-4 grid gap-2.5 divide-y divide-border/50">
@@ -265,20 +420,41 @@ export function ApplicationStatusPage() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupSent, setLookupSent] = useState(false);
 
+  // Anti-abuse CAPTCHA for the lookup action — the backend requires a token
+  // (when enabled) because /lookup dispatches an email.
+  const { data: capabilities } = useOnboardingCapabilities();
+  const captchaEnabled = Boolean(
+    capabilities?.captcha_enabled && capabilities.captcha_site_key,
+  );
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaResetKey, setCaptchaResetKey] = useState(0);
+
   const handleLookup = async () => {
     const email = lookupEmail.trim();
     if (!email) {
       toast.error("Enter the email you applied with");
       return;
     }
+    if (captchaEnabled && !captchaToken) {
+      toast.error("Please complete the verification challenge first.");
+      return;
+    }
     setLookupLoading(true);
     try {
-      const { message } = await onboardingApi.lookupByEmail(email);
+      const { message } = await onboardingApi.lookupByEmail(
+        email,
+        captchaToken ?? undefined,
+      );
       setLookupSent(true);
       toast.success(message);
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
+      if (captchaEnabled) {
+        // Tokens are single-use — reset the widget for any further attempt.
+        setCaptchaToken(null);
+        setCaptchaResetKey((k) => k + 1);
+      }
       setLookupLoading(false);
     }
   };
@@ -313,6 +489,30 @@ export function ApplicationStatusPage() {
       setLoading(false);
     }
   };
+
+  // Silent auto-refresh while the application can still move on its own
+  // (waiting on verification or admin review). Errors are swallowed — the next
+  // tick simply retries; a transient network blip must not clear the page.
+  const pollId = NON_TERMINAL.has(statusData?.onboarding_status as OnboardingStatus)
+    ? statusData?.application_id
+    : undefined;
+  const pollInFlight = useRef(false);
+  useEffect(() => {
+    if (!pollId) return;
+    const timer = window.setInterval(async () => {
+      if (pollInFlight.current) return;
+      pollInFlight.current = true;
+      try {
+        const data = await onboardingApi.getStatus(pollId);
+        setStatusData(data);
+      } catch {
+        // Silent — retried on the next tick.
+      } finally {
+        pollInFlight.current = false;
+      }
+    }, POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [pollId]);
 
   const handleCheck = () => fetchStatus(inputId);
 
@@ -392,11 +592,23 @@ export function ApplicationStatusPage() {
                   if (e.key === "Enter") handleLookup();
                 }}
               />
+              {captchaEnabled && (
+                <CaptchaWidget
+                  siteKey={capabilities?.captcha_site_key}
+                  onVerify={setCaptchaToken}
+                  onExpire={() => setCaptchaToken(null)}
+                  resetKey={captchaResetKey}
+                />
+              )}
               <AuthButton
                 variant="outline"
                 className="w-full"
                 onClick={handleLookup}
-                disabled={lookupLoading || !lookupEmail.trim()}
+                disabled={
+                  lookupLoading ||
+                  !lookupEmail.trim() ||
+                  (captchaEnabled && !captchaToken)
+                }
               >
                 {lookupLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -411,7 +623,7 @@ export function ApplicationStatusPage() {
       )}
 
       {/* ── Status result ── */}
-      {statusData && <StatusCard data={statusData} />}
+      {statusData && <StatusCard data={statusData} polling={!!pollId} />}
 
       {/* ── Footer links ── */}
       <p className="text-center text-sm text-muted-foreground">

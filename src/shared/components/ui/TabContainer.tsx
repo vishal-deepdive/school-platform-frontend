@@ -83,16 +83,16 @@ export function TabContainer({ className }: TabContainerProps) {
       )}
     >
       {active && (
-        <div className="flex h-14 shrink-0 items-center gap-3 px-1 md:h-16">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+        <div className="flex h-10 shrink-0 items-center gap-3 px-1 md:h-14">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
             {active.tab.icon}
           </div>
           <div className="min-w-0">
-            {active.module !== active.tab && (
+            {/* {active.module !== active.tab && (
               <p className="eyebrow text-muted-foreground/70">
                 {active.module.label}
               </p>
-            )}
+            )} */}
             <h1 className="truncate font-display text-base font-semibold leading-tight tracking-tight text-foreground">
               {active.tab.label}
             </h1>

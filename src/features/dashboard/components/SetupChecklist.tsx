@@ -28,6 +28,7 @@ import { Card } from "@/shared/components/ui/Card";
 import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { getErrorMessage, cn } from "@/shared/lib/utils";
+import { isSchoolAdmin } from "@/shared/lib/permissions";
 
 type Item = {
   key: string;
@@ -41,7 +42,11 @@ export function SetupChecklist() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const schoolId = user?.school_id ?? "";
-  const canSee = !!schoolId && (user?.role === "principal" || user?.role === "admin");
+  const canSee = !!schoolId && isSchoolAdmin(user?.role);
+  // Only platform admins may mint co-principal invites (the API returns 403
+  // otherwise). This checklist is a principal surface, so the role toggle is
+  // hidden unless an admin is viewing — principals invite teachers only.
+  const canInvitePrincipal = user?.role === "admin";
 
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -174,34 +179,36 @@ export function SetupChecklist() {
       {inviteOpen && (
         <div className="mt-4 grid gap-3 rounded-xl border border-border bg-muted/30 p-4">
           <p className="text-xs font-medium text-foreground">
-            Invite a team member
+            {canInvitePrincipal ? "Invite a team member" : "Invite a teacher"}
           </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setInviteRole("teacher")}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                inviteRole === "teacher"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground",
-              )}
-            >
-              Teacher
-            </button>
-            <button
-              type="button"
-              onClick={() => setInviteRole("principal")}
-              className={cn(
-                "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                inviteRole === "principal"
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground",
-              )}
-            >
-              Co-principal
-            </button>
-          </div>
+          {canInvitePrincipal && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setInviteRole("teacher")}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  inviteRole === "teacher"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                Teacher
+              </button>
+              <button
+                type="button"
+                onClick={() => setInviteRole("principal")}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                  inviteRole === "principal"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground",
+                )}
+              >
+                Co-principal
+              </button>
+            </div>
+          )}
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
               type="email"

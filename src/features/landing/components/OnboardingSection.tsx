@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Parallax } from "@/features/landing/components/scroll";
 import { fadeUp, staggerContainer } from "@/features/landing/animations";
 
 const BENEFITS = [
@@ -16,6 +17,7 @@ export function OnboardingSection() {
       id="onboard"
       className="mx-auto w-full max-w-[1180px] scroll-mt-24 px-4 py-16 sm:py-20 lg:py-24 xl:px-0"
     >
+      <Parallax distance={20}>
       <motion.div
         variants={staggerContainer}
         initial="hidden"
@@ -42,8 +44,7 @@ export function OnboardingSection() {
 
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <Link
-                // to="/onboarding/apply"
-                to="/"
+                to="/onboarding/apply"
                 className="group inline-flex h-12 items-center justify-center rounded-lg bg-white px-7 text-sm font-semibold text-slate-900 transition-all hover:-translate-y-0.5 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-[hsl(212_62%_15%)]"
               >
                 Onboard your school
@@ -82,6 +83,7 @@ export function OnboardingSection() {
           </motion.div>
         </div>
       </motion.div>
+      </Parallax>
     </section>
   );
 }

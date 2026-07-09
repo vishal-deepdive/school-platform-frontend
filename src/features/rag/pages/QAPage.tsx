@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, memo } from "react";
 import {
   ArrowDown,
+  BookmarkCheck,
   BookOpen,
+  Download,
   Lightbulb,
   List,
   MessageSquare,
@@ -18,13 +20,17 @@ import { ragApi } from "@/features/rag/api/rag";
 import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { ChatMessageBubble } from "@/features/rag/components/ChatMessageBubble";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
+import { useSubmitRagFeedback } from "@/features/rag/hooks/useRag";
+import { useSavedAnswers } from "@/features/rag/store/savedAnswersStore";
+import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Modal } from "@/shared/components/ui/Modal";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
-import type { RagFilters } from "@/features/rag/types";
+import type { QASource, RagFilters } from "@/features/rag/types";
 
 const MemoizedChatMessageBubble = memo(ChatMessageBubble);
 
@@ -57,16 +63,34 @@ export function QAPage() {
   const appendToMessage = useRagUiStore((s) => s.appendToMessage);
   const setMessageSources = useRagUiStore((s) => s.setMessageSources);
   const setMessageError = useRagUiStore((s) => s.setMessageError);
+  const removeMessage = useRagUiStore((s) => s.removeMessage);
   const setQaStreaming = useRagUiStore((s) => s.setQaStreaming);
   const clearQaChat = useRagUiStore((s) => s.clearQaChat);
 
   const [input, setInput] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [showSaved, setShowSaved] = useState(false);
   const [autoScroll, setAutoScroll] = useState(true);
+  // Per-answer feedback given this session (message id → rating).
+  const [feedbackGiven, setFeedbackGiven] = useState<
+    Record<string, "up" | "down">
+  >({});
+
+  const { mutate: submitFeedback } = useSubmitRagFeedback();
+  const savedItems = useSavedAnswers((s) => s.items);
+  const saveAnswer = useSavedAnswers((s) => s.save);
+  const removeSaved = useSavedAnswers((s) => s.remove);
+  const savedIds = new Set(savedItems.map((i) => i.id));
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
+
+  // Aborts the stream on Stop and on unmount; begin() cancels any prior stream.
+  const { begin, stop, end } = useStreamAbort();
+  // Synchronous guard: the store's `isStreaming` lags a render behind, so two
+  // fast clicks could both pass it. This ref flips before any await and blocks
+  // overlapping runs deterministically, keeping the shared batcher/active-id safe.
+  const streamingRef = useRef(false);
 
   // Only one assistant message streams at a time; the batcher flushes batched
   // tokens to whichever message id is currently active.
@@ -110,8 +134,18 @@ export function QAPage() {
     setAutoScroll(true);
   }, []);
 
-  const runQuery = async (query: string) => {
-    const baseId = Date.now();
+  const runQuery = async (
+    query: string,
+    opts?: { explain_mode?: "simpler"; language?: string },
+  ) => {
+    if (streamingRef.current) return;
+    streamingRef.current = true;
+
+    // Drain any tokens still queued from the previous answer to their own
+    // message before repointing the shared batcher at the new one.
+    flushPending();
+
+    const baseId = crypto.randomUUID();
     const assistantId = `${baseId}-a`;
     activeIdRef.current = assistantId;
     appendChatMessages([
@@ -121,11 +155,10 @@ export function QAPage() {
     setAutoScroll(true);
     setQaStreaming(true);
 
-    const controller = new AbortController();
-    abortRef.current = controller;
+    const controller = begin();
 
     try {
-      for await (const event of ragApi.qaStream({ query, filters }, controller.signal)) {
+      for await (const event of ragApi.qaStream({ query, filters, ...opts }, controller.signal)) {
         if (event.type === "token") {
           queueToken(event.content);
         } else if (event.type === "done") {
@@ -138,18 +171,24 @@ export function QAPage() {
       }
     } catch (err) {
       flushPending();
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
+      if (isAbortError(err)) {
+        // Stopped by the user (or unmount). Drop the assistant bubble entirely
+        // if nothing had streamed yet, so we don't leave an empty avatar.
+        const msg = useRagUiStore.getState().qa.chat.find((m) => m.id === assistantId);
+        if (msg && !msg.content) removeMessage(assistantId);
+      } else {
         setMessageError(assistantId, getErrorMessage(err));
       }
     } finally {
       flushPending();
       activeIdRef.current = null;
       setQaStreaming(false);
-      abortRef.current = null;
+      streamingRef.current = false;
+      end(controller);
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = useCallback(async () => {
     if (isStreaming) return;
     const result = qaSchema.safeParse({ query: input.trim() });
     if (!result.success) {
@@ -158,7 +197,9 @@ export function QAPage() {
     }
     setInput("");
     await runQuery(result.data.query);
-  };
+    // runQuery is a stable closure over store setters; input/isStreaming drive it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isStreaming, input]);
 
   // Re-run the most recent question after a failed answer.
   const handleRetry = () => {
@@ -171,7 +212,7 @@ export function QAPage() {
   const canRetry =
     !isStreaming && lastMessage?.role === "assistant" && !!lastMessage.isError;
 
-  const handleStop = useCallback(() => abortRef.current?.abort(), []);
+  const handleStop = stop;
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -180,9 +221,6 @@ export function QAPage() {
         void handleSend();
       }
     },
-    // handleSend re-creates when input/isStreaming change, but the
-    // ref-like closure inside ensures we always call the latest version.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [handleSend],
   );
 
@@ -204,6 +242,66 @@ export function QAPage() {
   const handleQuickAction = (query: string) => {
     if (isStreaming) return;
     void runQuery(query);
+  };
+
+  const handleFeedback = (
+    id: string,
+    question: string,
+    answer: string,
+    sources: QASource[] | undefined,
+    rating: "up" | "down",
+  ) => {
+    if (feedbackGiven[id]) return; // one rating per answer
+    setFeedbackGiven((prev) => ({ ...prev, [id]: rating }));
+    submitFeedback(
+      { rating, question, answer, filters, sources: sources ?? [] },
+      {
+        onSuccess: () =>
+          toast.success(
+            rating === "up" ? "Thanks for the feedback!" : "Thanks — we'll use this to improve.",
+          ),
+        onError: (err) => {
+          // Roll back the optimistic mark so the user can retry.
+          setFeedbackGiven((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+          });
+          toast.error(getErrorMessage(err));
+        },
+      },
+    );
+  };
+
+  const scope = [
+    filters.class_level,
+    filters.subject,
+    filters.chapter_name?.[0],
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const handleToggleSave = (
+    id: string,
+    question: string,
+    answer: string,
+    sources: QASource[] | undefined,
+  ) => {
+    if (savedIds.has(id)) {
+      removeSaved(id);
+      return;
+    }
+    saveAnswer({ id, question, answer, sources: sources ?? [], scope: scope || undefined });
+    toast.success("Answer saved.");
+  };
+
+  const handleExportChat = () => {
+    const md = chat
+      .map((m) =>
+        m.role === "user" ? `## ❓ ${m.content}` : `${m.content}\n`,
+      )
+      .join("\n\n");
+    downloadFile(`# Q&A Session\n\n${md}`, "qa-session.md");
   };
 
   const filterPanel = (
@@ -276,16 +374,41 @@ export function QAPage() {
                 <span className="absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative"
+              icon={<BookmarkCheck className="h-4 w-4" />}
+              onClick={() => setShowSaved(true)}
+            >
+              Saved
+              {savedItems.length > 0 && (
+                <span className="ml-1 rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold text-primary">
+                  {savedItems.length}
+                </span>
+              )}
+            </Button>
             {chat.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={<Trash2 className="h-4 w-4" />}
-                onClick={clearQaChat}
-                disabled={isStreaming}
-              >
-                Clear
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Download className="h-4 w-4" />}
+                  onClick={handleExportChat}
+                  disabled={isStreaming}
+                >
+                  Export
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={<Trash2 className="h-4 w-4" />}
+                  onClick={clearQaChat}
+                  disabled={isStreaming}
+                >
+                  Clear
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -329,17 +452,62 @@ export function QAPage() {
               </div>
             ) : (
               <div className="mx-auto w-full max-w-3xl space-y-6">
-                {chat.map((msg, i) => (
-                  <MemoizedChatMessageBubble
-                    key={msg.id}
-                    message={msg}
-                    isStreaming={
-                      isStreaming &&
-                      i === chat.length - 1 &&
-                      msg.role === "assistant"
-                    }
-                  />
-                ))}
+                {chat.map((msg, i) => {
+                  const question =
+                    msg.role === "assistant" ? chat[i - 1]?.content ?? "" : "";
+                  return (
+                    <MemoizedChatMessageBubble
+                      key={msg.id}
+                      message={msg}
+                      isStreaming={
+                        isStreaming &&
+                        i === chat.length - 1 &&
+                        msg.role === "assistant"
+                      }
+                      feedback={feedbackGiven[msg.id] ?? null}
+                      onFeedback={
+                        msg.role === "assistant"
+                          ? (rating) =>
+                              handleFeedback(
+                                msg.id,
+                                question,
+                                msg.content,
+                                msg.sources,
+                                rating,
+                              )
+                          : undefined
+                      }
+                      isSaved={savedIds.has(msg.id)}
+                      onToggleSave={
+                        msg.role === "assistant"
+                          ? () =>
+                              handleToggleSave(
+                                msg.id,
+                                question,
+                                msg.content,
+                                msg.sources,
+                              )
+                          : undefined
+                      }
+                      onExplainSimpler={
+                        msg.role === "assistant" && !msg.isError && question
+                          ? () => {
+                              if (!isStreaming)
+                                void runQuery(question, { explain_mode: "simpler" });
+                            }
+                          : undefined
+                      }
+                      onTranslate={
+                        msg.role === "assistant" && !msg.isError && question
+                          ? () => {
+                              if (!isStreaming)
+                                void runQuery(question, { language: "Hindi" });
+                            }
+                          : undefined
+                      }
+                    />
+                  );
+                })}
               </div>
             )}
           </div>
@@ -429,17 +597,6 @@ export function QAPage() {
                 </Tooltip>
               )}
             </div>
-            <p className="mt-1.5 hidden px-1 text-[11px] text-muted-foreground sm:block">
-              Press{" "}
-              <kbd className="rounded border border-border bg-muted px-1 font-sans text-[10px]">
-                Enter
-              </kbd>{" "}
-              to send ·{" "}
-              <kbd className="rounded border border-border bg-muted px-1 font-sans text-[10px]">
-                Shift + Enter
-              </kbd>{" "}
-              for a new line
-            </p>
           </div>
         </div>
       </div>
@@ -451,6 +608,71 @@ export function QAPage() {
         size="sm"
       >
         {filterPanel}
+      </Modal>
+
+      <Modal
+        open={showSaved}
+        onClose={() => setShowSaved(false)}
+        title="Saved answers"
+        icon={<BookmarkCheck />}
+        description="Bookmarked answers, kept on this device for quick revision."
+        size="2xl"
+      >
+        {savedItems.length === 0 ? (
+          <EmptyState
+            icon={<BookmarkCheck className="h-10 w-10" />}
+            title="No saved answers yet"
+            description="Tap the bookmark icon under any answer to keep it here for later."
+          />
+        ) : (
+          <div className="space-y-3">
+            {savedItems.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-lg border border-border/60 bg-card p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 text-sm font-semibold text-foreground">
+                    {item.question}
+                  </p>
+                  <Tooltip content="Remove" side="left">
+                    <button
+                      type="button"
+                      onClick={() => removeSaved(item.id)}
+                      aria-label="Remove saved answer"
+                      className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
+                </div>
+                {item.scope && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {item.scope}
+                  </p>
+                )}
+                <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {item.answer}
+                </p>
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<Download className="h-3.5 w-3.5" />}
+                    onClick={() =>
+                      downloadFile(
+                        `# ${item.question}\n\n${item.answer}`,
+                        "saved-answer.md",
+                      )
+                    }
+                  >
+                    Download
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </Modal>
     </div>
   );

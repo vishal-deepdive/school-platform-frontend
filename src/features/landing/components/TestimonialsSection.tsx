@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { SectionHeading } from "@/features/landing/components/SectionHeading";
+import { ParallaxAccents } from "@/features/landing/components/scroll";
 import { fadeUp, staggerContainer } from "@/features/landing/animations";
 
 const FEATURED = {
@@ -69,9 +70,10 @@ export function TestimonialsSection() {
   return (
     <section
       id="testimonials"
-      className="w-full scroll-mt-24 border-t border-border bg-secondary/30 py-16 sm:py-20 lg:py-24"
+      className="relative w-full scroll-mt-24 border-t border-border bg-secondary/30 py-16 sm:py-20 lg:py-24"
     >
-      <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
+      <ParallaxAccents flip />
+      <div className="relative mx-auto max-w-[1180px] px-4 xl:px-0">
         <SectionHeading
           eyebrow="From the staff room"
           title="What schools say after a term with us"

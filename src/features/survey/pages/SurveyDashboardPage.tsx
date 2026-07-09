@@ -13,6 +13,8 @@ import {
 import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
+import { isSchoolAdmin } from "@/shared/lib/permissions";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { surveyApi } from "@/features/survey/api/survey";
 import type { SourceItem } from "@/features/survey/types";
 import { StatCard } from "@/shared/components/ui/Card";
@@ -84,7 +86,10 @@ function ResponseBars({
 export function SurveyDashboardPage() {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
-  const canSync = role === "admin" || role === "principal";
+  // Admins scope to the active school; with none selected they see the
+  // cross-school aggregate. Staff are scoped to their own school server-side.
+  const { schoolId, schoolParam } = useActiveSchool();
+  const canSync = isSchoolAdmin(role);
   const [syncJobId, setSyncJobId] = useState<string | null>(null);
 
   const {
@@ -95,15 +100,15 @@ export function SurveyDashboardPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["survey", "status"],
-    queryFn: () => surveyApi.getStatus(),
+    queryKey: ["survey", "status", schoolId ?? "platform"],
+    queryFn: () => surveyApi.getStatus(schoolParam.school_name),
     staleTime: 2 * 60_000,
   });
 
   // Fetch sources list for the sync-all button (admin/principal only).
   const { data: sourcesData } = useQuery({
-    queryKey: ["survey", "sources", "self"],
-    queryFn: () => surveyApi.getSources(),
+    queryKey: ["survey", "sources", "self", schoolId ?? "platform"],
+    queryFn: () => surveyApi.getSources(schoolParam.school_name),
     enabled: canSync,
     staleTime: 5 * 60_000,
   });

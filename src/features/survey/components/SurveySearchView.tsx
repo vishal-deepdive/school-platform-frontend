@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
@@ -25,6 +25,7 @@ import {
 } from "@/features/survey/schema";
 import { surveyApi } from "@/features/survey/api/survey";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
+import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Card } from "@/shared/components/ui/Card";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
@@ -165,41 +166,13 @@ export function SurveySearchView() {
   const [showSql, setShowSql] = useState(false);
   const [copied, setCopied] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
-  const [availableSheetIds, setAvailableSheetIds] = useState<string[]>([]);
-  const abortRef = useRef<AbortController | null>(null);
-  // Re-seed the selection with every sheet whenever the underlying sheet SET
-  // changes (initial load, or admin switching school), so the default is always
-  // "All sheets" checked. A background refetch that returns the same set leaves
-  // the user's own choices untouched.
-  const seededKeyRef = useRef<string>("");
-  const { isAdmin, schoolName } = useActiveSchool();
+  const { begin, stop, end } = useStreamAbort();
 
-  // The school scope sent to the backend / used to list sheets. Non-admins are
-  // always locked to their own school (undefined → backend uses own school).
-  const schoolParam = isAdmin ? schoolName || undefined : undefined;
-  const adminReady = !isAdmin || !!schoolParam;
-
-  // Switching school drops the previous school's selection; it re-seeds to "all"
-  // once the new school's sheets load.
-  useEffect(() => {
-    seededKeyRef.current = "";
-    setSelectedSourceIds([]);
-    setAvailableSheetIds([]);
-  }, [schoolParam]);
-
-  const handleSheetsLoaded = useCallback((sheets: SourceItem[]) => {
-    const ids = sheets.map((s) => s.id);
-    setAvailableSheetIds(ids);
-    const key = [...ids].sort().join(",");
-    if (key !== seededKeyRef.current) {
-      seededKeyRef.current = key;
-      setSelectedSourceIds(ids); // default: all sheets selected
-    }
-  }, []);
+  const { isAdmin, schoolId, schoolParam } = useActiveSchool();
 
   useQuery({
-    queryKey: ["survey", "status"],
-    queryFn: () => surveyApi.getStatus(),
+    queryKey: ["survey", "status", schoolId ?? "platform"],
+    queryFn: () => surveyApi.getStatus(schoolParam.school_name),
     staleTime: 5 * 60000,
   });
 
@@ -229,30 +202,7 @@ export function SurveySearchView() {
 
   const runSearch = useCallback(
     async (formData: SurveySearchFormData) => {
-      // Admins must pick a school before searching.
-      if (isAdmin && !schoolParam) {
-        toast.error("Please select a school to search.");
-        return;
-      }
-      // A sheet must be picked before searching. Selecting nothing (vs. "All
-      // sheets", which ticks every box) is ambiguous, so we block it up front.
-      if (selectedSourceIds.length === 0) {
-        toast.error("Please select at least one sheet to search.");
-        return;
-      }
-
-      // "All sheets" (every available box ticked) sends NO per-sheet filter, so
-      // the search covers the whole school scope — including any legacy rows not
-      // yet attributed to a sheet. A partial selection sends explicit ids.
-      const allSelected =
-        availableSheetIds.length > 0 &&
-        availableSheetIds.every((id) => selectedSourceIds.includes(id));
-      
-      const source_ids = allSelected ? undefined : selectedSourceIds;
-
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
+      const controller = begin();
 
       setStreaming(true);
       setInsight("");
@@ -296,7 +246,7 @@ export function SurveySearchView() {
         }
       } catch (err) {
         flushPending();
-        if (!(err instanceof DOMException && err.name === "AbortError")) {
+        if (!isAbortError(err)) {
           const msg = getErrorMessage(err);
           setError(msg);
           toast.error(msg);
@@ -304,10 +254,10 @@ export function SurveySearchView() {
       } finally {
         flushPending();
         setStreaming(false);
-        abortRef.current = null;
+        end(controller);
       }
     },
-    [queueToken, flushPending, selectedSourceIds, availableSheetIds, isAdmin, schoolParam],
+    [begin, end, queueToken, flushPending, selectedSourceIds, isAdmin, schoolParam.school_name],
   );
 
   const hasResult = intent !== null;
@@ -327,7 +277,7 @@ export function SurveySearchView() {
                 type="button"
                 variant="outline"
                 icon={<StopCircle className="h-4 w-4" />}
-                onClick={() => abortRef.current?.abort()}
+                onClick={stop}
               >
                 Stop
               </Button>

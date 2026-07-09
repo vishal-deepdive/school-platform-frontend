@@ -94,7 +94,7 @@ export function AuthLayout() {
       : signUpContent;
 
   return (
-    <div className="w-full h-screen md:grid md:grid-cols-2 overflow-hidden">
+    <div className={`w-full h-screen md:grid ${isOnboarding ? "md:grid-cols-[40%_60%]" : "md:grid-cols-2"} overflow-hidden`}>
       {/* Image Side (Left Side) */}
       <div
         className="hidden md:block relative h-full w-full bg-cover bg-center transition-all duration-500 ease-in-out"
@@ -145,7 +145,7 @@ export function AuthLayout() {
 
       {/* Form Side (Right Side) */}
       <div className="flex flex-col p-6 md:p-12 bg-background relative h-full overflow-y-auto overflow-x-hidden scrollbar-thin">
-        <div className="w-full max-w-md mx-auto relative flex flex-col my-auto py-8 gap-5 items-center">
+        <div className={`w-full ${isOnboarding ? "max-w-3xl xl:max-w-4xl" : "max-w-md"} mx-auto relative flex flex-col my-auto py-8 gap-5 items-center`}>
           {/* Mobile Branding */}
           <div className="flex flex-col items-center gap-2 md:hidden">
             <div className="w-fit flex items-center justify-center z-20 bg-white dark:bg-slate-900 backdrop-blur-md px-4 py-1.5 rounded-full border border-border/50 shadow-sm">

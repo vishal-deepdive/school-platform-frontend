@@ -70,7 +70,7 @@ export function AcademicStep({
   };
 
   return (
-    <div className="grid gap-4 animate-in fade-in zoom-in-95 duration-300">
+    <div className="grid gap-4 lg:grid-cols-2 animate-in fade-in zoom-in-95 duration-300">
       <AuthInput
         label="Total Students *"
         type="number"
@@ -98,7 +98,7 @@ export function AcademicStep({
       </AuthSelect>
 
       {selectedMedium === "Other" && (
-        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+        <div className="lg:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
           <AuthInput
             label="Please specify medium *"
             type="text"
@@ -109,7 +109,7 @@ export function AcademicStep({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:col-span-2">
         <AuthSelect
           label="Classes From"
           error={errors.classes_from?.message}
@@ -138,12 +138,12 @@ export function AcademicStep({
       </div>
 
       {errors.classes_to?.message && (
-        <p className="text-xs text-destructive font-medium -mt-2">
+        <p className="text-xs text-destructive font-medium -mt-2 lg:col-span-2">
           {errors.classes_to.message}
         </p>
       )}
 
-      <div className="grid gap-2">
+      <div className="grid gap-2 lg:col-span-2">
         <AuthInput
           label="UDISE Code"
           type="text"

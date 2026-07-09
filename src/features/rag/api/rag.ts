@@ -14,8 +14,31 @@ import type {
   IngestJobResponse,
   DocumentStatusResponse,
   DocumentListResponse,
+  DocumentChunksResponse,
   ClassLevelsResponse,
   RagAnalyticsResponse,
+  FeedbackRequest,
+  FeedbackResponse,
+  GenerateQuizRequest,
+  GenerateQuizResponse,
+  CreateAssignmentRequest,
+  AssignmentSummary,
+  AssignmentListResponse,
+  AssignmentDetail,
+  SubmitAssignmentRequest,
+  SubmissionResult,
+  AssignmentResultsResponse,
+  GenerateFlashcardsRequest,
+  FlashcardDeckDetail,
+  FlashcardDeckListResponse,
+  FlashcardProgressResponse,
+  LessonPlanRequest,
+  CreateContentRequestRequest,
+  ContentRequestItem,
+  ContentRequestListResponse,
+  ContentRequestStatus,
+  FeedbackListResponse,
+  UsageAnalyticsResponse,
 } from "@/features/rag/types";
 
 const BASE = `${API_V1}/rag`;
@@ -64,9 +87,21 @@ export const ragApi = {
       })
       .then((r) => r.data),
 
-  listDocuments: (params: { limit?: number; offset?: number; status?: string }) =>
+  listDocuments: (params: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    search?: string;
+    /** Admin only: scope the listing to one school's uploads + global content. */
+    school_id?: string;
+  }) =>
     apiClient
       .get<DocumentListResponse>(`${BASE}/documents`, { params })
+      .then((r) => r.data),
+
+  getDocumentChunks: (documentId: string) =>
+    apiClient
+      .get<DocumentChunksResponse>(`${BASE}/documents/${documentId}/chunks`)
       .then((r) => r.data),
 
   getDocumentStatus: (documentId: string) =>
@@ -87,6 +122,132 @@ export const ragApi = {
       .then((r) => r.data),
 
   /** Knowledge-base corpus analytics for the dashboard (staff-scoped). */
-  getAnalytics: () =>
-    apiClient.get<RagAnalyticsResponse>(`${BASE}/analytics`).then((r) => r.data),
+  /**
+   * Knowledge-base analytics. Staff are scoped to their own school server-side;
+   * admins pass the active school's id to scope to it (omit for platform-wide).
+   */
+  getAnalytics: (schoolId?: string) =>
+    apiClient
+      .get<RagAnalyticsResponse>(`${BASE}/analytics`, {
+        params: schoolId ? { school_id: schoolId } : undefined,
+      })
+      .then((r) => r.data),
+
+  /** Record a thumbs up/down rating on a generated Q&A answer. */
+  submitFeedback: (data: FeedbackRequest) =>
+    apiClient
+      .post<FeedbackResponse>(`${BASE}/qa/feedback`, data)
+      .then((r) => r.data),
+
+  // ── Learning loop: practice / assignments ─────────────────────────────────
+
+  /** Generate a structured MCQ set (with answer key) from filtered content. */
+  generatePractice: (data: GenerateQuizRequest) =>
+    apiClient
+      .post<GenerateQuizResponse>(`${BASE}/practice/generate`, data)
+      .then((r) => r.data),
+
+  createAssignment: (data: CreateAssignmentRequest) =>
+    apiClient
+      .post<AssignmentSummary>(`${BASE}/assignments`, data)
+      .then((r) => r.data),
+
+  listAssignments: (params: {
+    scope?: "mine" | "manage";
+    class_level?: string;
+    limit?: number;
+    offset?: number;
+  }) =>
+    apiClient
+      .get<AssignmentListResponse>(`${BASE}/assignments`, { params })
+      .then((r) => r.data),
+
+  getAssignment: (id: string) =>
+    apiClient
+      .get<AssignmentDetail>(`${BASE}/assignments/${id}`)
+      .then((r) => r.data),
+
+  submitAssignment: (id: string, data: SubmitAssignmentRequest) =>
+    apiClient
+      .post<SubmissionResult>(`${BASE}/assignments/${id}/submit`, data)
+      .then((r) => r.data),
+
+  getAssignmentResults: (id: string) =>
+    apiClient
+      .get<AssignmentResultsResponse>(`${BASE}/assignments/${id}/results`)
+      .then((r) => r.data),
+
+  deleteAssignment: (id: string) =>
+    apiClient
+      .delete<{ deleted: boolean; id: string }>(`${BASE}/assignments/${id}`)
+      .then((r) => r.data),
+
+  // ── Flashcards ────────────────────────────────────────────────────────────
+
+  generateFlashcards: (data: GenerateFlashcardsRequest) =>
+    apiClient
+      .post<FlashcardDeckDetail>(`${BASE}/flashcards/generate`, data)
+      .then((r) => r.data),
+
+  listFlashcardDecks: (params: { limit?: number; offset?: number }) =>
+    apiClient
+      .get<FlashcardDeckListResponse>(`${BASE}/flashcards`, { params })
+      .then((r) => r.data),
+
+  getFlashcardDeck: (id: string) =>
+    apiClient
+      .get<FlashcardDeckDetail>(`${BASE}/flashcards/${id}`)
+      .then((r) => r.data),
+
+  setFlashcardProgress: (id: string, masteredCardIds: string[]) =>
+    apiClient
+      .put<FlashcardProgressResponse>(`${BASE}/flashcards/${id}/progress`, {
+        mastered_card_ids: masteredCardIds,
+      })
+      .then((r) => r.data),
+
+  deleteFlashcardDeck: (id: string) =>
+    apiClient
+      .delete<{ deleted: boolean; id: string }>(`${BASE}/flashcards/${id}`)
+      .then((r) => r.data),
+
+  // ── Lesson plan (streaming) ───────────────────────────────────────────────
+
+  generateLessonPlanStream: (data: LessonPlanRequest, signal?: AbortSignal) =>
+    streamSSE<ContentStreamEvent>(`${BASE}/lesson-plan/stream`, data, signal),
+
+  // ── Content requests ──────────────────────────────────────────────────────
+
+  createContentRequest: (data: CreateContentRequestRequest) =>
+    apiClient
+      .post<ContentRequestItem>(`${BASE}/content-requests`, data)
+      .then((r) => r.data),
+
+  listContentRequests: (params: {
+    status?: ContentRequestStatus;
+    limit?: number;
+    offset?: number;
+  }) =>
+    apiClient
+      .get<ContentRequestListResponse>(`${BASE}/content-requests`, { params })
+      .then((r) => r.data),
+
+  updateContentRequest: (id: string, status: ContentRequestStatus) =>
+    apiClient
+      .patch<ContentRequestItem>(`${BASE}/content-requests/${id}`, { status })
+      .then((r) => r.data),
+
+  // ── Feedback review + adoption analytics ──────────────────────────────────
+
+  listFeedback: (params: { rating?: number; limit?: number; offset?: number }) =>
+    apiClient
+      .get<FeedbackListResponse>(`${BASE}/feedback`, { params })
+      .then((r) => r.data),
+
+  getUsageAnalytics: (days = 30, schoolId?: string) =>
+    apiClient
+      .get<UsageAnalyticsResponse>(`${BASE}/usage/analytics`, {
+        params: { days, ...(schoolId ? { school_id: schoolId } : {}) },
+      })
+      .then((r) => r.data),
 };

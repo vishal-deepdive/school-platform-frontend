@@ -6,7 +6,7 @@
  *   4. Documents         (school registration certificate — file upload)
  *   5. Principal Account (name, email, password, terms)
  */
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   Building2,
@@ -113,6 +113,9 @@ const DUPLICATE_ERROR_CODES = new Set([
   "udise_code_pending",
   "udise_code_exists",
   "principal_email_exists",
+  // /apply merges "pending application" and "existing user" into this single
+  // enumeration-safe code — it still deserves the actionable status banner.
+  "principal_email_unavailable",
 ]);
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -178,6 +181,7 @@ export function SchoolOnboardingPage() {
           principal_name: d.principal_name,
           principal_email: d.principal_email,
           filled_by_email: d.filled_by_email ?? "",
+          area_required: "",
           terms: false,
         });
         setIsResubmit(true);
@@ -206,6 +210,11 @@ export function SchoolOnboardingPage() {
   const [showSaveDraftModal, setShowSaveDraftModal] = useState(false);
   const [draftEmail, setDraftEmail] = useState("");
   const [savingDraft, setSavingDraft] = useState(false);
+  // Linking a draft to an email dispatches a resume link, so the backend
+  // requires CAPTCHA (when enabled) for that call — silent token-only
+  // autosaves below are exempt server-side.
+  const [draftCaptchaToken, setDraftCaptchaToken] = useState<string | null>(null);
+  const [draftCaptchaResetKey, setDraftCaptchaResetKey] = useState(0);
 
   useEffect(() => {
     if (!draftParam || resubmitId) return;
@@ -232,6 +241,10 @@ export function SchoolOnboardingPage() {
       toast.error("Enter an email address to receive your resume link");
       return;
     }
+    if (capabilities?.captcha_enabled && !draftCaptchaToken) {
+      toast.error("Please complete the verification challenge first.");
+      return;
+    }
     setSavingDraft(true);
     try {
       const res = await onboardingApi.saveDraft({
@@ -239,6 +252,7 @@ export function SchoolOnboardingPage() {
         email: draftEmail.trim(),
         formData: getValues(),
         currentStep,
+        captchaToken: draftCaptchaToken ?? undefined,
       });
       setDraftToken(res.token);
       setShowSaveDraftModal(false);
@@ -246,8 +260,28 @@ export function SchoolOnboardingPage() {
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
+      if (capabilities?.captcha_enabled) {
+        // Tokens are single-use — reset the widget for any further attempt.
+        setDraftCaptchaToken(null);
+        setDraftCaptchaResetKey((k) => k + 1);
+      }
       setSavingDraft(false);
     }
+  };
+
+  // Open the save-draft modal with a sensible email default — whoever is
+  // filling the form has usually already typed it on step 2 or 5.
+  const openSaveDraftModal = () => {
+    if (!draftEmail.trim()) {
+      const v = getValues();
+      setDraftEmail(
+        v.filled_by_email?.trim() ||
+          v.principal_email?.trim() ||
+          v.email?.trim() ||
+          "",
+      );
+    }
+    setShowSaveDraftModal(true);
   };
 
   const [certificate, setCertificate] = useState<File | null>(null);
@@ -262,6 +296,46 @@ export function SchoolOnboardingPage() {
   // required) when the backend reports CAPTCHA is actually enabled — local/dev
   // deployments with no site key configured are unaffected.
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+
+  // ── Silent server-side autosave ─────────────────────────────────────────────
+  // Once a draft token exists (the user asked for a resume link, or arrived via
+  // one), keep the server copy in sync in the background so cross-device resume
+  // reflects their latest progress — not just the state at the moment they
+  // clicked "Save & continue later". Fire-and-forget: failures are ignored and
+  // retried on the next change; sessionStorage autosave still covers this tab.
+  // Token-only saves (no email) are exempt from CAPTCHA server-side.
+  const serverSaveTimerRef = useRef<number | null>(null);
+  const serverSaveInFlightRef = useRef(false);
+  useEffect(() => {
+    if (!draftToken || isResubmit || submitted) return;
+    const subscription = methods.watch(() => {
+      if (serverSaveTimerRef.current !== null) {
+        clearTimeout(serverSaveTimerRef.current);
+      }
+      serverSaveTimerRef.current = window.setTimeout(async () => {
+        if (serverSaveInFlightRef.current) return;
+        serverSaveInFlightRef.current = true;
+        try {
+          await onboardingApi.saveDraft({
+            token: draftToken,
+            formData: getValues(),
+            currentStep,
+          });
+        } catch {
+          // Silent — next edit retries.
+        } finally {
+          serverSaveInFlightRef.current = false;
+        }
+      }, 3000);
+    });
+    return () => {
+      subscription.unsubscribe();
+      if (serverSaveTimerRef.current !== null) {
+        clearTimeout(serverSaveTimerRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftToken, isResubmit, submitted, currentStep]);
 
   const handleNext = useCallback(
     async (e?: React.MouseEvent) => {
@@ -396,7 +470,7 @@ export function SchoolOnboardingPage() {
   const StepIcon = stepInfo.icon;
 
   return (
-    <div className="mx-auto grid w-full max-w-[440px] gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto grid w-full max-w-[500px] lg:max-w-[650px] gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col items-center gap-2 text-center">
         <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
           <Building2 className="h-7 w-7 text-primary" />
@@ -440,7 +514,7 @@ export function SchoolOnboardingPage() {
           {!isResubmit && (
             <button
               type="button"
-              onClick={() => setShowSaveDraftModal(true)}
+              onClick={openSaveDraftModal}
               className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
             >
               <Mail className="h-3 w-3" aria-hidden />
@@ -621,6 +695,16 @@ export function SchoolOnboardingPage() {
             onChange={(e) => setDraftEmail(e.target.value)}
           />
         </div>
+        {capabilities?.captcha_enabled && capabilities.captcha_site_key && (
+          <div className="mt-3">
+            <CaptchaWidget
+              siteKey={capabilities.captcha_site_key}
+              onVerify={setDraftCaptchaToken}
+              onExpire={() => setDraftCaptchaToken(null)}
+              resetKey={draftCaptchaResetKey}
+            />
+          </div>
+        )}
         <div className="flex justify-end gap-3 mt-4">
           <AuthButton
             type="button"
@@ -629,7 +713,14 @@ export function SchoolOnboardingPage() {
           >
             Cancel
           </AuthButton>
-          <AuthButton type="button" onClick={handleSaveDraft} disabled={savingDraft}>
+          <AuthButton
+            type="button"
+            onClick={handleSaveDraft}
+            disabled={
+              savingDraft ||
+              (capabilities?.captcha_enabled ? !draftCaptchaToken : false)
+            }
+          >
             {savingDraft ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : (

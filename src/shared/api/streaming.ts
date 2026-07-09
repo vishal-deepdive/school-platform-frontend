@@ -15,6 +15,12 @@ export class StreamError extends Error {}
 // dies mid-handshake. Mirrors the axios client's proactive skew.
 const TOKEN_SKEW_MS = 60_000;
 
+// Abort a stream that goes completely silent (no bytes at all) for this long.
+// Generous enough to cover retrieval + slow first-token latency, but a backstop
+// against a hung connection leaving the UI spinning forever. Reset on each read,
+// so it never fires once tokens are flowing.
+export const STREAM_IDLE_TIMEOUT_MS = 60_000;
+
 /** True if the token is missing or within the skew window of expiring. */
 function tokenNeedsRefresh(token: string | null): boolean {
   if (!token) return true;
@@ -75,6 +81,7 @@ export async function* streamSSE<T = unknown>(
   path: string,
   body: unknown,
   signal?: AbortSignal,
+  idleTimeoutMs: number = STREAM_IDLE_TIMEOUT_MS,
 ): AsyncGenerator<T> {
   let token = getAccessToken();
 
@@ -125,16 +132,36 @@ export async function* streamSSE<T = unknown>(
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Read the next chunk, racing it against the idle watchdog. If no bytes arrive
+  // within idleTimeoutMs the read rejects with StreamError and the finally below
+  // cancels the reader (which tears down the underlying fetch).
+  const readChunk = (): Promise<Awaited<ReturnType<typeof reader.read>>> => {
+    if (idleTimeoutMs <= 0) return reader.read();
+    return new Promise((resolve, reject) => {
+      idleTimer = setTimeout(
+        () => reject(new StreamError("The response stalled. Please try again.")),
+        idleTimeoutMs,
+      );
+      reader.read().then(resolve, reject).finally(() => {
+        if (idleTimer) {
+          clearTimeout(idleTimer);
+          idleTimer = null;
+        }
+      });
+    });
+  };
 
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      const { value, done } = await readChunk();
       if (done) break;
       // Decode only the new chunk and normalise CRLF within it.
       // If a "\r\n" straddles a chunk boundary (the "\r" was the last byte of
       // the previous chunk and "\n" is the first byte here), remove the
       // dangling "\r" that was already appended to the buffer.
-      let chunk = decoder.decode(value, { stream: true });
+      const chunk = decoder.decode(value, { stream: true });
       if (buffer.endsWith("\r") && chunk.startsWith("\n")) {
         buffer = buffer.slice(0, -1);
       }
@@ -156,7 +183,9 @@ export async function* streamSSE<T = unknown>(
     if (tail !== undefined) yield tail;
   } finally {
     // Release the reader lock on every exit path: normal completion, thrown
-    // error, AbortSignal, or the consumer abandoning the generator early.
+    // error, AbortSignal, idle timeout, or the consumer abandoning the
+    // generator early.
+    if (idleTimer) clearTimeout(idleTimer);
     reader.cancel().catch(() => {});
   }
 }

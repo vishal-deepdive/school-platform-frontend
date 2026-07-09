@@ -98,10 +98,27 @@ const _step2Base = z.object({
     .string()
     .trim()
     .regex(/^\d{6}$/, "PIN code must be exactly 6 digits"),
-  area: z
-    .string({ required_error: "Please select an area / post office" })
-    .min(1, "Please select an area / post office"),
+  // Area / post office is a UX helper (never submitted to the backend). It is
+  // only REQUIRED when the pincode lookup actually returned options — otherwise
+  // an outage of the third-party pincode API would permanently block the whole
+  // application. ContactStep maintains `area_required` ("yes" when options are
+  // loaded, "" otherwise) and _refineStep2Area enforces the conditional.
+  area: z.string().optional(),
+  area_required: z.string().optional(),
 });
+
+function _refineStep2Area(
+  data: { area?: string; area_required?: string },
+  ctx: z.RefinementCtx,
+) {
+  if (data.area_required === "yes" && !data.area?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Please select an area / post office",
+      path: ["area"],
+    });
+  }
+}
 
 const _step3Base = z.object({
   student_count: z
@@ -222,7 +239,7 @@ function _refineClassRange(data: {
 
 export const onboardingStep1Schema = _step1Base.superRefine(_refineStep1);
 
-export const onboardingStep2Schema = _step2Base;
+export const onboardingStep2Schema = _step2Base.superRefine(_refineStep2Area);
 
 export const onboardingStep3Schema = _step3Base
   .superRefine(_refineStep3Medium)
@@ -241,6 +258,7 @@ export const schoolOnboardingSchema = _step1Base
   .merge(_step5Base)
   .superRefine((data, ctx) => {
     _refineStep1(data, ctx);
+    _refineStep2Area(data, ctx);
     _refineStep3Medium(data, ctx);
   })
   .refine(_refineClassRange, {

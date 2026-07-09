@@ -29,8 +29,13 @@ const ResetPasswordPage = lazyPage(auth, "ResetPasswordPage");
 const AuthCallbackPage = lazyPage(auth, "AuthCallbackPage");
 const GoogleCompleteProfilePage = lazyPage(auth, "GoogleCompleteProfilePage");
 
-const LandingPage = lazyPage(() => import("@/features/landing"), "LandingPage");
-const TermsPage = lazyPage(() => import("@/features/legal"), "TermsPage");
+const landing = () => import("@/features/landing");
+const LandingPage = lazyPage(landing, "LandingPage");
+const AboutPage = lazyPage(landing, "AboutPage");
+const ContactPage = lazyPage(landing, "ContactPage");
+const legal = () => import("@/features/legal");
+const TermsPage = lazyPage(legal, "TermsPage");
+const PrivacyPage = lazyPage(legal, "PrivacyPage");
 const DashboardPage = lazyPage(() => import("@/features/dashboard"), "DashboardPage");
 const ProfilePage = lazyPage(() => import("@/features/profile"), "ProfilePage");
 const ParentApprovalsPage = lazyPage(() => import("@/features/parents"), "ParentApprovalsPage");
@@ -62,6 +67,12 @@ const NotesPage = lazyPage(rag, "NotesPage");
 const RagAuditPage = lazyPage(rag, "RagAuditPage");
 const RagDocumentsPage = lazyPage(rag, "RagDocumentsPage");
 const RagInsightsPage = lazyPage(rag, "RagInsightsPage");
+const PracticePage = lazyPage(rag, "PracticePage");
+const AssignmentsPage = lazyPage(rag, "AssignmentsPage");
+const FlashcardsPage = lazyPage(rag, "FlashcardsPage");
+const LessonPlanPage = lazyPage(rag, "LessonPlanPage");
+const FeedbackReviewPage = lazyPage(rag, "FeedbackReviewPage");
+const ContentRequestsPage = lazyPage(rag, "ContentRequestsPage");
 
 const survey = () => import("@/features/survey");
 const SurveyPage = lazyPage(survey, "SurveyPage");
@@ -101,6 +112,22 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/about",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <AboutPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/contact",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <ContactPage />
+      </Suspense>
+    ),
+  },
+  {
     path: "/terms",
     element: (
       <Suspense fallback={<FullPageFallback />}>
@@ -109,10 +136,24 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/privacy",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <PrivacyPage />
+      </Suspense>
+    ),
+  },
+  {
     element: <AuthLayout />,
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/register", element: <RegisterPage /> },
+      // Teacher / co-principal invite links land here. RegisterPage detects the
+      // `token` query param and renders the invite-claim form. Kept as an explicit
+      // path (vs. only `/register?token=`) so invite emails carry a clear, semantic
+      // URL — and so a mistyped/legacy `/register/teacher` never falls through to
+      // the `*` catch-all that redirects to the landing page.
+      { path: "/register/teacher", element: <RegisterPage /> },
       { path: "/verify-otp", element: <VerifyOtpPage /> },
       { path: "/forgot-password", element: <ForgotPasswordPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
@@ -208,9 +249,15 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <Navigate to="qa" replace /> },
               { path: "qa", element: <RoleRoute><QAPage /></RoleRoute> },
+              { path: "practice", element: <RoleRoute><PracticePage /></RoleRoute> },
+              { path: "flashcards", element: <RoleRoute><FlashcardsPage /></RoleRoute> },
               { path: "questions", element: <RoleRoute><QuestionsPage /></RoleRoute> },
+              { path: "assignments", element: <RoleRoute><AssignmentsPage /></RoleRoute> },
               { path: "notes", element: <RoleRoute><NotesPage /></RoleRoute> },
+              { path: "lesson-plan", element: <RoleRoute><LessonPlanPage /></RoleRoute> },
               { path: "insights", element: <RoleRoute><RagInsightsPage /></RoleRoute> },
+              { path: "requests", element: <RoleRoute><ContentRequestsPage /></RoleRoute> },
+              { path: "review", element: <RoleRoute><FeedbackReviewPage /></RoleRoute> },
               { path: "audit", element: <RoleRoute><RagAuditPage /></RoleRoute> },
               { path: "documents", element: <RoleRoute><RagDocumentsPage /></RoleRoute> },
             ],

@@ -54,8 +54,7 @@ export function QASection() {
           >
             Something else on your mind?{" "}
             <Link
-              // to="/onboarding/apply"
-              to="/"
+              to="/onboarding/apply"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
               Ask through your application

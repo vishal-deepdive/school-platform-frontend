@@ -39,6 +39,27 @@ export function ContactStep({
     [postOffices],
   );
 
+  // Keep the schema's conditional-requirement flag in sync: the area / post
+  // office selection is only mandatory when we actually have options to offer.
+  // A pincode-API outage must never block the application — the applicant
+  // falls back to typing city/state manually.
+  useEffect(() => {
+    setValue("area_required", postOffices.length > 0 ? "yes" : "", {
+      shouldValidate: false,
+    });
+    // Drop a stale selection that no longer matches the loaded options (e.g.
+    // the pin code was replaced via paste, or a draft was restored).
+    if (
+      selectedArea &&
+      postOffices.length > 0 &&
+      !postOffices.some((po) => po.Name === selectedArea)
+    ) {
+      setValue("area", "", { shouldValidate: false });
+    }
+    // selectedArea intentionally excluded — sync only when the option list changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postOffices, setValue]);
+
   useEffect(() => {
     if (!pinCode || pinCode.length !== 6) {
       setPostOffices([]);
@@ -70,7 +91,10 @@ export function ContactStep({
         }
       } catch {
         setPostOffices([]);
-        setPincodeError("Failed to fetch PIN code details");
+        setPincodeError(
+          "Couldn't look up this PIN code right now — enter your city and state manually below.",
+        );
+        if (selectedArea) setValue("area", "", { shouldValidate: false });
       } finally {
         setLoadingPincode(false);
       }
@@ -188,6 +212,7 @@ export function ContactStep({
         ) : (
           <input type="hidden" {...register("area")} />
         )}
+        <input type="hidden" {...register("area_required")} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

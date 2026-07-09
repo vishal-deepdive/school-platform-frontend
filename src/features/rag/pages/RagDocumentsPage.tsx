@@ -4,8 +4,8 @@ import {
   Trash2,
   RefreshCw,
   FileText,
-  Lock,
   UploadCloud,
+  Eye,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { isAxiosError } from "axios";
@@ -15,6 +15,7 @@ import { Modal } from "@/shared/components/ui/Modal";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Pagination } from "@/shared/components/ui/Pagination";
@@ -22,19 +23,24 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { Alert } from "@/shared/components/ui/Alert";
-import { TableBodySkeleton } from "@/shared/components/ui/Skeleton";
-import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
+import { TableBodySkeleton, SkeletonText } from "@/shared/components/ui/Skeleton";
+import { getErrorMessage, sortClassesDescending, isForbiddenError } from "@/shared/lib/utils";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { SUBJECT_OPTIONS, RAG_OTHER_SUBJECT } from "@/features/rag/constants";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isStaff } from "@/shared/lib/permissions";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import {
   useRagDocuments,
   useRagClassLevels,
   useUploadRagDocument,
   useDeleteRagDocument,
   useRetryRagIngest,
+  useDocumentChunks,
   ragKeys,
 } from "@/features/rag/hooks/useRag";
+import type { DocumentItem } from "@/features/rag/types";
 
 const TERMINAL_STATUSES = new Set(["completed", "failed"]);
 const PAGE_SIZE = 50;
@@ -60,11 +66,17 @@ export function RagDocumentsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canManage = isStaff(role);
   const isAdmin = role === "admin";
+  // Admins list a specific school's uploads (+ global content) when one is
+  // selected; staff are scoped server-side. New uploads default to this school.
+  const { schoolId } = useActiveSchool();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
   const [statusFilter, setStatusFilter] = useState("");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 350);
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
   const [offset, setOffset] = useState(0);
   // Tracks which row's delete/retry is in flight so only that row spins.
   const [pendingRow, setPendingRow] = useState<{
@@ -81,6 +93,13 @@ export function RagDocumentsPage() {
   const queryClient = useQueryClient();
   const uploadFormId = useId();
 
+  // Open the upload modal with the school prefilled to the one the admin is
+  // currently viewing (they can still clear it to publish global content).
+  const openUploadModal = () => {
+    setFormData({ ...EMPTY_FORM, school_id: isAdmin && schoolId ? schoolId : "" });
+    setIsModalOpen(true);
+  };
+
   const { data: classData } = useRagClassLevels();
   const sortedClasses = sortClassesDescending(classData?.class_levels ?? []);
   const classOptions = [
@@ -95,6 +114,8 @@ export function RagDocumentsPage() {
         limit: PAGE_SIZE,
         offset,
         ...(statusFilter && { status: statusFilter }),
+        ...(debouncedSearch && { search: debouncedSearch }),
+        ...(schoolId && { school_id: schoolId }),
       },
       {
         refetchInterval: (query: any) => {
@@ -116,7 +137,7 @@ export function RagDocumentsPage() {
 
   // GET /documents now requires a rag_access grant; surface a clean message
   // instead of the generic "failed to load" error on a 403.
-  const isForbidden = isError && isAxiosError(error) && error.response?.status === 403;
+  const isForbidden = isError && isForbiddenError(error);
 
   const { mutate: uploadDoc, isPending: isUploading } = useUploadRagDocument();
   const { mutate: deleteDoc } = useDeleteRagDocument();
@@ -237,8 +258,7 @@ export function RagDocumentsPage() {
 
   if (isForbidden) {
     return (
-      <EmptyState
-        icon={<Lock className="h-12 w-12" />}
+      <ForbiddenState
         title="No access to the document library"
         description="Your account doesn't have a knowledge-base access grant yet. Ask an admin to enable RAG access for you."
       />
@@ -254,16 +274,23 @@ export function RagDocumentsPage() {
         flush
         actions={
           <>
-            {/* {total > 0 && (
-              <Badge variant="primary">
-                {total} indexed
-              </Badge>
-            )} */}
-            <div className="w-40">
-              <Select
-                options={STATUS_FILTER_OPTIONS}
-                value={statusFilter}
-                onChange={(e) => handleStatusFilter(e.target.value)}
+            <div className="mr-auto flex flex-wrap items-center gap-2">
+              <div className="w-40">
+                <Select
+                  options={STATUS_FILTER_OPTIONS}
+                  value={statusFilter}
+                  onChange={(e) => handleStatusFilter(e.target.value)}
+                />
+              </div>
+              <SearchInput
+                value={search}
+                onChange={(v) => {
+                  setSearch(v);
+                  setOffset(0);
+                }}
+                placeholder="Search documents…"
+                className="w-full sm:w-56"
+                aria-label="Search documents by name, chapter, or subject"
               />
             </div>
             <Button
@@ -275,7 +302,7 @@ export function RagDocumentsPage() {
               Refresh
             </Button>
             {canManage && (
-              <Button icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+              <Button icon={<Plus className="h-4 w-4" />} onClick={openUploadModal}>
                 Upload Document
               </Button>
             )}
@@ -302,7 +329,7 @@ export function RagDocumentsPage() {
               }
               action={
                 canManage && !statusFilter ? (
-                  <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+                  <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={openUploadModal}>
                     Upload Document
                   </Button>
                 ) : undefined
@@ -351,6 +378,19 @@ export function RagDocumentsPage() {
                       </td>
                       {canManage && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          {doc.status.toLowerCase() === "completed" && (
+                            <Tooltip content="Preview parsed content" side="left">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setPreviewDoc(doc)}
+                                aria-label="Preview document content"
+                                className="mr-1"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Tooltip>
+                          )}
                           {doc.status.toLowerCase() === "failed" && (
                             <Button
                               variant="ghost"
@@ -482,7 +522,7 @@ export function RagDocumentsPage() {
           {isAdmin && (
             <Input
               label="School ID"
-              hint="Leave empty to make this content global to all schools."
+              hint="Defaults to the school you're viewing. Clear it to make this content global to all schools."
               placeholder="Optional"
               value={formData.school_id}
               onChange={(e) =>
@@ -524,6 +564,81 @@ export function RagDocumentsPage() {
         }}
         onClose={() => setReplaceRequest(null)}
       />
+
+      <Modal
+        open={previewDoc !== null}
+        onClose={() => setPreviewDoc(null)}
+        title="Document preview"
+        icon={<Eye />}
+        description={
+          previewDoc
+            ? `${previewDoc.class_level} · ${previewDoc.subject} · Ch ${previewDoc.chapter_number}: ${previewDoc.chapter_name}`
+            : undefined
+        }
+        size="3xl"
+      >
+        {previewDoc && <DocumentChunksPreview documentId={previewDoc.id} />}
+      </Modal>
+    </div>
+  );
+}
+
+/** Loads and renders the indexed chunks of a document inside the preview modal. */
+function DocumentChunksPreview({ documentId }: { documentId: string }) {
+  const { data, isLoading, isError, error } = useDocumentChunks(documentId);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-lg border border-border/50 p-3">
+            <SkeletonText lines={3} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (isError) {
+    return <Alert variant="error">{getErrorMessage(error)}</Alert>;
+  }
+  if (!data || data.chunks.length === 0) {
+    return (
+      <EmptyState
+        icon={<FileText className="h-10 w-10" />}
+        title="No indexed content"
+        description="This document has no chunks yet. It may still be processing or failed to parse."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        {data.total} indexed passage{data.total === 1 ? "" : "s"} — this is
+        exactly what the retriever can cite.
+      </p>
+      <div className="max-h-[60vh] space-y-3 overflow-y-auto scrollbar-thin pr-1">
+        {data.chunks.map((chunk, i) => (
+          <div
+            key={chunk.chunk_id ?? i}
+            className="rounded-lg border border-border/60 bg-muted/30 p-3"
+          >
+            <div className="mb-1.5 flex flex-wrap items-center gap-2">
+              {chunk.title && (
+                <Badge variant="primary">{chunk.title}</Badge>
+              )}
+              {chunk.page && (
+                <span className="text-[11px] text-muted-foreground">
+                  p. {chunk.page}
+                </span>
+              )}
+            </div>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+              {chunk.content}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

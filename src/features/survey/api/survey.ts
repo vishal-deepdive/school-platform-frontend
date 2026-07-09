@@ -24,13 +24,23 @@ import type {
 const BASE = `${API_V1}/survey`;
 
 export const surveyApi = {
-  getStatus: () =>
-    apiClient.get<SurveyStatusResponse>(`${BASE}/status`).then((r) => r.data),
-
-  /** Feedback satisfaction analytics for the dashboard (staff-scoped). */
-  getAnalytics: () =>
+  getStatus: (schoolName?: string) =>
     apiClient
-      .get<SurveyAnalyticsResponse>(`${BASE}/analytics`)
+      .get<SurveyStatusResponse>(`${BASE}/status`, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
+      .then((r) => r.data),
+
+  /**
+   * Feedback satisfaction analytics for the dashboard. Staff are scoped to their
+   * own school server-side; admins pass the active school's name to scope to it
+   * (omit for cross-school totals).
+   */
+  getAnalytics: (schoolName?: string) =>
+    apiClient
+      .get<SurveyAnalyticsResponse>(`${BASE}/analytics`, {
+        params: schoolName ? { school_name: schoolName } : undefined,
+      })
       .then((r) => r.data),
 
   // ── Multi-source endpoints ──────────────────────────────────────────────

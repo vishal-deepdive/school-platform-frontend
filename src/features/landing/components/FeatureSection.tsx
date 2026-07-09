@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { SectionHeading } from "@/features/landing/components/SectionHeading";
 import { TrendChart } from "@/features/landing/components/DashboardPreview";
+import { ParallaxAccents } from "@/features/landing/components/scroll";
 import { fadeUp, staggerContainer, EASE_OUT_EXPO } from "@/features/landing/animations";
 
 const REGISTER_ROWS = [
@@ -235,8 +236,9 @@ const SUPPORTING = [
 
 export function FeatureSection() {
   return (
-    <section id="features" className="w-full scroll-mt-24 bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24">
-      <div className="mx-auto max-w-[1180px] px-4 xl:px-0">
+    <section id="features" className="relative w-full scroll-mt-24 bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24">
+      <ParallaxAccents />
+      <div className="relative mx-auto max-w-[1180px] px-4 xl:px-0">
         <SectionHeading
           eyebrow="The platform"
           title="Everything the school day runs on"

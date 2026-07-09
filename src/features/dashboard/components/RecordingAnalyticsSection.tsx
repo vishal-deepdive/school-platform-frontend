@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import {
   Area,
@@ -29,6 +28,8 @@ import { ChartSkeleton, StatCardSkeleton } from "@/shared/components/ui/Skeleton
 import { Badge } from "@/shared/components/ui/Badge";
 import { BarList } from "@/features/dashboard/components/BarList";
 import { shortDate } from "@/features/dashboard/lib/chartTheme";
+import { useSchoolScopedQuery } from "@/shared/hooks/useSchoolScopedQuery";
+import { SelectSchoolPrompt } from "@/features/dashboard/components/SelectSchoolPrompt";
 
 const SCOPE_COPY: Record<RecordingAnalyticsScope, { title: string; subtitle: string }> = {
   own: {
@@ -82,11 +83,15 @@ function TrendTooltip({ active, payload }: TrendTooltipProps) {
  * school/platform). Self-hides on an access error.
  */
 export function RecordingAnalyticsSection() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["recording", "analytics"],
-    queryFn: () => recordingApi.getAnalytics({ days: 30 }),
+  // Admins scope to the active school; staff/consumers are scoped server-side
+  // from their token (schoolParam is empty for them, so nothing is sent).
+  const { data, isLoading, isError, needsSchool } = useSchoolScopedQuery({
+    key: ["recording", "analytics"],
+    queryFn: ({ schoolParam }) =>
+      recordingApi.getAnalytics({ days: 30, ...schoolParam }),
     staleTime: 5 * 60_000,
     retry: false,
+    requireSchool: true,
   });
 
   const trend = useMemo(
@@ -94,6 +99,18 @@ export function RecordingAnalyticsSection() {
     [data],
   );
   const isStaffScope = data?.scope === "school" || data?.scope === "platform";
+
+  if (needsSchool) {
+    return (
+      <CollapsibleSection
+        id="dash-recordings"
+        title="Lecture recordings"
+        description="Select a school to view its recordings"
+      >
+        <SelectSchoolPrompt label="recording activity" />
+      </CollapsibleSection>
+    );
+  }
 
   if (isLoading) {
     return (
