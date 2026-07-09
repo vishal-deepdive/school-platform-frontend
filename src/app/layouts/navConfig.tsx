@@ -36,12 +36,26 @@ import {
   Building,
   UserCog,
   UserRoundCheck,
+  UsersRound,
 } from "lucide-react";
 
 export interface NavItem {
   label: string;
   /** Short caption under the rail icon (≤10 chars); defaults to `label`. */
   railLabel?: string;
+  /**
+   * Optional caption a child belongs under in the secondary pane. Children
+   * sharing a group must be listed contiguously; the heading renders once,
+   * above the first surviving child, and disappears entirely if role-filtering
+   * removes every child under it.
+   */
+  group?: string;
+  /**
+   * Names a live counter shown as a badge on this item (and aggregated onto its
+   * parent's rail icon). The Sidebar maps the key to a data hook, keeping this
+   * config free of data concerns.
+   */
+  badgeKey?: "pending-leaves";
   href?: string;
   icon: React.ReactNode;
   children?: NavItem[];
@@ -74,51 +88,62 @@ export const navItems: NavItem[] = [
         label: "Overview",
         href: "/attendance/dashboard",
         icon: <LayoutDashboard className="h-4 w-4" />,
-      },
-      {
-        label: "Face Enrollment",
-        href: "/attendance/enroll",
-        icon: <SmilePlus className="h-4 w-4" />,
+        group: "Daily",
       },
       {
         label: "Roll Call",
         href: "/attendance/roll-call",
         icon: <ClipboardList className="h-4 w-4" />,
+        group: "Daily",
       },
       {
         label: "Mark Attendance",
         href: "/attendance/mark",
         icon: <CheckSquare className="h-4 w-4" />,
+        group: "Daily",
       },
       {
         label: "Attendance Records",
         href: "/attendance/view",
         icon: <History className="h-4 w-4" />,
+        group: "Daily",
       },
       {
         label: "Leave Requests",
         href: "/attendance/leave",
         icon: <CalendarClock className="h-4 w-4" />,
+        group: "Requests & reports",
+        badgeKey: "pending-leaves",
       },
       {
         label: "Attendance Reports",
         href: "/attendance/stats",
         icon: <TrendingUp className="h-4 w-4" />,
+        group: "Requests & reports",
       },
       {
         label: "Holiday Calendar",
         href: "/attendance/holidays",
         icon: <CalendarDays className="h-4 w-4" />,
+        group: "Requests & reports",
+      },
+      {
+        label: "Face Enrollment",
+        href: "/attendance/enroll",
+        icon: <SmilePlus className="h-4 w-4" />,
+        group: "Setup",
       },
       {
         label: "Student Roster",
         href: "/attendance/manage",
         icon: <Users className="h-4 w-4" />,
+        group: "Setup",
       },
       {
         label: "Import Students",
         href: "/students/import",
         icon: <FileUp className="h-4 w-4" />,
+        group: "Setup",
       },
     ],
   },
@@ -159,61 +184,73 @@ export const navItems: NavItem[] = [
         href: "/rag/qa",
         icon: <MessageSquare className="h-4 w-4" />,
         fullBleed: true,
+        group: "Learn",
       },
       {
         label: "Practice",
         href: "/rag/practice",
         icon: <Dumbbell className="h-4 w-4" />,
+        group: "Learn",
       },
       {
         label: "Flashcards",
         href: "/rag/flashcards",
         icon: <Layers className="h-4 w-4" />,
-      },
-      {
-        label: "Practice Test Generator",
-        href: "/rag/questions",
-        icon: <FileQuestion className="h-4 w-4" />,
-      },
-      {
-        label: "Assignments",
-        href: "/rag/assignments",
-        icon: <ClipboardList className="h-4 w-4" />,
+        group: "Learn",
       },
       {
         label: "Smart Notes",
         href: "/rag/notes",
         icon: <StickyNote className="h-4 w-4" />,
+        group: "Learn",
+      },
+      {
+        label: "Practice Test Generator",
+        href: "/rag/questions",
+        icon: <FileQuestion className="h-4 w-4" />,
+        group: "Create",
+      },
+      {
+        label: "Assignments",
+        href: "/rag/assignments",
+        icon: <ClipboardList className="h-4 w-4" />,
+        group: "Create",
       },
       {
         label: "Lesson Plans",
         href: "/rag/lesson-plan",
         icon: <GraduationCap className="h-4 w-4" />,
+        group: "Create",
       },
       {
         label: "Textbook Library",
         href: "/rag/documents",
         icon: <Library className="h-4 w-4" />,
-      },
-      {
-        label: "Library Insights",
-        href: "/rag/insights",
-        icon: <BarChart2 className="h-4 w-4" />,
-      },
-      {
-        label: "Content Coverage",
-        href: "/rag/audit",
-        icon: <Gauge className="h-4 w-4" />,
+        group: "Library",
       },
       {
         label: "Content Requests",
         href: "/rag/requests",
         icon: <Inbox className="h-4 w-4" />,
+        group: "Library",
+      },
+      {
+        label: "Library Insights",
+        href: "/rag/insights",
+        icon: <BarChart2 className="h-4 w-4" />,
+        group: "Insights",
+      },
+      {
+        label: "Content Coverage",
+        href: "/rag/audit",
+        icon: <Gauge className="h-4 w-4" />,
+        group: "Insights",
       },
       {
         label: "Answer Reviews",
         href: "/rag/review",
         icon: <MessageSquareWarning className="h-4 w-4" />,
+        group: "Insights",
       },
     ],
   },
@@ -254,6 +291,14 @@ export const navItems: NavItem[] = [
     icon: <UserRoundCheck className="h-5 w-5" />,
   },
   {
+    // admin + principal only (enforced by roleCanAccess against ROUTE_ROLES);
+    // filtered out of the rail for everyone else.
+    label: "Staff",
+    railLabel: "Staff",
+    href: "/staff",
+    icon: <UsersRound className="h-5 w-5" />,
+  },
+  {
     label: "My Profile",
     href: "/profile",
     icon: <User className="h-5 w-5" />,
@@ -271,31 +316,37 @@ export const adminNavItems: NavItem[] = [
         label: "School Applications",
         href: "/admin/onboarding",
         icon: <ClipboardList className="h-4 w-4" />,
+        group: "Organizations",
       },
       {
         label: "Schools",
         href: "/admin/schools",
         icon: <Building className="h-4 w-4" />,
+        group: "Organizations",
       },
       {
         label: "Users",
         href: "/admin/users",
         icon: <Users className="h-4 w-4" />,
+        group: "People",
       },
       {
         label: "Admins",
         href: "/admin/admins",
         icon: <UserCog className="h-4 w-4" />,
+        group: "People",
       },
       {
         label: "Audit Log",
         href: "/admin/audit-log",
         icon: <History className="h-4 w-4" />,
+        group: "System",
       },
       {
         label: "Prompts",
         href: "/admin/prompts",
         icon: <Wand2 className="h-4 w-4" />,
+        group: "System",
       },
     ],
   },
