@@ -3,6 +3,7 @@ import { RouterProvider } from "react-router-dom";
 import { AppProviders } from "./providers/AppProviders";
 import { router } from "./router";
 import { initAuthRefresh, cancelProactiveRefresh } from "@/shared/api/client";
+import { assertNavPermissionParity } from "@/shared/lib/navAudit";
 
 export default function App() {
   // Kick off proactive token refresh from the persisted session (page load /
@@ -11,6 +12,9 @@ export default function App() {
   // subscription inside the api client.
   useEffect(() => {
     initAuthRefresh();
+    // Dev-only: fail loudly if the sidebar nav and the RBAC route map drift
+    // (an unguarded link or an orphaned, unreachable route). No-op in prod.
+    assertNavPermissionParity();
     return cancelProactiveRefresh;
   }, []);
 

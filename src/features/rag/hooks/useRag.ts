@@ -23,6 +23,8 @@ interface DocumentParams {
   offset?: number;
   status?: string;
   search?: string;
+  /** Admin only: scope the listing to one school's uploads + global content. */
+  school_id?: string;
 }
 
 export const ragKeys = {
@@ -32,7 +34,8 @@ export const ragKeys = {
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
   documentStatus: (id: string) => ["rag", "documentStatus", id] as const,
   documentChunks: (id: string) => ["rag", "documentChunks", id] as const,
-  analytics: () => ["rag", "analytics"] as const,
+  analytics: (schoolId?: string) =>
+    ["rag", "analytics", schoolId ?? "platform"] as const,
   assignments: (scope: string, classLevel?: string) =>
     ["rag", "assignments", scope, classLevel ?? null] as const,
   assignment: (id: string) => ["rag", "assignment", id] as const,
@@ -42,7 +45,8 @@ export const ragKeys = {
   contentRequests: (status?: string) =>
     ["rag", "contentRequests", status ?? "all"] as const,
   feedback: (rating?: number) => ["rag", "feedback", rating ?? "all"] as const,
-  usage: (days: number) => ["rag", "usage", days] as const,
+  usage: (days: number, schoolId?: string) =>
+    ["rag", "usage", days, schoolId ?? "platform"] as const,
 };
 
 export function useRagMetadata() {
@@ -61,10 +65,10 @@ export function useRagClassLevels() {
   });
 }
 
-export function useRagAnalytics() {
+export function useRagAnalytics(schoolId?: string) {
   return useQuery({
-    queryKey: ragKeys.analytics(),
-    queryFn: () => ragApi.getAnalytics(),
+    queryKey: ragKeys.analytics(schoolId),
+    queryFn: () => ragApi.getAnalytics(schoolId),
     staleTime: 2 * 60_000,
   });
 }
@@ -274,10 +278,10 @@ export function useFeedbackReview(rating?: number) {
   });
 }
 
-export function useUsageAnalytics(days = 30) {
+export function useUsageAnalytics(days = 30, schoolId?: string) {
   return useQuery({
-    queryKey: ragKeys.usage(days),
-    queryFn: () => ragApi.getUsageAnalytics(days),
+    queryKey: ragKeys.usage(days, schoolId),
+    queryFn: () => ragApi.getUsageAnalytics(days, schoolId),
     staleTime: 2 * 60_000,
   });
 }

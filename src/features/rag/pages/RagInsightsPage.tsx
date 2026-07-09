@@ -26,6 +26,7 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { useRagAnalytics, useUsageAnalytics } from "@/features/rag/hooks/useRag";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 
 /** A horizontal breakdown list with a proportional fill bar per row. */
 function BreakdownList({
@@ -133,8 +134,11 @@ const statusBadge = (status: string) => {
 };
 
 export function RagInsightsPage() {
+  // Admins scope to the active school; with none selected they see platform-wide
+  // totals. Staff are scoped server-side (schoolId is their own, harmless here).
+  const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const { data, isLoading, isError, error, refetch, isFetching } =
-    useRagAnalytics();
+    useRagAnalytics(schoolId);
 
   const subjectRows = useMemo(
     () =>
@@ -169,7 +173,11 @@ export function RagInsightsPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Badge variant={data?.scope === "platform" ? "primary" : "info"}>
-            {data?.scope === "platform" ? "Platform-wide" : "Your school + global"}
+            {data?.scope === "platform"
+              ? "Platform-wide"
+              : isAdmin && schoolName
+                ? `${schoolName} + global`
+                : "Your school + global"}
           </Badge>
         </div>
         <Button
@@ -403,7 +411,8 @@ const EVENT_LABELS: Record<string, string> = {
 
 /** Trailing-30-day RAG adoption: totals, by-feature/day breakdown, top users. */
 function AdoptionSection() {
-  const { data, isLoading } = useUsageAnalytics(30);
+  const { schoolId } = useActiveSchool();
+  const { data, isLoading } = useUsageAnalytics(30, schoolId);
 
   if (isLoading) {
     return <div className="h-40 animate-pulse rounded-xl bg-muted/60" />;

@@ -14,7 +14,7 @@ import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Textarea } from "@/shared/components/ui/Textarea";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
-import { isStaff } from "@/shared/lib/permissions";
+import { isStaff, isSchoolAdmin } from "@/shared/lib/permissions";
 import {
   useContentRequests,
   useCreateContentRequest,
@@ -54,7 +54,7 @@ const STATUS_OPTIONS = [
 export function ContentRequestsPage() {
   const queryClient = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
-  const canManage = role === "admin" || role === "principal";
+  const canManage = isSchoolAdmin(role);
 
   const [tab, setTab] = useState("open");
   const status = tab === "all" ? undefined : (tab as ContentRequestStatus);

@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { ArrowRight, BookOpen, Boxes, Globe, Library } from "lucide-react";
 import { ragApi } from "@/features/rag/api/rag";
@@ -7,6 +6,8 @@ import { CollapsibleSection } from "@/shared/components/ui/CollapsibleSection";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
 import { ChartSkeleton, StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { BarList } from "@/features/dashboard/components/BarList";
+import { useSchoolScopedQuery } from "@/shared/hooks/useSchoolScopedQuery";
+import { SelectSchoolPrompt } from "@/features/dashboard/components/SelectSchoolPrompt";
 
 const STATUS_BADGES: Record<string, BadgeVariant> = {
   completed: "success",
@@ -21,12 +22,28 @@ const STATUS_BADGES: Record<string, BadgeVariant> = {
  * school's uploads. Self-hides when RAG access is not granted (403).
  */
 export function LibraryAnalyticsSection() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["rag", "analytics"],
-    queryFn: () => ragApi.getAnalytics(),
+  // Admins scope to the active school (its uploads + the shared library); staff
+  // are scoped server-side. Without a selection an admin has no school context.
+  const { data, isLoading, isError, needsSchool } = useSchoolScopedQuery({
+    key: ["rag", "analytics"],
+    queryFn: ({ schoolId }) => ragApi.getAnalytics(schoolId),
     staleTime: 5 * 60_000,
     retry: false,
+    requireSchool: true,
   });
+
+  if (needsSchool) {
+    return (
+      <CollapsibleSection
+        id="dash-library"
+        title="Knowledge base"
+        description="Select a school to view its library"
+        defaultOpen={false}
+      >
+        <SelectSchoolPrompt label="knowledge base analytics" />
+      </CollapsibleSection>
+    );
+  }
 
   if (isLoading) {
     return (

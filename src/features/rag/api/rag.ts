@@ -92,6 +92,8 @@ export const ragApi = {
     offset?: number;
     status?: string;
     search?: string;
+    /** Admin only: scope the listing to one school's uploads + global content. */
+    school_id?: string;
   }) =>
     apiClient
       .get<DocumentListResponse>(`${BASE}/documents`, { params })
@@ -120,8 +122,16 @@ export const ragApi = {
       .then((r) => r.data),
 
   /** Knowledge-base corpus analytics for the dashboard (staff-scoped). */
-  getAnalytics: () =>
-    apiClient.get<RagAnalyticsResponse>(`${BASE}/analytics`).then((r) => r.data),
+  /**
+   * Knowledge-base analytics. Staff are scoped to their own school server-side;
+   * admins pass the active school's id to scope to it (omit for platform-wide).
+   */
+  getAnalytics: (schoolId?: string) =>
+    apiClient
+      .get<RagAnalyticsResponse>(`${BASE}/analytics`, {
+        params: schoolId ? { school_id: schoolId } : undefined,
+      })
+      .then((r) => r.data),
 
   /** Record a thumbs up/down rating on a generated Q&A answer. */
   submitFeedback: (data: FeedbackRequest) =>
@@ -234,8 +244,10 @@ export const ragApi = {
       .get<FeedbackListResponse>(`${BASE}/feedback`, { params })
       .then((r) => r.data),
 
-  getUsageAnalytics: (days = 30) =>
+  getUsageAnalytics: (days = 30, schoolId?: string) =>
     apiClient
-      .get<UsageAnalyticsResponse>(`${BASE}/usage/analytics`, { params: { days } })
+      .get<UsageAnalyticsResponse>(`${BASE}/usage/analytics`, {
+        params: { days, ...(schoolId ? { school_id: schoolId } : {}) },
+      })
       .then((r) => r.data),
 };

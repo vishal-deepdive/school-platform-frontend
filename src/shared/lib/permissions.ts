@@ -109,6 +109,17 @@ export function canManageRecordings(role?: UserRole | null): boolean {
   return role === "admin" || role === "principal";
 }
 
+/**
+ * School-level administrators: the platform admin and the school's principal.
+ * The canonical set for management surfaces that a teacher must NOT see —
+ * survey sync, data cleanup, content-request triage, feedback review. Prefer
+ * this over ad-hoc `role === "admin" || role === "principal"` checks so the
+ * definition lives in one place.
+ */
+export function isSchoolAdmin(role?: UserRole | null): boolean {
+  return role === "admin" || role === "principal";
+}
+
 export function canUploadRecordings(role?: UserRole | null): boolean {
   return role === "admin" || role === "principal" || role === "teacher";
 }

@@ -4,7 +4,6 @@ import {
   Trash2,
   RefreshCw,
   FileText,
-  Lock,
   UploadCloud,
   Eye,
 } from "lucide-react";
@@ -25,11 +24,13 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { Alert } from "@/shared/components/ui/Alert";
 import { TableBodySkeleton, SkeletonText } from "@/shared/components/ui/Skeleton";
-import { getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
+import { getErrorMessage, sortClassesDescending, isForbiddenError } from "@/shared/lib/utils";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { SUBJECT_OPTIONS, RAG_OTHER_SUBJECT } from "@/features/rag/constants";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isStaff } from "@/shared/lib/permissions";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import {
   useRagDocuments,
   useRagClassLevels,
@@ -65,6 +66,9 @@ export function RagDocumentsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canManage = isStaff(role);
   const isAdmin = role === "admin";
+  // Admins list a specific school's uploads (+ global content) when one is
+  // selected; staff are scoped server-side. New uploads default to this school.
+  const { schoolId } = useActiveSchool();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -89,6 +93,13 @@ export function RagDocumentsPage() {
   const queryClient = useQueryClient();
   const uploadFormId = useId();
 
+  // Open the upload modal with the school prefilled to the one the admin is
+  // currently viewing (they can still clear it to publish global content).
+  const openUploadModal = () => {
+    setFormData({ ...EMPTY_FORM, school_id: isAdmin && schoolId ? schoolId : "" });
+    setIsModalOpen(true);
+  };
+
   const { data: classData } = useRagClassLevels();
   const sortedClasses = sortClassesDescending(classData?.class_levels ?? []);
   const classOptions = [
@@ -104,6 +115,7 @@ export function RagDocumentsPage() {
         offset,
         ...(statusFilter && { status: statusFilter }),
         ...(debouncedSearch && { search: debouncedSearch }),
+        ...(schoolId && { school_id: schoolId }),
       },
       {
         refetchInterval: (query: any) => {
@@ -125,7 +137,7 @@ export function RagDocumentsPage() {
 
   // GET /documents now requires a rag_access grant; surface a clean message
   // instead of the generic "failed to load" error on a 403.
-  const isForbidden = isError && isAxiosError(error) && error.response?.status === 403;
+  const isForbidden = isError && isForbiddenError(error);
 
   const { mutate: uploadDoc, isPending: isUploading } = useUploadRagDocument();
   const { mutate: deleteDoc } = useDeleteRagDocument();
@@ -246,8 +258,7 @@ export function RagDocumentsPage() {
 
   if (isForbidden) {
     return (
-      <EmptyState
-        icon={<Lock className="h-12 w-12" />}
+      <ForbiddenState
         title="No access to the document library"
         description="Your account doesn't have a knowledge-base access grant yet. Ask an admin to enable RAG access for you."
       />
@@ -291,7 +302,7 @@ export function RagDocumentsPage() {
               Refresh
             </Button>
             {canManage && (
-              <Button icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+              <Button icon={<Plus className="h-4 w-4" />} onClick={openUploadModal}>
                 Upload Document
               </Button>
             )}
@@ -318,7 +329,7 @@ export function RagDocumentsPage() {
               }
               action={
                 canManage && !statusFilter ? (
-                  <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setIsModalOpen(true)}>
+                  <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={openUploadModal}>
                     Upload Document
                   </Button>
                 ) : undefined
@@ -511,7 +522,7 @@ export function RagDocumentsPage() {
           {isAdmin && (
             <Input
               label="School ID"
-              hint="Leave empty to make this content global to all schools."
+              hint="Defaults to the school you're viewing. Clear it to make this content global to all schools."
               placeholder="Optional"
               value={formData.school_id}
               onChange={(e) =>

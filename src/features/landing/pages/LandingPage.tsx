@@ -1,4 +1,5 @@
 import { MotionConfig, motion, useScroll, useSpring } from "framer-motion";
+import { Seo } from "@/shared/components/Seo";
 import { LandingNavbar } from "@/features/landing/components/LandingNavbar";
 import { HeroSection } from "@/features/landing/components/HeroSection";
 import { FeatureSection } from "@/features/landing/components/FeatureSection";
@@ -8,6 +9,7 @@ import { FutureGrowthSection } from "@/features/landing/components/FutureGrowthS
 import { TestimonialsSection } from "@/features/landing/components/TestimonialsSection";
 import { OnboardingSection } from "@/features/landing/components/OnboardingSection";
 import { QASection } from "@/features/landing/components/QASection";
+import { BackToTop } from "@/features/landing/components/scroll";
 import { Footer } from "@/features/landing/components/Footer";
 
 function ScrollProgressBar() {
@@ -30,6 +32,11 @@ export function LandingPage() {
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-screen w-full overflow-x-clip bg-background dark:bg-[#0b0e14] font-sans text-foreground antialiased selection:bg-primary/20">
+        <Seo
+          title="DeepDive — Smart School Management Platform"
+          description="One platform to run your entire school — attendance, lecture recordings, AI-powered Q&A, and real-time analytics in one secure place."
+          path="/"
+        />
         <ScrollProgressBar />
         <LandingNavbar />
         <main>
@@ -43,6 +50,7 @@ export function LandingPage() {
           <QASection />
         </main>
         <Footer />
+        <BackToTop />
       </div>
     </MotionConfig>
   );

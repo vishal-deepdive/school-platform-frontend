@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
@@ -18,12 +18,14 @@ import {
   ClipboardList,
   NotebookText,
   Minus,
+  Eye,
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { StatCard } from "@/shared/components/ui/Card";
 import { StatCardSkeleton } from "@/shared/components/ui/Skeleton";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { SetupChecklist } from "@/features/dashboard/components/SetupChecklist";
 import { AttendanceTrendChart } from "@/features/dashboard/components/AttendanceTrendChart";
 import { NeedsAttention } from "@/features/dashboard/components/NeedsAttention";
@@ -32,6 +34,7 @@ import { ClassBreakdownChart } from "@/features/dashboard/components/ClassBreakd
 import { WeekdayPatternChart } from "@/features/dashboard/components/WeekdayPatternChart";
 import { AttendanceHeatmap } from "@/features/dashboard/components/AttendanceHeatmap";
 import { AdminDashboard } from "@/features/dashboard/components/AdminDashboard";
+import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
 import { MyDashboard } from "@/features/dashboard/components/MyDashboard";
 import { RecordingAnalyticsSection } from "@/features/dashboard/components/RecordingAnalyticsSection";
 import { LibraryAnalyticsSection } from "@/features/dashboard/components/LibraryAnalyticsSection";
@@ -125,12 +128,23 @@ function WeekDelta({ week, prev }: { week: number | null; prev: number | null })
   );
 }
 
-/** School/class analytics for principals and teachers. */
-function StaffDashboard() {
+/**
+ * School/class analytics. Principals/teachers drive it for their own school
+ * (scoped server-side); an admin drives it for the school they've selected by
+ * passing `schoolParam`/`schoolKey`, so the same view backs both.
+ */
+function StaffDashboard({
+  schoolParam,
+  schoolKey,
+}: {
+  schoolParam?: Record<string, string>;
+  schoolKey?: string;
+} = {}) {
   const [trendDays, setTrendDays] = useState(14);
   const { data: analytics, isLoading } = useQuery({
-    queryKey: ["attendance", "analytics", trendDays],
-    queryFn: () => attendanceApi.getAnalytics({ days: String(trendDays) }),
+    queryKey: ["attendance", "analytics", trendDays, schoolKey ?? "own"],
+    queryFn: () =>
+      attendanceApi.getAnalytics({ days: String(trendDays), ...(schoolParam ?? {}) }),
     staleTime: 5 * 60_000,
     placeholderData: (prev) => prev,
   });
@@ -289,6 +303,79 @@ function StaffDashboard() {
   );
 }
 
+/**
+ * Cross-domain analytics — recordings, knowledge base, and feedback. Each
+ * section is a self-titled collapsible that fetches its own role/school-scoped
+ * endpoint and self-hides when the caller has no access.
+ */
+function CrossDomainSections() {
+  return (
+    <section className="space-y-6">
+      <RecordingAnalyticsSection />
+      <LibraryAnalyticsSection />
+      <SurveyAnalyticsSection />
+    </section>
+  );
+}
+
+/**
+ * Admin dashboard surface. With no school selected it shows the platform-wide
+ * rollup. Once the admin selects a school it flips to that school's full
+ * dashboard (attendance overview + cross-domain sections), with a toggle to
+ * zoom back out to the platform view at any time.
+ */
+function AdminDashboardArea() {
+  const { ready, schoolName, schoolId, schoolParam } = useActiveSchool();
+  const [view, setView] = useState<"school" | "platform">(
+    ready ? "school" : "platform",
+  );
+  // Follow the active-school selection: picking a school drops into its view;
+  // clearing it falls back to the platform rollup. A manual toggle persists
+  // until the next selection change.
+  useEffect(() => {
+    setView(ready ? "school" : "platform");
+  }, [ready]);
+
+  const schoolView = view === "school" && ready;
+
+  return (
+    <div className="space-y-6">
+      {ready && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            {schoolView ? (
+              <>
+                Showing{" "}
+                <span className="font-medium text-foreground">{schoolName}</span>
+              </>
+            ) : (
+              "Showing platform-wide activity across all schools"
+            )}
+          </p>
+          <SegmentedControl
+            aria-label="Dashboard scope"
+            options={[
+              { value: "school" as const, label: "This school" },
+              { value: "platform" as const, label: "Platform" },
+            ]}
+            value={view}
+            onChange={setView}
+          />
+        </div>
+      )}
+
+      {schoolView ? (
+        <>
+          <StaffDashboard schoolParam={schoolParam} schoolKey={schoolId} />
+          <CrossDomainSections />
+        </>
+      ) : (
+        <AdminDashboard />
+      )}
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { user } = useAuthStore();
   const role = user?.role;
@@ -297,6 +384,10 @@ export function DashboardPage() {
   // platform-wide view; students and parents get their personal analytics.
   const isSchoolStaff = role === "principal" || role === "teacher";
   const isConsumer = role === "student" || role === "parent";
+  // Any authenticated role that isn't staff/admin/consumer (e.g. a read-only
+  // "viewer", or a role added later before its dashboard exists) still gets a
+  // clear surface instead of a blank page.
+  const hasRoleView = isSchoolStaff || isAdmin || isConsumer;
 
   const handleQuickLinkClick = (e: React.MouseEvent, href: string) => {
     if (isAdmin && !ready && needsActiveSchool(href)) {
@@ -360,19 +451,24 @@ export function DashboardPage() {
         </div>
       )}
 
-      {isSchoolStaff && <StaffDashboard />}
-      {isAdmin && <AdminDashboard />}
+      {/* Admins own their own layout (platform ↔ selected-school toggle, plus
+          the cross-domain sections in school view); staff render the school
+          dashboard and cross-domain sections directly. */}
+      {isSchoolStaff && (
+        <>
+          <StaffDashboard />
+          <CrossDomainSections />
+        </>
+      )}
+      {isAdmin && <AdminDashboardArea />}
       {isConsumer && <MyDashboard isParent={role === "parent"} />}
 
-      {/* Cross-domain analytics — recordings, knowledge base, and feedback.
-          Each section is a self-titled collapsible that fetches its own
-          role-scoped endpoint and self-hides when the caller has no access. */}
-      {(isSchoolStaff || isAdmin) && (
-        <section className="space-y-6">
-          <RecordingAnalyticsSection />
-          <LibraryAnalyticsSection />
-          <SurveyAnalyticsSection />
-        </section>
+      {!hasRoleView && (
+        <EmptyState
+          icon={<Eye className="h-12 w-12" />}
+          title="View-only access"
+          description="Your account doesn't have a module dashboard yet. Use the search (Ctrl/⌘ K) to open the pages you can access, or contact your school admin if you need more."
+        />
       )}
 
       {isConsumer && <RecordingAnalyticsSection />}

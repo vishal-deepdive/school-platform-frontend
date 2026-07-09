@@ -1,4 +1,10 @@
-import { motion } from "framer-motion";
+import { useRef } from "react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
 import { SectionHeading } from "@/features/landing/components/SectionHeading";
@@ -41,6 +47,18 @@ const STEPS = [
 ];
 
 export function HowItWorksSection() {
+  const listRef = useRef<HTMLOListElement>(null);
+  const reduceMotion = useReducedMotion();
+  // The connector line between step markers draws itself as the timeline
+  // scrolls into view — application, review, go-live, in reading order.
+  const { scrollYProgress } = useScroll({
+    target: listRef,
+    offset: ["start 0.9", "start 0.35"],
+  });
+  const firstSegment = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
+  const secondSegment = useTransform(scrollYProgress, [0.5, 1], [0, 1]);
+  const segments = [firstSegment, secondSegment];
+
   return (
     <section
       id="how-it-works"
@@ -54,6 +72,7 @@ export function HowItWorksSection() {
         />
 
         <motion.ol
+          ref={listRef}
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"
@@ -62,11 +81,16 @@ export function HowItWorksSection() {
         >
           {STEPS.map((step, index) => (
             <motion.li key={step.title} variants={fadeUp} className="relative">
-              {/* Timeline marker: dot + connecting line to the next step */}
+              {/* Timeline marker: dot + connecting line that draws on scroll */}
               <div className="flex items-center gap-4" aria-hidden="true">
                 <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-primary ring-4 ring-primary/15" />
                 {index < STEPS.length - 1 && (
-                  <span className="hidden h-px flex-1 bg-border lg:block" />
+                  <span className="relative hidden h-px flex-1 bg-border lg:block">
+                    <motion.span
+                      style={{ scaleX: reduceMotion ? 1 : segments[index] }}
+                      className="absolute inset-0 origin-left bg-primary/70"
+                    />
+                  </span>
                 )}
               </div>
 

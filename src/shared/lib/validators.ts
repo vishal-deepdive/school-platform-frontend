@@ -34,17 +34,21 @@ export const emailField = z
   .toLowerCase()
   .email("Invalid email address");
 
+// Invite tokens are minted server-side as `secrets.token_hex(32)` — a 64-char
+// lowercase-hex string — and the backend enforces min/max length 64 on
+// /register/teacher. The client validators MUST match that shape exactly; an
+// earlier 8-char rule silently rejected every real invite link.
+const INVITE_TOKEN_REGEX = /^[a-fA-F0-9]{64}$/;
+
 export const inviteTokenField = z
   .string()
-  .length(8, "Invite code must be exactly 8 characters")
-  .regex(
-    /^[A-Za-z2-9]{8}$/,
-    "Invite code must contain only letters and digits 2–9",
-  );
+  .trim()
+  .length(64, "Invalid invite token")
+  .regex(INVITE_TOKEN_REGEX, "Invalid invite token");
 
-/** Returns true when a string matches the invite token format (8 chars: letters + digits 2–9). */
+/** Returns true when a string matches the invite token format (64-char hex). */
 export function isValidInviteToken(token: string): boolean {
-  return /^[A-Za-z2-9]{8}$/.test(token);
+  return INVITE_TOKEN_REGEX.test(token);
 }
 
 export const otpField = z

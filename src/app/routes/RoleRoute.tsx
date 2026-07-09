@@ -25,6 +25,18 @@ export function RoleRoute({ children, allow }: RoleRouteProps) {
   const location = useLocation();
   const roles = allow ?? ROUTE_ROLES[location.pathname];
 
+  // The implicit lookup is an exact pathname match against ROUTE_ROLES, so a
+  // dynamic segment (e.g. `/foo/:id`) or a trailing slash silently resolves to
+  // undefined → default-deny. That is safe, but easy to trip over: warn in dev
+  // so a mis-wired route is obvious instead of an inexplicable bounce. Routes
+  // with dynamic params must pass an explicit `allow` prop.
+  if (import.meta.env.DEV && !allow && !ROUTE_ROLES[location.pathname]) {
+    console.warn(
+      `[RoleRoute] No ROUTE_ROLES entry for "${location.pathname}" and no explicit ` +
+        `allow prop — this route will default-deny. Add it to ROUTE_ROLES or pass allow={[…]}.`,
+    );
+  }
+
   if (!roles || !user || !roles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }

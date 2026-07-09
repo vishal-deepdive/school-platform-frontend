@@ -5,11 +5,11 @@ const FOOTER_LINKS = [
   {
     heading: "Product",
     links: [
-      { label: "Features", href: "#features" },
-      { label: "For every role", href: "#roles" },
-      { label: "How it works", href: "#how-it-works" },
-      { label: "Analytics", href: "#growth" },
-      { label: "FAQ", href: "#faq" },
+      { label: "Features", href: "/#features" },
+      { label: "For every role", href: "/#roles" },
+      { label: "How it works", href: "/#how-it-works" },
+      { label: "Analytics", href: "/#growth" },
+      { label: "FAQ", href: "/#faq" },
     ],
   },
   {
@@ -21,13 +21,22 @@ const FOOTER_LINKS = [
       { label: "Create an account", href: "/register" },
     ],
   },
+  {
+    heading: "Company",
+    links: [
+      { label: "About us", href: "/about" },
+      { label: "Contact", href: "/contact" },
+      { label: "Privacy Policy", href: "/privacy" },
+      { label: "Terms & Conditions", href: "/terms" },
+    ],
+  },
 ];
 
 const SOCIALS = [
   { icon: Linkedin, label: "LinkedIn", href: "#" },
   { icon: Twitter, label: "Twitter", href: "#" },
   { icon: Instagram, label: "Instagram", href: "#" },
-  { icon: Mail, label: "Email", href: "mailto:hello@deepdiveconsulting.in" },
+  { icon: Mail, label: "Email", href: "mailto:hello@ddai.work" },
 ];
 
 export function Footer() {
@@ -35,7 +44,7 @@ export function Footer() {
     <footer className="w-full border-t border-border bg-background">
 
       <div className="mx-auto max-w-[1180px] px-4 py-14 xl:px-0">
-        <div className="mb-10 grid grid-cols-1 gap-10 md:grid-cols-4">
+        <div className="mb-10 grid grid-cols-1 gap-10 md:grid-cols-5">
           <div className="md:col-span-2">
             <img
               src="/logo.png"
@@ -69,7 +78,7 @@ export function Footer() {
               <ul className="space-y-2.5 text-sm text-muted-foreground">
                 {group.links.map((link) => (
                   <li key={link.label}>
-                    {link.href.startsWith("#") ? (
+                    {link.href.includes("#") ? (
                       <a
                         href={link.href}
                         className="transition hover:text-primary"

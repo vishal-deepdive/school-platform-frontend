@@ -29,8 +29,13 @@ const ResetPasswordPage = lazyPage(auth, "ResetPasswordPage");
 const AuthCallbackPage = lazyPage(auth, "AuthCallbackPage");
 const GoogleCompleteProfilePage = lazyPage(auth, "GoogleCompleteProfilePage");
 
-const LandingPage = lazyPage(() => import("@/features/landing"), "LandingPage");
-const TermsPage = lazyPage(() => import("@/features/legal"), "TermsPage");
+const landing = () => import("@/features/landing");
+const LandingPage = lazyPage(landing, "LandingPage");
+const AboutPage = lazyPage(landing, "AboutPage");
+const ContactPage = lazyPage(landing, "ContactPage");
+const legal = () => import("@/features/legal");
+const TermsPage = lazyPage(legal, "TermsPage");
+const PrivacyPage = lazyPage(legal, "PrivacyPage");
 const DashboardPage = lazyPage(() => import("@/features/dashboard"), "DashboardPage");
 const ProfilePage = lazyPage(() => import("@/features/profile"), "ProfilePage");
 const ParentApprovalsPage = lazyPage(() => import("@/features/parents"), "ParentApprovalsPage");
@@ -107,6 +112,22 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/about",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <AboutPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: "/contact",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <ContactPage />
+      </Suspense>
+    ),
+  },
+  {
     path: "/terms",
     element: (
       <Suspense fallback={<FullPageFallback />}>
@@ -115,10 +136,24 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: "/privacy",
+    element: (
+      <Suspense fallback={<FullPageFallback />}>
+        <PrivacyPage />
+      </Suspense>
+    ),
+  },
+  {
     element: <AuthLayout />,
     children: [
       { path: "/login", element: <LoginPage /> },
       { path: "/register", element: <RegisterPage /> },
+      // Teacher / co-principal invite links land here. RegisterPage detects the
+      // `token` query param and renders the invite-claim form. Kept as an explicit
+      // path (vs. only `/register?token=`) so invite emails carry a clear, semantic
+      // URL — and so a mistyped/legacy `/register/teacher` never falls through to
+      // the `*` catch-all that redirects to the landing page.
+      { path: "/register/teacher", element: <RegisterPage /> },
       { path: "/verify-otp", element: <VerifyOtpPage /> },
       { path: "/forgot-password", element: <ForgotPasswordPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },

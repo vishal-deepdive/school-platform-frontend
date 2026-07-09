@@ -16,9 +16,8 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage, isoToIndianDate } from "@/shared/lib/utils";
+import { isStaff as isStaffRole } from "@/shared/lib/permissions";
 import type { LeaveStatus } from "@/features/attendance/types";
-
-const STAFF_ROLES = ["admin", "principal", "teacher"];
 
 function todayIso(): string {
   const d = new Date();
@@ -36,7 +35,7 @@ const STATUS_VARIANT: Record<LeaveStatus, BadgeVariant> = {
 
 export function LeavePage() {
   const { user } = useAuthStore();
-  const isStaff = !!user?.role && STAFF_ROLES.includes(user.role);
+  const isStaff = isStaffRole(user?.role);
   const queryClient = useQueryClient();
 
   const [session, setSession] = useState("2025-26");

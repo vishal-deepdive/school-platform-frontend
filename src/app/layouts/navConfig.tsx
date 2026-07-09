@@ -35,6 +35,7 @@ import {
   MessageSquareWarning,
   Building,
   UserCog,
+  UserRoundCheck,
 } from "lucide-react";
 
 export interface NavItem {
@@ -243,6 +244,14 @@ export const navItems: NavItem[] = [
         icon: <FileSpreadsheet className="h-4 w-4" />,
       },
     ],
+  },
+  {
+    // admin + principal only (enforced by roleCanAccess against ROUTE_ROLES);
+    // filtered out of the rail for everyone else.
+    label: "Parent Approvals",
+    railLabel: "Approvals",
+    href: "/approvals/parents",
+    icon: <UserRoundCheck className="h-5 w-5" />,
   },
   {
     label: "My Profile",

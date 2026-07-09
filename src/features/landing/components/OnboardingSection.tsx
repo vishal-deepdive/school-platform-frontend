@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Parallax } from "@/features/landing/components/scroll";
 import { fadeUp, staggerContainer } from "@/features/landing/animations";
 
 const BENEFITS = [
@@ -16,6 +17,7 @@ export function OnboardingSection() {
       id="onboard"
       className="mx-auto w-full max-w-[1180px] scroll-mt-24 px-4 py-16 sm:py-20 lg:py-24 xl:px-0"
     >
+      <Parallax distance={20}>
       <motion.div
         variants={staggerContainer}
         initial="hidden"
@@ -81,6 +83,7 @@ export function OnboardingSection() {
           </motion.div>
         </div>
       </motion.div>
+      </Parallax>
     </section>
   );
 }

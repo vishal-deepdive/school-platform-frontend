@@ -167,11 +167,11 @@ export function SurveySearchView() {
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const { begin, stop, end } = useStreamAbort();
 
-  const { isAdmin, schoolParam } = useActiveSchool();
+  const { isAdmin, schoolId, schoolParam } = useActiveSchool();
 
   useQuery({
-    queryKey: ["survey", "status"],
-    queryFn: () => surveyApi.getStatus(),
+    queryKey: ["survey", "status", schoolId ?? "platform"],
+    queryFn: () => surveyApi.getStatus(schoolParam.school_name),
     staleTime: 5 * 60000,
   });
 

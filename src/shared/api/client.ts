@@ -27,6 +27,31 @@ export function hasActiveSession(): boolean {
 }
 
 /**
+ * The persisted `user` (role, school_id) lives in localStorage, so it is both
+ * tamperable and can drift stale — a server-side role change or school move
+ * lands in the next access token, not the stored user object. The signed access
+ * token is authoritative, so on load and after every refresh we reconcile the
+ * store's role/school_id to whatever the current token actually claims. This
+ * defeats naive localStorage edits (the token the backend validates is
+ * unchanged, so a forged `user.role` can no longer flip the UI) and keeps the
+ * UI in sync after a promotion/scope change without forcing a re-login.
+ */
+export function reconcileUserFromToken(token?: string | null): void {
+  const active = token ?? getStoredToken();
+  if (!active) return;
+  const decoded = decodeJwt(active);
+  if (!decoded) return;
+
+  const { user, updateUser } = useAuthStore.getState();
+  if (!user) return;
+
+  const patch: Partial<typeof user> = {};
+  if (decoded.role && decoded.role !== user.role) patch.role = decoded.role;
+  if (decoded.school_id !== user.school_id) patch.school_id = decoded.school_id;
+  if (Object.keys(patch).length > 0) updateUser(patch);
+}
+
+/**
  * There is no session to refresh when the store has no access token and the user
  * is not marked authenticated. The refresh token itself lives in an HttpOnly
  * cookie the browser attaches automatically, so JS can't inspect it directly —
@@ -96,6 +121,9 @@ async function performRefresh(): Promise<string> {
       // setTokens fires the store subscription below, which reschedules the
       // proactive refresh for the new token.
       useAuthStore.getState().setTokens({ access_token });
+      // The rotated token is the freshest source of truth for role/school —
+      // reconcile the persisted user so a server-side change takes effect now.
+      reconcileUserFromToken(access_token);
       return access_token;
     } catch (err) {
       lastError = err;
@@ -175,6 +203,9 @@ export function scheduleProactiveRefresh(accessToken?: string | null): void {
  */
 export function initAuthRefresh(): void {
   if (typeof window === "undefined") return;
+  // Trust the persisted access token over the persisted user object on boot,
+  // in case localStorage was tampered with or the stored role went stale.
+  reconcileUserFromToken();
   scheduleProactiveRefresh();
 }
 

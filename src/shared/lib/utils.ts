@@ -53,6 +53,16 @@ const _STATUS_FALLBACKS: Record<number, string> = {
   503: "The service is temporarily unavailable. Please try again later.",
 };
 
+/** True when `error` is an HTTP 403 (forbidden) response. Pairs with ForbiddenState. */
+export function isForbiddenError(error: unknown): boolean {
+  return (
+    !!error &&
+    typeof error === "object" &&
+    "response" in error &&
+    (error as { response?: { status?: number } }).response?.status === 403
+  );
+}
+
 export function getErrorMessage(error: unknown): string {
   if (error && typeof error === "object" && "response" in error) {
     const axiosError = error as {

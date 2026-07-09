@@ -22,7 +22,7 @@ function asCount(value: unknown): number | null {
 export function SurveyDataView() {
   // Admins act on the globally-selected school; principals/teachers are scoped
   // server-side, so no free-text school field is needed anymore.
-  const { schoolName, isAdmin } = useActiveSchool();
+  const { schoolName, isAdmin, schoolId, schoolParam } = useActiveSchool();
   const qc = useQueryClient();
   const [confirmMode, setConfirmMode] = useState<DeleteMode>(null);
   const [rollNumber, setRollNumber] = useState("");
@@ -35,8 +35,8 @@ export function SurveyDataView() {
   // Used to source class options and show an impact preview (record counts)
   // before an irreversible delete.
   const { data: surveyStatus } = useQuery({
-    queryKey: ["survey", "status"],
-    queryFn: () => surveyApi.getStatus(),
+    queryKey: ["survey", "status", schoolId ?? "platform"],
+    queryFn: () => surveyApi.getStatus(schoolParam.school_name),
     staleTime: 5 * 60_000,
   });
 

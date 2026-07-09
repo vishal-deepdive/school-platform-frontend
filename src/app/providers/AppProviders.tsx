@@ -4,6 +4,7 @@ import { ErrorBoundary } from "@/shared/components/errors/ErrorBoundary";
 import { OfflineGate } from "@/shared/components/errors/OfflineGate";
 import { Toaster } from "@/shared/components/ui/Toaster";
 import { TooltipProvider } from "@/shared/components/ui/Tooltip";
+import { useActiveSchoolStore } from "@/shared/store/activeSchool";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,6 +17,21 @@ const queryClient = new QueryClient({
       retry: 0,
     },
   },
+});
+
+// Global safety net for admin school switching. Every school-scoped read keys
+// itself by the active school (see useSchoolScopedQuery), but this guarantees
+// that *any* mounted query refetches when the admin changes school — so no view
+// can ever keep another school's data on screen, even if a call site forgets to
+// include the school in its key. Fires only on an actual id change (not on the
+// initial persist rehydration, which keeps the same id).
+let lastActiveSchoolId = useActiveSchoolStore.getState().school?.id;
+useActiveSchoolStore.subscribe((state) => {
+  const id = state.school?.id;
+  if (id !== lastActiveSchoolId) {
+    lastActiveSchoolId = id;
+    void queryClient.invalidateQueries();
+  }
 });
 
 export function AppProviders({ children }: { children: ReactNode }) {

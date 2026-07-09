@@ -5,13 +5,16 @@ import { Menu, X, ArrowRight } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { ThemeToggle } from "@/shared/components/ui/ThemeToggle";
 
+/* Hrefs are root-relative so section links also work from /about, /contact,
+   and other marketing pages; on the landing page itself the browser treats
+   them as plain hash navigation. */
 const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "Roles", href: "#roles" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "Analytics", href: "#growth" },
-  { label: "Testimonials", href: "#testimonials" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Features", href: "/#features" },
+  { label: "Roles", href: "/#roles" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "Analytics", href: "/#growth" },
+  { label: "Testimonials", href: "/#testimonials" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 export function LandingNavbar() {
@@ -30,14 +33,14 @@ export function LandingNavbar() {
   // Scrollspy: light up the nav link for the section under the viewport centre.
   useEffect(() => {
     const sections = NAV_LINKS.map((link) =>
-      document.querySelector(link.href),
+      document.querySelector(link.href.replace("/", "")),
     ).filter((el): el is Element => el !== null);
     if (sections.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (entry.isIntersecting) setActiveSection(`#${entry.target.id}`);
+          if (entry.isIntersecting) setActiveSection(`/#${entry.target.id}`);
         }
       },
       { rootMargin: "-40% 0px -55% 0px" },
