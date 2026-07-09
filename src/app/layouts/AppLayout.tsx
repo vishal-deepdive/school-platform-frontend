@@ -2,6 +2,7 @@ import { Suspense, useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { MobileTabBar } from "./MobileTabBar";
 import { CommandPalette } from "./CommandPalette";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 
@@ -35,6 +36,9 @@ export function AppLayout() {
             <Outlet />
           </Suspense>
         </main>
+        {/* Sits in the flex column (not fixed) so main shrinks to fit and the
+            module-shell height math stays correct. Phone-only. */}
+        <MobileTabBar onMenuOpen={() => setSidebarOpen(true)} />
       </div>
     </div>
   );
