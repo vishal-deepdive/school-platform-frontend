@@ -449,7 +449,7 @@ export function SurveySearchView() {
               open={showData}
               onToggle={() => setShowData((v) => !v)}
             >
-              <Table columns={columns} data={dataRows} />
+              <Table columns={columns} data={dataRows} stickyHeader />
             </CollapsibleSection>
           )}
 
