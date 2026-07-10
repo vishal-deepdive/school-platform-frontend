@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, FileUp } from "lucide-react";
+import { Users, Trash2, FileUp, Download, AlertOctagon } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { useAuthStore } from "@/features/auth/store/auth";
+import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
@@ -18,13 +20,42 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { Modal } from "@/shared/components/ui/Modal";
+import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
+
+type DeleteMode = "full" | "database" | "attendance";
+
+const DELETE_MODE_OPTIONS: { value: DeleteMode; label: string }[] = [
+  { value: "full", label: "Full delete — profile and attendance history" },
+  { value: "database", label: "Profile only — keep attendance history" },
+  { value: "attendance", label: "Attendance logs only — keep profile" },
+];
+
+const DELETE_MODE_CONSEQUENCE: Record<DeleteMode, string> = {
+  full: "permanently deletes their profile and every attendance record",
+  database: "removes their registration profile but keeps their historical attendance records",
+  attendance: "wipes their attendance records but keeps their registration profile",
+};
+
+const DELETE_MODE_STUDENT_TOAST: Record<DeleteMode, (rollNo: string) => string> = {
+  full: (rollNo) => `Student ${rollNo} deleted`,
+  database: (rollNo) => `Profile removed for ${rollNo} — attendance history kept`,
+  attendance: (rollNo) => `Attendance logs cleared for ${rollNo} — profile kept`,
+};
+
+const DELETE_MODE_CLASS_TOAST: Record<DeleteMode, (classLabel: string) => string> = {
+  full: (classLabel) => `Class ${classLabel} deleted`,
+  database: (classLabel) => `Profiles removed for class ${classLabel} — attendance history kept`,
+  attendance: (classLabel) => `Attendance logs cleared for class ${classLabel} — profiles kept`,
+};
 
 export function ManageStudentsPage() {
   const { schoolId, schoolName, isAdmin, schoolParam } = useActiveSchool();
   const queryClient = useQueryClient();
+  const role = useAuthStore((s) => s.user?.role);
+  // /students/import stays admin/principal-only — don't dead-end teachers here.
+  const canImport = isSchoolAdmin(role);
 
   const [className, setClassName] = useState("");
   const [section, setSection] = useState("");
@@ -34,6 +65,10 @@ export function ManageStudentsPage() {
   const [studentToDelete, setStudentToDelete] = useState<RosterStudent | null>(
     null,
   );
+  const [studentDeleteMode, setStudentDeleteMode] = useState<DeleteMode>("full");
+  const [classDeleteOpen, setClassDeleteOpen] = useState(false);
+  const [classDeleteMode, setClassDeleteMode] = useState<DeleteMode>("full");
+  const [classDeleteConfirmText, setClassDeleteConfirmText] = useState("");
 
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
@@ -58,18 +93,53 @@ export function ManageStudentsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (rollNo: string) =>
-      attendanceApi.deleteStudent({ roll_no: rollNo, session, ...schoolParam }),
-    onSuccess: (_res, rollNo) => {
+    mutationFn: ({ rollNo, mode }: { rollNo: string; mode: DeleteMode }) => {
+      const params = { roll_no: rollNo, session, ...schoolParam };
+      if (mode === "database") return attendanceApi.deleteStudentFromDatabase(params);
+      if (mode === "attendance") return attendanceApi.deleteStudentFromAttendance(params);
+      return attendanceApi.deleteStudent(params);
+    },
+    onSuccess: (_res, { rollNo, mode }) => {
       setRoster((prev) => prev?.filter((s) => s.roll_no !== rollNo) ?? null);
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
-      toast.success(`Student ${rollNo} deleted`);
+      toast.success(DELETE_MODE_STUDENT_TOAST[mode](rollNo));
       setStudentToDelete(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const classDeleteMutation = useMutation({
+    mutationFn: (mode: DeleteMode) => {
+      const params = { class_name: className, section, session, ...schoolParam };
+      if (mode === "database") return attendanceApi.deleteBulkFromDatabase(params);
+      if (mode === "attendance") return attendanceApi.deleteBulkFromAttendance(params);
+      return attendanceApi.deleteClass(params);
+    },
+    onSuccess: (_res, mode) => {
+      setRoster(null);
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      toast.success(DELETE_MODE_CLASS_TOAST[mode](classLabel));
+      setClassDeleteOpen(false);
+      setClassDeleteConfirmText("");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const exportMutation = useMutation({
+    mutationFn: () =>
+      attendanceApi.viewStudents({
+        ...(className ? { class_name: className } : {}),
+        ...(section ? { section } : {}),
+        ...schoolParam,
+      }),
+    onSuccess: (blob) =>
+      downloadBlob(blob, `students${className ? `-${className}${section ? `-${section}` : ""}` : ""}.csv`),
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
   const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
+  const classLabel = `${className}${section ? `-${section}` : ""}`;
+  const classDeleteConfirmed = classDeleteConfirmText.trim() === classLabel;
 
   const visible = useMemo(() => {
     if (!roster) return [];
@@ -85,11 +155,23 @@ export function ManageStudentsPage() {
   return (
     <div className="space-y-6">
       <ModuleHeaderActions>
-        <Button asChild size="sm" variant="outline">
-          <Link to="/students/import">
-            <FileUp className="h-4 w-4" />
-            Import Students
-          </Link>
+        {canImport && (
+          <Button asChild size="sm" variant="outline">
+            <Link to="/students/import">
+              <FileUp className="h-4 w-4" />
+              Import Students
+            </Link>
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          icon={<Download className="h-4 w-4" />}
+          loading={exportMutation.isPending}
+          disabled={!schoolId || (isAdmin && !schoolName)}
+          onClick={() => exportMutation.mutate()}
+        >
+          Export CSV
         </Button>
       </ModuleHeaderActions>
       <FilterBar
@@ -165,6 +247,20 @@ export function ManageStudentsPage() {
                 placeholder="Search roll or name…"
                 className="w-full sm:w-56"
               />
+              {roster.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="danger-ghost"
+                  icon={<AlertOctagon className="h-4 w-4" />}
+                  onClick={() => {
+                    setClassDeleteMode("full");
+                    setClassDeleteConfirmText("");
+                    setClassDeleteOpen(true);
+                  }}
+                >
+                  Delete this class
+                </Button>
+              )}
             </div>
           }
         >
@@ -197,7 +293,10 @@ export function ManageStudentsPage() {
                   <Button
                     size="sm"
                     variant="danger-ghost"
-                    onClick={() => setStudentToDelete(s)}
+                    onClick={() => {
+                      setStudentDeleteMode("full");
+                      setStudentToDelete(s);
+                    }}
                     icon={<Trash2 className="h-4 w-4" />}
                     className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
                   >
@@ -210,28 +309,95 @@ export function ManageStudentsPage() {
         </Panel>
       )}
 
-      <ConfirmDialog
+      <Modal
         open={studentToDelete !== null}
-        title="Delete student?"
-        description={
-          studentToDelete && (
-            <>
-              This permanently deletes{" "}
-              <span className="font-medium text-foreground">
-                {studentToDelete.name ?? studentToDelete.roll_no}
-              </span>{" "}
-              (Roll #{studentToDelete.roll_no}) and all their attendance
-              records. This cannot be undone.
-            </>
-          )
-        }
-        confirmLabel="Delete student"
-        loading={deleteMutation.isPending}
-        onConfirm={() =>
-          studentToDelete && deleteMutation.mutate(studentToDelete.roll_no)
-        }
         onClose={() => setStudentToDelete(null)}
-      />
+        title="Delete student?"
+        icon={<AlertOctagon className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setStudentToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={deleteMutation.isPending}
+              onClick={() =>
+                studentToDelete &&
+                deleteMutation.mutate({
+                  rollNo: studentToDelete.roll_no,
+                  mode: studentDeleteMode,
+                })
+              }
+            >
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This {DELETE_MODE_CONSEQUENCE[studentDeleteMode]} for{" "}
+            <span className="font-medium text-foreground">
+              {studentToDelete?.name ?? studentToDelete?.roll_no}
+            </span>{" "}
+            (Roll #{studentToDelete?.roll_no}). This cannot be undone.
+          </p>
+          <Select
+            label="What to delete"
+            options={DELETE_MODE_OPTIONS}
+            value={studentDeleteMode}
+            onChange={(e) => setStudentDeleteMode(e.target.value as DeleteMode)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={classDeleteOpen}
+        onClose={() => setClassDeleteOpen(false)}
+        title="Delete this class?"
+        icon={<AlertOctagon className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setClassDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={classDeleteMutation.isPending}
+              disabled={!classDeleteConfirmed}
+              onClick={() => classDeleteMutation.mutate(classDeleteMode)}
+            >
+              Delete class
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This {DELETE_MODE_CONSEQUENCE[classDeleteMode]} for{" "}
+            <span className="font-medium text-foreground">every student</span> in{" "}
+            <span className="font-medium text-foreground">
+              Class {classLabel} · {session}
+            </span>
+            . This cannot be undone.
+          </p>
+          <Select
+            label="What to delete"
+            options={DELETE_MODE_OPTIONS}
+            value={classDeleteMode}
+            onChange={(e) => setClassDeleteMode(e.target.value as DeleteMode)}
+          />
+          <Input
+            label={`Type "${classLabel}" to confirm`}
+            value={classDeleteConfirmText}
+            onChange={(e) => setClassDeleteConfirmText(e.target.value)}
+            placeholder={classLabel}
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

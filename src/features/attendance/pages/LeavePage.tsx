@@ -17,6 +17,8 @@ import { Avatar } from "@/shared/components/ui/Avatar";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage, isoToIndianDate } from "@/shared/lib/utils";
 import { isStaff as isStaffRole } from "@/shared/lib/permissions";
+import { useMyChildren } from "@/features/attendance/hooks/useMyChildren";
+import { ChildSelector } from "@/features/attendance/components/ChildSelector";
 import type { LeaveStatus } from "@/features/attendance/types";
 
 function todayIso(): string {
@@ -37,6 +39,14 @@ export function LeavePage() {
   const { user } = useAuthStore();
   const isStaff = isStaffRole(user?.role);
   const queryClient = useQueryClient();
+  const {
+    isParent,
+    children,
+    selectedRoll,
+    setSelectedRoll,
+    isLoading: childrenLoading,
+    showSelector,
+  } = useMyChildren();
 
   const [session, setSession] = useState("2025-26");
   const [statusFilter, setStatusFilter] = useState(isStaff ? "pending" : "");
@@ -44,13 +54,22 @@ export function LeavePage() {
   const [end, setEnd] = useState(todayIso());
   const [reason, setReason] = useState("");
 
+  // A parent must not submit before their child selection resolves — otherwise
+  // createLeave posts without a roll_no and the backend can't disambiguate a
+  // multi-child account (the exact "specify roll_no" error the selector prevents).
+  const childSelectionPending = isParent && (childrenLoading || !selectedRoll);
+
   const { data } = useQuery({
-    queryKey: ["attendance", "leave", session, statusFilter],
-    queryFn: () =>
-      attendanceApi.listLeave({
-        session,
-        ...(statusFilter ? { status: statusFilter } : {}),
-      }),
+    queryKey: ["attendance", "leave", session, statusFilter, selectedRoll],
+    queryFn: () => {
+      // A parent's requests are scoped to the selected child; students/staff omit it.
+      const params: Record<string, string> = { session };
+      if (statusFilter) params.status = statusFilter;
+      if (isParent && selectedRoll) params.roll_no = selectedRoll;
+      return attendanceApi.listLeave(params);
+    },
+    // Wait for a child selection before listing a parent's requests.
+    enabled: !isParent || !!selectedRoll,
   });
 
   const applyMutation = useMutation({
@@ -60,6 +79,7 @@ export function LeavePage() {
         start_date: isoToIndianDate(start),
         end_date: isoToIndianDate(end),
         reason: reason || undefined,
+        ...(isParent && selectedRoll ? { roll_no: selectedRoll } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance", "leave"] });
@@ -84,8 +104,26 @@ export function LeavePage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  // Parent whose account has no approved child linked yet.
+  if (isParent && !childrenLoading && children.length === 0) {
+    return (
+      <EmptyState
+        icon={<CalendarClock className="h-9 w-9" />}
+        title="No approved child linked yet"
+        description="Once the school approves your parent account and links your child, you can apply for and track their leave here."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {showSelector && (
+        <ChildSelector
+          childrenList={children}
+          value={selectedRoll}
+          onChange={setSelectedRoll}
+        />
+      )}
       {!isStaff && (
         <FilterBar
           title="Request leave"
@@ -94,6 +132,7 @@ export function LeavePage() {
             <Button
               onClick={() => applyMutation.mutate()}
               loading={applyMutation.isPending}
+              disabled={childSelectionPending}
               icon={<Send className="h-4 w-4" />}
             >
               Submit Request

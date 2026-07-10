@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Calendar, CalendarRange } from "lucide-react";
+import { Calendar, CalendarDays, CalendarRange } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { cn } from "@/shared/lib/utils";
 import {
   AttendanceDateView,
   AttendanceRangeView,
+  ClassAttendanceCalendar,
   SelfAttendanceView,
 } from "@/features/attendance/components";
 import { isStaff } from "@/shared/lib/permissions";
@@ -21,6 +22,12 @@ const viewTabs = [
     label: "Date Range",
     hint: "Span of days",
     icon: <CalendarRange className="h-4 w-4" />,
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    hint: "Monthly %",
+    icon: <CalendarDays className="h-4 w-4" />,
   },
 ];
 
@@ -62,6 +69,7 @@ export function ViewAttendancePage() {
 
       {tab === "date" && <AttendanceDateView />}
       {tab === "range" && <AttendanceRangeView />}
+      {tab === "calendar" && <ClassAttendanceCalendar />}
     </div>
   );
 }
