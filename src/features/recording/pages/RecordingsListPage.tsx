@@ -18,6 +18,8 @@ import { Select } from "@/shared/components/ui/Select";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { useMyChildren } from "@/features/attendance/hooks/useMyChildren";
+import { ChildSelector } from "@/features/attendance/components/ChildSelector";
 import { getErrorMessage } from "@/shared/lib/utils";
 import {
   useRecordingsList,
@@ -57,6 +59,7 @@ export function RecordingsListPage() {
   const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const canManage = canManageRecordings(role);
   const canUpload = canUploadRecordings(role);
+  const myChildren = useMyChildren();
 
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS });
@@ -81,6 +84,12 @@ export function RecordingsListPage() {
     setOffset(0);
     setSelected(new Set());
   }, [schoolId]);
+
+  // Switching the viewed child (parent) resets paging — a different class scope.
+  useEffect(() => {
+    setOffset(0);
+    setSelected(new Set());
+  }, [myChildren.selectedRoll]);
 
   const handleClassChange = (className: string) => {
     setFilters((f) => ({ ...f, class: className, section: "" }));
@@ -108,6 +117,7 @@ export function RecordingsListPage() {
     school_name: isAdmin ? schoolName || undefined : undefined,
     sort_by: sortBy,
     order,
+    roll_no: myChildren.isParent ? myChildren.selectedRoll ?? undefined : undefined,
   };
 
   const { data, isLoading, isError, error, refetch, isFetching } =
@@ -175,6 +185,13 @@ export function RecordingsListPage() {
             </Link>
           </Button>
         </ModuleHeaderActions>
+      )}
+      {myChildren.showSelector && (
+        <ChildSelector
+          childrenList={myChildren.children}
+          value={myChildren.selectedRoll}
+          onChange={myChildren.setSelectedRoll}
+        />
       )}
       <FilterBar
         icon={<SlidersHorizontal className="h-4 w-4" />}
@@ -332,7 +349,12 @@ export function RecordingsListPage() {
                 selectable={canManage}
                 selected={selected.has(rec.id)}
                 onToggleSelect={toggleSelect}
-                onPreview={(id) => void preview.open(id)}
+                onPreview={(id) =>
+                  void preview.open(
+                    id,
+                    myChildren.isParent ? myChildren.selectedRoll ?? undefined : undefined,
+                  )
+                }
                 onDownload={download}
                 onRetry={retryRec}
                 onDelete={setConfirmDelete}
