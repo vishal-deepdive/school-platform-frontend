@@ -385,9 +385,9 @@ export function DashboardPage() {
   // platform-wide view; students and parents get their personal analytics.
   const isSchoolStaff = role === "principal" || role === "teacher";
   const isConsumer = role === "student" || role === "parent";
-  // Any authenticated role that isn't staff/admin/consumer (e.g. a read-only
-  // "viewer", or a role added later before its dashboard exists) still gets a
-  // clear surface instead of a blank page.
+  // Defensive: any authenticated role without a dedicated dashboard (e.g. a
+  // role added later before its view exists) still gets a clear surface
+  // instead of a blank page.
   const hasRoleView = isSchoolStaff || isAdmin || isConsumer;
 
   const handleQuickLinkClick = (e: React.MouseEvent, href: string) => {
