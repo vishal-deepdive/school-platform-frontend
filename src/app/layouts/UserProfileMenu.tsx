@@ -115,7 +115,6 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
       teacher: "bg-blue-500/10 text-blue-500 border-blue-500/20",
       student: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
       parent: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-      viewer: "bg-slate-500/10 text-slate-500 border-slate-500/20",
     };
     const colorClass =
       colors[role.toLowerCase()] || "bg-slate-500/10 text-slate-500 border-slate-500/20";

@@ -190,6 +190,14 @@ export const adminApi = {
       )
       .then((r) => r.data),
 
+  deactivateClassCode: (schoolId: string, code: string) =>
+    apiClient
+      .delete<{ message: string }>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/class-codes`,
+        { params: { code } },
+      )
+      .then((r) => r.data),
+
   // ── Teacher class assignments ──────────────────────────────────────────────
 
   listTeacherAssignments: (schoolId: string) =>
@@ -256,6 +264,17 @@ export const adminApi = {
   listUsers: (params: UserListParams) =>
     apiClient
       .get<PaginatedUsers>(`${ADMIN_BASE}/users`, { params })
+      .then((r) => r.data),
+
+  /**
+   * List users within ONE school. Works for principals (own school, scoped
+   * server-side) AND admins (any school) — the single source for the school
+   * management pickers, so principals never touch the admin-only /users
+   * directory. Pass role/status/search/limit/offset as needed.
+   */
+  listSchoolUsers: (schoolId: string, params: Omit<UserListParams, "school_id">) =>
+    apiClient
+      .get<PaginatedUsers>(`${ADMIN_BASE}/schools/${enc(schoolId)}/users`, { params })
       .then((r) => r.data),
 
   deactivateUser: (userId: string) =>

@@ -15,8 +15,11 @@ export const markAttendanceSchema = z.object({
 export const enrollSchema = z.object({
   school_name: z.string().optional(),
   session: z.string().min(1, "Session is required"),
-  class_name: z.string().optional(),
-  section: z.string().optional(),
+  // Class + section are required: enrollment writes a roster keyed by class/section,
+  // the backend rejects an unscoped enroll (teachers must name an assigned class),
+  // and mark-attendance requires the same pair — keep them consistent.
+  class_name: z.string().min(1, "Class is required"),
+  section: z.string().min(1, "Section is required"),
   subject: z.string().optional(),
 });
 
