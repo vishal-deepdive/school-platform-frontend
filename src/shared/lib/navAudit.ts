@@ -26,7 +26,7 @@ export interface NavAuditResult {
  * Pure parity check between the sidebar nav tree and the RBAC route map. Both
  * must stay in lock-step: a nav link with no ROUTE_ROLES entry silently
  * default-denies, and a role-mapped route with no nav entry is unreachable from
- * the UI (the class of bug that hid /approvals/parents).
+ * the UI.
  */
 export function auditNavPermissions(): NavAuditResult {
   const navHrefs = new Set<string>();

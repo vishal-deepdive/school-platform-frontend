@@ -477,3 +477,55 @@ export interface MyAnalyticsResponse {
   days: number;
   students: MyStudentBlock[];
 }
+
+/** A student the caller may view: themselves (student) or an approved linked
+ * child (parent). Powers the parent child-selector on Records + Leave. */
+export interface ChildItem {
+  roll_no: string;
+  student_name: string | null;
+  class_name: string | null;
+  section: string | null;
+}
+
+export interface MyChildrenResponse {
+  children: ChildItem[];
+}
+
+// ── Student / parent monthly calendar ─────────────────────────────────────────
+
+export interface StudentCalendarResponse {
+  school_name: string;
+  session: string;
+  roll_no: string;
+  student_name: string | null;
+  class_name: string | null;
+  section: string | null;
+  month: string; // YYYY-MM
+  month_label: string; // "July 2026"
+  today: string; // DD-MM-YYYY
+  days_in_month: number;
+  day_statuses: MyDayStatus[]; // only up to today when month is the current month
+  summary: MyAttendanceSummary;
+}
+
+// ── Class attendance calendar (staff) ─────────────────────────────────────────
+
+export interface ClassCalendarDay {
+  date: string; // DD-MM-YYYY
+  present: number;
+  marked: number;
+  percentage: number | null;
+}
+
+export interface ClassCalendarResponse {
+  school_name: string;
+  session: string;
+  class_name: string | null;
+  section: string | null;
+  month: string; // YYYY-MM
+  month_label: string;
+  today: string; // DD-MM-YYYY
+  enrolled: number;
+  days: ClassCalendarDay[];
+  month_percentage: number | null;
+}

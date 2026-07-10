@@ -16,6 +16,8 @@ import {
 import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { useAuthStore } from "@/features/auth/store/auth";
+import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { surveyApi } from "@/features/survey/api/survey";
 import type {
   SourceItem,
@@ -175,12 +177,14 @@ function SourceCard({
   onDelete,
   onToggleActive,
   syncing,
+  canManage,
 }: {
   source: SourceItem;
   onSync: (id: string, mode: SyncMode) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, active: boolean) => void;
   syncing: boolean;
+  canManage: boolean;
 }) {
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -254,65 +258,68 @@ function SourceCard({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
-          {source.is_active ? (
-            <>
-              <Button
-                size="sm"
-                onClick={() => onSync(source.id, "append")}
-                loading={syncing}
-                icon={<RefreshCw className="h-3.5 w-3.5" />}
-              >
-                Sync
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setConfirmReplace(true)}
-                disabled={syncing}
-                icon={<AlertTriangle className="h-3.5 w-3.5" />}
-              >
-                Replace
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onToggleActive(source.id, false)}
-                icon={<PowerOff className="h-3.5 w-3.5" />}
-              >
-                Deactivate
-              </Button>
-              <Button
-                size="sm"
-                variant="danger-ghost"
-                onClick={() => setConfirmDelete(true)}
-                icon={<Trash2 className="h-3.5 w-3.5" />}
-              >
-                Remove
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onToggleActive(source.id, true)}
-                icon={<Power className="h-3.5 w-3.5" />}
-              >
-                Reactivate
-              </Button>
-              <Button
-                size="sm"
-                variant="danger-ghost"
-                onClick={() => setConfirmDelete(true)}
-                icon={<Trash2 className="h-3.5 w-3.5" />}
-              >
-                Remove
-              </Button>
-            </>
-          )}
-        </div>
+        {/* Actions — sync/replace/deactivate/remove are admin+principal only
+            server-side; teachers get the read-only status above. */}
+        {canManage && (
+          <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
+            {source.is_active ? (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => onSync(source.id, "append")}
+                  loading={syncing}
+                  icon={<RefreshCw className="h-3.5 w-3.5" />}
+                >
+                  Sync
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmReplace(true)}
+                  disabled={syncing}
+                  icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                >
+                  Replace
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onToggleActive(source.id, false)}
+                  icon={<PowerOff className="h-3.5 w-3.5" />}
+                >
+                  Deactivate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger-ghost"
+                  onClick={() => setConfirmDelete(true)}
+                  icon={<Trash2 className="h-3.5 w-3.5" />}
+                >
+                  Remove
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onToggleActive(source.id, true)}
+                  icon={<Power className="h-3.5 w-3.5" />}
+                >
+                  Reactivate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger-ghost"
+                  onClick={() => setConfirmDelete(true)}
+                  icon={<Trash2 className="h-3.5 w-3.5" />}
+                >
+                  Remove
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </li>
 
       {/* Replace confirmation */}
@@ -654,6 +661,10 @@ export function SurveySourcePage() {
   // admins, or `undefined` for principals (scoped server-side by their session).
   const { schoolName, ready } = useActiveSchool();
   const schoolParam = schoolName || undefined;
+  const role = useAuthStore((s) => s.user?.role);
+  // Registering/syncing/deleting sources is admin+principal only server-side;
+  // a teacher gets a read-only list of connected sheets.
+  const canManage = isSchoolAdmin(role);
 
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -714,29 +725,37 @@ export function SurveySourcePage() {
     <div className="space-y-6">
       {ready && (
         <>
-          <ModuleHeaderActions>
-            <Button
-              size="sm"
-              onClick={() => setWizardOpen(true)}
-              icon={<Plus className="h-4 w-4" />}
-            >
-              Add Source
-            </Button>
-          </ModuleHeaderActions>
+          {canManage && (
+            <ModuleHeaderActions>
+              <Button
+                size="sm"
+                onClick={() => setWizardOpen(true)}
+                icon={<Plus className="h-4 w-4" />}
+              >
+                Add Source
+              </Button>
+            </ModuleHeaderActions>
+          )}
 
           {/* Empty state */}
           {sources.length === 0 ? (
             <EmptyState
               icon={<FileSpreadsheet className="h-12 w-12" />}
               title="No data sources"
-              description="Connect a public Google Sheet to start importing survey responses. You can add multiple sheets for different terms or survey types."
+              description={
+                canManage
+                  ? "Connect a public Google Sheet to start importing survey responses. You can add multiple sheets for different terms or survey types."
+                  : "No Google Sheets are connected for this school yet. Ask an admin or principal to add one."
+              }
               action={
-                <Button
-                  onClick={() => setWizardOpen(true)}
-                  icon={<Plus className="h-4 w-4" />}
-                >
-                  Add Source
-                </Button>
+                canManage ? (
+                  <Button
+                    onClick={() => setWizardOpen(true)}
+                    icon={<Plus className="h-4 w-4" />}
+                  >
+                    Add Source
+                  </Button>
+                ) : undefined
               }
             />
           ) : (
@@ -765,6 +784,7 @@ export function SurveySourcePage() {
                           toggleActive({ id, active })
                         }
                         syncing={syncing}
+                        canManage={canManage}
                       />
                     ))}
                   </ul>
@@ -791,6 +811,7 @@ export function SurveySourcePage() {
                           toggleActive({ id, active })
                         }
                         syncing={syncing}
+                        canManage={canManage}
                       />
                     ))}
                   </ul>
