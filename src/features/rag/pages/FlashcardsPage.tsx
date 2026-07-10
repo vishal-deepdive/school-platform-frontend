@@ -8,8 +8,10 @@ import { Select } from "@/shared/components/ui/Select";
 import { Modal } from "@/shared/components/ui/Modal";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { Alert } from "@/shared/components/ui/Alert";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isStaff } from "@/shared/lib/permissions";
 import {
@@ -30,7 +32,7 @@ export function FlashcardsPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canManage = isStaff(role);
 
-  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
+  const { data, isLoading, isError, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useFlashcardDecks();
   const { mutate: generate, isPending: isGenerating } = useGenerateFlashcards();
   const { mutate: removeDeck } = useDeleteFlashcardDeck();
@@ -75,6 +77,16 @@ export function FlashcardsPage() {
 
   const decks = data?.pages.flatMap((p) => p.items) ?? [];
 
+  // Ungranted teachers/students: clean access message instead of a raw error.
+  if (isError && isForbiddenError(error)) {
+    return (
+      <ForbiddenState
+        title="No access to the Study Assistant"
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal or an admin to enable Study Assistant access for you."
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <FilterBar
@@ -113,6 +125,11 @@ export function FlashcardsPage() {
           </p>
         )}
       </FilterBar>
+
+      {/* Non-403 failures (500/timeout): the forbidden case returned above, so a
+          surviving error here is a genuine load failure — surface it rather than
+          masking it behind the empty state. */}
+      {isError && <Alert variant="error">{getErrorMessage(error)}</Alert>}
 
       {isLoading ? (
         <PageSkeleton showStats={false} content="card" />

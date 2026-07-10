@@ -81,6 +81,8 @@ export interface RecordingListQuery {
   school_name?: string;
   sort_by?: RecordingSortBy;
   order?: "asc" | "desc";
+  /** Parent only: which linked child's class to scope to. */
+  roll_no?: string;
 }
 
 export interface RecordingsListResponse {

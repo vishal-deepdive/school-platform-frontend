@@ -15,7 +15,8 @@ import { Modal } from "@/shared/components/ui/Modal";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
-import { getErrorMessage, formatDate, cn } from "@/shared/lib/utils";
+import { getErrorMessage, formatDate, cn, isForbiddenError } from "@/shared/lib/utils";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import { useAssignments, useAssignment } from "@/features/rag/hooks/useRag";
 import { PracticeBuilderModal } from "@/features/rag/components/PracticeBuilderModal";
 import { QuizRunner } from "@/features/rag/components/QuizRunner";
@@ -36,6 +37,17 @@ export function PracticePage() {
   const items = data?.pages.flatMap((p) => p.items) ?? [];
 
   if (isLoading) return <PageSkeleton />;
+
+  // Ungranted teachers/students land here from the nav; show a clean access
+  // message instead of a raw error (matches the Textbook Library pattern).
+  if (isError && isForbiddenError(error)) {
+    return (
+      <ForbiddenState
+        title="No access to the Study Assistant"
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal or an admin to enable Study Assistant access for you."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
