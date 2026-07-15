@@ -9,8 +9,32 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { Panel } from "@/shared/components/ui/Panel";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
+
+function RecordingsListSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-md" />
+          ))}
+        </div>
+      </div>
+      <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
+          <Skeleton className="h-4 w-4" />
+        </div>
+        <ListSkeleton items={5} />
+      </div>
+    </div>
+  );
+}
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Input } from "@/shared/components/ui/Input";
@@ -163,7 +187,7 @@ export function RecordingsListPage() {
       return next;
     });
 
-  if (isLoading) return <PageSkeleton showStats={false} content="list" />;
+  if (isLoading) return <RecordingsListSkeleton />;
   if (isError)
     return (
       <Alert variant="error">

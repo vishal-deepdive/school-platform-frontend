@@ -1,5 +1,7 @@
 import { cn } from "@/shared/lib/utils";
 import { useCountUp } from "@/shared/hooks/useCountUp";
+import { motion } from "framer-motion";
+import { cardHover } from "@/features/landing/animations";
 
 /**
  * Renders a stat value, easing the number up on mount/change. Animates only a
@@ -59,21 +61,25 @@ export function Card({
   hoverable = false,
   variant = "default",
 }: CardProps) {
+  const Component = hoverable ? motion.div : ("div" as any);
   return (
-    <div
+    <Component
       className={cn(
-        // Flat at rest — elevation only appears on hover.
-        "rounded-xl border shadow-none transition-all duration-300 ease-out",
-        // "hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_10px_24px_-6px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_10px_28px_-8px_rgba(0,0,0,0.55)]",
+        "rounded-xl border",
+        !hoverable && "transition-all duration-300 ease-out shadow-none",
         variantClasses[variant],
-        hoverable &&
-          "hover:-translate-y-0.5 hover:border-primary/25 dark:hover:border-primary/35 cursor-pointer",
+        hoverable && "cursor-pointer hover:border-primary/25 dark:hover:border-primary/35",
         paddingClasses[padding],
         className,
       )}
+      {...(hoverable ? {
+        variants: cardHover,
+        initial: "rest",
+        whileHover: "hover",
+      } : {})}
     >
       {children}
-    </div>
+    </Component>
   );
 }
 
@@ -153,7 +159,7 @@ export function StatCard({
   color = "primary",
   className,
   description,
-  hoverable = false,
+  hoverable = true,
 }: StatCardProps) {
   return (
     <Card

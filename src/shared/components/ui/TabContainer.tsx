@@ -109,7 +109,7 @@ export function TabContainer({ className }: TabContainerProps) {
           inside stay visibly elevated. */}
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-hidden rounded-2xl bg-gradient-to-br from-primary/[0.02] via-muted/30 to-primary/[0.06] dark:from-primary/[0.03] dark:via-black/25 dark:to-primary/[0.09]",
+          "min-h-0 flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-muted/10 to-primary/[0.03] dark:from-black/20 dark:to-primary/[0.03]",
           "border border-border/60 dark:border-border/50",
         )}
       >
