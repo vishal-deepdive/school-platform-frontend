@@ -1,6 +1,6 @@
 import { Suspense, useState } from "react";
 import { Outlet } from "react-router-dom";
-import { Sidebar } from "./Sidebar";
+import { Sidebar } from "./sidebar";
 import { Header } from "./Header";
 import { MobileTabBar } from "./MobileTabBar";
 import { CommandPalette } from "./CommandPalette";

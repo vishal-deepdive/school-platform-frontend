@@ -217,7 +217,7 @@ export function CommandPalette() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/40 p-4 pt-[15vh] backdrop-blur-sm animate-in fade-in duration-150"
+      className="fixed inset-0 z-[100] flex items-start justify-center bg-black/20 dark:bg-black/40 p-4 pt-[15vh] backdrop-blur-sm animate-in fade-in duration-150"
       onClick={() => setOpen(false)}
       role="presentation"
     >
@@ -226,10 +226,10 @@ export function CommandPalette() {
         aria-modal="true"
         aria-label="Command palette"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-2xl animate-in zoom-in-95 slide-in-from-top-2 duration-150"
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-border/60 glass-panel text-popover-foreground shadow-2xl animate-in zoom-in-95 slide-in-from-top-2 duration-150"
       >
-        <div className="flex items-center gap-2 border-b border-border px-4">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="flex items-center gap-2 px-4 pt-2">
+          <Search className="h-5 w-5 shrink-0 text-muted-foreground" />
           <input
             ref={inputRef}
             value={query}
@@ -269,10 +269,10 @@ export function CommandPalette() {
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(a.href)}
                   className={cn(
-                    "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
+                    "flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-all border-l-[3px]",
                     i === active
-                      ? "bg-accent text-accent-foreground"
-                      : "text-foreground",
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-transparent text-foreground hover:bg-muted/50",
                   )}
                 >
                   <span className="shrink-0 text-muted-foreground">{a.icon}</span>
