@@ -129,6 +129,12 @@ export function useSubmitRagFeedback() {
   });
 }
 
+export function useDownloadPdf() {
+  return useMutation({
+    mutationFn: (data: { markdown: string; title?: string }) => ragApi.downloadPdf(data),
+  });
+}
+
 // ── Learning loop: practice / assignments ─────────────────────────────────────
 
 export function useGeneratePractice() {

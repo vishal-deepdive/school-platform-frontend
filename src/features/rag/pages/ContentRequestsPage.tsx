@@ -10,7 +10,6 @@ import { Tabs } from "@/shared/components/ui/Tabs";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Textarea } from "@/shared/components/ui/Textarea";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -51,6 +50,32 @@ const STATUS_OPTIONS = [
   { value: "dismissed", label: "Dismissed" },
 ];
 
+import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+
+function ContentRequestsSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-9 w-32 rounded-md" />
+      </div>
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-9 w-20 rounded-full" />
+        <Skeleton className="h-9 w-20 rounded-full" />
+        <Skeleton className="h-9 w-20 rounded-full" />
+        <Skeleton className="h-9 w-20 rounded-full" />
+      </div>
+      <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <ListSkeleton items={5} />
+      </div>
+    </div>
+  );
+}
+
 export function ContentRequestsPage() {
   const queryClient = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
@@ -84,7 +109,7 @@ export function ContentRequestsPage() {
       {isError && <Alert variant="error">{getErrorMessage(error)}</Alert>}
 
       {isLoading ? (
-        <PageSkeleton showStats={false} content="list" />
+        <ContentRequestsSkeleton />
       ) : items.length === 0 ? (
         <EmptyState
           icon={<BookPlus className="h-12 w-12" />}

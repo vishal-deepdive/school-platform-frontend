@@ -1,12 +1,12 @@
 import { useRef } from "react";
-import { RotateCcw, Download, Printer, Square } from "lucide-react";
+import { RotateCcw, Download, Printer, Square, Sparkles } from "lucide-react";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
-import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
-import { downloadFile } from "@/shared/lib/utils";
+import { downloadBlob } from "@/shared/lib/utils";
 import toast from "@/shared/lib/toast";
+import { useDownloadPdf } from "@/features/rag/hooks/useRag";
 
 /**
  * Print the already-rendered markdown by cloning its HTML into a detached
@@ -71,6 +71,7 @@ export function StreamingResultPanel({
   onStop,
 }: StreamingResultPanelProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const { mutate: downloadPdf, isPending: downloadingPdf } = useDownloadPdf();
   const stopButton = onStop && isPending && (
     <Button
       variant="outline"
@@ -127,10 +128,19 @@ export function StreamingResultPanel({
             <Button
               variant="outline"
               size="sm"
-              icon={<Download className="h-4 w-4" />}
-              onClick={() => downloadFile(result, filename)}
+              loading={downloadingPdf}
+              icon={!downloadingPdf ? <Download className="h-4 w-4" /> : undefined}
+              onClick={() => {
+                downloadPdf(
+                  { markdown: result, title: filename.replace(".md", "") },
+                  {
+                    onSuccess: (blob) => downloadBlob(blob, filename.replace(".md", ".pdf")),
+                    onError: () => toast.error("Failed to generate PDF")
+                  }
+                );
+              }}
             >
-              Download
+              {downloadingPdf ? "Generating PDF…" : "Download PDF"}
             </Button>
           </>
         }
@@ -150,20 +160,11 @@ export function StreamingResultPanel({
   if (isPending) {
     return (
       <Panel icon={<Icon className="h-4 w-4" />} title={title} actions={stopButton}>
-        <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="flex gap-1">
-            {[0, 1, 2].map((i) => (
-              <span
-                key={i}
-                className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
-                style={{ animationDelay: `${i * 0.15}s` }}
-              />
-            ))}
+        <div className="flex h-32 items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20">
+          <Sparkles className="h-5 w-5 animate-pulse text-primary" />
+          <span className="text-sm font-medium text-muted-foreground animate-pulse">
+            {pendingMessage}
           </span>
-          {pendingMessage}
-        </div>
-        <div className="rounded-lg bg-muted/40 p-4">
-          <SkeletonText lines={6} />
         </div>
       </Panel>
     );

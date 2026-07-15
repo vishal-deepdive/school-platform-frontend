@@ -233,17 +233,9 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
         ) : message.content ? (
           <MarkdownRenderer content={message.content} streaming={isStreaming} />
         ) : isStreaming ? (
-          <div className="flex items-center gap-2 py-1.5 text-sm text-muted-foreground">
-            <span>Thinking</span>
-            <span className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/50"
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                />
-              ))}
-            </span>
+          <div className="flex w-fit items-center gap-2 rounded-full border border-border/50 bg-muted/30 px-4 py-2 text-sm text-muted-foreground shadow-sm">
+            <Sparkles className="h-4 w-4 animate-pulse text-primary" />
+            <span className="animate-pulse font-medium">Thinking...</span>
           </div>
         ) : null}
 
