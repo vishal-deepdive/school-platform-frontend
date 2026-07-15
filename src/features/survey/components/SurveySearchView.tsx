@@ -364,23 +364,17 @@ export function SurveySearchView() {
       {hasResult && (
         <div className="space-y-4">
           {/* Status bar */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
             {intent && (
-              <Badge variant={intentConfig[intent].color}>
+              <Badge variant={intentConfig[intent].color as any}>
                 {intentConfig[intent].label}
               </Badge>
             )}
-            {sampleSize !== null && (
+            {sampleSize !== null && sampleSize > 0 && (
               <Badge variant="default">
                 <Users className="h-3 w-3 mr-1" />
                 {sampleSize.toLocaleString()} responses
               </Badge>
-            )}
-            {streaming && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Generating insight…
-              </span>
             )}
           </div>
 
@@ -415,7 +409,12 @@ export function SurveySearchView() {
                 className="text-sm"
               />
             ) : streaming ? (
-              <SkeletonText lines={5} />
+              <div className="flex h-24 items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20">
+                <Sparkles className="h-5 w-5 animate-pulse text-primary" />
+                <span className="text-sm font-medium text-muted-foreground animate-pulse">
+                  Generating insight...
+                </span>
+              </div>
             ) : null}
           </Panel>
 

@@ -7,8 +7,22 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { Panel } from "@/shared/components/ui/Panel";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
+
+function RecordingAuditSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center justify-end gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-9 w-24 rounded-md" />
+        </div>
+        <ListSkeleton items={5} />
+      </div>
+    </div>
+  );
+}
 
 const PAGE_SIZE = 20;
 
@@ -29,7 +43,7 @@ export function RecordingAuditPage() {
   const goNext = () => setOffset((o) => o + PAGE_SIZE);
   const goPrev = () => setOffset((o) => Math.max(0, o - PAGE_SIZE));
 
-  if (isLoading) return <PageSkeleton showStats={false} content="table" />;
+  if (isLoading) return <RecordingAuditSkeleton />;
   if (isError) return <Alert variant="error">{getErrorMessage(error) || "Failed to load audit logs."}</Alert>;
 
   return (

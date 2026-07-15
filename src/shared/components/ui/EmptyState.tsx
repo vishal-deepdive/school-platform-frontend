@@ -27,7 +27,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   const content = (
     <>
-      <div className="text-muted-foreground/40">{icon}</div>
+      <div className="text-muted-foreground/40 animate-float">{icon}</div>
       <div>
         <p className="font-semibold text-foreground">{title}</p>
         {description && (
