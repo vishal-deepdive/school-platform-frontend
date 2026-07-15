@@ -16,7 +16,7 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
-import { downloadBlob, formatDateTime, getErrorMessage } from "@/shared/lib/utils";
+import { downloadBlob, formatDateTime, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
 import type { ChangeLogEntry } from "@/features/attendance/types";
 
 // Mirrors the backend's JSON-path cap (attendance/repository.py
@@ -65,12 +65,21 @@ export function ChangeLogPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const exportCsv = useMutation({
-    mutationFn: () => attendanceApi.exportChangeLog(buildParams()),
-    onSuccess: (blob) =>
-      downloadBlob(blob, `change-log-${new Date().toISOString().slice(0, 10)}.csv`),
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
+  const exportCsv = () => {
+    if (!entries || entries.length === 0) return;
+    const csvContent = jsonToCsv(entries, [
+      { header: "Timestamp", getValue: (e) => formatDateTime(e.timestamp) },
+      { header: "Change Type", getValue: (e) => e.change_type },
+      { header: "Roll No", getValue: (e) => String(e.roll_no || "—") },
+      { header: "Class", getValue: (e) => String(e.class_name || "—") },
+      { header: "Section", getValue: (e) => String(e.section || "—") },
+      { header: "Subject", getValue: (e) => String(e.subject || "—") },
+      { header: "Session", getValue: (e) => String(e.session || "—") },
+      { header: "Details", getValue: (e) => String(e.details || "—") },
+    ]);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    downloadBlob(blob, `change-log-${new Date().toISOString().slice(0, 10)}.csv`);
+  };
 
   const canSearch = !isAdmin || !!schoolName;
 
@@ -81,9 +90,8 @@ export function ChangeLogPage() {
           size="sm"
           variant="outline"
           icon={<Download className="h-4 w-4" />}
-          loading={exportCsv.isPending}
           disabled={!entries || entries.length === 0}
-          onClick={() => exportCsv.mutate()}
+          onClick={exportCsv}
         >
           Export CSV
         </Button>

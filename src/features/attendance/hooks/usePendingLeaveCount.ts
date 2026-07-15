@@ -19,6 +19,7 @@ export function usePendingLeaveCount(): number {
     queryKey: ["attendance", "leave", "pending-count", schoolParam],
     queryFn: () =>
       attendanceApi.listLeave({
+        session: "2025-26",
         status: "pending",
         limit: "1",
         ...schoolParam,

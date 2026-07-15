@@ -20,6 +20,7 @@ import { isStaff as isStaffRole } from "@/shared/lib/permissions";
 import { useMyChildren } from "@/features/attendance/hooks/useMyChildren";
 import { ChildSelector } from "@/features/attendance/components/ChildSelector";
 import type { LeaveStatus } from "@/features/attendance/types";
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 
 function todayIso(): string {
   const d = new Date();
@@ -47,6 +48,7 @@ export function LeavePage() {
     isLoading: childrenLoading,
     showSelector,
   } = useMyChildren();
+  const { schoolParam, ready } = useActiveSchool();
 
   const [session, setSession] = useState("2025-26");
   const [statusFilter, setStatusFilter] = useState(isStaff ? "pending" : "");
@@ -60,16 +62,17 @@ export function LeavePage() {
   const childSelectionPending = isParent && (childrenLoading || !selectedRoll);
 
   const { data } = useQuery({
-    queryKey: ["attendance", "leave", session, statusFilter, selectedRoll],
+    queryKey: ["attendance", "leave", session, statusFilter, selectedRoll, schoolParam],
     queryFn: () => {
       // A parent's requests are scoped to the selected child; students/staff omit it.
-      const params: Record<string, string> = { session };
+      const params: Record<string, string> = { session, ...schoolParam };
       if (statusFilter) params.status = statusFilter;
       if (isParent && selectedRoll) params.roll_no = selectedRoll;
       return attendanceApi.listLeave(params);
     },
     // Wait for a child selection before listing a parent's requests.
-    enabled: !isParent || !!selectedRoll,
+    // Also wait for active school if they are staff (admin needs to select one).
+    enabled: (!isParent || !!selectedRoll) && (!isStaff || ready),
   });
 
   const applyMutation = useMutation({

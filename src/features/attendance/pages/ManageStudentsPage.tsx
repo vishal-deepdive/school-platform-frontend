@@ -21,7 +21,7 @@ import { Avatar } from "@/shared/components/ui/Avatar";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
-import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
+import { downloadBlob, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
 
 type DeleteMode = "full" | "database" | "attendance";
@@ -125,17 +125,15 @@ export function ManageStudentsPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const exportMutation = useMutation({
-    mutationFn: () =>
-      attendanceApi.viewStudents({
-        ...(className ? { class_name: className } : {}),
-        ...(section ? { section } : {}),
-        ...schoolParam,
-      }),
-    onSuccess: (blob) =>
-      downloadBlob(blob, `students${className ? `-${className}${section ? `-${section}` : ""}` : ""}.csv`),
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
+  const handleExportCSV = () => {
+    if (!visible || visible.length === 0) return;
+    const csvContent = jsonToCsv(visible, [
+      { header: "Roll No", getValue: (s) => String(s.roll_no) },
+      { header: "Name", getValue: (s) => String(s.name ?? "—") },
+    ]);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    downloadBlob(blob, `students${className ? `-${className}${section ? `-${section}` : ""}` : ""}.csv`);
+  };
 
   const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
   const classLabel = `${className}${section ? `-${section}` : ""}`;
@@ -167,9 +165,8 @@ export function ManageStudentsPage() {
           size="sm"
           variant="outline"
           icon={<Download className="h-4 w-4" />}
-          loading={exportMutation.isPending}
-          disabled={!schoolId || (isAdmin && !schoolName)}
-          onClick={() => exportMutation.mutate()}
+          disabled={!schoolId || (isAdmin && !schoolName) || visible.length === 0}
+          onClick={handleExportCSV}
         >
           Export CSV
         </Button>

@@ -12,6 +12,12 @@ import { isStaff } from "@/shared/lib/permissions";
 
 const viewTabs = [
   {
+    id: "calendar",
+    label: "Calendar",
+    hint: "Monthly %",
+    icon: <CalendarDays className="h-4 w-4" />,
+  },
+  {
     id: "date",
     label: "By Date",
     hint: "Single day",
@@ -23,17 +29,11 @@ const viewTabs = [
     hint: "Span of days",
     icon: <CalendarRange className="h-4 w-4" />,
   },
-  {
-    id: "calendar",
-    label: "Calendar",
-    hint: "Monthly %",
-    icon: <CalendarDays className="h-4 w-4" />,
-  },
 ];
 
 export function ViewAttendancePage() {
   const role = useAuthStore((s) => s.user?.role);
-  const [tab, setTab] = useState("date");
+  const [tab, setTab] = useState("calendar");
 
   if (!isStaff(role)) {
     return <SelfAttendanceView />;
@@ -42,7 +42,7 @@ export function ViewAttendancePage() {
   return (
     <div className="space-y-6">
       {/* Modern segmented control — clearer than an underline tab row */}
-      <div className="inline-flex w-full gap-1 rounded-2xl border border-border/60 bg-muted p-1 sm:w-auto">
+      <div className="inline-flex w-full gap-1 rounded-2xl border border-border/60 bg-gray-100 dark:bg-muted p-1 sm:w-auto">
         {viewTabs.map((t) => {
           const active = tab === t.id;
           return (
