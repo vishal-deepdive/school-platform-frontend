@@ -17,6 +17,7 @@ import {
   isoToIndianDate,
   downloadBlob,
   getErrorMessage,
+  jsonToCsv,
 } from "@/shared/lib/utils";
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
@@ -176,15 +177,17 @@ export function AttendanceDateView() {
   const runSearch = () => setApplied({ scope, date: dateIso });
 
   const handleExportCSV = async () => {
-    if (!applied) return;
-    const s = applied.scope;
-    const blob = await attendanceApi.exportAttendanceOnDate({
-      date: isoToIndianDate(applied.date),
-      ...(schoolName ? { school_name: schoolName } : {}),
-      ...(s.className ? { class_name: s.className } : {}),
-      ...(s.section ? { section: s.section } : {}),
-      ...(s.subject ? { subject: s.subject } : {}),
-    });
+    if (!applied || visible.length === 0) return;
+    const csvContent = jsonToCsv(visible, [
+      { header: "Roll No", getValue: (r) => String(r.roll_number ?? "—") },
+      { header: "Name", getValue: (r) => String(r.name ?? "—") },
+      { header: "Class", getValue: (r) => String(r.class ?? "—") },
+      { header: "Section", getValue: (r) => String(r.section ?? "—") },
+      { header: "Subject", getValue: (r) => String(r.subject || "—") },
+      { header: "Status", getValue: (r) => statusLabel(String(r.attendance_record)) },
+      { header: "Time", getValue: (r) => String(r.time || "—") },
+    ]);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     downloadBlob(blob, `attendance-${isoToIndianDate(applied.date)}.csv`);
   };
 
