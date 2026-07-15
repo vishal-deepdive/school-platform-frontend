@@ -212,3 +212,23 @@ export function sortClassesDescending(classes: string[]): string[] {
     return a.localeCompare(b);
   });
 }
+
+/**
+ * Converts an array of objects to a CSV string.
+ */
+export function jsonToCsv<T>(
+  data: T[],
+  columns: { header: string; getValue: (row: T) => string }[]
+): string {
+  const escapeCsv = (val: string) => {
+    if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+      return `"${val.replace(/"/g, '""')}"`;
+    }
+    return val;
+  };
+  const headers = columns.map((c) => escapeCsv(c.header)).join(",");
+  const rows = data.map((row) =>
+    columns.map((c) => escapeCsv(c.getValue(row))).join(",")
+  );
+  return [headers, ...rows].join("\n");
+}

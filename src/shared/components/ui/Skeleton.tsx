@@ -13,9 +13,8 @@ export function Skeleton({
       aria-hidden="true"
       style={style}
       className={cn(
-        "relative overflow-hidden rounded-lg bg-muted/80",
-        "after:absolute after:inset-0 after:-translate-x-full after:animate-shimmer",
-        "after:bg-gradient-to-r after:from-transparent after:via-foreground/[0.05] after:to-transparent dark:after:via-foreground/[0.04]",
+        "rounded-lg bg-muted/80 animate-shimmer",
+        "bg-[length:400%_100%] bg-gradient-to-r from-muted/80 from-35% via-foreground/[0.06] via-50% to-muted/80 to-65% dark:via-foreground/[0.04]",
         className,
       )}
     />

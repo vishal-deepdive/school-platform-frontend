@@ -50,7 +50,7 @@ export default {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
         // Headings, greetings, and stat values only — body copy stays Inter.
-        display: ["Bricolage Grotesque", "Inter", "system-ui", "sans-serif"],
+        display: ["Outfit", "Inter", "system-ui", "sans-serif"],
       },
       animation: {
         "fade-in": "fadeIn 0.2s ease-in-out",
@@ -58,7 +58,7 @@ export default {
         "slide-up": "slideUp 0.3s ease-out",
         "nav-item-in": "navItemIn 0.3s ease-out both",
         "notch-in": "fadeIn 0.25s ease-out 0.12s both",
-        shimmer: "shimmer 1.8s ease-in-out infinite",
+        shimmer: "shimmer 2.5s ease-in-out infinite",
         marquee: "marquee 32s linear infinite",
         float: "float 6s ease-in-out infinite",
       },
@@ -76,8 +76,8 @@ export default {
           "100%": { opacity: "1", transform: "translateX(0)" },
         },
         shimmer: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(100%)" },
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
         },
         slideIn: {
           "0%": { transform: "translateX(-100%)" },
@@ -94,5 +94,6 @@ export default {
       },
     },
   },
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   plugins: [require("@tailwindcss/typography"), require("tailwindcss-animate")],
 } satisfies Config;
