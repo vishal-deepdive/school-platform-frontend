@@ -32,7 +32,21 @@ import { Select } from "@/shared/components/ui/Select";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+
+function SurveySourceSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center justify-between gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+        <ListSkeleton items={4} />
+      </div>
+    </div>
+  );
+}
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Panel } from "@/shared/components/ui/Panel";
 
@@ -719,7 +733,7 @@ export function SurveySourcePage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  if (isLoading && ready) return <PageSkeleton showStats={false} content="list" />;
+  if (isLoading && ready) return <SurveySourceSkeleton />;
 
   return (
     <div className="space-y-6">

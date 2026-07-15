@@ -21,8 +21,32 @@ import { StatCard } from "@/shared/components/ui/Card";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, StatCardSkeleton, CardSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
+
+function SurveyDashboardSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <Skeleton className="h-5 w-48" />
+        <div className="flex gap-3">
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-32 rounded-md" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+      <CardSkeleton lines={4} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <CardSkeleton lines={6} />
+        <CardSkeleton lines={6} />
+      </div>
+    </div>
+  );
+}
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 
 const SYNC_POLL_MS = 3000;
@@ -195,7 +219,7 @@ export function SurveyDashboardPage() {
     }
   }, [syncJob, syncJobId, qc]);
 
-  if (isLoading) return <PageSkeleton />;
+  if (isLoading) return <SurveyDashboardSkeleton />;
   if (isError)
     return (
       <Alert variant="error">
