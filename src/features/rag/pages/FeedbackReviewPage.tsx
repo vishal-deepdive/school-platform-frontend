@@ -13,7 +13,6 @@ import { Tabs } from "@/shared/components/ui/Tabs";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { getErrorMessage, formatDateTime } from "@/shared/lib/utils";
 import { useFeedbackReview } from "@/features/rag/hooks/useRag";
@@ -30,6 +29,30 @@ const ratingParam: Record<string, number | undefined> = {
   up: 1,
   all: undefined,
 };
+
+import { Skeleton, StatCardSkeleton, CardSkeleton } from "@/shared/components/ui/Skeleton";
+
+function FeedbackReviewSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-9 w-24 rounded-full" />
+        <Skeleton className="h-9 w-20 rounded-full" />
+        <Skeleton className="h-9 w-24 rounded-full" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <CardSkeleton key={i} lines={3} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function FeedbackReviewPage() {
   const [tab, setTab] = useState("down");
@@ -79,7 +102,7 @@ export function FeedbackReviewPage() {
       {isError && <Alert variant="error">{getErrorMessage(error)}</Alert>}
 
       {isLoading ? (
-        <PageSkeleton showStats={false} content="list" />
+        <FeedbackReviewSkeleton />
       ) : items.length === 0 ? (
         <EmptyState
           icon={<MessageSquareWarning className="h-12 w-12" />}

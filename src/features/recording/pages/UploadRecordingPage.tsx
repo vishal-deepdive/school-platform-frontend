@@ -17,7 +17,7 @@ import {
   MAX_UPLOAD_BYTES,
   type OptimizeProgress,
 } from "@/features/recording/lib/optimizeAudio";
-import { getErrorMessage, downloadFile, formatFileSize } from "@/shared/lib/utils";
+import { getErrorMessage, downloadBlob, formatFileSize } from "@/shared/lib/utils";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
@@ -229,6 +229,12 @@ export function UploadRecordingPage() {
       });
     }
   }, [isComplete, jobId, markdown]);
+
+  const { mutate: downloadPdf, isPending: downloadingPdf } = useMutation({
+    mutationFn: () => recordingApi.downloadResult(jobId!, "pdf"),
+    onSuccess: (blob) => downloadBlob(blob, `study-materials-${jobId}.pdf`),
+    onError: () => toast.error("Failed to generate PDF"),
+  });
 
   const handleUpload = async () => {
     if (!file[0]) {
@@ -450,11 +456,10 @@ export function UploadRecordingPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  downloadFile(markdown, `study-materials-${jobId}.md`)
-                }
+                loading={downloadingPdf}
+                onClick={() => downloadPdf()}
               >
-                Download .md
+                {downloadingPdf ? "Generating PDF…" : "Download PDF"}
               </Button>
             </div>
           }
