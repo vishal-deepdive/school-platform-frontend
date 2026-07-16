@@ -85,8 +85,8 @@ export function SecondaryNav({
                           cn(
                             "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             isActive
-                              ? "bg-primary/10 font-semibold text-primary"
-                              : "font-medium text-slate-600 dark:text-slate-400 hover:bg-muted/60 hover:text-foreground",
+                              ? "bg-primary/15 dark:bg-primary/10 font-semibold text-primary"
+                              : "font-medium text-slate-600 dark:text-slate-400 hover:bg-primary/5 dark:hover:bg-muted/60 hover:text-foreground",
                           )
                         }
                       >

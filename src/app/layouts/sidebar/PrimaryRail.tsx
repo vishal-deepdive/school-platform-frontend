@@ -137,7 +137,7 @@ export function PrimaryRail({
                       "flex flex-col items-center gap-1 py-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       isActive
                         ? "w-[calc(100%+0.5rem)] rounded-l-lg text-primary"
-                        : "w-full rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-700/40 hover:text-foreground",
+                        : "w-full rounded-lg text-slate-600 dark:text-slate-400 hover:bg-primary/10 dark:hover:bg-slate-700/40 hover:text-primary dark:hover:text-foreground",
                       gated && "opacity-45",
                     )}
                     aria-label={item.label}
