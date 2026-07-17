@@ -383,7 +383,7 @@ export function SurveySearchView() {
       {/* ── Analyzing skeleton (query sent, nothing returned yet) ─── */}
       {streaming && !hasResult && (
         <Panel title="AI Insight" icon={<Bot className="h-4 w-4" />}>
-          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="flex gap-1">
               {[0, 1, 2].map((i) => (
                 <span
@@ -395,7 +395,6 @@ export function SurveySearchView() {
             </span>
             Analyzing your data…
           </div>
-          <SkeletonText lines={5} />
         </Panel>
       )}
 
@@ -448,11 +447,17 @@ export function SurveySearchView() {
                 className="text-sm"
               />
             ) : streaming ? (
-              <div className="flex h-24 items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20">
-                <Sparkles className="h-5 w-5 animate-pulse text-primary" />
-                <span className="text-sm font-medium text-muted-foreground animate-pulse">
-                  Generating insight...
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
                 </span>
+                Generating insight...
               </div>
             ) : null}
           </Panel>
