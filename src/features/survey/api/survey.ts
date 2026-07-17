@@ -5,6 +5,8 @@ import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   SurveyStatusResponse,
   SurveyAnalyticsResponse,
+  SurveyCyclesResponse,
+  SurveyThemesResponse,
   SearchRequest,
   SearchResponse,
   SearchStreamEvent,
@@ -34,12 +36,40 @@ export const surveyApi = {
   /**
    * Feedback satisfaction analytics for the dashboard. Staff are scoped to their
    * own school server-side; admins pass the active school's name to scope to it
-   * (omit for cross-school totals).
+   * (omit for cross-school totals). Pass `cycle` to filter to one survey term
+   * (omit, or "all", for every cycle combined) — the response always includes a
+   * `trend` comparing the two most recent cycles when at least two exist.
    */
-  getAnalytics: (schoolName?: string) =>
+  getAnalytics: (schoolName?: string, cycle?: string) =>
     apiClient
       .get<SurveyAnalyticsResponse>(`${BASE}/analytics`, {
+        params: {
+          ...(schoolName ? { school_name: schoolName } : {}),
+          ...(cycle ? { cycle } : {}),
+        },
+      })
+      .then((r) => r.data),
+
+  /** Distinct survey cycles (terms) for the school, oldest first — feeds the cycle selector. */
+  getCycles: (schoolName?: string) =>
+    apiClient
+      .get<SurveyCyclesResponse>(`${BASE}/cycles`, {
         params: schoolName ? { school_name: schoolName } : undefined,
+      })
+      .then((r) => r.data),
+
+  /**
+   * Top recurring feedback themes, clustered from existing feedback embeddings.
+   * Cached server-side for ~30 minutes; pass `refresh: true` to force recomputation.
+   */
+  getThemes: (opts?: { schoolName?: string; sourceIds?: string[]; refresh?: boolean }) =>
+    apiClient
+      .get<SurveyThemesResponse>(`${BASE}/themes`, {
+        params: {
+          ...(opts?.schoolName ? { school_name: opts.schoolName } : {}),
+          ...(opts?.sourceIds?.length ? { source_ids: opts.sourceIds.join(",") } : {}),
+          ...(opts?.refresh ? { refresh: true } : {}),
+        },
       })
       .then((r) => r.data),
 
