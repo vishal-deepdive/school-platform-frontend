@@ -34,7 +34,6 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Table, type Column } from "@/shared/components/ui/Table";
 import { SurveyChart } from "./SurveyChart";
