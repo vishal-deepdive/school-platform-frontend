@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format, isAfter, isValid, parse, startOfMonth } from "date-fns";
-import { CalendarDays, Percent, Users } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { attendanceApi } from "@/features/attendance/api/attendance";
@@ -11,9 +11,7 @@ import {
   type ScopeValue,
 } from "@/features/attendance/components/AttendanceScopeFilters";
 import { MonthCalendarShell } from "@/features/attendance/components/MonthCalendarShell";
-import { StatCard } from "@/shared/components/ui/Card";
 import { Alert } from "@/shared/components/ui/Alert";
-import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { cn, getErrorMessage } from "@/shared/lib/utils";
@@ -23,6 +21,11 @@ function dayCellSkeleton(i: number) {
   return <Skeleton key={i} className="aspect-square rounded-lg" />;
 }
 
+interface Props {
+  selectedDate?: string | null;
+  onDateSelect?: (date: string, scope: ScopeValue) => void;
+}
+
 /**
  * Month-grid calendar showing daily class attendance percentage for staff.
  * Each day is a color-graded cell (green ≥75%, amber 60–74%, red <60%,
@@ -30,7 +33,7 @@ function dayCellSkeleton(i: number) {
  * full class scope (teachers without an explicit class see their assigned
  * classes combined).
  */
-export function ClassAttendanceCalendar() {
+export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
   const { schoolName, ready } = useActiveSchool();
   const [scope, setScope] = usePersistedState<ScopeValue>("att.calendar.scope", {
     className: "",
@@ -85,17 +88,12 @@ export function ClassAttendanceCalendar() {
     return isValid(parsed) ? parsed : new Date();
   }, [data?.today]);
 
-  const monthPercentage = isCurrentMonthData ? data?.month_percentage : undefined;
-  const enrolled = isCurrentMonthData ? data?.enrolled : undefined;
-  const markedDays = isCurrentMonthData
-    ? (data?.days.filter((d) => d.marked > 0).length ?? 0)
-    : 0;
 
   return (
     <div className="space-y-6">
-      <FilterBar title="Scope" icon={<Users className="h-4 w-4" />}>
+      {/* <FilterBar title="Scope" icon={<Users className="h-4 w-4" />}>
         <AttendanceScopeFilters value={scope} onChange={setScope} showSubject={false} />
-      </FilterBar>
+      </FilterBar> */}
 
       {isError && (
         <Alert variant="error">
@@ -103,35 +101,27 @@ export function ClassAttendanceCalendar() {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Month attendance"
-          value={monthPercentage != null ? `${monthPercentage.toFixed(0)}%` : "—"}
-          icon={<Percent className="h-5 w-5" />}
-          color={
-            monthPercentage == null
-              ? "primary"
-              : monthPercentage >= 75
-                ? "success"
-                : monthPercentage >= 60
-                  ? "warning"
-                  : "danger"
-          }
-          description={
-            scope.className
-              ? `Class ${scope.className}${scope.section ? `-${scope.section}` : ""}`
-              : "All classes in scope"
-          }
-        />
-        <StatCard label="Enrolled" value={enrolled ?? 0} icon={<Users className="h-5 w-5" />} color="primary" />
-        <StatCard label="Days marked" value={markedDays} icon={<CalendarDays className="h-5 w-5" />} color="info" />
-      </div>
-
       <Panel
         icon={<CalendarDays className="h-4 w-4" />}
         title="Daily attendance %"
         description={isFetching ? "Updating…" : undefined}
+        actions={
+          <div className="flex items-end gap-5">
+            <div className="min-w-[180px]">
+                <AttendanceScopeFilters
+                value={scope}
+                onChange={setScope}
+                showSubject={false}
+                />
+            </div>
+          </div>
+            
+          }
+        
+        
       >
+        
+
         <MonthCalendarShell
           month={month}
           onMonthChange={setMonth}
@@ -171,27 +161,37 @@ export function ClassAttendanceCalendar() {
                 : "not marked";
 
             return (
-              <div
-                role="img"
-                aria-label={`${dayLabel}: ${statusLabel}`}
-                title={showingStale ? undefined : `${dayLabel} — ${statusLabel}`}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isFuture) {
+                    onDateSelect?.(key, scope);
+                  }
+                }}
                 className={cn(
-                  "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg text-xs transition-colors",
+                  "appearance-none border-0 bg-transparent p-0",
+                  "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg text-xs transition-colors",
                   isFuture
                     ? "text-muted-foreground/25"
                     : showingStale
                       ? "bg-muted/30 text-muted-foreground/40"
                       : percentageCellClass(cell?.percentage ?? null),
                   isToday && !showingStale && "ring-2 ring-primary",
+                  selectedDate === key && "ring-2 ring-blue-500"
                 )}
+                title={showingStale ? undefined : `${dayLabel} — ${statusLabel}`}
+                aria-label={`${dayLabel}: ${statusLabel}`}
               >
-                <span className="text-[0.7rem] font-medium sm:text-sm">{dayNumber}</span>
+                <span className="text-[0.7rem] font-medium sm:text-sm">
+                  {dayNumber}
+                </span>
+
                 {!isFuture && !showingStale && cell?.percentage != null && (
                   <span className="text-[0.6rem] font-bold sm:text-xs">
                     {Math.round(cell.percentage)}%
                   </span>
                 )}
-              </div>
+              </button>
             );
           }}
         />
