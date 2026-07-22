@@ -16,22 +16,83 @@ interface CodeBlockProps {
   highlight?: boolean;
 }
 
-type PrismComponent = (typeof import("react-syntax-highlighter/dist/esm/prism"))["default"];
+type PrismComponent = (typeof import("react-syntax-highlighter/dist/esm/prism-light"))["default"];
 type Theme = Record<string, CSSProperties>;
 type Highlighter = { Prism: PrismComponent; theme: Theme };
 
+// Languages we actually offer highlighting for (see LANGUAGE_LABELS below),
+// mapped to their prism-light module. Registering a fixed set instead of
+// pulling in `react-syntax-highlighter/dist/esm/prism` (which bundles all
+// ~290 Prism grammars, ~600KB) keeps the highlighter chunk under ~40KB.
+// Anything not in this map still renders — just as plain, unhighlighted text.
+const LANGUAGE_LOADERS: Record<string, () => Promise<{ default: unknown }>> = {
+  javascript: () => import("react-syntax-highlighter/dist/esm/languages/prism/javascript"),
+  jsx: () => import("react-syntax-highlighter/dist/esm/languages/prism/jsx"),
+  typescript: () => import("react-syntax-highlighter/dist/esm/languages/prism/typescript"),
+  tsx: () => import("react-syntax-highlighter/dist/esm/languages/prism/tsx"),
+  python: () => import("react-syntax-highlighter/dist/esm/languages/prism/python"),
+  bash: () => import("react-syntax-highlighter/dist/esm/languages/prism/bash"),
+  json: () => import("react-syntax-highlighter/dist/esm/languages/prism/json"),
+  yaml: () => import("react-syntax-highlighter/dist/esm/languages/prism/yaml"),
+  markdown: () => import("react-syntax-highlighter/dist/esm/languages/prism/markdown"),
+  cpp: () => import("react-syntax-highlighter/dist/esm/languages/prism/cpp"),
+  csharp: () => import("react-syntax-highlighter/dist/esm/languages/prism/csharp"),
+  sql: () => import("react-syntax-highlighter/dist/esm/languages/prism/sql"),
+  markup: () => import("react-syntax-highlighter/dist/esm/languages/prism/markup"),
+  css: () => import("react-syntax-highlighter/dist/esm/languages/prism/css"),
+};
+
+// Fence-language token (lower-cased, as it appears after ```) → registered
+// grammar name above. Anything absent here (or in LANGUAGE_LOADERS) falls
+// back to plain text instead of throwing.
+const LANGUAGE_ALIASES: Record<string, string> = {
+  js: "javascript",
+  jsx: "jsx",
+  ts: "typescript",
+  tsx: "tsx",
+  py: "python",
+  python: "python",
+  sh: "bash",
+  bash: "bash",
+  shell: "bash",
+  json: "json",
+  yaml: "yaml",
+  yml: "yaml",
+  md: "markdown",
+  markdown: "markdown",
+  cpp: "cpp",
+  cs: "csharp",
+  csharp: "csharp",
+  sql: "sql",
+  html: "markup",
+  markup: "markup",
+  css: "css",
+};
+
 /**
- * Lazily loads the Prism build (once) plus the light/dark theme on demand, then
- * caches each. Keeps `react-syntax-highlighter` (a few hundred KB) out of the
- * initial bundle — it ships in its own chunk fetched only when a response
- * actually contains a code block.
+ * Lazily loads the Prism core (once) plus the light/dark theme on demand, then
+ * caches each. Keeps `react-syntax-highlighter` out of the initial bundle —
+ * it ships in its own chunk fetched only when a response actually contains a
+ * code block, and only the grammars in {@link LANGUAGE_LOADERS} ship at all.
  */
 let prismPromise: Promise<PrismComponent> | null = null;
+const registeredLanguages = new Set<string>();
 const themePromises: { dark?: Promise<Theme>; light?: Promise<Theme> } = {};
 
 function loadPrism(): Promise<PrismComponent> {
-  prismPromise ??= import("react-syntax-highlighter/dist/esm/prism").then((m) => m.default);
+  prismPromise ??= import("react-syntax-highlighter/dist/esm/prism-light").then(
+    (m) => m.default,
+  );
   return prismPromise;
+}
+
+/** Registers a fence language's grammar with Prism the first time it's seen. */
+async function ensureLanguageRegistered(language: string | undefined): Promise<void> {
+  const grammarName = language ? LANGUAGE_ALIASES[language] : undefined;
+  if (!grammarName || registeredLanguages.has(grammarName)) return;
+  const [Prism, mod] = await Promise.all([loadPrism(), LANGUAGE_LOADERS[grammarName]()]);
+  Prism.registerLanguage(grammarName, mod.default);
+  registeredLanguages.add(grammarName);
 }
 
 function loadTheme(dark: boolean): Promise<Theme> {
@@ -47,8 +108,12 @@ function loadTheme(dark: boolean): Promise<Theme> {
   return themePromises.light;
 }
 
-function loadHighlighter(dark: boolean): Promise<Highlighter> {
-  return Promise.all([loadPrism(), loadTheme(dark)]).then(([Prism, theme]) => ({ Prism, theme }));
+function loadHighlighter(dark: boolean, language: string | undefined): Promise<Highlighter> {
+  return Promise.all([
+    loadPrism(),
+    loadTheme(dark),
+    ensureLanguageRegistered(language),
+  ]).then(([Prism, theme]) => ({ Prism, theme }));
 }
 
 // A handful of friendly display labels; anything else is shown verbatim.
@@ -96,20 +161,27 @@ export const CodeBlock = memo(function CodeBlock({
   const [copied, setCopied] = useState(false);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load (and re-load on theme change) only when highlighting is enabled.
+  // Load (and re-load on theme or language change) only when highlighting is
+  // enabled. Unregistered languages (e.g. an exotic fence tag) resolve to
+  // `undefined` here and the block falls back to the plain <pre> branch below.
   useEffect(() => {
     if (!highlight) {
       setHighlighter(null);
       return;
     }
+    const grammarName = language ? LANGUAGE_ALIASES[language] : undefined;
+    if (!grammarName) {
+      setHighlighter(null);
+      return;
+    }
     let active = true;
-    loadHighlighter(isDark).then((h) => {
+    loadHighlighter(isDark, language).then((h) => {
       if (active) setHighlighter(h);
     });
     return () => {
       active = false;
     };
-  }, [highlight, isDark]);
+  }, [highlight, isDark, language]);
 
   useEffect(
     () => () => {
@@ -171,7 +243,7 @@ export const CodeBlock = memo(function CodeBlock({
       <div className="scrollbar-thin max-h-[28rem] overflow-auto">
         {showHighlighted && Prism ? (
           <Prism
-            language={language || "text"}
+            language={(language && LANGUAGE_ALIASES[language]) || "markup"}
             style={highlighter.theme}
             customStyle={{
               margin: 0,

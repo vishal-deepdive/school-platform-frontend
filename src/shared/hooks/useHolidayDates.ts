@@ -2,6 +2,11 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { parse, isValid } from "date-fns";
 import { attendanceApi } from "@/features/attendance/api/attendance";
+import {
+  referenceDataMeta,
+  REFERENCE_DATA_STALE_TIME,
+  REFERENCE_DATA_GC_TIME,
+} from "@/shared/api/queryPersistence";
 
 interface UseHolidayDatesParams {
   session: string;
@@ -31,7 +36,9 @@ export function useHolidayDates({
     queryKey: ["attendance", "holidays", schoolName ?? "", session],
     queryFn: () => attendanceApi.listHolidays(params),
     enabled: enabled && !!session,
-    staleTime: 5 * 60 * 1000, // 5 min — holidays rarely change mid-session
+    staleTime: REFERENCE_DATA_STALE_TIME, // holidays rarely change mid-session
+    gcTime: REFERENCE_DATA_GC_TIME,
+    meta: referenceDataMeta,
   });
 
   return useMemo(() => {
