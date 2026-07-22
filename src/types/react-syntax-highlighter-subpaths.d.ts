@@ -6,11 +6,13 @@
 // a single theme by deep path to keep the chunk small, so re-declare just those
 // two subpaths here. Resolution then never depends on the editor reaching the
 // ambient decls in @types.
-declare module "react-syntax-highlighter/dist/esm/prism" {
+declare module "react-syntax-highlighter/dist/esm/prism-light" {
   import type { ComponentType } from "react";
   import type { SyntaxHighlighterProps } from "react-syntax-highlighter";
-  const Prism: ComponentType<SyntaxHighlighterProps>;
-  export default Prism;
+  const PrismLight: ComponentType<SyntaxHighlighterProps> & {
+    registerLanguage(name: string, language: unknown): void;
+  };
+  export default PrismLight;
 }
 
 declare module "react-syntax-highlighter/dist/esm/styles/prism/one-dark" {
