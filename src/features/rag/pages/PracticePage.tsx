@@ -60,7 +60,7 @@ export function PracticePage() {
     return (
       <ForbiddenState
         title="No access to the Study Assistant"
-        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal or an admin to enable Study Assistant access for you."
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal to enable Study Assistant access for you."
       />
     );
   }

@@ -13,6 +13,7 @@ import { adminApi } from "@/features/admin/api/admin";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
+import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
 import type { AdminUserListItem } from "@/features/admin/types";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
@@ -102,8 +103,15 @@ export function UsersPage() {
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
 
+  // Shared across all three row actions so a row's buttons disable together
+  // no matter which one is in flight for it, and clicking a different row
+  // mid-action can't make this row appear idle again (see usePendingKeys).
+  const rowPending = usePendingKeys();
+
   const deactivate = useMutation({
     mutationFn: (id: string) => adminApi.deactivateUser(id),
+    onMutate: (id) => rowPending.start(id),
+    onSettled: (_data, _err, id) => rowPending.finish(id),
     onSuccess: (res) => {
       toast.success(res.message ?? "User deactivated");
       invalidate();
@@ -113,6 +121,8 @@ export function UsersPage() {
 
   const reactivate = useMutation({
     mutationFn: (id: string) => adminApi.reactivateUser(id),
+    onMutate: (id) => rowPending.start(id),
+    onSettled: (_data, _err, id) => rowPending.finish(id),
     onSuccess: (res) => {
       toast.success(res.message ?? "User reactivated");
       invalidate();
@@ -122,6 +132,8 @@ export function UsersPage() {
 
   const revoke = useMutation({
     mutationFn: (id: string) => adminApi.revokeUserSessions(id),
+    onMutate: (id) => rowPending.start(id),
+    onSettled: (_data, _err, id) => rowPending.finish(id),
     onSuccess: (res) => {
       toast.success(res.message ?? "Sessions revoked");
       invalidate();
@@ -212,10 +224,7 @@ export function UsersPage() {
                 </thead>
                 <tbody className="divide-y divide-border/30">
                   {users.map((u) => {
-                    const busy =
-                      (deactivate.isPending && deactivate.variables === u.id) ||
-                      (reactivate.isPending && reactivate.variables === u.id) ||
-                      (revoke.isPending && revoke.variables === u.id);
+                    const busy = rowPending.has(u.id);
                     const isAdmin = u.role === "admin";
                     return (
                       <tr key={u.id} className="transition-colors hover:bg-muted/30">

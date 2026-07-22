@@ -27,6 +27,14 @@ import type {
   UserListParams,
   PaginatedAudit,
   AuditLogParams,
+  CreateStudentRequest,
+  PromoteStudentRequest,
+  PromoteStudentResult,
+  PromoteClassRequest,
+  PromoteClassResult,
+  PromoteSchoolResult,
+  PromotionSettings,
+  UpdatePromotionSettingsRequest,
 } from "@/features/admin/types";
 
 const ADMIN_BASE = `${API_V1}/admin`;
@@ -257,6 +265,41 @@ export const adminApi = {
         student_id: studentId,
         roll_no: rollNo,
       })
+      .then((r) => r.data),
+
+  // ── Student lifecycle (create / promote) ───────────────────────────────────
+
+  createStudent: (schoolId: string, data: CreateStudentRequest) =>
+    apiClient
+      .post<ProvisionedUser>(`${ADMIN_BASE}/schools/${enc(schoolId)}/students`, data)
+      .then((r) => r.data),
+
+  promoteStudent: (schoolId: string, rollNo: string, data: PromoteStudentRequest) =>
+    apiClient
+      .post<PromoteStudentResult>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/students/${enc(rollNo)}/promote`,
+        data,
+      )
+      .then((r) => r.data),
+
+  promoteClass: (schoolId: string, data: PromoteClassRequest) =>
+    apiClient
+      .post<PromoteClassResult>(`${ADMIN_BASE}/schools/${enc(schoolId)}/classes/promote`, data)
+      .then((r) => r.data),
+
+  promoteSchool: (schoolId: string, targetSession?: string) =>
+    apiClient
+      .post<PromoteSchoolResult>(`${ADMIN_BASE}/schools/${enc(schoolId)}/promote-school`, {
+        target_session: targetSession,
+      })
+      .then((r) => r.data),
+
+  updatePromotionSettings: (schoolId: string, data: UpdatePromotionSettingsRequest) =>
+    apiClient
+      .patch<PromotionSettings>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/promotion-settings`,
+        data,
+      )
       .then((r) => r.data),
 
   // ── User directory ─────────────────────────────────────────────────────────
