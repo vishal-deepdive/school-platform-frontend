@@ -4,7 +4,8 @@ import { CalendarClock, Check, X, Send, ArrowRight } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
+import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
@@ -50,7 +51,7 @@ export function LeavePage() {
   } = useMyChildren();
   const { schoolParam, ready } = useActiveSchool();
 
-  const [session, setSession] = useState("2025-26");
+  const [session, setSession] = useState(getCurrentSession());
   const [statusFilter, setStatusFilter] = useState(isStaff ? "pending" : "");
   const [start, setStart] = useState(todayIso());
   const [end, setEnd] = useState(todayIso());
@@ -92,9 +93,12 @@ export function LeavePage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const reviewPending = usePendingKeys();
   const reviewMutation = useMutation({
     mutationFn: (v: { id: number; decision: "approved" | "rejected" }) =>
       attendanceApi.reviewLeave(v.id, { decision: v.decision }),
+    onMutate: (v) => reviewPending.start(String(v.id)),
+    onSettled: (_data, _err, v) => reviewPending.finish(String(v.id)),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ["attendance", "leave"] });
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
@@ -246,7 +250,8 @@ export function LeavePage() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      loading={reviewMutation.isPending}
+                      loading={reviewPending.has(String(lr.id))}
+                      disabled={reviewPending.has(String(lr.id))}
                       onClick={() =>
                         reviewMutation.mutate({ id: lr.id, decision: "approved" })
                       }
@@ -257,6 +262,8 @@ export function LeavePage() {
                     <Button
                       size="sm"
                       variant="danger-ghost"
+                      loading={reviewPending.has(String(lr.id))}
+                      disabled={reviewPending.has(String(lr.id))}
                       onClick={() =>
                         reviewMutation.mutate({ id: lr.id, decision: "rejected" })
                       }

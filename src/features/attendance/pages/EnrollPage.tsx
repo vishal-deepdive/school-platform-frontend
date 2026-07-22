@@ -9,7 +9,7 @@ import {
   type EnrollFormData,
 } from "@/features/attendance/schema";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS, ENROLL_MODE_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, ENROLL_MODE_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { parsePhotoFilename } from "@/features/attendance/lib/photoFilename";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
@@ -91,7 +91,7 @@ export function EnrollPage() {
   } = useForm<EnrollFormData>({
     resolver: zodResolver(enrollSchema),
     defaultValues: {
-      session: "2025-26",
+      session: getCurrentSession(),
       class_name: "",
       section: "",
     },

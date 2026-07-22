@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, FileUp, Download, AlertOctagon } from "lucide-react";
+import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS } from "@/features/attendance/constants";
+import { adminApi } from "@/features/admin/api/admin";
+import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -59,7 +60,7 @@ export function ManageStudentsPage() {
 
   const [className, setClassName] = useState("");
   const [section, setSection] = useState("");
-  const [session, setSession] = useState("2025-26");
+  const [session, setSession] = useState(getCurrentSession());
   const [roster, setRoster] = useState<RosterStudent[] | null>(null);
   const [search, setSearch] = useState("");
   const [studentToDelete, setStudentToDelete] = useState<RosterStudent | null>(
@@ -69,6 +70,19 @@ export function ManageStudentsPage() {
   const [classDeleteOpen, setClassDeleteOpen] = useState(false);
   const [classDeleteMode, setClassDeleteMode] = useState<DeleteMode>("full");
   const [classDeleteConfirmText, setClassDeleteConfirmText] = useState("");
+
+  const [addStudentOpen, setAddStudentOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newFullName, setNewFullName] = useState("");
+  const [newRollNo, setNewRollNo] = useState("");
+
+  const [studentToPromote, setStudentToPromote] = useState<RosterStudent | null>(null);
+  const [promoteTargetClass, setPromoteTargetClass] = useState("");
+  const [promoteTargetSection, setPromoteTargetSection] = useState("");
+  const [promoteTargetSession, setPromoteTargetSession] = useState("");
+
+  const [classPromoteOpen, setClassPromoteOpen] = useState(false);
+  const [classPromoteTargetSession, setClassPromoteTargetSession] = useState("");
 
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
@@ -125,6 +139,72 @@ export function ManageStudentsPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const addStudentMutation = useMutation({
+    mutationFn: () => {
+      if (!schoolId) throw new Error("No school selected");
+      return adminApi.createStudent(schoolId, {
+        email: newEmail.trim(),
+        full_name: newFullName.trim() || undefined,
+        roll_no: newRollNo.trim(),
+        class_name: className,
+        section: section || undefined,
+        session,
+      });
+    },
+    onSuccess: (res) => {
+      toast.success(res.message ?? "Student account created");
+      setAddStudentOpen(false);
+      setNewEmail("");
+      setNewFullName("");
+      setNewRollNo("");
+      if (className && section) loadMutation.mutate();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const promoteStudentMutation = useMutation({
+    mutationFn: () => {
+      if (!schoolId || !studentToPromote) throw new Error("No student selected");
+      return adminApi.promoteStudent(schoolId, studentToPromote.roll_no, {
+        target_class: promoteTargetClass.trim() || undefined,
+        target_section: promoteTargetSection.trim() || undefined,
+        target_session: promoteTargetSession.trim() || undefined,
+      });
+    },
+    onSuccess: (res) => {
+      toast.success(
+        res.status === "passed_out"
+          ? `${studentToPromote?.name ?? studentToPromote?.roll_no} marked as passed out`
+          : `Promoted to ${res.class_name ?? "next class"}${res.section ? `-${res.section}` : ""} · ${res.session ?? ""}`,
+      );
+      setRoster((prev) => prev?.filter((s) => s.roll_no !== studentToPromote?.roll_no) ?? null);
+      setStudentToPromote(null);
+      setPromoteTargetClass("");
+      setPromoteTargetSection("");
+      setPromoteTargetSession("");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const classPromoteMutation = useMutation({
+    mutationFn: () => {
+      if (!schoolId) throw new Error("No school selected");
+      return adminApi.promoteClass(schoolId, {
+        class_name: className,
+        section: section || undefined,
+        session,
+        target_session: classPromoteTargetSession.trim() || undefined,
+      });
+    },
+    onSuccess: (res) => {
+      toast.success(`Promoted ${res.promoted} student(s)${res.passed_out ? `, ${res.passed_out} passed out` : ""}`);
+      setRoster(null);
+      setClassPromoteOpen(false);
+      setClassPromoteTargetSession("");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
   const handleExportCSV = () => {
     if (!visible || visible.length === 0) return;
     const csvContent = jsonToCsv(visible, [
@@ -134,6 +214,19 @@ export function ManageStudentsPage() {
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     downloadBlob(blob, `students${className ? `-${className}${section ? `-${section}` : ""}` : ""}.csv`);
   };
+
+  // Server-streamed export across every class in the school (the backend
+  // supports omitting class/section entirely) — distinct from "Export CSV"
+  // above, which is a quick client-side export of the one class/section
+  // currently loaded. Only admin/principal may omit class_name; a teacher's
+  // read access is always scoped to one assigned class (check_attendance_read_access).
+  const exportRosterMutation = useMutation({
+    mutationFn: () => attendanceApi.viewStudents({ ...schoolParam }),
+    onSuccess: (blob) => {
+      downloadBlob(blob, `${schoolName ? `${schoolName}-` : ""}full-roster.csv`);
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
 
   const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
   const classLabel = `${className}${section ? `-${section}` : ""}`;
@@ -164,12 +257,33 @@ export function ManageStudentsPage() {
         <Button
           size="sm"
           variant="outline"
+          icon={<UserPlus className="h-4 w-4" />}
+          disabled={!canLoad}
+          onClick={() => setAddStudentOpen(true)}
+        >
+          Add Student
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
           icon={<Download className="h-4 w-4" />}
           disabled={!schoolId || (isAdmin && !schoolName) || visible.length === 0}
           onClick={handleExportCSV}
         >
           Export CSV
         </Button>
+        {canImport && (
+          <Button
+            size="sm"
+            variant="outline"
+            icon={<Download className="h-4 w-4" />}
+            loading={exportRosterMutation.isPending}
+            disabled={!schoolId || (isAdmin && !schoolName)}
+            onClick={() => exportRosterMutation.mutate()}
+          >
+            Export Full Roster
+          </Button>
+        )}
       </ModuleHeaderActions>
       <FilterBar
         title="Find a class"
@@ -247,6 +361,19 @@ export function ManageStudentsPage() {
               {roster.length > 0 && (
                 <Button
                   size="sm"
+                  variant="outline"
+                  icon={<GraduationCap className="h-4 w-4" />}
+                  onClick={() => {
+                    setClassPromoteTargetSession("");
+                    setClassPromoteOpen(true);
+                  }}
+                >
+                  Promote this class
+                </Button>
+              )}
+              {roster.length > 0 && (
+                <Button
+                  size="sm"
                   variant="danger-ghost"
                   icon={<AlertOctagon className="h-4 w-4" />}
                   onClick={() => {
@@ -287,18 +414,32 @@ export function ManageStudentsPage() {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="danger-ghost"
-                    onClick={() => {
-                      setStudentDeleteMode("full");
-                      setStudentToDelete(s);
-                    }}
-                    icon={<Trash2 className="h-4 w-4" />}
-                    className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-                  >
-                    Delete
-                  </Button>
+                  <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setPromoteTargetClass("");
+                        setPromoteTargetSection("");
+                        setPromoteTargetSession("");
+                        setStudentToPromote(s);
+                      }}
+                      icon={<GraduationCap className="h-4 w-4" />}
+                    >
+                      Promote
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="danger-ghost"
+                      onClick={() => {
+                        setStudentDeleteMode("full");
+                        setStudentToDelete(s);
+                      }}
+                      icon={<Trash2 className="h-4 w-4" />}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -392,6 +533,148 @@ export function ManageStudentsPage() {
             value={classDeleteConfirmText}
             onChange={(e) => setClassDeleteConfirmText(e.target.value)}
             placeholder={classLabel}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={addStudentOpen}
+        onClose={() => setAddStudentOpen(false)}
+        title="Add Student"
+        icon={<UserPlus className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setAddStudentOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              loading={addStudentMutation.isPending}
+              disabled={!newEmail.trim() || !newRollNo.trim()}
+              onClick={() => addStudentMutation.mutate()}
+            >
+              Create Account
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Creates a login account for{" "}
+            <span className="font-medium text-foreground">
+              Class {className}{section ? `-${section}` : ""} · {session}
+            </span>{" "}
+            and links it to a roll number in one step. The student gets a
+            set-password email with a one-time OTP.
+          </p>
+          <Input
+            label="Email"
+            type="email"
+            placeholder="student@school.edu"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+          />
+          <Input
+            label="Full Name"
+            placeholder="Student's name"
+            value={newFullName}
+            onChange={(e) => setNewFullName(e.target.value)}
+          />
+          <Input
+            label="Roll Number"
+            placeholder="2026-10A-001"
+            value={newRollNo}
+            onChange={(e) => setNewRollNo(e.target.value)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={studentToPromote !== null}
+        onClose={() => setStudentToPromote(null)}
+        title="Promote student"
+        icon={<GraduationCap className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setStudentToPromote(null)}>
+              Cancel
+            </Button>
+            <Button
+              loading={promoteStudentMutation.isPending}
+              onClick={() => promoteStudentMutation.mutate()}
+            >
+              Promote
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Promotes{" "}
+            <span className="font-medium text-foreground">
+              {studentToPromote?.name ?? studentToPromote?.roll_no}
+            </span>{" "}
+            (Roll #{studentToPromote?.roll_no}) to the next class and session.
+            Leave the fields below empty to use the auto-suggested class/section/session,
+            or override them explicitly. If this is the school's terminal class, the
+            student is marked passed out instead.
+          </p>
+          <Input
+            label="Target Class (optional)"
+            placeholder="Auto-suggested"
+            value={promoteTargetClass}
+            onChange={(e) => setPromoteTargetClass(e.target.value)}
+          />
+          <Input
+            label="Target Section (optional)"
+            placeholder="Auto-suggested"
+            value={promoteTargetSection}
+            onChange={(e) => setPromoteTargetSection(e.target.value)}
+          />
+          <Input
+            label="Target Session (optional)"
+            placeholder="Auto-suggested"
+            value={promoteTargetSession}
+            onChange={(e) => setPromoteTargetSession(e.target.value)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={classPromoteOpen}
+        onClose={() => setClassPromoteOpen(false)}
+        title="Promote this class?"
+        icon={<GraduationCap className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setClassPromoteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              loading={classPromoteMutation.isPending}
+              onClick={() => classPromoteMutation.mutate()}
+            >
+              Promote class
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Promotes every active student in{" "}
+            <span className="font-medium text-foreground">
+              Class {classLabel} · {session}
+            </span>{" "}
+            to the next class/session. Students in the school's terminal class are
+            marked passed out instead.
+          </p>
+          <Input
+            label="Target Session (optional)"
+            placeholder="Auto-suggested"
+            value={classPromoteTargetSession}
+            onChange={(e) => setClassPromoteTargetSession(e.target.value)}
           />
         </div>
       </Modal>

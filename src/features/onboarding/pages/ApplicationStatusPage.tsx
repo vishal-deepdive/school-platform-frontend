@@ -422,7 +422,7 @@ export function ApplicationStatusPage() {
 
   // Anti-abuse CAPTCHA for the lookup action — the backend requires a token
   // (when enabled) because /lookup dispatches an email.
-  const { data: capabilities } = useOnboardingCapabilities();
+  const { data: capabilities, isLoading: capabilitiesLoading } = useOnboardingCapabilities();
   const captchaEnabled = Boolean(
     capabilities?.captcha_enabled && capabilities.captcha_site_key,
   );
@@ -433,6 +433,13 @@ export function ApplicationStatusPage() {
     const email = lookupEmail.trim();
     if (!email) {
       toast.error("Enter the email you applied with");
+      return;
+    }
+    // capabilities?.captcha_enabled is undefined (falsy) until this query
+    // resolves — block until we actually know, rather than silently skipping
+    // the CAPTCHA requirement for a submit that races ahead of it.
+    if (capabilitiesLoading) {
+      toast.error("Still loading — please try again in a moment.");
       return;
     }
     if (captchaEnabled && !captchaToken) {
