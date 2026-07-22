@@ -26,11 +26,29 @@ export interface SearchRequest {
   source_ids?: string[];
 }
 
+export type ChartType =
+  | "bar"
+  | "horizontal_bar"
+  | "grouped_bar"
+  | "line"
+  | "scatter"
+  | "pie"; // pie retained for backward compatibility; no longer emitted
+
+/** How the primary measure should be formatted on axes/labels/tooltips. */
+export type ChartValueFormat = "percent" | "count" | "number";
+
+/** Colour intent for the categorical axis, decided server-side by the data's job. */
+export type ChartPalette = "sentiment" | "score" | "primary" | "categorical";
+
 export interface ChartData {
-  type: "bar" | "horizontal_bar" | "pie" | "scatter";
+  type: ChartType;
   title: string;
   x_key: string;
   y_keys: string[];
+  x_label?: string;
+  y_label?: string;
+  value_format?: ChartValueFormat;
+  palette?: ChartPalette;
   data: Record<string, unknown>[];
 }
 
@@ -264,6 +282,8 @@ export interface SurveyDimensionStat {
   negative: number;
   total: number;
   positive_pct: number | null;
+  /** True when this slice has too few respondents to show a percentage safely. */
+  suppressed: boolean;
 }
 
 export interface SurveyRecScore {
@@ -277,6 +297,7 @@ export interface SurveyRecommendation {
   promoters_pct: number | null;
   detractors_pct: number | null;
   distribution: SurveyRecScore[];
+  suppressed: boolean;
 }
 
 export interface SurveySentiment {
@@ -284,17 +305,46 @@ export interface SurveySentiment {
   neutral: number;
   negative: number;
   no_response: number;
+  suppressed: boolean;
 }
 
 export interface SurveyClassStat {
   class_name: string;
   count: number;
   positive_pct: number | null;
+  suppressed: boolean;
 }
 
 export interface SurveySubjectStat {
   subject: string;
   count: number;
+}
+
+export interface SurveyCycleInfo {
+  cycle: string;
+  response_count: number;
+  first_response_at: string | null;
+  last_response_at: string | null;
+}
+
+export interface SurveyDimensionTrend {
+  key: string;
+  label: string;
+  current_positive_pct: number | null;
+  previous_positive_pct: number | null;
+  delta_pct: number | null;
+}
+
+export interface SurveyTrend {
+  current_cycle: string;
+  previous_cycle: string;
+  total_responses_current: number;
+  total_responses_previous: number;
+  recommendation_avg_current: number | null;
+  recommendation_avg_previous: number | null;
+  overall_positive_pct_current: number | null;
+  overall_positive_pct_previous: number | null;
+  dimensions: SurveyDimensionTrend[];
 }
 
 export interface SurveyAnalyticsResponse {
@@ -307,4 +357,31 @@ export interface SurveyAnalyticsResponse {
   dimensions: SurveyDimensionStat[];
   by_class: SurveyClassStat[];
   toughest_subjects: SurveySubjectStat[];
+  cycles: SurveyCycleInfo[];
+  selected_cycle: string | null;
+  trend: SurveyTrend | null;
+}
+
+export interface SurveyCyclesResponse {
+  status: string;
+  cycles: SurveyCycleInfo[];
+}
+
+export type SurveyThemeSentiment = "positive" | "negative" | "mixed";
+
+export interface SurveyTheme {
+  label: string;
+  summary: string;
+  sentiment: SurveyThemeSentiment;
+  count: number;
+  columns: string[];
+  sample_quotes: string[];
+}
+
+export interface SurveyThemesResponse {
+  status: string;
+  themes: SurveyTheme[];
+  sample_size: number;
+  insufficient_data: boolean;
+  generated_at: string | null;
 }

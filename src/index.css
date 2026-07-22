@@ -300,6 +300,17 @@
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
     background-color: theme("colors.muted.foreground / 40%");
   }
+
+  .bg-mesh-gradient {
+    background-color: oklch(var(--background));
+    background-image: 
+      radial-gradient(at 0% 0%, oklch(var(--primary) / 0.15) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, oklch(var(--primary) / 0.1) 0px, transparent 50%);
+  }
+
+  .glass-panel {
+    @apply bg-card/85 backdrop-blur-xl border border-border/50 shadow-sm dark:bg-card/40;
+  }
 }
 
 /* ── Sonner toast theming ──────────────────────────────────────────────────

@@ -15,10 +15,12 @@ import {
   isoToIndianDate,
   downloadBlob,
   getErrorMessage,
+  jsonToCsv,
 } from "@/shared/lib/utils";
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { attendanceApi } from "@/features/attendance/api/attendance";
+import { getCurrentSession } from "@/features/attendance/constants";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
@@ -172,7 +174,7 @@ export function AttendanceRangeView() {
   useEffect(() => setApplied(null), [schoolId]);
 
   const holidays = useHolidayDates({
-    session: "2025-26",
+    session: getCurrentSession(),
     schoolName: schoolName || undefined,
     enabled: !!schoolName,
   });
@@ -226,16 +228,23 @@ export function AttendanceRangeView() {
   };
 
   const handleExportCSV = async () => {
-    if (!applied) return;
-    const s = applied.scope;
-    const blob = await attendanceApi.exportAttendanceRange({
-      start_date: isoToIndianDate(applied.start),
-      end_date: isoToIndianDate(applied.end),
-      ...(schoolName ? { school_name: schoolName } : {}),
-      ...(s.className ? { class_name: s.className } : {}),
-      ...(s.section ? { section: s.section } : {}),
-      ...(s.subject ? { subject: s.subject } : {}),
+    if (!applied || pageRows.length === 0) return;
+    
+    const columns = [
+      { header: "Roll No", getValue: (r: AttendanceRangeStudent) => String(r.roll_number) },
+      { header: "Name", getValue: (r: AttendanceRangeStudent) => String(r.name ?? "—") },
+      { header: "%", getValue: (r: AttendanceRangeStudent) => `${r.attendance_percentage.toFixed(0)}%` },
+    ];
+    
+    dates.forEach((d, i) => {
+      columns.push({
+        header: d.slice(0, 5),
+        getValue: (r: AttendanceRangeStudent) => statusLabel(String(r.cells[i] ?? "-"))
+      });
     });
+
+    const csvContent = jsonToCsv(pageRows, columns);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     downloadBlob(
       blob,
       `attendance-${isoToIndianDate(applied.start)}_${isoToIndianDate(applied.end)}.csv`,

@@ -23,8 +23,8 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import { useRagAnalytics, useUsageAnalytics } from "@/features/rag/hooks/useRag";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 
@@ -133,6 +133,45 @@ const statusBadge = (status: string) => {
   }
 };
 
+import { Skeleton, CardSkeleton, ListSkeleton, StatCardSkeleton } from "@/shared/components/ui/Skeleton";
+
+function RagInsightsSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex items-center justify-between gap-3">
+        <Skeleton className="h-6 w-32 rounded-full" />
+        <Skeleton className="h-9 w-24 rounded-md" />
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <CardSkeleton className="lg:col-span-2" lines={4} />
+        <CardSkeleton lines={4} />
+      </div>
+      <CardSkeleton lines={6} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-border/60 bg-card">
+          <div className="flex items-center justify-between border-b border-border/40 px-4 py-3 sm:px-6">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-5 w-8 rounded-full" />
+          </div>
+          <ListSkeleton items={4} />
+        </div>
+        <div className="rounded-xl border border-border/60 bg-card">
+          <div className="flex items-center justify-between border-b border-border/40 px-4 py-3 sm:px-6">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-5 w-8 rounded-full" />
+          </div>
+          <ListSkeleton items={4} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function RagInsightsPage() {
   // Admins scope to the active school; with none selected they see platform-wide
   // totals. Staff are scoped server-side (schoolId is their own, harmless here).
@@ -157,7 +196,16 @@ export function RagInsightsPage() {
     [data],
   );
 
-  if (isLoading) return <PageSkeleton />;
+  if (isLoading) return <RagInsightsSkeleton />;
+  // Ungranted teachers: clean access message instead of a raw error alert.
+  if (isError && isForbiddenError(error)) {
+    return (
+      <ForbiddenState
+        title="No access to Library Insights"
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal to enable Study Assistant access for you."
+      />
+    );
+  }
   if (isError)
     return (
       <Alert variant="error">

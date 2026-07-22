@@ -59,9 +59,12 @@ export function SheetSelector({
   }, [sheets]);
 
   const selectedSet = useMemo(() => new Set(value), [value]);
-  // "All sheets" = every available sheet is explicitly selected (all checkboxes
-  // ticked). An empty selection is NOT "all" — it means nothing is selected, and
-  // the search view blocks the query with a toast until the user picks a sheet.
+  // "All sheets" checkbox state = every available sheet is explicitly
+  // selected (all checkboxes ticked) — this is purely a display concern.
+  // An empty selection is a DIFFERENT thing to the search view itself: it
+  // omits the source_ids filter entirely, which SurveySearchView.runSearch
+  // deliberately treats as "search everything" (including legacy rows with a
+  // NULL source_id that predate sheet-sources) — it is not blocked.
   const allMode = sheets.length > 0 && sheets.every((s) => selectedSet.has(s.id));
 
   // Toggle: select every sheet (check all boxes), or clear if already all-on.

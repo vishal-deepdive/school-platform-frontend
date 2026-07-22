@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
@@ -34,9 +34,8 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { SkeletonText } from "@/shared/components/ui/Skeleton";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
-import { Table } from "@/shared/components/ui/Table";
+import { Table, type Column } from "@/shared/components/ui/Table";
 import { SurveyChart } from "./SurveyChart";
 import { SheetSelector } from "./SheetSelector";
 import type {
@@ -86,24 +85,54 @@ function getSampleSize(data: SearchData): number | null {
   return null;
 }
 
-function buildTableColumns(rows: Record<string, unknown>[]) {
+function humanizeHeader(key: string): string {
+  return key
+    .replace(/_(pct|percent|percentage)\b/gi, " %")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const PERCENT_HINT = /(percent|pct|share|proportion|_rate\b|ratio)/i;
+
+function isNumeric(val: unknown): val is number {
+  return typeof val === "number" && Number.isFinite(val);
+}
+
+/** Build professional, type-aware table columns: numeric columns are right-aligned
+ * with tabular figures + locale/percent formatting and are sortable; text columns
+ * sort alphabetically and truncate gracefully. Header labels are humanized. */
+function buildTableColumns(rows: Record<string, unknown>[]): Column<Record<string, unknown>>[] {
   if (rows.length === 0) return [];
-  return Object.keys(rows[0]).map((key) => ({
-    key,
-    header: key.replace(/_/g, " "),
-    render: (row: Record<string, unknown>) => {
-      const val = row[key];
-      if (val === null || val === undefined) return "—";
-      if (typeof val === "number") {
-        if (key.includes("score") || key.includes("similarity"))
-          return (val as number).toFixed(2);
-        if (!Number.isInteger(val)) return (val as number).toFixed(1);
-      }
-      const s = String(val);
-      if (s.length > 80) return s.slice(0, 77) + "…";
-      return s;
-    },
-  }));
+  const keys = Object.keys(rows[0]);
+  return keys.map((key) => {
+    // Sample the column to decide alignment/formatting from actual values.
+    const sample = rows.find((r) => r[key] !== null && r[key] !== undefined)?.[key];
+    const numeric = isNumeric(sample);
+    const percent = numeric && PERCENT_HINT.test(key);
+
+    return {
+      key,
+      header: humanizeHeader(key),
+      align: numeric ? "right" : "left",
+      sortValue: (row: Record<string, unknown>) => {
+        const v = row[key];
+        if (v === null || v === undefined) return null;
+        return isNumeric(v) ? v : String(v);
+      },
+      render: (row: Record<string, unknown>) => {
+        const val = row[key];
+        if (val === null || val === undefined || val === "") return "—";
+        if (isNumeric(val)) {
+          if (percent) return `${Math.round(val * 10) / 10}%`;
+          if (key.includes("similarity") || key.includes("score"))
+            return val.toFixed(2);
+          return Number.isInteger(val) ? val.toLocaleString() : val.toFixed(1);
+        }
+        const s = String(val);
+        return s.length > 90 ? s.slice(0, 87) + "…" : s;
+      },
+    };
+  });
 }
 
 // ── Collapsible section ─────────────────────────────────────────────────────
@@ -164,8 +193,17 @@ export function SurveySearchView() {
   const [showData, setShowData] = useState(false);
   const [showSql, setShowSql] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sqlCopied, setSqlCopied] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const { begin, stop, end } = useStreamAbort();
+  // Synchronous guard against overlapping runs — mirrors QAPage/NotesPage/
+  // QuestionsPage/LessonPlanPage. The `streaming` state updates a render
+  // behind, so two near-simultaneous submits (fast double-Enter) could both
+  // pass a state-only check, each starting a stream and racing to flip
+  // `streaming` back to false in their own `finally` — the second run's
+  // completion could get masked as "not streaming" while the first is still
+  // actually generating.
+  const streamingRef = useRef(false);
 
   const { isAdmin, schoolId, schoolParam, ready: adminReady } = useActiveSchool();
 
@@ -193,14 +231,31 @@ export function SurveySearchView() {
 
   const handleCopy = useCallback(() => {
     if (!insight) return;
-    navigator.clipboard.writeText(insight).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard
+      .writeText(insight)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => toast.error("Couldn't copy to clipboard."));
   }, [insight]);
+
+  const handleCopySql = useCallback(() => {
+    if (!sqlQuery) return;
+    navigator.clipboard
+      .writeText(sqlQuery)
+      .then(() => {
+        setSqlCopied(true);
+        setTimeout(() => setSqlCopied(false), 1500);
+      })
+      .catch(() => toast.error("Couldn't copy to clipboard."));
+  }, [sqlQuery]);
 
   const runSearch = useCallback(
     async (formData: SurveySearchFormData) => {
+      if (streamingRef.current) return;
+      streamingRef.current = true;
+
       const controller = begin();
 
       setStreaming(true);
@@ -253,6 +308,7 @@ export function SurveySearchView() {
       } finally {
         flushPending();
         setStreaming(false);
+        streamingRef.current = false;
         end(controller);
       }
     },
@@ -344,7 +400,7 @@ export function SurveySearchView() {
       {/* ── Analyzing skeleton (query sent, nothing returned yet) ─── */}
       {streaming && !hasResult && (
         <Panel title="AI Insight" icon={<Bot className="h-4 w-4" />}>
-          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span className="flex gap-1">
               {[0, 1, 2].map((i) => (
                 <span
@@ -356,7 +412,6 @@ export function SurveySearchView() {
             </span>
             Analyzing your data…
           </div>
-          <SkeletonText lines={5} />
         </Panel>
       )}
 
@@ -364,23 +419,17 @@ export function SurveySearchView() {
       {hasResult && (
         <div className="space-y-4">
           {/* Status bar */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
             {intent && (
               <Badge variant={intentConfig[intent].color}>
                 {intentConfig[intent].label}
               </Badge>
             )}
-            {sampleSize !== null && (
+            {sampleSize !== null && sampleSize > 0 && (
               <Badge variant="default">
                 <Users className="h-3 w-3 mr-1" />
                 {sampleSize.toLocaleString()} responses
               </Badge>
-            )}
-            {streaming && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground animate-fade-in">
-                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                Generating insight…
-              </span>
             )}
           </div>
 
@@ -415,13 +464,27 @@ export function SurveySearchView() {
                 className="text-sm"
               />
             ) : streaming ? (
-              <SkeletonText lines={5} />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <span
+                      key={i}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
+                </span>
+                Generating insight...
+              </div>
             ) : null}
           </Panel>
 
           {/* ── Interactive chart (Recharts) ──────────────────────── */}
           {chartData && (
-            <Panel title="Visualization" icon={<BarChart2 className="h-4 w-4" />}>
+            <Panel
+              title={chartData.title || "Visualization"}
+              icon={<BarChart2 className="h-4 w-4" />}
+            >
               <SurveyChart data={chartData} />
             </Panel>
           )}
@@ -461,9 +524,28 @@ export function SurveySearchView() {
               open={showSql}
               onToggle={() => setShowSql((v) => !v)}
             >
-              <pre className="overflow-x-auto bg-gray-950 px-5 py-4 text-xs leading-relaxed text-green-400 font-mono">
-                {sqlQuery}
-              </pre>
+              <div className="p-4">
+                <div className="relative rounded-lg border border-border/60 bg-muted/40">
+                  <button
+                    type="button"
+                    onClick={handleCopySql}
+                    className="absolute right-2 top-2 z-10 inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 text-[11px] font-medium text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground"
+                  >
+                    {sqlCopied ? (
+                      <>
+                        <Check className="h-3 w-3" /> Copied
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" /> Copy
+                      </>
+                    )}
+                  </button>
+                  <pre className="overflow-x-auto rounded-lg px-4 py-3.5 pr-16 text-xs leading-relaxed text-foreground/90">
+                    <code className="font-mono">{sqlQuery}</code>
+                  </pre>
+                </div>
+              </div>
             </CollapsibleSection>
           )}
 

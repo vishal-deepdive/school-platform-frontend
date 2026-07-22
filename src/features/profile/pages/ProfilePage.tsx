@@ -24,7 +24,6 @@ const ROLE_BADGE: Record<UserRole, BadgeVariant> = {
   teacher: "info",
   student: "success",
   parent: "default",
-  viewer: "default",
 };
 
 export function ProfilePage() {

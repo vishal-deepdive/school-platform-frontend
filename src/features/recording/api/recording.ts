@@ -73,8 +73,11 @@ export const recordingApi = {
       )
       .then((r) => r.data),
 
-  getRecordingMarkdown: (recordId: string): Promise<MarkdownResult> =>
-    fetchMarkdown(`${BASE}/recordings/${recordId}/markdown`),
+  /** `rollNo` (parent only) selects which linked child's copy to fetch. */
+  getRecordingMarkdown: (recordId: string, rollNo?: string): Promise<MarkdownResult> =>
+    fetchMarkdown(
+      `${BASE}/recordings/${recordId}/markdown${rollNo ? buildQueryString({ roll_no: rollNo }) : ""}`,
+    ),
 
   deleteRecording: (recordId: string) =>
     apiClient

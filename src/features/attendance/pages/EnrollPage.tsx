@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UserPlus, CheckCircle2, AlertTriangle } from "lucide-react";
+import { UserPlus, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import {
   enrollSchema,
   type EnrollFormData,
 } from "@/features/attendance/schema";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS, ENROLL_MODE_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, ENROLL_MODE_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { parsePhotoFilename } from "@/features/attendance/lib/photoFilename";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
@@ -24,7 +24,42 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
-import type { EnrollResponse } from "@/features/attendance/types";
+import type { EnrollResponse, UpdateEmbeddingResponse } from "@/features/attendance/types";
+
+function isRefreshResult(
+  data: EnrollResponse | UpdateEmbeddingResponse,
+): data is UpdateEmbeddingResponse {
+  return "updated_count" in data;
+}
+
+const TONE_CLASSES = {
+  blue: "border-blue-500/20 bg-blue-500/5",
+  green: "border-green-500/20 bg-green-500/5",
+} as const;
+
+function EnrolledStudentCard({
+  student,
+  tone,
+}: {
+  student: { roll_no: string; name: string; images_processed: number };
+  tone: keyof typeof TONE_CLASSES;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-lg border px-3 py-2 ${TONE_CLASSES[tone]}`}
+    >
+      <Avatar name={student.name} seed={student.roll_no} size="sm" />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground">
+          {student.name}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          #{student.roll_no} · {student.images_processed} photos
+        </p>
+      </div>
+    </div>
+  );
+}
 
 type EnrollUploadMethod = "zip" | "photos";
 
@@ -35,7 +70,10 @@ export function EnrollPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [uploadMethod, setUploadMethod] = useState<EnrollUploadMethod>("zip");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
-  const [result, setResult] = useState<EnrollResponse | null>(null);
+  const [alpha, setAlpha] = useState("0.3");
+  const [result, setResult] = useState<EnrollResponse | UpdateEmbeddingResponse | null>(
+    null,
+  );
   // Holds the validated form data while the destructive "replace" mode awaits
   // an explicit confirmation before the enrollment is actually mutated.
   const [pendingReplace, setPendingReplace] = useState<EnrollFormData | null>(
@@ -53,7 +91,7 @@ export function EnrollPage() {
   } = useForm<EnrollFormData>({
     resolver: zodResolver(enrollSchema),
     defaultValues: {
-      session: "2025-26",
+      session: getCurrentSession(),
       class_name: "",
       section: "",
     },
@@ -92,14 +130,17 @@ export function EnrollPage() {
 
   const isDirectPhotoMode = mode === "single" && uploadMethod === "photos";
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: (
-      vars:
-        | { kind: "zip"; file: File; params: Record<string, string> }
-        | { kind: "photos"; files: File[]; params: Record<string, string> },
-    ) => {
+  const { mutate, isPending } = useMutation<
+    EnrollResponse | UpdateEmbeddingResponse,
+    Error,
+    | { kind: "zip"; file: File; params: Record<string, string> }
+    | { kind: "photos"; files: File[]; params: Record<string, string> }
+  >({
+    mutationFn: (vars) => {
       if (vars.kind === "photos")
         return attendanceApi.enrollNewStudentPhotos(vars.files, vars.params);
+      if (mode === "refresh")
+        return attendanceApi.updateEmbedding(vars.file, vars.params);
       if (mode === "single")
         return attendanceApi.enrollNewStudent(vars.file, vars.params);
       if (mode === "replace")
@@ -108,9 +149,16 @@ export function EnrollPage() {
     },
     onSuccess: (data) => {
       setResult(data);
-      // Enrollment changes the roster, so date/range/stats views are now stale.
+      // Enrollment/refresh changes the roster or embeddings, so date/range/stats
+      // views are now stale.
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
-      toast.success(`Enrolled ${data.enrolled_students.length} student(s)`);
+      if (isRefreshResult(data)) {
+        toast.success(
+          `Refreshed ${data.updated_count} · added ${data.added_count} embedding(s)`,
+        );
+      } else {
+        toast.success(`Enrolled ${data.enrolled_students.length} student(s)`);
+      }
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -122,6 +170,7 @@ export function EnrollPage() {
       ...(data.class_name && { class_name: data.class_name }),
       ...(data.section && { section: data.section }),
       ...(data.subject && { subject: data.subject }),
+      ...(mode === "refresh" && { alpha }),
     };
     if (isDirectPhotoMode) {
       mutate({ kind: "photos", files: photoFiles, params });
@@ -157,6 +206,13 @@ export function EnrollPage() {
     if (isAdmin && !schoolName) {
       toast.error("Please select a school");
       return;
+    }
+    if (mode === "refresh") {
+      const alphaValue = Number(alpha);
+      if (alpha.trim() === "" || Number.isNaN(alphaValue) || alphaValue < 0 || alphaValue >= 1) {
+        toast.error("Blend factor (alpha) must be a number between 0 and 0.99");
+        return;
+      }
     }
     // "Batch with Replacement" permanently deletes students who are not in the
     // uploaded ZIP (and their attendance). Gate it behind an explicit confirm.
@@ -229,23 +285,26 @@ export function EnrollPage() {
                 {...register("session")}
               />
               <Select
-                label="Class (optional)"
+                label="Class"
                 placeholder="Select class"
                 options={classNameOptions}
                 disabled={!schoolId}
+                error={errors.class_name?.message}
                 {...register("class_name")}
               />
               {sectionOptions.length > 0 ? (
                 <Select
-                  label="Section (optional)"
+                  label="Section"
                   placeholder="Select section"
                   options={sectionOptions}
+                  error={errors.section?.message}
                   {...register("section")}
                 />
               ) : (
                 <Input
-                  label="Section (optional)"
+                  label="Section"
                   placeholder="A"
+                  error={errors.section?.message}
                   {...register("section")}
                 />
               )}
@@ -254,6 +313,18 @@ export function EnrollPage() {
                 placeholder="Mathematics"
                 {...register("subject")}
               />
+              {mode === "refresh" && (
+                <Input
+                  label="Blend factor (alpha)"
+                  type="number"
+                  min={0}
+                  max={0.99}
+                  step={0.05}
+                  value={alpha}
+                  onChange={(e) => setAlpha(e.target.value)}
+                  hint="Weight given to the new photos vs. the existing embedding (0–1). Higher favours the new photos."
+                />
+              )}
               </div>
             </div>
 
@@ -303,7 +374,11 @@ export function EnrollPage() {
                 accept=".zip"
                 maxSize={100 * 1024 * 1024}
                 onChange={setFiles}
-                hint="Max 100 MB. Each student's folder should contain 3-5 clear face photos."
+                hint={
+                  mode === "refresh"
+                    ? "Max 100 MB. Folders keyed by existing roll numbers are blended into their current embedding; new roll numbers are added."
+                    : "Max 100 MB. Each student's folder should contain 3-5 clear face photos."
+                }
               />
             )}
             </div>
@@ -312,14 +387,70 @@ export function EnrollPage() {
               type="submit"
               loading={isPending}
               className="self-start"
-              icon={<UserPlus className="h-4 w-4" />}
+              icon={mode === "refresh" ? <RefreshCw className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
             >
-              {isPending ? "Enrolling…" : "Enroll Students"}
+              {mode === "refresh"
+                ? isPending
+                  ? "Refreshing…"
+                  : "Refresh Embeddings"
+                : isPending
+                  ? "Enrolling…"
+                  : "Enroll Students"}
             </Button>
           </form>
         </Panel>
 
-        {result && (
+        {result && isRefreshResult(result) && (
+          <div className="space-y-4">
+            {result.updated_students.length > 0 && (
+              <Panel
+                icon={<RefreshCw className="h-4 w-4" />}
+                title={`${result.updated_students.length} embedding(s) refreshed`}
+              >
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {result.updated_students.map((s) => (
+                    <EnrolledStudentCard key={s.roll_no} student={s} tone="blue" />
+                  ))}
+                </div>
+              </Panel>
+            )}
+
+            {result.added_students.length > 0 && (
+              <Panel
+                icon={<CheckCircle2 className="h-4 w-4" />}
+                title={`${result.added_students.length} new student(s) added`}
+              >
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {result.added_students.map((s) => (
+                    <EnrolledStudentCard key={s.roll_no} student={s} tone="green" />
+                  ))}
+                </div>
+              </Panel>
+            )}
+
+            {result.skipped && result.skipped.length > 0 && (
+              <Alert variant="warning" title={`${result.skipped.length} Skipped`}>
+                <ul className="mt-1 space-y-1">
+                  {result.skipped.map((s, i) => (
+                    <li key={i} className="text-xs">
+                      <span className="font-medium">{s.folder}</span> — {s.reason}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {result.school_name && (
+                <Badge variant="info">School: {result.school_name}</Badge>
+              )}
+              {result.session && <Badge>Session: {result.session}</Badge>}
+              <Badge>Alpha: {result.alpha}</Badge>
+            </div>
+          </div>
+        )}
+
+        {result && !isRefreshResult(result) && (
           <div className="space-y-4">
             {result.enrolled_students.length > 0 && (
               <Panel
@@ -328,20 +459,7 @@ export function EnrollPage() {
               >
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {result.enrolled_students.map((s) => (
-                    <div
-                      key={s.roll_no}
-                      className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2"
-                    >
-                      <Avatar name={s.name} seed={s.roll_no} size="sm" />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {s.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          #{s.roll_no} · {s.images_processed} photos
-                        </p>
-                      </div>
-                    </div>
+                    <EnrolledStudentCard key={s.roll_no} student={s} tone="green" />
                   ))}
                 </div>
               </Panel>

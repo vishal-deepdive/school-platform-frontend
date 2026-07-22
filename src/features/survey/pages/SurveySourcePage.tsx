@@ -16,6 +16,9 @@ import {
 import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
+import { useAuthStore } from "@/features/auth/store/auth";
+import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { surveyApi } from "@/features/survey/api/survey";
 import type {
   SourceItem,
@@ -30,7 +33,21 @@ import { Select } from "@/shared/components/ui/Select";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+
+function SurveySourceSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center justify-between gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-20 rounded-full" />
+        </div>
+        <ListSkeleton items={4} />
+      </div>
+    </div>
+  );
+}
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Panel } from "@/shared/components/ui/Panel";
 
@@ -175,12 +192,14 @@ function SourceCard({
   onDelete,
   onToggleActive,
   syncing,
+  canManage,
 }: {
   source: SourceItem;
   onSync: (id: string, mode: SyncMode) => void;
   onDelete: (id: string) => void;
   onToggleActive: (id: string, active: boolean) => void;
   syncing: boolean;
+  canManage: boolean;
 }) {
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -254,65 +273,68 @@ function SourceCard({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
-          {source.is_active ? (
-            <>
-              <Button
-                size="sm"
-                onClick={() => onSync(source.id, "append")}
-                loading={syncing}
-                icon={<RefreshCw className="h-3.5 w-3.5" />}
-              >
-                Sync
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setConfirmReplace(true)}
-                disabled={syncing}
-                icon={<AlertTriangle className="h-3.5 w-3.5" />}
-              >
-                Replace
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => onToggleActive(source.id, false)}
-                icon={<PowerOff className="h-3.5 w-3.5" />}
-              >
-                Deactivate
-              </Button>
-              <Button
-                size="sm"
-                variant="danger-ghost"
-                onClick={() => setConfirmDelete(true)}
-                icon={<Trash2 className="h-3.5 w-3.5" />}
-              >
-                Remove
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onToggleActive(source.id, true)}
-                icon={<Power className="h-3.5 w-3.5" />}
-              >
-                Reactivate
-              </Button>
-              <Button
-                size="sm"
-                variant="danger-ghost"
-                onClick={() => setConfirmDelete(true)}
-                icon={<Trash2 className="h-3.5 w-3.5" />}
-              >
-                Remove
-              </Button>
-            </>
-          )}
-        </div>
+        {/* Actions — sync/replace/deactivate/remove are admin+principal only
+            server-side; teachers get the read-only status above. */}
+        {canManage && (
+          <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
+            {source.is_active ? (
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => onSync(source.id, "append")}
+                  loading={syncing}
+                  icon={<RefreshCw className="h-3.5 w-3.5" />}
+                >
+                  Sync
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmReplace(true)}
+                  disabled={syncing}
+                  icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                >
+                  Replace
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => onToggleActive(source.id, false)}
+                  icon={<PowerOff className="h-3.5 w-3.5" />}
+                >
+                  Deactivate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger-ghost"
+                  onClick={() => setConfirmDelete(true)}
+                  icon={<Trash2 className="h-3.5 w-3.5" />}
+                >
+                  Remove
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onToggleActive(source.id, true)}
+                  icon={<Power className="h-3.5 w-3.5" />}
+                >
+                  Reactivate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger-ghost"
+                  onClick={() => setConfirmDelete(true)}
+                  icon={<Trash2 className="h-3.5 w-3.5" />}
+                >
+                  Remove
+                </Button>
+              </>
+            )}
+          </div>
+        )}
       </li>
 
       {/* Replace confirmation */}
@@ -654,6 +676,10 @@ export function SurveySourcePage() {
   // admins, or `undefined` for principals (scoped server-side by their session).
   const { schoolName, ready } = useActiveSchool();
   const schoolParam = schoolName || undefined;
+  const role = useAuthStore((s) => s.user?.role);
+  // Registering/syncing/deleting sources is admin+principal only server-side;
+  // a teacher gets a read-only list of connected sheets.
+  const canManage = isSchoolAdmin(role);
 
   const [wizardOpen, setWizardOpen] = useState(false);
 
@@ -667,9 +693,15 @@ export function SurveySourcePage() {
   const activeSources = sources.filter((s) => s.is_active);
   const inactiveSources = sources.filter((s) => !s.is_active);
 
-  const { mutate: syncSource, isPending: syncing } = useMutation({
+  // Per-source, not a single shared boolean — otherwise clicking Sync on one
+  // source disabled/loading-spun every source's Sync/Replace buttons, not
+  // just the one actually being synced.
+  const syncPending = usePendingKeys();
+  const { mutate: syncSource } = useMutation({
     mutationFn: ({ id, mode }: { id: string; mode: SyncMode }) =>
       surveyApi.syncSource(id, mode),
+    onMutate: ({ id }) => syncPending.start(id),
+    onSettled: (_data, _err, { id }) => syncPending.finish(id),
     onSuccess: (res) => {
       const deleted = res.summary.rows_deleted ?? 0;
       const drift = res.schema_drift;
@@ -708,35 +740,43 @@ export function SurveySourcePage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  if (isLoading && ready) return <PageSkeleton showStats={false} content="list" />;
+  if (isLoading && ready) return <SurveySourceSkeleton />;
 
   return (
     <div className="space-y-6">
       {ready && (
         <>
-          <ModuleHeaderActions>
-            <Button
-              size="sm"
-              onClick={() => setWizardOpen(true)}
-              icon={<Plus className="h-4 w-4" />}
-            >
-              Add Source
-            </Button>
-          </ModuleHeaderActions>
+          {canManage && (
+            <ModuleHeaderActions>
+              <Button
+                size="sm"
+                onClick={() => setWizardOpen(true)}
+                icon={<Plus className="h-4 w-4" />}
+              >
+                Add Source
+              </Button>
+            </ModuleHeaderActions>
+          )}
 
           {/* Empty state */}
           {sources.length === 0 ? (
             <EmptyState
               icon={<FileSpreadsheet className="h-12 w-12" />}
               title="No data sources"
-              description="Connect a public Google Sheet to start importing survey responses. You can add multiple sheets for different terms or survey types."
+              description={
+                canManage
+                  ? "Connect a public Google Sheet to start importing survey responses. You can add multiple sheets for different terms or survey types."
+                  : "No Google Sheets are connected for this school yet. Ask an admin or principal to add one."
+              }
               action={
-                <Button
-                  onClick={() => setWizardOpen(true)}
-                  icon={<Plus className="h-4 w-4" />}
-                >
-                  Add Source
-                </Button>
+                canManage ? (
+                  <Button
+                    onClick={() => setWizardOpen(true)}
+                    icon={<Plus className="h-4 w-4" />}
+                  >
+                    Add Source
+                  </Button>
+                ) : undefined
               }
             />
           ) : (
@@ -764,7 +804,8 @@ export function SurveySourcePage() {
                         onToggleActive={(id, active) =>
                           toggleActive({ id, active })
                         }
-                        syncing={syncing}
+                        syncing={syncPending.has(source.id)}
+                        canManage={canManage}
                       />
                     ))}
                   </ul>
@@ -790,7 +831,8 @@ export function SurveySourcePage() {
                         onToggleActive={(id, active) =>
                           toggleActive({ id, active })
                         }
-                        syncing={syncing}
+                        syncing={syncPending.has(source.id)}
+                        canManage={canManage}
                       />
                     ))}
                   </ul>

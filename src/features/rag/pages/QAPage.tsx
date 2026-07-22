@@ -21,9 +21,9 @@ import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { ChatMessageBubble } from "@/features/rag/components/ChatMessageBubble";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
-import { useSubmitRagFeedback } from "@/features/rag/hooks/useRag";
+import { useSubmitRagFeedback, useDownloadPdf } from "@/features/rag/hooks/useRag";
 import { useSavedAnswers } from "@/features/rag/store/savedAnswersStore";
-import { getErrorMessage, downloadFile } from "@/shared/lib/utils";
+import { getErrorMessage, downloadBlob } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Modal } from "@/shared/components/ui/Modal";
@@ -77,6 +77,7 @@ export function QAPage() {
   >({});
 
   const { mutate: submitFeedback } = useSubmitRagFeedback();
+  const { mutate: downloadPdf, isPending: downloadingPdf } = useDownloadPdf();
   const savedItems = useSavedAnswers((s) => s.items);
   const saveAnswer = useSavedAnswers((s) => s.save);
   const removeSaved = useSavedAnswers((s) => s.remove);
@@ -301,7 +302,13 @@ export function QAPage() {
         m.role === "user" ? `## ❓ ${m.content}` : `${m.content}\n`,
       )
       .join("\n\n");
-    downloadFile(`# Q&A Session\n\n${md}`, "qa-session.md");
+    downloadPdf(
+      { markdown: `# Q&A Session\n\n${md}`, title: "qa-session" },
+      {
+        onSuccess: (blob) => downloadBlob(blob, "qa-session.pdf"),
+        onError: () => toast.error("Failed to generate PDF"),
+      }
+    );
   };
 
   const filterPanel = (
@@ -393,11 +400,12 @@ export function QAPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  icon={<Download className="h-4 w-4" />}
+                  loading={downloadingPdf}
+                  icon={!downloadingPdf ? <Download className="h-4 w-4" /> : undefined}
                   onClick={handleExportChat}
                   disabled={isStreaming}
                 >
-                  Export
+                  Export PDF
                 </Button>
                 <Button
                   variant="ghost"
@@ -658,15 +666,19 @@ export function QAPage() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    icon={<Download className="h-3.5 w-3.5" />}
+                    loading={downloadingPdf}
+                    icon={!downloadingPdf ? <Download className="h-3.5 w-3.5" /> : undefined}
                     onClick={() =>
-                      downloadFile(
-                        `# ${item.question}\n\n${item.answer}`,
-                        "saved-answer.md",
+                      downloadPdf(
+                        { markdown: `# ${item.question}\n\n${item.answer}`, title: "saved-answer" },
+                        {
+                          onSuccess: (blob) => downloadBlob(blob, "saved-answer.pdf"),
+                          onError: () => toast.error("Failed to generate PDF"),
+                        }
                       )
                     }
                   >
-                    Download
+                    Download PDF
                   </Button>
                 </div>
               </div>

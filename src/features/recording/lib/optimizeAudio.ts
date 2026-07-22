@@ -193,14 +193,13 @@ export async function optimizeAudioForUpload(
     // no separate OfflineAudioContext render needed. Some engines reject an
     // uncommon rate at construction; fall back to a default-rate decode +
     // offline resample in that case.
-    let decoded: AudioBuffer;
     try {
       decodeCtx = new AudioCtx({ sampleRate: TARGET_SAMPLE_RATE });
     } catch {
       decodeCtx = new AudioCtx();
     }
     // decodeAudioData detaches the buffer, so pass a copy.
-    decoded = await decodeCtx.decodeAudioData(arrayBuffer.slice(0));
+    const decoded = await decodeCtx.decodeAudioData(arrayBuffer.slice(0));
 
     onProgress?.({ stage: "Optimizing for speech…", percent: null });
     let samples: Float32Array;

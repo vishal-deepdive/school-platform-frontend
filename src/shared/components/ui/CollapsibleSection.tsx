@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { AnimatePresence, motion } from "framer-motion";
+import { accordion } from "@/features/landing/animations";
 
 interface CollapsibleSectionProps {
   /** Stable key — open/closed state persists per section in localStorage. */
@@ -77,17 +79,22 @@ export function CollapsibleSection({
       </div>
 
       {/* grid-rows trick animates open/close without measuring heights */}
-      <div
-        id={`section-${id}`}
-        className={cn(
-          "grid transition-[grid-template-rows] duration-300 ease-out",
-          open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            id={`section-${id}`}
+            variants={accordion}
+            initial="collapsed"
+            animate="open"
+            exit="collapsed"
+            className="overflow-hidden"
+          >
+            <div className="min-h-0 overflow-hidden pt-4">
+              {children}
+            </div>
+          </motion.div>
         )}
-      >
-        <div className={cn("min-h-0 overflow-hidden", open && "pt-4")}>
-          {children}
-        </div>
-      </div>
+      </AnimatePresence>
     </section>
   );
 }

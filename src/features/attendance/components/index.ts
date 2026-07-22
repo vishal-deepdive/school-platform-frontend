@@ -4,3 +4,7 @@ export * from "./AttendanceScopeFilters";
 export * from "./StatusLegend";
 export * from "./MarkAttendanceForm";
 export * from "./SelfAttendanceView";
+export * from "./ChildSelector";
+export * from "./MonthCalendarShell";
+export * from "./StudentAttendanceCalendar";
+export * from "./ClassAttendanceCalendar";

@@ -147,6 +147,8 @@ export function StatusDonut({
                   outerRadius="95%"
                   paddingAngle={2}
                   strokeWidth={0}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
                   activeShape={ActiveSlice}
                   onMouseEnter={(_, i) => setActiveIndex(i)}
                   onMouseLeave={() => setActiveIndex(null)}

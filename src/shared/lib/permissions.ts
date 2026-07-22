@@ -10,12 +10,14 @@ import type { UserRole } from "@/features/auth/types";
  *
  * Write/authoring surfaces (enroll, mark, upload, manage documents, generate exam
  * questions, data management, audits) are teacher/principal/admin. Read/consume
- * surfaces (own attendance, study notes, Q&A) extend to students and — for their
- * linked child — parents.
+ * surfaces extend to students (own attendance, study notes, Q&A, browsing the
+ * textbook library) and to parents for their linked child (attendance records +
+ * leave, class recordings, lecture-notes search). Note the Study Assistant
+ * (/rag/*) is students-only on the consume side — parents do not get RAG access.
  */
 export const ROUTE_ROLES: Record<string, UserRole[]> = {
-  "/dashboard": ["admin", "principal", "teacher", "student", "parent", "viewer"],
-  "/profile":   ["admin", "principal", "teacher", "student", "parent", "viewer"],
+  "/dashboard": ["admin", "principal", "teacher", "student", "parent"],
+  "/profile":   ["admin", "principal", "teacher", "student", "parent"],
 
   // Attendance
   "/attendance/dashboard": ["admin", "principal", "teacher"],
@@ -24,14 +26,15 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/attendance/mark": ["admin", "principal", "teacher"],
   "/attendance/view": ["admin", "principal", "teacher", "student", "parent"],
   "/attendance/leave": ["admin", "principal", "teacher", "student", "parent"],
-  "/attendance/holidays": ["admin", "principal"],
-  "/attendance/manage": ["admin", "principal"],
+  "/attendance/holidays": ["admin", "principal", "teacher"],
+  "/attendance/manage": ["admin", "principal", "teacher"],
   "/attendance/stats": ["admin", "principal", "teacher"],
+  "/attendance/audit-log": ["admin", "principal"],
 
   // Recording
   "/recording/upload": ["admin", "principal", "teacher"],
   "/recording/list": ["admin", "principal", "teacher", "student", "parent"],
-  "/recording/search": ["admin", "principal", "teacher", "student"],
+  "/recording/search": ["admin", "principal", "teacher", "student", "parent"],
   "/recording/audit": ["admin", "principal"],
 
   // RAG Assistant
@@ -42,7 +45,7 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/rag/assignments": ["admin", "principal", "teacher"],
   "/rag/notes": ["admin", "principal", "teacher", "student"],
   "/rag/lesson-plan": ["admin", "principal", "teacher"],
-  "/rag/documents": ["admin", "principal", "teacher"],
+  "/rag/documents": ["admin", "principal", "teacher", "student"],
   "/rag/insights": ["admin", "principal", "teacher"],
   "/rag/requests": ["admin", "principal", "teacher"],
   "/rag/review": ["admin", "principal"],
@@ -52,16 +55,15 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/survey": ["admin", "principal", "teacher"],
   "/survey/search": ["admin", "principal", "teacher"],
   "/survey/data": ["admin", "principal"],
-  "/survey/source": ["admin", "principal"],
+  "/survey/source": ["admin", "principal", "teacher"],
 
   // Roster management
   "/students/import": ["admin", "principal"],
 
-  // Parent account approvals (principal/admin)
-  "/approvals/parents": ["admin", "principal"],
-
-  // Staff / teacher management (principal/admin)
-  "/staff": ["admin", "principal"],
+  // Principal own-school management cockpit (principal only; admins use /admin/schools).
+  // Staff (team + invites) and Parent Approvals are tabs inside this cockpit, not
+  // separate routes.
+  "/school": ["principal"],
 
   // Platform admin
   "/admin/onboarding": ["admin"],

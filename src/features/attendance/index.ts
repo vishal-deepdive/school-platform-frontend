@@ -12,3 +12,4 @@ export * from "./pages/AttendanceDashboardPage";
 export * from "./pages/HolidaysPage";
 export * from "./pages/LeavePage";
 export * from "./pages/ManageStudentsPage";
+export * from "./pages/ChangeLogPage";

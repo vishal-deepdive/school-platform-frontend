@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, Users, UserCheck, UserX } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
@@ -105,7 +105,7 @@ export function RollCallPage() {
   const [className, setClassName] = usePersistedState("att.rollcall.class", "");
   const [section, setSection] = usePersistedState("att.rollcall.section", "");
   const [subject, setSubject] = useState("");
-  const [session, setSession] = usePersistedState("att.rollcall.session", "2025-26");
+  const [session, setSession] = usePersistedState("att.rollcall.session", getCurrentSession());
   const [date, setDate] = useState(todayIso());
   const [allowHoliday, setAllowHoliday] = useState(false);
 

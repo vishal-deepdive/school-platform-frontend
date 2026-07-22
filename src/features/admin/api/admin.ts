@@ -27,6 +27,14 @@ import type {
   UserListParams,
   PaginatedAudit,
   AuditLogParams,
+  CreateStudentRequest,
+  PromoteStudentRequest,
+  PromoteStudentResult,
+  PromoteClassRequest,
+  PromoteClassResult,
+  PromoteSchoolResult,
+  PromotionSettings,
+  UpdatePromotionSettingsRequest,
 } from "@/features/admin/types";
 
 const ADMIN_BASE = `${API_V1}/admin`;
@@ -190,6 +198,14 @@ export const adminApi = {
       )
       .then((r) => r.data),
 
+  deactivateClassCode: (schoolId: string, code: string) =>
+    apiClient
+      .delete<{ message: string }>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/class-codes`,
+        { params: { code } },
+      )
+      .then((r) => r.data),
+
   // ── Teacher class assignments ──────────────────────────────────────────────
 
   listTeacherAssignments: (schoolId: string) =>
@@ -251,11 +267,57 @@ export const adminApi = {
       })
       .then((r) => r.data),
 
+  // ── Student lifecycle (create / promote) ───────────────────────────────────
+
+  createStudent: (schoolId: string, data: CreateStudentRequest) =>
+    apiClient
+      .post<ProvisionedUser>(`${ADMIN_BASE}/schools/${enc(schoolId)}/students`, data)
+      .then((r) => r.data),
+
+  promoteStudent: (schoolId: string, rollNo: string, data: PromoteStudentRequest) =>
+    apiClient
+      .post<PromoteStudentResult>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/students/${enc(rollNo)}/promote`,
+        data,
+      )
+      .then((r) => r.data),
+
+  promoteClass: (schoolId: string, data: PromoteClassRequest) =>
+    apiClient
+      .post<PromoteClassResult>(`${ADMIN_BASE}/schools/${enc(schoolId)}/classes/promote`, data)
+      .then((r) => r.data),
+
+  promoteSchool: (schoolId: string, targetSession?: string) =>
+    apiClient
+      .post<PromoteSchoolResult>(`${ADMIN_BASE}/schools/${enc(schoolId)}/promote-school`, {
+        target_session: targetSession,
+      })
+      .then((r) => r.data),
+
+  updatePromotionSettings: (schoolId: string, data: UpdatePromotionSettingsRequest) =>
+    apiClient
+      .patch<PromotionSettings>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/promotion-settings`,
+        data,
+      )
+      .then((r) => r.data),
+
   // ── User directory ─────────────────────────────────────────────────────────
 
   listUsers: (params: UserListParams) =>
     apiClient
       .get<PaginatedUsers>(`${ADMIN_BASE}/users`, { params })
+      .then((r) => r.data),
+
+  /**
+   * List users within ONE school. Works for principals (own school, scoped
+   * server-side) AND admins (any school) — the single source for the school
+   * management pickers, so principals never touch the admin-only /users
+   * directory. Pass role/status/search/limit/offset as needed.
+   */
+  listSchoolUsers: (schoolId: string, params: Omit<UserListParams, "school_id">) =>
+    apiClient
+      .get<PaginatedUsers>(`${ADMIN_BASE}/schools/${enc(schoolId)}/users`, { params })
       .then((r) => r.data),
 
   deactivateUser: (userId: string) =>

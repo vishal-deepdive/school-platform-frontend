@@ -13,13 +13,30 @@ import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Modal } from "@/shared/components/ui/Modal";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
-import { Alert } from "@/shared/components/ui/Alert";
-import { getErrorMessage, formatDate, cn } from "@/shared/lib/utils";
-import { useAssignments, useAssignment } from "@/features/rag/hooks/useRag";
-import { PracticeBuilderModal } from "@/features/rag/components/PracticeBuilderModal";
-import { QuizRunner } from "@/features/rag/components/QuizRunner";
-import type { AssignmentSummary } from "@/features/rag/types";
+import { Skeleton, CardSkeleton } from "@/shared/components/ui/Skeleton";
+import { Alert } from "@/shared/components/ui";
+import { cn, formatDate, getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
+import { useAssignment, useAssignments } from "../hooks/useRag";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
+import { PracticeBuilderModal } from "../components/PracticeBuilderModal";
+import { QuizRunner } from "../components/QuizRunner";
+import { AssignmentSummary } from "../types";
+
+function PracticeSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-5 w-64" />
+        <Skeleton className="h-9 w-32 rounded-md" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <CardSkeleton key={i} lines={3} className="h-44" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function PracticePage() {
   const queryClient = useQueryClient();
@@ -35,7 +52,18 @@ export function PracticePage() {
 
   const items = data?.pages.flatMap((p) => p.items) ?? [];
 
-  if (isLoading) return <PageSkeleton />;
+  if (isLoading) return <PracticeSkeleton />;
+
+  // Ungranted teachers/students land here from the nav; show a clean access
+  // message instead of a raw error (matches the Textbook Library pattern).
+  if (isError && isForbiddenError(error)) {
+    return (
+      <ForbiddenState
+        title="No access to the Study Assistant"
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal to enable Study Assistant access for you."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -480,6 +480,10 @@ export interface FlashcardDeckSummary {
   card_count: number;
   created_at?: string | null;
   created_by_name?: string | null;
+  /** Raw creator id + school scope — determines whether the caller may delete
+   * this deck (own-only for teachers; global decks are admin-only). */
+  created_by?: string | null;
+  school_id?: string | null;
   /** Cards the current user has mastered (server-side progress). */
   mastered_count?: number;
 }

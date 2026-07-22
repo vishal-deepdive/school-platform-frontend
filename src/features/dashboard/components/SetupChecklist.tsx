@@ -76,6 +76,12 @@ export function SetupChecklist() {
       label: "Create class codes for students to join",
       done: data.class_codes > 0,
       icon: KeyRound,
+      // Route each persona to a working class-codes surface: principals to their
+      // "My School" cockpit, admins to the active school's detail page.
+      cta: {
+        label: "Create codes",
+        to: user?.role === "admin" ? `/admin/schools/${schoolId}` : "/school",
+      },
     },
     {
       key: "students",

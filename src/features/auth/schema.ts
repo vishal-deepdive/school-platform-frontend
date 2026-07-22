@@ -20,7 +20,7 @@ export const registerSchema = z
     password: passwordField,
     confirm_password: z.string(),
     full_name: optionalNameField,
-    role: z.enum(["admin", "teacher", "viewer"]),
+    role: z.enum(["admin", "teacher"]),
     school_id: z
       .string()
       .uuid("Invalid school ID")

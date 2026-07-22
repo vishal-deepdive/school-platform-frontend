@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/features/auth/store/auth";
 import type { UserRole } from "@/features/auth/types";
 import { ROUTE_ROLES } from "@/shared/lib/permissions";
+import toast from "@/shared/lib/toast";
 
 interface RoleRouteProps {
   children: ReactNode;
@@ -36,6 +37,17 @@ export function RoleRoute({ children, allow }: RoleRouteProps) {
         `allow prop — this route will default-deny. Add it to ROUTE_ROLES or pass allow={[…]}.`,
     );
   }
+
+  const wrongRole = !!user && (!roles || !roles.includes(user.role));
+
+  useEffect(() => {
+    // Only the "authenticated but wrong role" case is worth telling the user
+    // about — a missing `user` means auth hasn't resolved yet (ProtectedRoute
+    // handles that upstream), so a toast there would be noise, not signal.
+    if (wrongRole) {
+      toast.error("You don't have access to that page.");
+    }
+  }, [location.pathname, wrongRole]);
 
   if (!roles || !user || !roles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;

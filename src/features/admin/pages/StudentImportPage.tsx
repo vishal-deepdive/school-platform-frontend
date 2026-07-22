@@ -13,7 +13,7 @@ import toast from "@/shared/lib/toast";
 import { adminApi } from "@/features/admin/api/admin";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import type { BulkImportResult } from "@/features/admin/types";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Panel } from "@/shared/components/ui/Panel";
@@ -37,12 +37,7 @@ export function StudentImportPage() {
 
   const downloadSample = () => {
     const blob = new Blob([SAMPLE_CSV], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "student_roster_template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, "student_roster_template.csv");
   };
 
   const handleUpload = async () => {

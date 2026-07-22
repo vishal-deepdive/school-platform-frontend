@@ -182,6 +182,8 @@ export function AttendanceTrendChart({
                   fill="url(#attendance-fill)"
                   dot={false}
                   activeDot={{ r: 4, strokeWidth: 2, stroke: "oklch(var(--card))" }}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
                 />
               </AreaChart>
             ) : (
@@ -212,10 +214,10 @@ export function AttendanceTrendChart({
                   content={<TrendTooltip />}
                   cursor={{ fill: "oklch(var(--muted-foreground))", opacity: 0.08 }}
                 />
-                <Bar dataKey="present" name="Present" stackId="day" fill={STATUS_META.P.color} maxBarSize={26} />
-                <Bar dataKey="late" name="Late" stackId="day" fill={STATUS_META.L.color} maxBarSize={26} />
-                <Bar dataKey="half_day" name="Half day" stackId="day" fill={STATUS_META.H.color} maxBarSize={26} />
-                <Bar dataKey="excused" name="Excused" stackId="day" fill={STATUS_META.E.color} maxBarSize={26} />
+                <Bar dataKey="present" name="Present" stackId="day" fill={STATUS_META.P.color} maxBarSize={26} animationDuration={1200} animationEasing="ease-out" />
+                <Bar dataKey="late" name="Late" stackId="day" fill={STATUS_META.L.color} maxBarSize={26} animationDuration={1200} animationEasing="ease-out" />
+                <Bar dataKey="half_day" name="Half day" stackId="day" fill={STATUS_META.H.color} maxBarSize={26} animationDuration={1200} animationEasing="ease-out" />
+                <Bar dataKey="excused" name="Excused" stackId="day" fill={STATUS_META.E.color} maxBarSize={26} animationDuration={1200} animationEasing="ease-out" />
                 <Bar
                   dataKey="absent"
                   name="Absent"
@@ -223,6 +225,8 @@ export function AttendanceTrendChart({
                   fill={STATUS_META.A.color}
                   radius={[3, 3, 0, 0]}
                   maxBarSize={26}
+                  animationDuration={1200}
+                  animationEasing="ease-out"
                 />
               </BarChart>
             )}

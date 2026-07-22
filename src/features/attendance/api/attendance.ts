@@ -24,6 +24,9 @@ import type {
   DashboardResponse,
   AnalyticsResponse,
   MyAnalyticsResponse,
+  MyChildrenResponse,
+  StudentCalendarResponse,
+  ClassCalendarResponse,
 } from "@/features/attendance/types";
 import { buildQueryString } from "@/shared/lib/utils";
 
@@ -129,6 +132,25 @@ export const attendanceApi = {
       .get<MyAnalyticsResponse>(`${BASE}/my-analytics/${buildQueryString(params)}`)
       .then((r) => r.data),
 
+  /** Students the caller may view — self (student) or approved children (parent).
+   * Backs the parent child-selector on Records + Leave. */
+  getMyChildren: () =>
+    apiClient
+      .get<MyChildrenResponse>(`${BASE}/my-children/`)
+      .then((r) => r.data),
+
+  /** Month-aligned attendance calendar for a student (self or approved child). */
+  getStudentCalendar: (params: Record<string, string>) =>
+    apiClient
+      .get<StudentCalendarResponse>(`${BASE}/calendar/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
+  /** Month-aligned daily attendance percentage for a class/section (staff). */
+  getClassCalendar: (params: Record<string, string>) =>
+    apiClient
+      .get<ClassCalendarResponse>(`${BASE}/class-calendar/${buildQueryString(params)}`)
+      .then((r) => r.data),
+
   // ── Holidays ──
   listHolidays: (params: Record<string, string>) =>
     apiClient
@@ -210,6 +232,14 @@ export const attendanceApi = {
       )
       .then((r) => r.data),
 
+  exportChangeLog: (params: Record<string, string>) =>
+    apiClient
+      .get(
+        `${BASE}/database-change-log/${buildQueryString({ ...params, format: "csv" })}`,
+        { responseType: "blob" },
+      )
+      .then((r) => r.data as Blob),
+
   deleteStudent: (params: Record<string, string>) =>
     apiClient
       .delete<DeleteResponse>(
@@ -217,10 +247,45 @@ export const attendanceApi = {
       )
       .then((r) => r.data),
 
+  deleteStudentFromDatabase: (params: Record<string, string>) =>
+    apiClient
+      .delete<DeleteResponse>(
+        `${BASE}/delete-student-from-database/${buildQueryString(params)}`,
+      )
+      .then((r) => r.data),
+
+  deleteStudentFromAttendance: (params: Record<string, string>) =>
+    apiClient
+      .delete<DeleteResponse>(
+        `${BASE}/delete-student-from-attendance/${buildQueryString(params)}`,
+      )
+      .then((r) => r.data),
+
+  deleteStudentFromBoth: (params: Record<string, string>) =>
+    apiClient
+      .delete<DeleteResponse>(
+        `${BASE}/delete-student-from-both/${buildQueryString(params)}`,
+      )
+      .then((r) => r.data),
+
   deleteClass: (params: Record<string, string>) =>
     apiClient
       .delete<DeleteResponse>(
         `${BASE}/delete-class/${buildQueryString(params)}`,
+      )
+      .then((r) => r.data),
+
+  deleteBulkFromDatabase: (params: Record<string, string>) =>
+    apiClient
+      .delete<DeleteResponse>(
+        `${BASE}/delete-bulk-from-database/${buildQueryString(params)}`,
+      )
+      .then((r) => r.data),
+
+  deleteBulkFromAttendance: (params: Record<string, string>) =>
+    apiClient
+      .delete<DeleteResponse>(
+        `${BASE}/delete-bulk-from-attendance/${buildQueryString(params)}`,
       )
       .then((r) => r.data),
 

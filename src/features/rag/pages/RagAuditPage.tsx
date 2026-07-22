@@ -12,7 +12,6 @@ import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Panel } from "@/shared/components/ui/Panel";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -21,6 +20,35 @@ import { getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { canManageRecordings } from "@/shared/lib/permissions";
 import { CoverageMatrix } from "@/features/rag/components/CoverageMatrix";
+import { Skeleton, StatCardSkeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+
+function RagAuditSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex justify-end gap-2">
+        <Skeleton className="h-9 w-40 rounded-md" />
+        <Skeleton className="h-9 w-24 rounded-md" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-border/60 bg-card">
+            <div className="flex items-center justify-between border-b border-border/40 px-4 py-3 sm:px-6">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-5 w-8 rounded-full" />
+            </div>
+            <ListSkeleton items={3} />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="h-64 w-full rounded-xl" />
+    </div>
+  );
+}
 
 export function RagAuditPage() {
   const queryClient = useQueryClient();
@@ -47,7 +75,7 @@ export function RagAuditPage() {
     }
   };
 
-  if (isLoading) return <PageSkeleton />;
+  if (isLoading) return <RagAuditSkeleton />;
   if (isError)
     return <Alert variant="error">{getErrorMessage(error) || "Failed to load RAG audit data."}</Alert>;
 

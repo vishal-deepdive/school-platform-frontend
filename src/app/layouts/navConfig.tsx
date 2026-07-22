@@ -18,7 +18,6 @@ import {
   Gauge,
   PlayCircle,
   Sparkles,
-  Trash2,
   FileSpreadsheet,
   History,
   CalendarClock,
@@ -35,8 +34,7 @@ import {
   MessageSquareWarning,
   Building,
   UserCog,
-  UserRoundCheck,
-  UsersRound,
+  Trash2,
 } from "lucide-react";
 
 export interface NavItem {
@@ -116,7 +114,7 @@ export const navItems: NavItem[] = [
         badgeKey: "pending-leaves",
       },
       {
-        label: "Attendance Reports",
+        label: "Enrollment Stats",
         href: "/attendance/stats",
         icon: <TrendingUp className="h-4 w-4" />,
         group: "Requests & reports",
@@ -143,6 +141,12 @@ export const navItems: NavItem[] = [
         label: "Import Students",
         href: "/students/import",
         icon: <FileUp className="h-4 w-4" />,
+        group: "Setup",
+      },
+      {
+        label: "Change Log",
+        href: "/attendance/audit-log",
+        icon: <History className="h-4 w-4" />,
         group: "Setup",
       },
     ],
@@ -283,20 +287,13 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    // admin + principal only (enforced by roleCanAccess against ROUTE_ROLES);
-    // filtered out of the rail for everyone else.
-    label: "Parent Approvals",
-    railLabel: "Approvals",
-    href: "/approvals/parents",
-    icon: <UserRoundCheck className="h-5 w-5" />,
-  },
-  {
-    // admin + principal only (enforced by roleCanAccess against ROUTE_ROLES);
-    // filtered out of the rail for everyone else.
-    label: "Staff",
-    railLabel: "Staff",
-    href: "/staff",
-    icon: <UsersRound className="h-5 w-5" />,
+    // principal only (ROUTE_ROLES "/school": ["principal"]); admins manage every
+    // school via Platform Admin → Schools instead. Staff (team + invites) and
+    // Parent Approvals live as tabs inside this cockpit, not separate nav items.
+    label: "My School",
+    railLabel: "School",
+    href: "/school",
+    icon: <Building className="h-5 w-5" />,
   },
   {
     label: "My Profile",

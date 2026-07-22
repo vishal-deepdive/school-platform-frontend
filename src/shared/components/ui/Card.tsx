@@ -1,35 +1,13 @@
 import { cn } from "@/shared/lib/utils";
-import { useCountUp } from "@/shared/hooks/useCountUp";
+
+import { motion } from "framer-motion";
+import { cardHover } from "@/features/landing/animations";
 
 /**
  * Renders a stat value, easing the number up on mount/change. Animates only a
  * single, clean numeric core (e.g. `42`, `85%`, `1,234`) so prefix/suffix and
  * multi-number strings like "2h 30m" or em-dashes render verbatim.
  */
-function AnimatedStat({ value }: { value: string | number }) {
-  const raw = typeof value === "number" ? String(value) : value;
-  const match = raw.match(/^(\D*)(\d[\d,]*(?:\.\d+)?)(\D*)$/);
-  const target = match ? Number(match[2].replace(/,/g, "")) : NaN;
-  const animated = useCountUp(Number.isFinite(target) ? target : 0);
-
-  if (!match || !Number.isFinite(target)) return <>{raw}</>;
-
-  const [, prefix, numStr, suffix] = match;
-  const decimals = numStr.includes(".") ? numStr.split(".")[1].length : 0;
-  const grouped = numStr.includes(",");
-  const shown = animated.toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-    useGrouping: grouped,
-  });
-  return (
-    <>
-      {prefix}
-      {shown}
-      {suffix}
-    </>
-  );
-}
 
 interface CardProps {
   children: React.ReactNode;
@@ -59,21 +37,25 @@ export function Card({
   hoverable = false,
   variant = "default",
 }: CardProps) {
+  const Component = hoverable ? motion.div : ("div" as any);
   return (
-    <div
+    <Component
       className={cn(
-        // Flat at rest — elevation only appears on hover.
-        "rounded-xl border shadow-none transition-all duration-300 ease-out",
-        // "hover:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.06),0_10px_24px_-6px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_10px_28px_-8px_rgba(0,0,0,0.55)]",
+        "rounded-xl border",
+        !hoverable && "transition-all duration-300 ease-out shadow-none",
         variantClasses[variant],
-        hoverable &&
-          "hover:-translate-y-0.5 hover:border-primary/25 dark:hover:border-primary/35 cursor-pointer",
+        hoverable && "cursor-pointer hover:border-primary/25 dark:hover:border-primary/35",
         paddingClasses[padding],
         className,
       )}
+      {...(hoverable ? {
+        variants: cardHover,
+        initial: "rest",
+        whileHover: "hover",
+      } : {})}
     >
       {children}
-    </div>
+    </Component>
   );
 }
 
@@ -153,7 +135,7 @@ export function StatCard({
   color = "primary",
   className,
   description,
-  hoverable = false,
+  hoverable = true,
 }: StatCardProps) {
   return (
     <Card
@@ -180,7 +162,8 @@ export function StatCard({
 
       <div className="mt-4">
         <p className="font-display text-3xl font-semibold text-foreground tracking-tight tabular-nums">
-          <AnimatedStat value={value} />
+          {/* <AnimatedStat value={value} /> */}
+          {value}
         </p>
         {description && (
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">

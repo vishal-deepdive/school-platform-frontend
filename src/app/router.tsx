@@ -38,8 +38,7 @@ const TermsPage = lazyPage(legal, "TermsPage");
 const PrivacyPage = lazyPage(legal, "PrivacyPage");
 const DashboardPage = lazyPage(() => import("@/features/dashboard"), "DashboardPage");
 const ProfilePage = lazyPage(() => import("@/features/profile"), "ProfilePage");
-const ParentApprovalsPage = lazyPage(() => import("@/features/parents"), "ParentApprovalsPage");
-const StaffManagementPage = lazyPage(() => import("@/features/staff"), "StaffManagementPage");
+const MySchoolPage = lazyPage(() => import("@/features/school"), "MySchoolPage");
 
 const attendance = () => import("@/features/attendance");
 const AttendancePage = lazyPage(attendance, "AttendancePage");
@@ -52,6 +51,7 @@ const LeavePage = lazyPage(attendance, "LeavePage");
 const HolidaysPage = lazyPage(attendance, "HolidaysPage");
 const ManageStudentsPage = lazyPage(attendance, "ManageStudentsPage");
 const AttendanceStatsPage = lazyPage(attendance, "AttendanceStatsPage");
+const ChangeLogPage = lazyPage(attendance, "ChangeLogPage");
 
 const recording = () => import("@/features/recording");
 const RecordingPage = lazyPage(recording, "RecordingPage");
@@ -175,24 +175,35 @@ export const router = createBrowserRouter([
           // ── Dashboard ────────────────────────────────────────────────────
           {
             path: "/dashboard",
-            element: <ModulePageLayout />,
-            children: [{ index: true, element: <DashboardPage /> }],
+            element: (
+              <RoleRoute>
+                <DashboardPage />
+              </RoleRoute>
+            ),
           },
           // ── Profile ──────────────────────────────────────────────────────
           {
             path: "/profile",
-            element: <ModulePageLayout />,
-            children: [{ index: true, element: <ProfilePage /> }],
-          },
-          // ── Staff management (principal / admin) ─────────────────────────
-          {
-            path: "/staff",
             element: (
-              <RoleRoute allow={["admin", "principal"]}>
+              <RoleRoute>
                 <ModulePageLayout />
               </RoleRoute>
             ),
-            children: [{ index: true, element: <StaffManagementPage /> }],
+            children: [{ index: true, element: <ProfilePage /> }],
+          },
+          // ── My School (principal own-school cockpit) ─────────────────────
+          // Principal-only: an admin manages every school via Platform Admin →
+          // Schools. No SchoolGate — a principal is always scoped to their own
+          // school via useActiveSchool(); do NOT add /school to
+          // SCHOOL_SCOPED_PREFIXES.
+          {
+            path: "/school",
+            element: (
+              <RoleRoute allow={["principal"]}>
+                <ModulePageLayout />
+              </RoleRoute>
+            ),
+            children: [{ index: true, element: <MySchoolPage /> }],
           },
           // ── Attendance ───────────────────────────────────────────────────
           {
@@ -213,6 +224,7 @@ export const router = createBrowserRouter([
               { path: "holidays", element: <RoleRoute><HolidaysPage /></RoleRoute> },
               { path: "manage", element: <RoleRoute><ManageStudentsPage /></RoleRoute> },
               { path: "stats", element: <RoleRoute><AttendanceStatsPage /></RoleRoute> },
+              { path: "audit-log", element: <RoleRoute><ChangeLogPage /></RoleRoute> },
             ],
           },
           // ── Student roster (shares Attendance module in nav) ─────────────
@@ -297,24 +309,11 @@ export const router = createBrowserRouter([
               {
                 path: "source",
                 element: (
-                  <RoleRoute allow={["admin", "principal"]}>
+                  <RoleRoute>
                     <SurveySourcePage />
                   </RoleRoute>
                 ),
               },
-            ],
-          },
-          // ── Parent Approvals ──────────────────────────────────────────────
-          {
-            path: "/approvals",
-            element: (
-              <RoleRoute allow={["admin", "principal"]}>
-                <ModulePageLayout />
-              </RoleRoute>
-            ),
-            children: [
-              { index: true, element: <Navigate to="parents" replace /> },
-              { path: "parents", element: <ParentApprovalsPage /> },
             ],
           },
           // ── Platform Admin ────────────────────────────────────────────────

@@ -234,6 +234,38 @@ const SUPPORTING = [
   },
 ];
 
+function SpotlightCard({ children, className, variants }: any) {
+  const divRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [opacity, setOpacity] = useState(0);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!divRef.current) return;
+    const rect = divRef.current.getBoundingClientRect();
+    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  return (
+    <motion.div
+      ref={divRef}
+      variants={variants}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setOpacity(1)}
+      onMouseLeave={() => setOpacity(0)}
+      className={`relative overflow-hidden ${className}`}
+    >
+      <div
+        className="pointer-events-none absolute -inset-px transition-opacity duration-300"
+        style={{
+          opacity,
+          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, oklch(var(--primary)/0.12), transparent 40%)`,
+        }}
+      />
+      <div className="relative z-10 flex h-full flex-col">{children}</div>
+    </motion.div>
+  );
+}
+
 export function FeatureSection() {
   return (
     <section id="features" className="relative w-full scroll-mt-24 bg-background dark:bg-[#0b0e14] py-16 sm:py-20 lg:py-24">
@@ -253,10 +285,10 @@ export function FeatureSection() {
           className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-12"
         >
           {CORE_FEATURES.map((feature) => (
-            <motion.div
+            <SpotlightCard
               key={feature.title}
               variants={fadeUp}
-              className={`flex flex-col rounded-2xl border border-border bg-card p-7 transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/5 md:col-span-1 ${feature.span}`}
+              className={`flex flex-col rounded-2xl border border-border bg-card p-7 transition-shadow duration-300 hover:shadow-lg md:col-span-1 ${feature.span}`}
             >
               <h3 className="text-lg font-semibold text-card-foreground">
                 {feature.title}
@@ -264,17 +296,17 @@ export function FeatureSection() {
               <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
                 {feature.description}
               </p>
-              <div className="mt-auto">
+              <div className="mt-auto pt-6">
                 <feature.vignette />
               </div>
-            </motion.div>
+            </SpotlightCard>
           ))}
 
           {SUPPORTING.map((item) => (
-            <motion.div
+            <SpotlightCard
               key={item.title}
               variants={fadeUp}
-              className="flex items-start gap-4 rounded-2xl border border-border bg-card p-6 transition-shadow duration-300 hover:shadow-lg hover:shadow-primary/5 md:col-span-1 lg:col-span-6"
+              className="flex items-start gap-4 rounded-2xl border border-border bg-card p-6 transition-shadow duration-300 hover:shadow-lg md:col-span-1 lg:col-span-6"
             >
               <item.icon
                 className="mt-0.5 h-5 w-5 shrink-0 text-primary"
@@ -288,7 +320,7 @@ export function FeatureSection() {
                   {item.description}
                 </p>
               </div>
-            </motion.div>
+            </SpotlightCard>
           ))}
         </motion.div>
       </div>

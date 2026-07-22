@@ -9,8 +9,32 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { Panel } from "@/shared/components/ui/Panel";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
+
+function RecordingsListSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex flex-col gap-4 rounded-xl border border-border/60 bg-muted/20 p-4">
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-5 w-24" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full rounded-md" />
+          ))}
+        </div>
+      </div>
+      <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
+          <Skeleton className="h-4 w-4" />
+        </div>
+        <ListSkeleton items={5} />
+      </div>
+    </div>
+  );
+}
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Input } from "@/shared/components/ui/Input";
@@ -18,6 +42,8 @@ import { Select } from "@/shared/components/ui/Select";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { useMyChildren } from "@/features/attendance/hooks/useMyChildren";
+import { ChildSelector } from "@/features/attendance/components/ChildSelector";
 import { getErrorMessage } from "@/shared/lib/utils";
 import {
   useRecordingsList,
@@ -57,6 +83,7 @@ export function RecordingsListPage() {
   const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const canManage = canManageRecordings(role);
   const canUpload = canUploadRecordings(role);
+  const myChildren = useMyChildren();
 
   const [offset, setOffset] = useState(0);
   const [filters, setFilters] = useState({ ...EMPTY_FILTERS });
@@ -81,6 +108,12 @@ export function RecordingsListPage() {
     setOffset(0);
     setSelected(new Set());
   }, [schoolId]);
+
+  // Switching the viewed child (parent) resets paging — a different class scope.
+  useEffect(() => {
+    setOffset(0);
+    setSelected(new Set());
+  }, [myChildren.selectedRoll]);
 
   const handleClassChange = (className: string) => {
     setFilters((f) => ({ ...f, class: className, section: "" }));
@@ -108,6 +141,7 @@ export function RecordingsListPage() {
     school_name: isAdmin ? schoolName || undefined : undefined,
     sort_by: sortBy,
     order,
+    roll_no: myChildren.isParent ? myChildren.selectedRoll ?? undefined : undefined,
   };
 
   const { data, isLoading, isError, error, refetch, isFetching } =
@@ -153,7 +187,7 @@ export function RecordingsListPage() {
       return next;
     });
 
-  if (isLoading) return <PageSkeleton showStats={false} content="list" />;
+  if (isLoading) return <RecordingsListSkeleton />;
   if (isError)
     return (
       <Alert variant="error">
@@ -175,6 +209,13 @@ export function RecordingsListPage() {
             </Link>
           </Button>
         </ModuleHeaderActions>
+      )}
+      {myChildren.showSelector && (
+        <ChildSelector
+          childrenList={myChildren.children}
+          value={myChildren.selectedRoll}
+          onChange={myChildren.setSelectedRoll}
+        />
       )}
       <FilterBar
         icon={<SlidersHorizontal className="h-4 w-4" />}
@@ -332,7 +373,12 @@ export function RecordingsListPage() {
                 selectable={canManage}
                 selected={selected.has(rec.id)}
                 onToggleSelect={toggleSelect}
-                onPreview={(id) => void preview.open(id)}
+                onPreview={(id) =>
+                  void preview.open(
+                    id,
+                    myChildren.isParent ? myChildren.selectedRoll ?? undefined : undefined,
+                  )
+                }
                 onDownload={download}
                 onRetry={retryRec}
                 onDelete={setConfirmDelete}

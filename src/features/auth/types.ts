@@ -3,8 +3,7 @@ export type UserRole =
   | "principal"
   | "teacher"
   | "student"
-  | "parent"
-  | "viewer";
+  | "parent";
 
 export interface User {
   id: string;

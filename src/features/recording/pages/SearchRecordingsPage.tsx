@@ -13,14 +13,18 @@ import {
   useRecordingPreview,
 } from "@/features/recording/hooks/useRecordings";
 import { MarkdownPreviewModal } from "@/features/recording/components/MarkdownPreviewModal";
+import { useMyChildren } from "@/features/attendance/hooks/useMyChildren";
+import { ChildSelector } from "@/features/attendance/components/ChildSelector";
 
 export function SearchRecordingsPage() {
   const [query, setQuery] = useState("");
   const [submittedQuery, setSubmittedQuery] = useState("");
   const preview = useRecordingPreview();
+  const myChildren = useMyChildren();
+  const selectedRoll = myChildren.isParent ? myChildren.selectedRoll ?? undefined : undefined;
 
   const { data, isLoading, isError, error, isFetching } =
-    useSearchRecordings(submittedQuery);
+    useSearchRecordings(submittedQuery, selectedRoll);
 
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
@@ -33,6 +37,13 @@ export function SearchRecordingsPage() {
 
   return (
     <div className="space-y-6">
+      {myChildren.showSelector && (
+        <ChildSelector
+          childrenList={myChildren.children}
+          value={myChildren.selectedRoll}
+          onChange={myChildren.setSelectedRoll}
+        />
+      )}
       <form onSubmit={handleSearch}>
         <FilterBar
           title="Search notes"
@@ -131,7 +142,7 @@ export function SearchRecordingsPage() {
                     variant="outline"
                     size="sm"
                     icon={<Eye className="h-4 w-4" />}
-                    onClick={() => preview.open(result.id)}
+                    onClick={() => preview.open(result.id, selectedRoll)}
                     className="flex-shrink-0"
                   >
                     Read Notes

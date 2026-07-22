@@ -228,9 +228,12 @@ export const authApi = {
       .then((r) => r.data),
 
   // ── Parent approval (principal / admin) ──────────────────────────────────
-  getPendingParents: () =>
+  /** List pending parents. Admins pass schoolId to scope to one school; principals ignore it (own school always). */
+  getPendingParents: (schoolId?: string) =>
     apiClient
-      .get<PendingParentsResponse>(`${BASE}/parents/pending`)
+      .get<PendingParentsResponse>(`${BASE}/parents/pending`, {
+        params: schoolId ? { school_id: schoolId } : undefined,
+      })
       .then((r) => r.data),
 
   approveParent: (userId: string) =>

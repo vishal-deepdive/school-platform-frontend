@@ -18,7 +18,39 @@ import { Button } from "@/shared/components/ui/Button";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Textarea } from "@/shared/components/ui/Textarea";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Skeleton, CardSkeleton } from "@/shared/components/ui/Skeleton";
+
+function ApplicationDetailSkeleton() {
+  return (
+    <div className="max-w-auto space-y-6" aria-hidden="true">
+      <Skeleton className="h-5 w-32" />
+      <div className="rounded-xl border border-border/60 bg-card p-4 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48" />
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-9 w-24 rounded-md" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <CardSkeleton key={i} lines={4} />
+        ))}
+      </div>
+      <CardSkeleton lines={6} />
+    </div>
+  );
+}
 import {
   APPLICATION_STATUS_LABELS,
   APPLICATION_STATUS_BADGE_VARIANTS,
@@ -190,7 +222,7 @@ export function ApplicationDetailPage() {
     },
   });
 
-  if (isLoading) return <PageSkeleton showStats={false} />;
+  if (isLoading) return <ApplicationDetailSkeleton />;
 
   if (error || !app) {
     return (
@@ -412,7 +444,13 @@ export function ApplicationDetailPage() {
       {/* Reject modal */}
       <Modal
         open={showRejectModal}
-        onClose={() => setShowRejectModal(false)}
+        onClose={() => {
+          setShowRejectModal(false);
+          // Without this, a failed rejection attempt's error Alert stays
+          // rendered the next time this modal reopens, even after the admin
+          // cancels and comes back later to retry.
+          rejectMutation.reset();
+        }}
         title="Reject Application"
         size="sm"
       >
@@ -438,7 +476,13 @@ export function ApplicationDetailPage() {
           </Alert>
         )}
         <div className="flex justify-end gap-3 mt-4">
-          <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowRejectModal(false);
+              rejectMutation.reset();
+            }}
+          >
             Cancel
           </Button>
           <Button
@@ -454,7 +498,10 @@ export function ApplicationDetailPage() {
       {/* Request-changes modal */}
       <Modal
         open={showChangesModal}
-        onClose={() => setShowChangesModal(false)}
+        onClose={() => {
+          setShowChangesModal(false);
+          requestChangesMutation.reset();
+        }}
         title="Request Changes"
         size="sm"
       >
@@ -481,7 +528,13 @@ export function ApplicationDetailPage() {
           </Alert>
         )}
         <div className="flex justify-end gap-3 mt-4">
-          <Button variant="outline" onClick={() => setShowChangesModal(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowChangesModal(false);
+              requestChangesMutation.reset();
+            }}
+          >
             Cancel
           </Button>
           <Button

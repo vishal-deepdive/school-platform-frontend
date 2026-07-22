@@ -31,7 +31,7 @@ function ScrollProgressBar() {
 export function LandingPage() {
   return (
     <MotionConfig reducedMotion="user">
-      <div className="min-h-screen w-full overflow-x-clip bg-background dark:bg-[#0b0e14] font-sans text-foreground antialiased selection:bg-primary/20">
+      <div className="min-h-screen w-full overflow-x-clip bg-background font-sans text-foreground antialiased selection:bg-primary/20">
         <Seo
           title="DeepDive — Smart School Management Platform"
           description="One platform to run your entire school — attendance, lecture recordings, AI-powered Q&A, and real-time analytics in one secure place."

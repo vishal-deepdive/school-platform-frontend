@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { motion } from "framer-motion";
+import { staggerContainer, fadeUp } from "@/features/landing/animations";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -153,7 +155,7 @@ function StaffDashboard({
   const unmarkedCount = analytics?.unmarked_classes?.length ?? 0;
 
   return (
-    <div className="animate-slide-up space-y-6">
+    <div className="space-y-6">
       {analytics?.scope === "class" && analytics.classes_in_scope.length > 0 && (
         <p className="text-xs text-muted-foreground">
           Showing your assigned {analytics.classes_in_scope.length === 1 ? "class" : "classes"}:{" "}
@@ -184,14 +186,20 @@ function StaffDashboard({
         </Link>
       )}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      >
         {isLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <StatCardSkeleton key={i} />
           ))
         ) : (
           <>
-            <Link to="/attendance/view" className="block h-full">
+            <motion.div variants={fadeUp} className="block h-full">
+              <Link to="/attendance/view" className="block h-full">
               <StatCard
                 hoverable
                 label="Present Today"
@@ -204,8 +212,10 @@ function StaffDashboard({
                     : "no attendance marked yet"
                 }
               />
-            </Link>
-            <Link to="/attendance/view" className="block h-full">
+              </Link>
+            </motion.div>
+            <motion.div variants={fadeUp} className="block h-full">
+              <Link to="/attendance/view" className="block h-full">
               <StatCard
                 hoverable
                 label="Absent Today"
@@ -218,8 +228,10 @@ function StaffDashboard({
                     : undefined
                 }
               />
-            </Link>
-            <Link to="/attendance/stats" className="block h-full">
+              </Link>
+            </motion.div>
+            <motion.div variants={fadeUp} className="block h-full">
+              <Link to="/attendance/stats" className="block h-full">
               <StatCard
                 hoverable
                 label="Attendance Today"
@@ -237,8 +249,10 @@ function StaffDashboard({
                   />
                 }
               />
-            </Link>
-            <Link to="/attendance/leave" className="block h-full">
+              </Link>
+            </motion.div>
+            <motion.div variants={fadeUp} className="block h-full">
+              <Link to="/attendance/leave" className="block h-full">
               <StatCard
                 hoverable
                 label="Pending Leaves"
@@ -247,10 +261,11 @@ function StaffDashboard({
                 color="warning"
                 description="awaiting your review"
               />
-            </Link>
+              </Link>
+            </motion.div>
           </>
         )}
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <AttendanceTrendChart
@@ -385,10 +400,13 @@ export function DashboardPage() {
   // platform-wide view; students and parents get their personal analytics.
   const isSchoolStaff = role === "principal" || role === "teacher";
   const isConsumer = role === "student" || role === "parent";
-  // Any authenticated role that isn't staff/admin/consumer (e.g. a read-only
-  // "viewer", or a role added later before its dashboard exists) still gets a
-  // clear surface instead of a blank page.
+  // Defensive: any authenticated role without a dedicated dashboard (e.g. a
+  // role added later before its view exists) still gets a clear surface
+  // instead of a blank page.
   const hasRoleView = isSchoolStaff || isAdmin || isConsumer;
+
+  // Defer rendering the heavy charts until the entry animation fully completes.
+  const [isReady, setIsReady] = useState(false);
 
   const handleQuickLinkClick = (e: React.MouseEvent, href: string) => {
     if (isAdmin && !ready && needsActiveSchool(href)) {
@@ -418,7 +436,13 @@ export function DashboardPage() {
     .slice(0, 6);
 
   return (
-    <div className="space-y-6">
+    <motion.div 
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      onAnimationComplete={() => setIsReady(true)}
+      className="space-y-6"
+    >
       <PageHeader
         title={`${greeting}, ${user?.full_name?.split(" ")[0] ?? "there"}`}
         description={`${todayFormatted} — ${todayLine}`}
@@ -444,7 +468,7 @@ export function DashboardPage() {
               to={link.href}
               title={link.desc}
               onClick={(e) => handleQuickLinkClick(e, link.href)}
-              className="group inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3.5 py-2 text-[13px] font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group inline-flex items-center gap-2 rounded-full glass-panel px-3.5 py-2 text-[13px] font-medium text-foreground transition-all hover:scale-105 hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span className="text-primary [&>svg]:h-4 [&>svg]:w-4">
                 {link.icon}
@@ -455,27 +479,38 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Admins own their own layout (platform ↔ selected-school toggle, plus
-          the cross-domain sections in school view); staff render the school
-          dashboard and cross-domain sections directly. */}
-      {isSchoolStaff && (
+      {isReady ? (
         <>
-          <StaffDashboard />
-          <CrossDomainSections />
+          {/* Admins own their own layout (platform ↔ selected-school toggle, plus
+              the cross-domain sections in school view); staff render the school
+              dashboard and cross-domain sections directly. */}
+          {isSchoolStaff && (
+            <>
+              <StaffDashboard />
+              <CrossDomainSections />
+            </>
+          )}
+          {isAdmin && <AdminDashboardArea />}
+          {isConsumer && <MyDashboard isParent={role === "parent"} />}
+
+          {!hasRoleView && (
+            <EmptyState
+              icon={<Eye className="h-12 w-12" />}
+              title="View-only access"
+              description="Your account doesn't have a module dashboard yet. Use the search (Ctrl/⌘ K) to open the pages you can access, or contact your school admin if you need more."
+            />
+          )}
+
+          {isConsumer && <RecordingAnalyticsSection />}
         </>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
       )}
-      {isAdmin && <AdminDashboardArea />}
-      {isConsumer && <MyDashboard isParent={role === "parent"} />}
-
-      {!hasRoleView && (
-        <EmptyState
-          icon={<Eye className="h-12 w-12" />}
-          title="View-only access"
-          description="Your account doesn't have a module dashboard yet. Use the search (Ctrl/⌘ K) to open the pages you can access, or contact your school admin if you need more."
-        />
-      )}
-
-      {isConsumer && <RecordingAnalyticsSection />}
-    </div>
+    </motion.div>
   );
 }

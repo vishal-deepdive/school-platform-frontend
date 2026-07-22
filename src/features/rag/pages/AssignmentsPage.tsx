@@ -18,9 +18,9 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { Modal } from "@/shared/components/ui/Modal";
 import { StatCard } from "@/shared/components/ui/Card";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
-import { getErrorMessage, formatDate, cn } from "@/shared/lib/utils";
+import { getErrorMessage, isForbiddenError, formatDate, cn } from "@/shared/lib/utils";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import {
   useAssignments,
   useAssignmentResults,
@@ -28,6 +28,26 @@ import {
 } from "@/features/rag/hooks/useRag";
 import { PracticeBuilderModal } from "@/features/rag/components/PracticeBuilderModal";
 import type { RagFilters } from "@/features/rag/types";
+
+import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+
+function AssignmentsSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Skeleton className="h-5 w-64" />
+        <Skeleton className="h-9 w-32 rounded-md" />
+      </div>
+      <div className="rounded-xl border border-border/60 bg-card">
+        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-3.5 sm:px-6">
+          <Skeleton className="h-4 w-4" />
+          <Skeleton className="h-5 w-32" />
+        </div>
+        <ListSkeleton items={4} />
+      </div>
+    </div>
+  );
+}
 
 export function AssignmentsPage() {
   const queryClient = useQueryClient();
@@ -72,7 +92,18 @@ export function AssignmentsPage() {
     });
   };
 
-  if (isLoading) return <PageSkeleton />;
+  if (isLoading) return <AssignmentsSkeleton />;
+
+  // Ungranted teachers: clean access message instead of a raw error alert
+  // alongside a misleading "No assignments yet" empty state.
+  if (isError && isForbiddenError(error)) {
+    return (
+      <ForbiddenState
+        title="No access to Assignments"
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal to enable Study Assistant access for you."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

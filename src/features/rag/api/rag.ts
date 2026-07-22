@@ -59,6 +59,11 @@ export const ragApi = {
   qaStream: (data: QARequest, signal?: AbortSignal) =>
     streamSSE<QAStreamEvent>(`${BASE}/qa/stream`, data, signal),
 
+  downloadPdf: (data: { markdown: string; title?: string }) =>
+    apiClient.post(`${BASE}/pdf/generate`, data, {
+      responseType: "blob",
+    }).then((r) => r.data),
+
   /** Streaming question generation — yields {type:"token"|"done"|"error", ...} events. */
   generateQuestionsStream: (data: QuestionsRequest, signal?: AbortSignal) =>
     streamSSE<ContentStreamEvent>(`${BASE}/questions/stream`, data, signal),

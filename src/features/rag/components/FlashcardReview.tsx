@@ -41,28 +41,49 @@ export function FlashcardReview({ deck }: { deck: FlashcardDeckDetail }) {
   }, [deck.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheduleSave = useCallback(
+  // Tracks the latest not-yet-sent mastery set so a pending debounced save can
+  // be flushed (not just cancelled) if the review closes before it fires.
+  const pendingMasteredRef = useRef<Set<string> | null>(null);
+
+  const doPersist = useCallback(
     (next: Set<string>) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => {
-        persist(
-          { id: deck.id, masteredCardIds: [...next] },
-          {
-            onSuccess: () =>
-              queryClient.invalidateQueries({ queryKey: ragKeys.flashcards() }),
-          },
-        );
-      }, SAVE_DEBOUNCE_MS);
+      persist(
+        { id: deck.id, masteredCardIds: [...next] },
+        {
+          onSuccess: () =>
+            queryClient.invalidateQueries({ queryKey: ragKeys.flashcards() }),
+        },
+      );
     },
     [deck.id, persist, queryClient],
   );
 
-  // Flush any pending save when the review is closed.
+  const scheduleSave = useCallback(
+    (next: Set<string>) => {
+      pendingMasteredRef.current = next;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        pendingMasteredRef.current = null;
+        doPersist(next);
+      }, SAVE_DEBOUNCE_MS);
+    },
+    [doPersist],
+  );
+
+  // Flush (not just cancel) any pending save when the review closes — the
+  // single most common exit is tapping "Got it" on the last card and
+  // immediately closing the modal, which previously lost that last update
+  // since only the timer was cleared, never sent.
   useEffect(
     () => () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current);
+        if (pendingMasteredRef.current) {
+          doPersist(pendingMasteredRef.current);
+        }
+      }
     },
-    [],
+    [doPersist],
   );
 
   const update = (mutate: (s: Set<string>) => void) => {

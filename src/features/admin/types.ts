@@ -304,6 +304,8 @@ export interface SchoolDetail {
   udise_code: string | null;
   current_session: string | null;
   attendance_mode: string | null;
+  max_class: string | null;
+  session_end_date: string | null;
   is_active: boolean;
   created_at: string | null;
   principal: SchoolPrincipalInfo | null;
@@ -402,6 +404,63 @@ export interface RagAccessItem {
   role: string | null;
   school_id: string;
   is_active: boolean;
+}
+
+// ── Student lifecycle (create / promote) ───────────────────────────────────
+
+export interface CreateStudentRequest {
+  email: string;
+  full_name?: string;
+  roll_no: string;
+  class_name: string;
+  section?: string;
+  session?: string;
+}
+
+export interface PromoteStudentRequest {
+  target_class?: string;
+  target_section?: string;
+  target_session?: string;
+}
+
+export interface PromoteStudentResult {
+  roll_no: string;
+  status: "promoted" | "passed_out";
+  class_name: string | null;
+  section: string | null;
+  session: string | null;
+}
+
+export interface PromoteClassRequest {
+  class_name: string;
+  section?: string;
+  session?: string;
+  target_session?: string;
+}
+
+export interface PromoteClassResult {
+  class_name: string;
+  section: string | null;
+  promoted: number;
+  passed_out: number;
+}
+
+export interface PromoteSchoolResult {
+  from_session: string;
+  to_session: string;
+  promoted: number;
+  passed_out: number;
+}
+
+export interface UpdatePromotionSettingsRequest {
+  max_class?: string | null;
+  session_end_date?: string | null;
+}
+
+export interface PromotionSettings {
+  school_id: string;
+  max_class: string | null;
+  session_end_date: string | null;
 }
 
 // ── User management ────────────────────────────────────────────────────────

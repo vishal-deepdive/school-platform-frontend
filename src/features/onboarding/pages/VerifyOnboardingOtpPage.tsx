@@ -49,7 +49,7 @@ export function VerifyOnboardingOtpPage() {
 
   // Anti-abuse CAPTCHA for the resend action — the backend requires a token
   // (when CAPTCHA is enabled) because /resend-otp dispatches email/SMS.
-  const { data: capabilities } = useOnboardingCapabilities();
+  const { data: capabilities, isLoading: capabilitiesLoading } = useOnboardingCapabilities();
   const captchaEnabled = Boolean(
     capabilities?.captcha_enabled && capabilities.captcha_site_key,
   );
@@ -122,6 +122,13 @@ export function VerifyOnboardingOtpPage() {
   const handleResend = async () => {
     if (!applicationId.trim()) {
       toast.error("Application ID is required to resend OTP");
+      return;
+    }
+    // capabilities?.captcha_enabled is undefined (falsy) until this query
+    // resolves, so a resend that races ahead of it would skip the CAPTCHA
+    // requirement entirely — block until we actually know.
+    if (capabilitiesLoading) {
+      toast.error("Still loading — please try again in a moment.");
       return;
     }
     if (captchaEnabled && !captchaToken) {

@@ -9,7 +9,7 @@ import {
   type MarkAttendanceFormData,
 } from "@/features/attendance/schema";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
@@ -53,12 +53,36 @@ function updateRecordStatus(
   rollNo: string,
   status: AttendanceStatus,
 ): MarkAttendanceResponse {
-  const apply = (records: AttendanceRecord[]) =>
-    records.map((r) => (r.roll_no === rollNo ? { ...r, status } : r));
+  // There are only two summary buckets (matches the backend's own bucketing:
+  // face-matched -> present_students/"P", unmatched -> absent_students/"A").
+  // A correction can set any of P/L/E/H, all of which count as "present" for
+  // this summary — only "A" belongs in the absent bucket. Previously this only
+  // patched the status in place without moving the record between arrays or
+  // recomputing the counts, so the StatCards/percentage badge went stale the
+  // moment a correction actually changed which bucket a student belonged in.
+  const existing =
+    result.present_students.find((r) => r.roll_no === rollNo) ??
+    result.absent_students.find((r) => r.roll_no === rollNo);
+  if (!existing) return result;
+
+  const updated: AttendanceRecord = { ...existing, status };
+  const withoutRecord = (records: AttendanceRecord[]) =>
+    records.filter((r) => r.roll_no !== rollNo);
+
+  const present_students = withoutRecord(result.present_students);
+  const absent_students = withoutRecord(result.absent_students);
+  if (status === "A") {
+    absent_students.push(updated);
+  } else {
+    present_students.push(updated);
+  }
+
   return {
     ...result,
-    present_students: apply(result.present_students),
-    absent_students: apply(result.absent_students),
+    present_students,
+    absent_students,
+    present_count: present_students.length,
+    absent_count: absent_students.length,
   };
 }
 
@@ -84,7 +108,7 @@ export function MarkAttendanceForm() {
     resolver: zodResolver(markAttendanceSchema),
     defaultValues: {
       threshold: 0.4,
-      session: "2025-26",
+      session: getCurrentSession(),
       class_name: "",
       section: "",
       attendance_date: todayIso(),
@@ -98,7 +122,7 @@ export function MarkAttendanceForm() {
   const sectionOptions = selectedClass ? getSectionOptions(selectedClass) : [];
 
   const holidays = useHolidayDates({
-    session: watchedSession || "2025-26",
+    session: watchedSession || getCurrentSession(),
     schoolName: schoolName || undefined,
     enabled: !isAdmin || !!schoolName,
   });

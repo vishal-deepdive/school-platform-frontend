@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Users, Building2, RefreshCw, School } from "lucide-react";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { StatCard } from "@/shared/components/ui/Card";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -12,6 +11,47 @@ import type {
   EnrollmentStatsClass,
   EnrollmentStatsSchool,
 } from "@/features/attendance/types";
+import { StatCardSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
+
+function AttendanceStatsSkeleton() {
+  return (
+    <div className="space-y-6" aria-hidden="true">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <StatCardSkeleton key={i} />
+        ))}
+      </div>
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-9 w-24 rounded-md" />
+      </div>
+      <div className="space-y-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-border/60 bg-card p-4 sm:p-6">
+            <div className="mb-4 flex items-center justify-between border-b border-border/40 pb-4">
+              <Skeleton className="h-5 w-48" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, j) => (
+                <div key={j} className="rounded-lg border border-border/60 bg-muted/30 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-8" />
+                  </div>
+                  <div className="flex gap-1.5">
+                     <Skeleton className="h-5 w-16 rounded-md" />
+                     <Skeleton className="h-5 w-16 rounded-md" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function AttendanceStatsPage() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
@@ -20,7 +60,7 @@ export function AttendanceStatsPage() {
     staleTime: 2 * 60_000,
   });
 
-  if (isLoading) return <PageSkeleton />;
+  if (isLoading) return <AttendanceStatsSkeleton />;
   if (isError)
     return (
       <Alert variant="error">

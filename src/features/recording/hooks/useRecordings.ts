@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "@/shared/lib/toast";
 import { recordingApi } from "@/features/recording/api/recording";
@@ -20,7 +20,8 @@ export const recordingKeys = {
   all: ["recordings"] as const,
   list: (query: RecordingListQuery) =>
     ["recordings", "list", query] as const,
-  search: (query: string) => ["recordings", "search", query] as const,
+  search: (query: string, rollNo?: string) =>
+    ["recordings", "search", query, rollNo] as const,
   audit: (limit: number, offset: number) =>
     ["recording-audit", limit, offset] as const,
 };
@@ -50,10 +51,14 @@ export function useRecordingAuditLogs(limit: number, offset: number) {
   });
 }
 
-export function useSearchRecordings(query: string) {
+export function useSearchRecordings(query: string, rollNo?: string) {
   return useQuery({
-    queryKey: recordingKeys.search(query),
-    queryFn: () => recordingApi.searchRecordings({ q: query }),
+    queryKey: recordingKeys.search(query, rollNo),
+    queryFn: () =>
+      recordingApi.searchRecordings({
+        q: query,
+        ...(rollNo ? { roll_no: rollNo } : {}),
+      }),
     enabled: query.length >= 2,
     staleTime: 60_000,
   });
@@ -139,14 +144,24 @@ export function useDownloadRecording() {
 export function useRecordingPreview() {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [result, setResult] = useState<MarkdownResult | null>(null);
+  // Guards against a stale response overwriting a newer one: clicking "View"
+  // on recording A then quickly on B (list/search rows don't disable while
+  // pending) fires two overlapping fetches — if A's happens to resolve after
+  // B's, its result must be dropped, not applied over B's already-showing one.
+  const requestIdRef = useRef<string | null>(null);
 
-  const open = async (id: string) => {
+  const open = async (id: string, rollNo?: string) => {
+    requestIdRef.current = id;
     setPreviewId(id);
     setResult(null);
-    setResult(await recordingApi.getRecordingMarkdown(id));
+    const data = await recordingApi.getRecordingMarkdown(id, rollNo);
+    if (requestIdRef.current === id) {
+      setResult(data);
+    }
   };
 
   const close = () => {
+    requestIdRef.current = null;
     setPreviewId(null);
     setResult(null);
   };

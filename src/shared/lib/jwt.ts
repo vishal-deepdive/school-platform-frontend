@@ -4,7 +4,7 @@ export interface DecodedToken {
   sub: string;
   email: string;
   school_id: string | null;
-  role: "admin" | "principal" | "teacher" | "student" | "parent" | "viewer";
+  role: "admin" | "principal" | "teacher" | "student" | "parent";
   iat: number;
   exp: number;
   roll_no?: string | null;
@@ -41,7 +41,11 @@ export function buildUserFromJwt(
     id: decoded?.sub ?? "",
     email: decoded?.email ?? fallbackEmail,
     full_name: fullName,
-    role: decoded?.role ?? "viewer",
+    // A valid backend access token always carries a role; this fallback only
+    // fires if decoding failed outright (malformed token), in which case the
+    // next API call 401s and the session is torn down anyway. Default to the
+    // lowest-privilege consumer role rather than a bespoke sentinel.
+    role: decoded?.role ?? "student",
     school_id: decoded?.school_id ?? null,
     is_active: true,
     is_email_verified: true,

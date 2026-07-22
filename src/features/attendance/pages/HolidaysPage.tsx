@@ -3,9 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, Trash2, CalendarDays } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
+import { useAuthStore } from "@/features/auth/store/auth";
+import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Button } from "@/shared/components/ui/Button";
@@ -38,8 +40,12 @@ function dateChip(dmy: string): { day: string; month: string } {
 export function HolidaysPage() {
   const { schoolName, ready, schoolParam } = useActiveSchool();
   const queryClient = useQueryClient();
+  const role = useAuthStore((s) => s.user?.role);
+  // Backend only lets admin/principal write holidays (teacher gets read-only
+  // access to the calendar) — hide the add/remove controls accordingly.
+  const canManage = isSchoolAdmin(role);
 
-  const [session, setSession] = useState("2025-26");
+  const [session, setSession] = useState(getCurrentSession());
   const [newDate, setNewDate] = useState(todayIso());
   const [name, setName] = useState("");
   const [holidayToDelete, setHolidayToDelete] = useState<{
@@ -86,42 +92,44 @@ export function HolidaysPage() {
 
   return (
     <div className="space-y-6">
-      <FilterBar
-        title="Add a holiday"
-        icon={<CalendarPlus className="h-4 w-4" />}
-        actions={
-          <Button
-            onClick={() => addMutation.mutate()}
-            loading={addMutation.isPending}
-            disabled={!ready}
-            icon={<CalendarPlus className="h-4 w-4" />}
-          >
-            Add Holiday
-          </Button>
-        }
-      >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Select
-            label="Session"
-            options={SESSION_OPTIONS}
-            value={session}
-            onChange={(e) => setSession(e.target.value)}
-          />
-          <DatePicker
-            label="Holiday date"
-            value={newDate}
-            onChange={(iso) => setNewDate(iso ?? todayIso())}
-            fadeSundays
-            holidays={holidays}
-          />
-          <Input
-            label="Name (optional)"
-            placeholder="Independence Day"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-      </FilterBar>
+      {canManage && (
+        <FilterBar
+          title="Add a holiday"
+          icon={<CalendarPlus className="h-4 w-4" />}
+          actions={
+            <Button
+              onClick={() => addMutation.mutate()}
+              loading={addMutation.isPending}
+              disabled={!ready}
+              icon={<CalendarPlus className="h-4 w-4" />}
+            >
+              Add Holiday
+            </Button>
+          }
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Select
+              label="Session"
+              options={SESSION_OPTIONS}
+              value={session}
+              onChange={(e) => setSession(e.target.value)}
+            />
+            <DatePicker
+              label="Holiday date"
+              value={newDate}
+              onChange={(iso) => setNewDate(iso ?? todayIso())}
+              fadeSundays
+              holidays={holidays}
+            />
+            <Input
+              label="Name (optional)"
+              placeholder="Independence Day"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </div>
+        </FilterBar>
+      )}
 
       <Panel
         flush
@@ -163,15 +171,17 @@ export function HolidaysPage() {
                       <p className="text-xs text-muted-foreground">{h.date}</p>
                     </div>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="danger-ghost"
-                    onClick={() => setHolidayToDelete(h)}
-                    icon={<Trash2 className="h-4 w-4" />}
-                    className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-                  >
-                    Remove
-                  </Button>
+                  {canManage && (
+                    <Button
+                      size="sm"
+                      variant="danger-ghost"
+                      onClick={() => setHolidayToDelete(h)}
+                      icon={<Trash2 className="h-4 w-4" />}
+                      className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </li>
               );
             })}
@@ -180,7 +190,7 @@ export function HolidaysPage() {
       </Panel>
 
       <ConfirmDialog
-        open={holidayToDelete !== null}
+        open={canManage && holidayToDelete !== null}
         title="Remove holiday?"
         description={
           holidayToDelete && (
