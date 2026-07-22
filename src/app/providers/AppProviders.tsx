@@ -1,10 +1,12 @@
 import { type ReactNode } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { ErrorBoundary } from "@/shared/components/errors/ErrorBoundary";
 import { OfflineGate } from "@/shared/components/errors/OfflineGate";
 import { Toaster } from "@/shared/components/ui/Toaster";
 import { TooltipProvider } from "@/shared/components/ui/Tooltip";
 import { useActiveSchoolStore } from "@/shared/store/activeSchool";
+import { createPersistOptions } from "@/shared/api/queryPersistence";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -18,6 +20,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+const persistOptions = createPersistOptions(queryClient);
 
 // Global safety net for admin school switching. Every school-scoped read keys
 // itself by the active school (see useSchoolScopedQuery), but this guarantees
@@ -37,12 +41,15 @@ useActiveSchoolStore.subscribe((state) => {
 export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={persistOptions}
+      >
         <TooltipProvider delayDuration={300} skipDelayDuration={100}>
           <OfflineGate>{children}</OfflineGate>
           <Toaster />
         </TooltipProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 }

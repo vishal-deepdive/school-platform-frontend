@@ -444,7 +444,13 @@ export function ApplicationDetailPage() {
       {/* Reject modal */}
       <Modal
         open={showRejectModal}
-        onClose={() => setShowRejectModal(false)}
+        onClose={() => {
+          setShowRejectModal(false);
+          // Without this, a failed rejection attempt's error Alert stays
+          // rendered the next time this modal reopens, even after the admin
+          // cancels and comes back later to retry.
+          rejectMutation.reset();
+        }}
         title="Reject Application"
         size="sm"
       >
@@ -470,7 +476,13 @@ export function ApplicationDetailPage() {
           </Alert>
         )}
         <div className="flex justify-end gap-3 mt-4">
-          <Button variant="outline" onClick={() => setShowRejectModal(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowRejectModal(false);
+              rejectMutation.reset();
+            }}
+          >
             Cancel
           </Button>
           <Button
@@ -486,7 +498,10 @@ export function ApplicationDetailPage() {
       {/* Request-changes modal */}
       <Modal
         open={showChangesModal}
-        onClose={() => setShowChangesModal(false)}
+        onClose={() => {
+          setShowChangesModal(false);
+          requestChangesMutation.reset();
+        }}
         title="Request Changes"
         size="sm"
       >
@@ -513,7 +528,13 @@ export function ApplicationDetailPage() {
           </Alert>
         )}
         <div className="flex justify-end gap-3 mt-4">
-          <Button variant="outline" onClick={() => setShowChangesModal(false)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowChangesModal(false);
+              requestChangesMutation.reset();
+            }}
+          >
             Cancel
           </Button>
           <Button
