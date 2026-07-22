@@ -1,5 +1,5 @@
 import { cn } from "@/shared/lib/utils";
-import { useCountUp } from "@/shared/hooks/useCountUp";
+
 import { motion } from "framer-motion";
 import { cardHover } from "@/features/landing/animations";
 
