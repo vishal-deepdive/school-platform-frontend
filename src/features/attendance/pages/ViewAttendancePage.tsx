@@ -1,14 +1,35 @@
 import { useState } from "react";
-import { Calendar, CalendarDays, CalendarRange } from "lucide-react";
+import {  CalendarDays, CalendarRange } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { cn } from "@/shared/lib/utils";
 import {
-  AttendanceDateView,
   AttendanceRangeView,
   ClassAttendanceCalendar,
   SelfAttendanceView,
 } from "@/features/attendance/components";
 import { isStaff } from "@/shared/lib/permissions";
+
+//
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { attendanceApi } from "@/features/attendance/api/attendance";
+import { AttendanceResults } from "@/features/attendance/components/AttendanceResults";
+
+import { TableSkeleton } from "@/shared/components/ui/Skeleton";
+import { Alert } from "@/shared/components/ui/Alert";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
+
+import { CalendarX } from "lucide-react";
+
+import {
+  isoToIndianDate,
+  getErrorMessage,
+} from "@/shared/lib/utils";
+
+import type { ScopeValue } from "@/features/attendance/components/AttendanceScopeFilters";
+//
 
 const viewTabs = [
   {
@@ -16,12 +37,6 @@ const viewTabs = [
     label: "Calendar",
     hint: "Monthly %",
     icon: <CalendarDays className="h-4 w-4" />,
-  },
-  {
-    id: "date",
-    label: "By Date",
-    hint: "Single day",
-    icon: <Calendar className="h-4 w-4" />,
   },
   {
     id: "range",
@@ -32,9 +47,41 @@ const viewTabs = [
 ];
 
 export function ViewAttendancePage() {
+  // const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const { schoolName } = useActiveSchool();
+  
+  const [attendanceFilter, setAttendanceFilter] = useState<{
+  date: string;
+  scope: ScopeValue;
+} | null>(null);
   const role = useAuthStore((s) => s.user?.role);
   const [tab, setTab] = useState("calendar");
+  
+  const { data, isLoading, isError, error } = useQuery({
+  queryKey: ["attendance", "date", attendanceFilter, schoolName],
 
+  enabled: !!attendanceFilter,
+
+  staleTime: 60_000,
+
+  queryFn: () => {
+    const s = attendanceFilter!.scope;
+
+    return attendanceApi.getAttendanceOnDate({
+      date: isoToIndianDate(attendanceFilter!.date),
+
+      ...(schoolName ? { school_name: schoolName } : {}),
+
+      ...(s.className ? { class_name: s.className } : {}),
+
+      ...(s.section ? { section: s.section } : {}),
+
+      ...(s.subject ? { subject: s.subject } : {}),
+    });
+  },
+});
+
+const rows = useMemo(() => data?.data ?? [], [data]);
   if (!isStaff(role)) {
     return <SelfAttendanceView />;
   }
@@ -67,9 +114,45 @@ export function ViewAttendancePage() {
         })}
       </div>
 
-      {tab === "date" && <AttendanceDateView />}
+      {/* {tab === "date" && <AttendanceDateView />} */}
       {tab === "range" && <AttendanceRangeView />}
-      {tab === "calendar" && <ClassAttendanceCalendar />}
+      {tab === "calendar" && (
+  <>
+    <ClassAttendanceCalendar
+      selectedDate={attendanceFilter?.date ?? null}
+      onDateSelect={(date, scope) => {
+        setAttendanceFilter({
+          date,
+          scope,
+        });
+      }}
+    />
+
+    {isLoading && <TableSkeleton rows={6} columns={5} />}
+
+    {isError && (
+      <Alert variant="error">
+        {getErrorMessage(error) || "Failed to fetch attendance records."}
+      </Alert>
+    )}
+
+    {data && rows.length === 0 && (
+      <EmptyState
+        icon={<CalendarX className="h-10 w-10" />}
+        title="No records for this date"
+        description="No attendance has been marked for the selected class and date."
+      />
+    )}
+
+    {data && rows.length > 0 && (
+      <AttendanceResults
+        rows={rows}
+        date={data.date}
+        totalRecords={data.total_records}
+      />
+    )}
+  </>
+)}
     </div>
   );
 }
