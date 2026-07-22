@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
@@ -196,6 +196,14 @@ export function SurveySearchView() {
   const [sqlCopied, setSqlCopied] = useState(false);
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
   const { begin, stop, end } = useStreamAbort();
+  // Synchronous guard against overlapping runs — mirrors QAPage/NotesPage/
+  // QuestionsPage/LessonPlanPage. The `streaming` state updates a render
+  // behind, so two near-simultaneous submits (fast double-Enter) could both
+  // pass a state-only check, each starting a stream and racing to flip
+  // `streaming` back to false in their own `finally` — the second run's
+  // completion could get masked as "not streaming" while the first is still
+  // actually generating.
+  const streamingRef = useRef(false);
 
   const { isAdmin, schoolId, schoolParam, ready: adminReady } = useActiveSchool();
 
@@ -223,22 +231,31 @@ export function SurveySearchView() {
 
   const handleCopy = useCallback(() => {
     if (!insight) return;
-    navigator.clipboard.writeText(insight).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard
+      .writeText(insight)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => toast.error("Couldn't copy to clipboard."));
   }, [insight]);
 
   const handleCopySql = useCallback(() => {
     if (!sqlQuery) return;
-    navigator.clipboard.writeText(sqlQuery).then(() => {
-      setSqlCopied(true);
-      setTimeout(() => setSqlCopied(false), 1500);
-    });
+    navigator.clipboard
+      .writeText(sqlQuery)
+      .then(() => {
+        setSqlCopied(true);
+        setTimeout(() => setSqlCopied(false), 1500);
+      })
+      .catch(() => toast.error("Couldn't copy to clipboard."));
   }, [sqlQuery]);
 
   const runSearch = useCallback(
     async (formData: SurveySearchFormData) => {
+      if (streamingRef.current) return;
+      streamingRef.current = true;
+
       const controller = begin();
 
       setStreaming(true);
@@ -291,6 +308,7 @@ export function SurveySearchView() {
       } finally {
         flushPending();
         setStreaming(false);
+        streamingRef.current = false;
         end(controller);
       }
     },
@@ -403,7 +421,7 @@ export function SurveySearchView() {
           {/* Status bar */}
           <div className="flex flex-wrap items-center gap-3 text-sm">
             {intent && (
-              <Badge variant={intentConfig[intent].color as any}>
+              <Badge variant={intentConfig[intent].color}>
                 {intentConfig[intent].label}
               </Badge>
             )}

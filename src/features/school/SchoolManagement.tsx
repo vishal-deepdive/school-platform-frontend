@@ -17,7 +17,7 @@
  * a UX layer, never the trust boundary.
  */
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
@@ -68,6 +68,7 @@ import { Tabs } from "@/shared/components/ui/Tabs";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { PageSkeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
 
 // ── Capabilities ──────────────────────────────────────────────────────────────
 
@@ -110,6 +111,7 @@ function useActiveUsers(schoolId: string, role: string, enabled = true) {
     queryFn: () =>
       adminApi.listSchoolUsers(schoolId, { role, status: "active", limit: 200 }),
     enabled,
+    staleTime: 30_000,
   });
 }
 
@@ -308,6 +310,11 @@ function ClassCodesTab({
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "class-codes", schoolId],
     queryFn: () => adminApi.listClassCodes(schoolId),
+    // Without this, switching tabs and back refetches + re-shows the loading
+    // skeleton every time even though nothing changed seconds earlier — each
+    // tab's content unmounts on switch, and with no staleTime the cache is
+    // stale immediately on remount.
+    staleTime: 30_000,
   });
 
   const create = useMutation({
@@ -328,8 +335,11 @@ function ClassCodesTab({
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const deactivatePending = usePendingKeys();
   const deactivate = useMutation({
     mutationFn: (code: string) => adminApi.deactivateClassCode(schoolId, code),
+    onMutate: (code) => deactivatePending.start(code),
+    onSettled: (_data, _err, code) => deactivatePending.finish(code),
     onSuccess: () => {
       toast.success("Class code deactivated");
       queryClient.invalidateQueries({ queryKey: ["admin", "class-codes", schoolId] });
@@ -411,7 +421,7 @@ function ClassCodesTab({
                   <Button
                     size="sm"
                     variant="ghost"
-                    loading={deactivate.isPending && deactivate.variables === c.code}
+                    loading={deactivatePending.has(c.code)}
                     icon={<Power className="h-4 w-4 text-destructive" />}
                     onClick={() => deactivate.mutate(c.code)}
                     className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
@@ -477,6 +487,7 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "teacher-assignments", schoolId],
     queryFn: () => adminApi.listTeacherAssignments(schoolId),
+    staleTime: 30_000,
   });
   const teachers = useActiveUsers(schoolId, "teacher", open);
 
@@ -498,6 +509,9 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const revokeKey = (a: { teacher_id: string; class_name: string; section: string | null }) =>
+    `${a.teacher_id}::${a.class_name}::${a.section ?? ""}`;
+  const revokePending = usePendingKeys();
   const revoke = useMutation({
     mutationFn: (a: { teacher_id: string; class_name: string; section: string | null }) =>
       adminApi.revokeTeacherAssignment(schoolId, {
@@ -505,6 +519,8 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
         class_name: a.class_name,
         section: a.section || undefined,
       }),
+    onMutate: (a) => revokePending.start(revokeKey(a)),
+    onSettled: (_data, _err, a) => revokePending.finish(revokeKey(a)),
     onSuccess: () => {
       toast.success("Assignment revoked");
       queryClient.invalidateQueries({ queryKey: ["admin", "teacher-assignments", schoolId] });
@@ -564,11 +580,7 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
               <Button
                 variant="ghost"
                 size="sm"
-                loading={
-                  revoke.isPending &&
-                  revoke.variables?.teacher_id === a.teacher_id &&
-                  revoke.variables?.class_name === a.class_name
-                }
+                loading={revokePending.has(revokeKey(a))}
                 icon={<Trash2 className="h-4 w-4 text-destructive" />}
                 onClick={() =>
                   revoke.mutate({
@@ -642,6 +654,7 @@ function RagAccessTab({ schoolId }: { schoolId: string }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "rag-access", schoolId],
     queryFn: () => adminApi.listRagAccess(schoolId),
+    staleTime: 30_000,
   });
   const users = useActiveUsers(schoolId, role, open);
 
@@ -656,8 +669,11 @@ function RagAccessTab({ schoolId }: { schoolId: string }) {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const revokePending = usePendingKeys();
   const revoke = useMutation({
     mutationFn: (uid: string) => adminApi.revokeRagAccess(schoolId, uid),
+    onMutate: (uid) => revokePending.start(uid),
+    onSettled: (_data, _err, uid) => revokePending.finish(uid),
     onSuccess: () => {
       toast.success("Access revoked");
       queryClient.invalidateQueries({ queryKey: ["admin", "rag-access", schoolId] });
@@ -724,7 +740,7 @@ function RagAccessTab({ schoolId }: { schoolId: string }) {
               <Button
                 variant="ghost"
                 size="sm"
-                loading={revoke.isPending && revoke.variables === r.user_id}
+                loading={revokePending.has(r.user_id)}
                 icon={<Trash2 className="h-4 w-4 text-destructive" />}
                 onClick={() => revoke.mutate(r.user_id)}
                 className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
@@ -776,7 +792,8 @@ function RagAccessTab({ schoolId }: { schoolId: string }) {
 
 // ── Roster tab (roll-number linkage) ──────────────────────────────────────────
 
-function RosterTab({ schoolId }: { schoolId: string }) {
+function RosterTab({ school }: { school: SchoolDetail }) {
+  const schoolId = school.id;
   const queryClient = useQueryClient();
   const [studentId, setStudentId] = useState("");
   const [rollNo, setRollNo] = useState("");
@@ -800,43 +817,161 @@ function RosterTab({ schoolId }: { schoolId: string }) {
   }));
 
   return (
-    <Panel title="Link Roll Numbers" icon={<IdCard className="h-4 w-4" />}>
+    <div className="space-y-6">
+      <Panel title="Link Roll Numbers" icon={<IdCard className="h-4 w-4" />}>
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Link a student account to their attendance roll number so they can view
+            their own attendance. To add a student and link their class in one
+            step, or to promote students to the next class, use{" "}
+            <Link to="/attendance/manage" className="font-medium text-primary hover:underline">
+              Manage Students
+            </Link>
+            . To create student rows in bulk, use{" "}
+            <Link to="/students/import" className="font-medium text-primary hover:underline">
+              Import Students
+            </Link>
+            .
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Select
+              label="Student"
+              placeholder={students.isLoading ? "Loading students…" : "Select a student"}
+              options={studentOptions}
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+            />
+            <Input
+              label="Roll Number"
+              placeholder="2026-10A-001"
+              value={rollNo}
+              onChange={(e) => setRollNo(e.target.value)}
+            />
+          </div>
+          {!students.isLoading && studentOptions.length === 0 && (
+            <Alert variant="info">No active student accounts at this school yet.</Alert>
+          )}
+          <Button
+            onClick={() => assign.mutate()}
+            loading={assign.isPending}
+            disabled={!studentId || !rollNo.trim()}
+            className="self-start"
+          >
+            Assign Roll Number
+          </Button>
+        </div>
+      </Panel>
+      <PromotionSettingsPanel school={school} />
+    </div>
+  );
+}
+
+// ── Year-end promotion settings ───────────────────────────────────────────────
+
+function PromotionSettingsPanel({ school }: { school: SchoolDetail }) {
+  const queryClient = useQueryClient();
+  const [maxClass, setMaxClass] = useState(school.max_class ?? "");
+  const [sessionEndDate, setSessionEndDate] = useState(school.session_end_date ?? "");
+  const [confirmPromote, setConfirmPromote] = useState(false);
+
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: ["admin", "school", school.id] });
+
+  const saveSettings = useMutation({
+    mutationFn: () =>
+      adminApi.updatePromotionSettings(school.id, {
+        max_class: maxClass.trim() || null,
+        session_end_date: sessionEndDate || null,
+      }),
+    onSuccess: () => {
+      toast.success("Promotion settings saved");
+      invalidate();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const promoteSchool = useMutation({
+    mutationFn: () => adminApi.promoteSchool(school.id),
+    onSuccess: (res) => {
+      toast.success(
+        `Promoted to ${res.to_session} — ${res.promoted} promoted, ${res.passed_out} passed out`,
+      );
+      setConfirmPromote(false);
+      invalidate();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  return (
+    <Panel title="Year-End Promotion" icon={<GraduationCap className="h-4 w-4" />}>
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Link a student account to their attendance roll number so they can view
-          their own attendance. To create student rows in bulk, use{" "}
-          <Link to="/students/import" className="font-medium text-primary hover:underline">
-            Import Students
-          </Link>
-          .
+          Set the school's terminal class (students promoted past it are marked
+          passed out) and the date the year-end promotion runs automatically.
+          You can also trigger it manually below.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Select
-            label="Student"
-            placeholder={students.isLoading ? "Loading students…" : "Select a student"}
-            options={studentOptions}
-            value={studentId}
-            onChange={(e) => setStudentId(e.target.value)}
+          <Input
+            label="Terminal Class"
+            placeholder="e.g. 12"
+            value={maxClass}
+            onChange={(e) => setMaxClass(e.target.value)}
           />
           <Input
-            label="Roll Number"
-            placeholder="2026-10A-001"
-            value={rollNo}
-            onChange={(e) => setRollNo(e.target.value)}
+            label="Auto-Promotion Date"
+            type="date"
+            value={sessionEndDate}
+            onChange={(e) => setSessionEndDate(e.target.value)}
           />
         </div>
-        {!students.isLoading && studentOptions.length === 0 && (
-          <Alert variant="info">No active student accounts at this school yet.</Alert>
-        )}
-        <Button
-          onClick={() => assign.mutate()}
-          loading={assign.isPending}
-          disabled={!studentId || !rollNo.trim()}
-          className="self-start"
-        >
-          Assign Roll Number
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            loading={saveSettings.isPending}
+            onClick={() => saveSettings.mutate()}
+          >
+            Save Settings
+          </Button>
+          <Button
+            variant="outline"
+            icon={<GraduationCap className="h-4 w-4" />}
+            onClick={() => setConfirmPromote(true)}
+          >
+            Promote Entire School Now
+          </Button>
+        </div>
       </div>
+
+      <Modal
+        open={confirmPromote}
+        onClose={() => setConfirmPromote(false)}
+        title="Promote the entire school?"
+        icon={<AlertTriangle className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setConfirmPromote(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={promoteSchool.isPending}
+              onClick={() => promoteSchool.mutate()}
+            >
+              Promote School
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          This advances every class in{" "}
+          <span className="font-medium text-foreground">{school.name}</span> to the
+          next class and session (currently{" "}
+          <span className="font-medium text-foreground">{school.current_session ?? "unset"}</span>
+          ), and marks students in the terminal class as passed out. This cannot be
+          undone.
+        </p>
+      </Modal>
     </Panel>
   );
 }
@@ -1108,6 +1243,7 @@ function TeamMembersPanel({ schoolId }: { schoolId: string }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "staff", schoolId],
     queryFn: () => authApi.listStaff(schoolId),
+    staleTime: 30_000,
   });
   const staff = data ?? [];
 
@@ -1156,13 +1292,20 @@ function ParentApprovalsTab({ schoolId }: { schoolId: string }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "pending-parents", schoolId],
     queryFn: () => authApi.getPendingParents(schoolId),
+    staleTime: 30_000,
   });
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["admin", "pending-parents", schoolId] });
 
+  // Shared across both mutations so a row's Approve/Reject buttons disable
+  // together no matter which action is in flight for it.
+  const rowPending = usePendingKeys();
+
   const approve = useMutation({
     mutationFn: (userId: string) => authApi.approveParent(userId),
+    onMutate: (userId) => rowPending.start(userId),
+    onSettled: (_data, _err, userId) => rowPending.finish(userId),
     onSuccess: (res) => {
       toast.success(res.message ?? "Parent approved");
       invalidate();
@@ -1172,6 +1315,8 @@ function ParentApprovalsTab({ schoolId }: { schoolId: string }) {
 
   const reject = useMutation({
     mutationFn: (userId: string) => authApi.rejectParent(userId),
+    onMutate: (userId) => rowPending.start(userId),
+    onSettled: (_data, _err, userId) => rowPending.finish(userId),
     onSuccess: (res) => {
       toast.success(res.message ?? "Parent rejected");
       invalidate();
@@ -1180,8 +1325,6 @@ function ParentApprovalsTab({ schoolId }: { schoolId: string }) {
   });
 
   const items: PendingParentItem[] = data?.items ?? [];
-  const pendingId =
-    (approve.isPending && approve.variables) || (reject.isPending && reject.variables) || null;
 
   if (error) {
     return <Alert variant="error">{getErrorMessage(error) || "Failed to load pending parents."}</Alert>;
@@ -1204,7 +1347,7 @@ function ParentApprovalsTab({ schoolId }: { schoolId: string }) {
       ) : (
         <ul className="divide-y divide-border/50">
           {items.map((p) => {
-            const busy = pendingId === p.parent_id;
+            const busy = rowPending.has(p.parent_id);
             return (
               <li
                 key={p.parent_id}
@@ -1271,13 +1414,17 @@ function InvitesTab({
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "invites", schoolId],
     queryFn: () => authApi.listInvites(schoolId),
+    staleTime: 30_000,
   });
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["admin", "invites", schoolId] });
 
+  const resendPending = usePendingKeys();
   const resend = useMutation({
     mutationFn: (id: string) => authApi.resendInvite(id),
+    onMutate: (id) => resendPending.start(id),
+    onSettled: (_data, _err, id) => resendPending.finish(id),
     onSuccess: (res) => {
       if (res.email) toast.success(`Invite re-sent to ${res.email}`);
       else if (res.invite_url) {
@@ -1363,7 +1510,7 @@ function InvitesTab({
                   variant="ghost"
                   size="sm"
                   icon={<RefreshCw className="h-4 w-4" />}
-                  loading={resend.isPending && resend.variables === inv.invite_id}
+                  loading={resendPending.has(inv.invite_id)}
                   onClick={() => resend.mutate(inv.invite_id)}
                 >
                   Resend
@@ -1611,6 +1758,7 @@ export function SchoolManagement({
   backHref?: string;
 }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<TabId>("overview");
   const [showInvite, setShowInvite] = useState(false);
@@ -1629,8 +1777,14 @@ export function SchoolManagement({
     if (st?.justCreated) {
       setTab("codes");
       setBulk({ from: st.classesFrom ?? "", to: st.classesTo ?? "" });
+      // Consume-and-clear: without this, the state object stays attached to
+      // this history entry, so navigating here again via the browser's
+      // Back/Forward buttons (still the same entry) re-triggers this effect
+      // and yanks the admin back to Class Codes + reopens the bulk modal,
+      // even if they'd manually switched to a different tab since.
+      navigate(location.pathname, { replace: true, state: null });
     }
-  }, [location.state]);
+  }, [location.state, location.pathname, navigate]);
 
   const { data: school, isLoading, error } = useQuery({
     queryKey: ["admin", "school", schoolId],
@@ -1792,7 +1946,7 @@ export function SchoolManagement({
         </div>
       )}
       {tab === "rag" && <RagAccessTab schoolId={school.id} />}
-      {tab === "roster" && <RosterTab schoolId={school.id} />}
+      {tab === "roster" && <RosterTab school={school} />}
       {tab === "approvals" && <ParentApprovalsTab schoolId={school.id} />}
 
       {caps.inviteStaff && (

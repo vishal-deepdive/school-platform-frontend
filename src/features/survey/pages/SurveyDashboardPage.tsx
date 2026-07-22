@@ -149,11 +149,16 @@ export function SurveyDashboardPage() {
         );
       }
       const results = [];
+      // Track failures instead of silently discarding them — previously a
+      // partial failure (e.g. 2 of 5 sources) still showed a plain success
+      // toast built only from the successes, so the user never learned a
+      // specific sheet stopped syncing.
+      const failedLabels: string[] = [];
       for (const source of activeSources) {
         try {
           results.push(await surveyApi.syncSource(source.id, "append"));
         } catch {
-          // Continue with other sources even if one fails.
+          failedLabels.push(source.label || source.sheet_id || source.id);
         }
       }
       if (results.length === 0) {
@@ -174,13 +179,18 @@ export function SurveyDashboardPage() {
           ),
         },
         _syncedCount: results.length,
+        _failedLabels: failedLabels,
       };
     },
     onSuccess: (res) => {
       const count = (res as Record<string, unknown>)._syncedCount as number;
-      toast.success(
-        `Synced ${count} source${count !== 1 ? "s" : ""}: +${res.summary.records_added} added, ${res.summary.records_skipped} skipped`,
-      );
+      const failedLabels = (res as Record<string, unknown>)._failedLabels as string[];
+      const summaryMsg = `Synced ${count} source${count !== 1 ? "s" : ""}: +${res.summary.records_added} added, ${res.summary.records_skipped} skipped`;
+      if (failedLabels.length > 0) {
+        toast.warning(`${summaryMsg}. Failed: ${failedLabels.join(", ")}`);
+      } else {
+        toast.success(summaryMsg);
+      }
       qc.invalidateQueries({ queryKey: ["survey", "status"] });
       if (res.embedding_status !== "completed" && res.job_id) {
         setSyncJobId(res.job_id);

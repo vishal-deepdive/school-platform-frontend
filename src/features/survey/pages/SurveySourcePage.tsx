@@ -16,6 +16,7 @@ import {
 import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { surveyApi } from "@/features/survey/api/survey";
@@ -692,9 +693,15 @@ export function SurveySourcePage() {
   const activeSources = sources.filter((s) => s.is_active);
   const inactiveSources = sources.filter((s) => !s.is_active);
 
-  const { mutate: syncSource, isPending: syncing } = useMutation({
+  // Per-source, not a single shared boolean — otherwise clicking Sync on one
+  // source disabled/loading-spun every source's Sync/Replace buttons, not
+  // just the one actually being synced.
+  const syncPending = usePendingKeys();
+  const { mutate: syncSource } = useMutation({
     mutationFn: ({ id, mode }: { id: string; mode: SyncMode }) =>
       surveyApi.syncSource(id, mode),
+    onMutate: ({ id }) => syncPending.start(id),
+    onSettled: (_data, _err, { id }) => syncPending.finish(id),
     onSuccess: (res) => {
       const deleted = res.summary.rows_deleted ?? 0;
       const drift = res.schema_drift;
@@ -797,7 +804,7 @@ export function SurveySourcePage() {
                         onToggleActive={(id, active) =>
                           toggleActive({ id, active })
                         }
-                        syncing={syncing}
+                        syncing={syncPending.has(source.id)}
                         canManage={canManage}
                       />
                     ))}
@@ -824,7 +831,7 @@ export function SurveySourcePage() {
                         onToggleActive={(id, active) =>
                           toggleActive({ id, active })
                         }
-                        syncing={syncing}
+                        syncing={syncPending.has(source.id)}
                         canManage={canManage}
                       />
                     ))}
