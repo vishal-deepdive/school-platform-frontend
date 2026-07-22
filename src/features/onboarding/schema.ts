@@ -67,8 +67,8 @@ const _step2Base = z.object({
     .string()
     .trim()
     .regex(
-      /^\d{10}$/,
-      "Mobile must be exactly 10 digits (no spaces or hyphens)",
+      /^[6-9]\d{9}$/,
+      "Enter a valid 10-digit Indian mobile number (no spaces or hyphens)",
     ),
   phone: z.preprocess(
     preprocessOptional,

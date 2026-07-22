@@ -135,7 +135,7 @@ export function SchoolOnboardingPage() {
   } = methods;
 
   const reviewValues = useWatch({ control }) as Partial<SchoolOnboardingFormData>;
-  const { data: capabilities } = useOnboardingCapabilities();
+  const { data: capabilities, isLoading: capabilitiesLoading } = useOnboardingCapabilities();
 
   const [searchParams] = useSearchParams();
   const resubmitId = searchParams.get("resubmit");
@@ -239,6 +239,14 @@ export function SchoolOnboardingPage() {
   const handleSaveDraft = async () => {
     if (!draftEmail.trim()) {
       toast.error("Enter an email address to receive your resume link");
+      return;
+    }
+    // capabilities?.captcha_enabled is undefined (falsy) until this query
+    // resolves, so a submit that races ahead of it would skip the CAPTCHA
+    // requirement entirely instead of enforcing it — block until we actually
+    // know, rather than assuming "not required".
+    if (capabilitiesLoading) {
+      toast.error("Still loading — please try again in a moment.");
       return;
     }
     if (capabilities?.captcha_enabled && !draftCaptchaToken) {
@@ -364,6 +372,12 @@ export function SchoolOnboardingPage() {
   }, [setCurrentStep]);
 
   const onSubmit = async (data: SchoolOnboardingFormData) => {
+    // See handleSaveDraft: block until we know whether CAPTCHA is actually
+    // required, rather than silently treating "still loading" as "not required".
+    if (capabilitiesLoading) {
+      toast.error("Still loading — please try again in a moment.");
+      return;
+    }
     if (capabilities?.captcha_enabled && !captchaToken) {
       toast.error("Please complete the verification challenge before submitting.");
       return;
