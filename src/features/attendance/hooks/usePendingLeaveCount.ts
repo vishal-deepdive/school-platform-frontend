@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { attendanceApi } from "@/features/attendance/api/attendance";
+import { getCurrentSession } from "@/features/attendance/constants";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isStaff } from "@/shared/lib/permissions";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
@@ -19,7 +20,7 @@ export function usePendingLeaveCount(): number {
     queryKey: ["attendance", "leave", "pending-count", schoolParam],
     queryFn: () =>
       attendanceApi.listLeave({
-        session: "2025-26",
+        session: getCurrentSession(),
         status: "pending",
         limit: "1",
         ...schoolParam,

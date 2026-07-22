@@ -13,7 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { StatCard } from "@/shared/components/ui/Card";
@@ -35,7 +35,7 @@ function todayIso(): string {
 export function AttendanceDashboardPage() {
   const { schoolName, ready } = useActiveSchool();
 
-  const [session, setSession] = useState("2025-26");
+  const [session, setSession] = useState(getCurrentSession());
   const [date, setDate] = useState(todayIso());
 
   const { data, isFetching, isLoading, isError } = useQuery({

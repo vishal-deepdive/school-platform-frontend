@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarPlus, Trash2, CalendarDays } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { SESSION_OPTIONS } from "@/features/attendance/constants";
+import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -45,7 +45,7 @@ export function HolidaysPage() {
   // access to the calendar) — hide the add/remove controls accordingly.
   const canManage = isSchoolAdmin(role);
 
-  const [session, setSession] = useState("2025-26");
+  const [session, setSession] = useState(getCurrentSession());
   const [newDate, setNewDate] = useState(todayIso());
   const [name, setName] = useState("");
   const [holidayToDelete, setHolidayToDelete] = useState<{
