@@ -34,6 +34,7 @@ import {
   MessageSquareWarning,
   Building,
   UserCog,
+  Trash2,
 } from "lucide-react";
 
 export interface NavItem {
@@ -273,11 +274,11 @@ export const navItems: NavItem[] = [
         href: "/survey/search",
         icon: <Sparkles className="h-4 w-4" />,
       },
-      // {
-      //   label: "Data Cleanup",
-      //   href: "/survey/data",
-      //   icon: <Trash2 className="h-4 w-4" />,
-      // },
+      {
+        label: "Data Cleanup",
+        href: "/survey/data",
+        icon: <Trash2 className="h-4 w-4" />,
+      },
       {
         label: "Sheet Connections",
         href: "/survey/source",

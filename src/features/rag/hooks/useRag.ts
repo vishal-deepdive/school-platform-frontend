@@ -2,11 +2,13 @@ import {
   useInfiniteQuery,
   useMutation,
   useQuery,
+  type Query,
 } from "@tanstack/react-query";
 import { ragApi } from "@/features/rag/api/rag";
 import type {
   AssignmentListResponse,
   ContentRequestStatus,
+  DocumentListResponse,
   FlashcardDeckListResponse,
 } from "@/features/rag/types";
 
@@ -75,7 +77,12 @@ export function useRagAnalytics(schoolId?: string) {
 
 export function useRagDocuments(
   params: DocumentParams,
-  options?: { refetchInterval?: number | false | ((query: any) => number | false) },
+  options?: {
+    refetchInterval?:
+      | number
+      | false
+      | ((query: Query<DocumentListResponse>) => number | false);
+  },
 ) {
   return useQuery({
     queryKey: ragKeys.documents(params),

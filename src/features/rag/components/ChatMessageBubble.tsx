@@ -1,4 +1,5 @@
 import { memo, useState } from "react";
+import toast from "@/shared/lib/toast";
 import {
   AlertTriangle,
   Check,
@@ -199,10 +200,13 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
+    navigator.clipboard
+      .writeText(message.content)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1500);
+      })
+      .catch(() => toast.error("Couldn't copy to clipboard."));
   };
 
   // A question — a compact bubble anchored to the right.

@@ -49,6 +49,13 @@ export function QuizRunner({ assignment, onSubmitted }: QuizRunnerProps) {
   const timed = !result && timeLimit > 0;
   const [remaining, setRemaining] = useState(timeLimit);
   const submittedRef = useRef(false);
+  // Guards the timeout auto-submit to fire exactly once. Without this, a
+  // failed auto-submit (network/server error right as time expires) would
+  // reset submittedRef for a manual retry, but the still-running 1s interval
+  // would then re-fire doSubmit() every tick forever — re-POSTing and
+  // re-toasting once a second. A manual retry is still possible afterwards
+  // via the visible "Submit & see results" button.
+  const autoSubmitFiredRef = useRef(false);
 
   const select = (qid: string, oi: number) => {
     const now = Date.now();
@@ -93,7 +100,8 @@ export function QuizRunner({ assignment, onSubmitted }: QuizRunnerProps) {
     const tick = () => {
       const left = Math.max(0, Math.round((end - Date.now()) / 1000));
       setRemaining(left);
-      if (left <= 0) {
+      if (left <= 0 && !autoSubmitFiredRef.current) {
+        autoSubmitFiredRef.current = true;
         toast("Time's up — submitting your answers.");
         doSubmitRef.current();
       }
@@ -107,6 +115,7 @@ export function QuizRunner({ assignment, onSubmitted }: QuizRunnerProps) {
     setResult(null);
     setSelections({});
     submittedRef.current = false;
+    autoSubmitFiredRef.current = false;
     startedAt.current = Date.now();
     lastEventAt.current = Date.now();
     timePerQuestion.current = {};

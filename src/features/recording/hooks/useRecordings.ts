@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "@/shared/lib/toast";
 import { recordingApi } from "@/features/recording/api/recording";
@@ -144,14 +144,24 @@ export function useDownloadRecording() {
 export function useRecordingPreview() {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [result, setResult] = useState<MarkdownResult | null>(null);
+  // Guards against a stale response overwriting a newer one: clicking "View"
+  // on recording A then quickly on B (list/search rows don't disable while
+  // pending) fires two overlapping fetches — if A's happens to resolve after
+  // B's, its result must be dropped, not applied over B's already-showing one.
+  const requestIdRef = useRef<string | null>(null);
 
   const open = async (id: string, rollNo?: string) => {
+    requestIdRef.current = id;
     setPreviewId(id);
     setResult(null);
-    setResult(await recordingApi.getRecordingMarkdown(id, rollNo));
+    const data = await recordingApi.getRecordingMarkdown(id, rollNo);
+    if (requestIdRef.current === id) {
+      setResult(data);
+    }
   };
 
   const close = () => {
+    requestIdRef.current = null;
     setPreviewId(null);
     setResult(null);
   };
