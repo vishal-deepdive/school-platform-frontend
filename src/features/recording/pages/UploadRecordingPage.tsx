@@ -222,12 +222,41 @@ export function UploadRecordingPage() {
   const isComplete = deduplicated || jobStatus?.status === "completed";
 
   useEffect(() => {
-    if (isComplete && jobId && !markdown) {
+    if (!(isComplete && jobId && !markdown)) return;
+    let cancelled = false;
+    let attempt = 0;
+    const maxAttempts = 5;
+
+    const poll = () => {
       recordingApi.getResultMarkdown(jobId).then((res) => {
-        if (res.state === "ready") setMarkdown(res.markdown);
-        else if (res.state === "error") toast.error(res.message);
+        if (cancelled) return;
+        if (res.state === "ready") {
+          setMarkdown(res.markdown);
+        } else if (res.state === "error") {
+          toast.error(res.message);
+        } else if (res.state === "not_found") {
+          // Previously silently ignored, leaving "Loading study materials…"
+          // stuck forever with no recovery path.
+          toast.error("Study materials could not be found for this recording.");
+        } else if (res.state === "generating") {
+          // The job status said "completed" but the result row isn't
+          // populated yet (a race, not a permanent state) — retry a bounded
+          // number of times instead of leaving the spinner stuck forever.
+          attempt += 1;
+          if (attempt < maxAttempts) {
+            setTimeout(() => {
+              if (!cancelled) poll();
+            }, 2000);
+          } else {
+            toast.error("Study materials are taking longer than expected. Refresh the page to try again.");
+          }
+        }
       });
-    }
+    };
+    poll();
+    return () => {
+      cancelled = true;
+    };
   }, [isComplete, jobId, markdown]);
 
   const { mutate: downloadPdf, isPending: downloadingPdf } = useMutation({

@@ -22,6 +22,7 @@ import {
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { attendanceApi } from "@/features/attendance/api/attendance";
+import { getCurrentSession } from "@/features/attendance/constants";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Select } from "@/shared/components/ui/Select";
 import { Button } from "@/shared/components/ui/Button";
@@ -116,7 +117,7 @@ export function AttendanceDateView() {
   useEffect(() => setApplied(null), [schoolId]);
 
   const holidays = useHolidayDates({
-    session: "2025-26",
+    session: getCurrentSession(),
     schoolName: schoolName || undefined,
     enabled: !!schoolName,
   });

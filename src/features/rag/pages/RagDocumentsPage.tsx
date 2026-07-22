@@ -119,11 +119,10 @@ export function RagDocumentsPage() {
         ...(schoolId && { school_id: schoolId }),
       },
       {
-        refetchInterval: (query: any) => {
+        refetchInterval: (query) => {
           const items = query.state.data?.items ?? [];
           const stillWorking = items.some(
-            (d: { status: string }) =>
-              !TERMINAL_STATUSES.has(d.status.toLowerCase()),
+            (d) => !TERMINAL_STATUSES.has(d.status.toLowerCase()),
           );
           return stillWorking ? 4000 : false;
         },

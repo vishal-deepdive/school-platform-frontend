@@ -13,7 +13,6 @@ import { PageSkeleton } from "@/shared/components/ui/Skeleton";
 import { getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
 import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import { useAuthStore } from "@/features/auth/store/auth";
-import { isStaff } from "@/shared/lib/permissions";
 import {
   useFlashcardDecks,
   useFlashcardDeck,
@@ -27,10 +26,25 @@ import type { FlashcardDeckSummary, RagFilters } from "@/features/rag/types";
 
 const COUNT_OPTIONS = [8, 12, 16, 20].map((n) => ({ value: String(n), label: `${n} cards` }));
 
+/** Mirrors the backend's delete_flashcard_deck authorization exactly: global
+ * decks (no school_id) are admin-only; within a school, admin/principal may
+ * delete any deck but a teacher may only delete one they created. */
+function canDeleteDeck(
+  deck: FlashcardDeckSummary,
+  role: string | undefined,
+  userId: string | undefined,
+): boolean {
+  if (!role) return false;
+  if (!deck.school_id) return role === "admin";
+  if (role === "admin" || role === "principal") return true;
+  if (role === "teacher") return !!userId && deck.created_by === userId;
+  return false;
+}
+
 export function FlashcardsPage() {
   const queryClient = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
-  const canManage = isStaff(role);
+  const userId = useAuthStore((s) => s.user?.id);
 
   const { data, isLoading, isError, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useFlashcardDecks();
@@ -82,7 +96,7 @@ export function FlashcardsPage() {
     return (
       <ForbiddenState
         title="No access to the Study Assistant"
-        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal or an admin to enable Study Assistant access for you."
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal to enable Study Assistant access for you."
       />
     );
   }
@@ -146,7 +160,7 @@ export function FlashcardsPage() {
               <DeckCard
                 key={deck.id}
                 deck={deck}
-                canManage={canManage}
+                canDelete={canDeleteDeck(deck, role, userId)}
                 onOpen={() => setActiveId(deck.id)}
                 onDelete={() => setConfirmId(deck.id)}
               />
@@ -214,12 +228,12 @@ export function FlashcardsPage() {
 
 function DeckCard({
   deck,
-  canManage,
+  canDelete,
   onOpen,
   onDelete,
 }: {
   deck: FlashcardDeckSummary;
-  canManage: boolean;
+  canDelete: boolean;
   onOpen: () => void;
   onDelete: () => void;
 }) {
@@ -228,7 +242,7 @@ function DeckCard({
 
   return (
     <div className="group relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm">
-      {canManage && (
+      {canDelete && (
         <button
           type="button"
           onClick={onDelete}

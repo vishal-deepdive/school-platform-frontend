@@ -19,7 +19,8 @@ import { Modal } from "@/shared/components/ui/Modal";
 import { StatCard } from "@/shared/components/ui/Card";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Alert } from "@/shared/components/ui/Alert";
-import { getErrorMessage, formatDate, cn } from "@/shared/lib/utils";
+import { getErrorMessage, isForbiddenError, formatDate, cn } from "@/shared/lib/utils";
+import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import {
   useAssignments,
   useAssignmentResults,
@@ -92,6 +93,17 @@ export function AssignmentsPage() {
   };
 
   if (isLoading) return <AssignmentsSkeleton />;
+
+  // Ungranted teachers: clean access message instead of a raw error alert
+  // alongside a misleading "No assignments yet" empty state.
+  if (isError && isForbiddenError(error)) {
+    return (
+      <ForbiddenState
+        title="No access to Assignments"
+        description="Your account doesn't have a knowledge-base access grant yet. Ask your principal to enable Study Assistant access for you."
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
