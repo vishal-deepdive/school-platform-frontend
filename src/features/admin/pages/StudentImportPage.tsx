@@ -1,10 +1,14 @@
 /**
  * Bulk student roster import (CSV) — so a school never types 500 students by hand.
  *
- * Uploads a CSV to POST /admin/schools/{id}/students/bulk and shows a per-row
- * result summary (created / skipped duplicates / errored rows). The target
- * school is the principal's own school, or — for platform admins — the school
- * currently selected in the global active-school switcher.
+ * Uploads a CSV to POST /admin/schools/{id}/students/bulk. Every row gets a
+ * managed login account (roll-based, password defaults to DOB when given)
+ * and, when a guardian_mobile is supplied, a deduped-or-created guardian
+ * account is linked pre-verified — no approval queue, since the school
+ * itself is the source. Shows a result summary (created / skipped / errored
+ * rows plus guardian stats). The target school is the principal's own
+ * school, or — for platform admins — the school currently selected in the
+ * global active-school switcher.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -21,9 +25,9 @@ import { StatCard } from "@/shared/components/ui/Card";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 
 const SAMPLE_CSV =
-  "roll_no,name,class_name,section,session\n" +
-  "1,Aarav Sharma,7,A,2025-26\n" +
-  "2,Diya Patel,7,A,2025-26\n";
+  "roll_no,name,class_name,section,session,dob,guardian_name,guardian_mobile,guardian_relation\n" +
+  "1,Aarav Sharma,7,A,2025-26,2013-04-01,Vikram Sharma,9876543210,father\n" +
+  "2,Diya Patel,7,A,2025-26,2013-06-15,Meera Patel,9123456780,mother\n";
 
 export function StudentImportPage() {
   // Admins act on the globally-selected school; principals use their own. The
@@ -71,8 +75,14 @@ export function StudentImportPage() {
             <div className="text-xs leading-relaxed text-muted-foreground">
               CSV columns (header row): <code>roll_no</code> (required),{" "}
               <code>name</code>, <code>class_name</code>, <code>section</code>,{" "}
-              <code>session</code>. Re-importing is safe — existing students are
-              skipped, not duplicated.
+              <code>session</code>, <code>dob</code> (YYYY-MM-DD, seeds each
+              student's default password), <code>guardian_name</code>,{" "}
+              <code>guardian_mobile</code>, <code>guardian_email</code>,{" "}
+              <code>guardian_relation</code>. Every row gets a login account;
+              a guardian mobile is linked as an approved parent automatically
+              — siblings sharing a mobile collapse onto one parent account.
+              Re-importing is safe — existing students/guardians are reused,
+              not duplicated.
               <button
                 type="button"
                 onClick={downloadSample}
@@ -129,6 +139,19 @@ export function StudentImportPage() {
               />
             </div>
 
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <StatCard
+                label="New guardian accounts"
+                value={result.guardians_created}
+                color="info"
+              />
+              <StatCard
+                label="Guardian links created"
+                value={result.guardians_linked}
+                color="info"
+              />
+            </div>
+
             {result.errors.length > 0 && (
               <Alert
                 variant="error"
@@ -138,6 +161,21 @@ export function StudentImportPage() {
                   {result.errors.slice(0, 50).map((e) => (
                     <li key={e.row}>
                       Row {e.row}: {e.reason}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
+            {result.guardian_conflicts.length > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.guardian_conflicts.length} guardian mobile(s) could not be linked`}
+              >
+                <ul className="mt-1 max-h-40 space-y-0.5 overflow-auto text-xs">
+                  {result.guardian_conflicts.slice(0, 50).map((c) => (
+                    <li key={`${c.roll_no}-${c.guardian_mobile}`}>
+                      Roll {c.roll_no} ({c.guardian_mobile}): {c.reason}
                     </li>
                   ))}
                 </ul>
