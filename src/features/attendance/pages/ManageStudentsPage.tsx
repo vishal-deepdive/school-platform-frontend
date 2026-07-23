@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap } from "lucide-react";
+import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap, KeyRound } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { adminApi } from "@/features/admin/api/admin";
@@ -24,6 +24,14 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
 import { downloadBlob, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
+import type { CreateStudentRequest } from "@/features/admin/types";
+
+const RELATION_OPTIONS: { value: NonNullable<CreateStudentRequest["guardian_relation"]>; label: string }[] = [
+  { value: "guardian", label: "Guardian" },
+  { value: "father", label: "Father" },
+  { value: "mother", label: "Mother" },
+  { value: "other", label: "Other" },
+];
 
 type DeleteMode = "full" | "database" | "attendance";
 
@@ -72,9 +80,13 @@ export function ManageStudentsPage() {
   const [classDeleteConfirmText, setClassDeleteConfirmText] = useState("");
 
   const [addStudentOpen, setAddStudentOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
   const [newFullName, setNewFullName] = useState("");
   const [newRollNo, setNewRollNo] = useState("");
+  const [newDob, setNewDob] = useState("");
+  const [newGuardianName, setNewGuardianName] = useState("");
+  const [newGuardianMobile, setNewGuardianMobile] = useState("");
+  const [newGuardianRelation, setNewGuardianRelation] =
+    useState<CreateStudentRequest["guardian_relation"]>("guardian");
 
   const [studentToPromote, setStudentToPromote] = useState<RosterStudent | null>(null);
   const [promoteTargetClass, setPromoteTargetClass] = useState("");
@@ -83,6 +95,9 @@ export function ManageStudentsPage() {
 
   const [classPromoteOpen, setClassPromoteOpen] = useState(false);
   const [classPromoteTargetSession, setClassPromoteTargetSession] = useState("");
+
+  const [studentToResetPassword, setStudentToResetPassword] =
+    useState<RosterStudent | null>(null);
 
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
@@ -143,20 +158,26 @@ export function ManageStudentsPage() {
     mutationFn: () => {
       if (!schoolId) throw new Error("No school selected");
       return adminApi.createStudent(schoolId, {
-        email: newEmail.trim(),
         full_name: newFullName.trim() || undefined,
         roll_no: newRollNo.trim(),
         class_name: className,
         section: section || undefined,
         session,
+        dob: newDob || undefined,
+        guardian_name: newGuardianName.trim() || undefined,
+        guardian_mobile: newGuardianMobile.trim() || undefined,
+        guardian_relation: newGuardianMobile.trim() ? newGuardianRelation : undefined,
       });
     },
     onSuccess: (res) => {
       toast.success(res.message ?? "Student account created");
       setAddStudentOpen(false);
-      setNewEmail("");
       setNewFullName("");
       setNewRollNo("");
+      setNewDob("");
+      setNewGuardianName("");
+      setNewGuardianMobile("");
+      setNewGuardianRelation("guardian");
       if (className && section) loadMutation.mutate();
     },
     onError: (err) => toast.error(getErrorMessage(err)),
@@ -182,6 +203,18 @@ export function ManageStudentsPage() {
       setPromoteTargetClass("");
       setPromoteTargetSection("");
       setPromoteTargetSession("");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: () => {
+      if (!schoolId || !studentToResetPassword) throw new Error("No student selected");
+      return adminApi.resetStudentPassword(schoolId, studentToResetPassword.roll_no);
+    },
+    onSuccess: (res) => {
+      toast.success(res.message ?? "Password reset");
+      setStudentToResetPassword(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -430,6 +463,14 @@ export function ManageStudentsPage() {
                     </Button>
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => setStudentToResetPassword(s)}
+                      icon={<KeyRound className="h-4 w-4" />}
+                    >
+                      Reset Password
+                    </Button>
+                    <Button
+                      size="sm"
                       variant="danger-ghost"
                       onClick={() => {
                         setStudentDeleteMode("full");
@@ -492,6 +533,37 @@ export function ManageStudentsPage() {
       </Modal>
 
       <Modal
+        open={studentToResetPassword !== null}
+        onClose={() => setStudentToResetPassword(null)}
+        title="Reset student password?"
+        icon={<KeyRound className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setStudentToResetPassword(null)}>
+              Cancel
+            </Button>
+            <Button
+              loading={resetPasswordMutation.isPending}
+              onClick={() => resetPasswordMutation.mutate()}
+            >
+              Reset Password
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Resets the password for{" "}
+          <span className="font-medium text-foreground">
+            {studentToResetPassword?.name ?? studentToResetPassword?.roll_no}
+          </span>{" "}
+          (Roll #{studentToResetPassword?.roll_no}) to their date of birth
+          (DDMMYYYY) and signs them out everywhere. Requires a date of birth on
+          file — add one via the roster import if this fails.
+        </p>
+      </Modal>
+
+      <Modal
         open={classDeleteOpen}
         onClose={() => setClassDeleteOpen(false)}
         title="Delete this class?"
@@ -542,7 +614,7 @@ export function ManageStudentsPage() {
         onClose={() => setAddStudentOpen(false)}
         title="Add Student"
         icon={<UserPlus className="h-4 w-4" />}
-        size="sm"
+        size="md"
         footer={
           <>
             <Button variant="outline" onClick={() => setAddStudentOpen(false)}>
@@ -550,7 +622,7 @@ export function ManageStudentsPage() {
             </Button>
             <Button
               loading={addStudentMutation.isPending}
-              disabled={!newEmail.trim() || !newRollNo.trim()}
+              disabled={!newRollNo.trim()}
               onClick={() => addStudentMutation.mutate()}
             >
               Create Account
@@ -564,28 +636,66 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               Class {className}{section ? `-${section}` : ""} · {session}
             </span>{" "}
-            and links it to a roll number in one step. The student gets a
-            set-password email with a one-time OTP.
+            and links it to a roll number in one step — no email needed. The
+            student's default password is their date of birth (DDMMYYYY); a
+            guardian mobile, if given, is linked as an approved parent account
+            automatically.
           </p>
-          <Input
-            label="Email"
-            type="email"
-            placeholder="student@school.edu"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-          />
           <Input
             label="Full Name"
             placeholder="Student's name"
             value={newFullName}
             onChange={(e) => setNewFullName(e.target.value)}
           />
-          <Input
-            label="Roll Number"
-            placeholder="2026-10A-001"
-            value={newRollNo}
-            onChange={(e) => setNewRollNo(e.target.value)}
-          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Roll Number"
+              placeholder="2026-10A-001"
+              value={newRollNo}
+              onChange={(e) => setNewRollNo(e.target.value)}
+            />
+            <Input
+              label="Date of Birth"
+              type="date"
+              hint="Sets the initial password"
+              value={newDob}
+              onChange={(e) => setNewDob(e.target.value)}
+            />
+          </div>
+
+          <div className="border-t border-border/50 pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Parent / guardian (optional)
+            </p>
+            <div className="space-y-4">
+              <Input
+                label="Guardian Name"
+                placeholder="Parent's name"
+                value={newGuardianName}
+                onChange={(e) => setNewGuardianName(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Guardian Mobile"
+                  type="tel"
+                  placeholder="9876543210"
+                  hint="Becomes the parent's login"
+                  value={newGuardianMobile}
+                  onChange={(e) => setNewGuardianMobile(e.target.value)}
+                />
+                <Select
+                  label="Relation"
+                  options={RELATION_OPTIONS}
+                  value={newGuardianRelation}
+                  onChange={(e) =>
+                    setNewGuardianRelation(
+                      e.target.value as CreateStudentRequest["guardian_relation"],
+                    )
+                  }
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </Modal>
 

@@ -8,6 +8,7 @@ import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/consta
 import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
+import { Textarea } from "@/shared/components/ui/Textarea";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
 import type { BadgeVariant } from "@/shared/components/ui/Badge";
@@ -55,7 +56,8 @@ export function LeavePage() {
   const [statusFilter, setStatusFilter] = useState(isStaff ? "pending" : "");
   const [start, setStart] = useState(todayIso());
   const [end, setEnd] = useState(todayIso());
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState("Medical");
+  const [description, setDescription] = useState("");
 
   // A parent must not submit before their child selection resolves — otherwise
   // createLeave posts without a roll_no and the backend can't disambiguate a
@@ -82,13 +84,15 @@ export function LeavePage() {
         session,
         start_date: isoToIndianDate(start),
         end_date: isoToIndianDate(end),
-        reason: reason || undefined,
+        reason: reason as "Medical" | "Family Event" | "Emergency" | "Vacation" | "Other",
+        description: description.trim() || undefined,
         ...(isParent && selectedRoll ? { roll_no: selectedRoll } : {}),
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance", "leave"] });
       toast.success("Leave request submitted");
-      setReason("");
+      setReason("Medical");
+      setDescription("");
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -165,12 +169,28 @@ export function LeavePage() {
               onChange={(iso) => setEnd(iso ?? todayIso())}
               fadeSundays
             />
-            <Input
-              label="Reason (optional)"
-              placeholder="Medical"
+            <Select
+              label="Reason"
+              options={[
+                { value: "Medical", label: "Medical" },
+                { value: "Family Event", label: "Family Event" },
+                { value: "Emergency", label: "Emergency" },
+                { value: "Vacation", label: "Vacation" },
+                { value: "Other", label: "Other" },
+              ]}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
             />
+            <div className="sm:col-span-2 lg:col-span-4">
+              <Textarea
+                label="Description"
+                placeholder="Briefly describe the reason for your leave (max 1000 characters)"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={1000}
+                rows={3}
+              />
+            </div>
           </div>
         </FilterBar>
       )}
@@ -243,6 +263,11 @@ export function LeavePage() {
                       )}
                       {lr.reason && <span>· {lr.reason}</span>}
                     </p>
+                    {lr.description && (
+                      <p className="mt-1 text-sm text-muted-foreground/80 line-clamp-2">
+                        {lr.description}
+                      </p>
+                    )}
                   </div>
                 </div>
                 {isStaff && lr.status === "pending" && (

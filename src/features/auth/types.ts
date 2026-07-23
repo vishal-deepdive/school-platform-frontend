@@ -7,7 +7,12 @@ export type UserRole =
 
 export interface User {
   id: string;
-  email: string;
+  // Null for guardian (mobile-only) and managed student accounts with no
+  // email on file — see the mobile-OTP and admission-number login flows.
+  email: string | null;
+  // Populated for guardian accounts (their login identifier). Not carried in
+  // the JWT — filled in lazily via GET /me where needed (see UserProfileMenu).
+  mobile: string | null;
   full_name: string | null;
   role: UserRole;
   school_id: string | null;
@@ -72,17 +77,13 @@ export type GoogleCallbackResponse =
   | GoogleRegistrationRequiredResponse;
 
 // ── Google profile completion ────────────────────────────────────────────────
+// Teacher / co-principal invite claim only — students and parents don't
+// self-register (see StudentAdmissionLoginRequest / MobileOtp*Request below).
 
 export interface GoogleCompleteRequest {
   google_token: string;
-  role: "student" | "teacher" | "parent";
   full_name?: string;
-  school_id?: string;
-  class_code?: string;
-  invite_token?: string;
-  student_id?: string;
-  relation?: "father" | "mother" | "guardian" | "other";
-  roll_number?: string;
+  invite_token: string;
 }
 
 export interface GoogleCompletePendingResponse {
@@ -97,7 +98,10 @@ export type GoogleCompleteResponse =
 
 export interface UserResponse {
   id: string;
-  email: string;
+  // Null for guardian (mobile-only) and managed student accounts with no
+  // email on file — see `mobile`.
+  email: string | null;
+  mobile: string | null;
   full_name: string | null;
   role: UserRole;
   school_id: string | null;
@@ -109,23 +113,6 @@ export interface UserResponse {
 
 export type OtpPurpose = "verify_email" | "reset_password";
 
-export interface RegisterRequest {
-  email: string;
-  password: string;
-  full_name?: string;
-  role: UserRole;
-  school_id?: string;
-}
-
-export interface StudentRegisterRequest {
-  email: string;
-  password: string;
-  full_name?: string;
-  school_id: string;
-  class_code: string;
-  roll_number: string;
-}
-
 export interface TeacherRegisterRequest {
   email: string;
   password: string;
@@ -133,17 +120,27 @@ export interface TeacherRegisterRequest {
   invite_token: string;
 }
 
-export interface ParentRegisterRequest {
-  email: string;
-  password: string;
-  full_name?: string;
-  school_id: string;
-  student_id: string;
-  relation: "father" | "mother" | "guardian" | "other";
-}
-
 export interface LoginRequest {
   email: string;
+  password: string;
+}
+
+// ── Guardian mobile+OTP login ─────────────────────────────────────────────────
+
+export interface MobileOtpRequestRequest {
+  mobile: string;
+}
+
+export interface MobileOtpLoginVerifyRequest {
+  mobile: string;
+  otp: string;
+}
+
+// ── Student admission-number login ────────────────────────────────────────────
+
+export interface StudentAdmissionLoginRequest {
+  school_code: string;
+  roll_no: string;
   password: string;
 }
 
@@ -177,12 +174,6 @@ export interface ClassCodeItem {
   code: string;
   class_name: string;
   section: string | null;
-}
-
-export interface StudentSearchItem {
-  id: string;
-  full_name: string | null;
-  roll_number: string | null;
 }
 
 export interface PendingParentItem {
