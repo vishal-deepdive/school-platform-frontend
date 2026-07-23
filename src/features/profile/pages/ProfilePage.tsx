@@ -5,7 +5,9 @@ import {
   XCircle,
   KeyRound,
   Mail,
+  Smartphone,
   Building2,
+  Info,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -56,6 +58,7 @@ export function ProfilePage() {
   const avatarChar =
     user?.full_name?.charAt(0).toUpperCase() ??
     user?.email?.charAt(0).toUpperCase() ??
+    user?.mobile?.charAt(0).toUpperCase() ??
     "U";
 
   if (isLoading) {
@@ -115,10 +118,21 @@ export function ProfilePage() {
                 </Badge>
               )}
             </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <Mail className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{user?.email}</span>
-            </p>
+            {user?.email ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{user.email}</span>
+              </p>
+            ) : user?.mobile ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+                <Smartphone className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{user.mobile}</span>
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground/70 italic">
+                No email or mobile on file
+              </p>
+            )}
             {user?.school_id && (
               <p className="mt-1 text-sm text-muted-foreground flex items-center gap-1.5">
                 <Building2 className="h-3.5 w-3.5 shrink-0" />
@@ -133,12 +147,28 @@ export function ProfilePage() {
       <Card padding="md">
         <CardHeader title="Account Status" />
         <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-          <StatusRow
-            label="Email"
-            ok={!!user?.is_email_verified}
-            okText="Verified"
-            failText="Not verified"
-          />
+          {user?.email ? (
+            <StatusRow
+              label="Email"
+              ok={!!user?.is_email_verified}
+              okText="Verified"
+              failText="Not verified"
+            />
+          ) : user?.mobile ? (
+            <StatusRow label="Mobile" ok okText="OTP verified" failText="—" />
+          ) : (
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Login
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span className="text-sm font-medium text-foreground">
+                  Roll number
+                </span>
+              </div>
+            </div>
+          )}
           <StatusRow
             label="Account"
             ok={!!user?.is_active}
@@ -160,36 +190,66 @@ export function ProfilePage() {
 
       {/* Security */}
       <Card padding="md">
-        <CardHeader
-          title="Security"
-          description="We'll email you a one-time code to set a new password."
-        />
-        <div className="flex items-center gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-            <KeyRound className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">Password</p>
-            {resetSent ? (
-              <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
-                Reset instructions sent — check your inbox.
+        {user?.email ? (
+          <>
+            <CardHeader
+              title="Security"
+              description="We'll email you a one-time code to set a new password."
+            />
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <KeyRound className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">Password</p>
+                {resetSent ? (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
+                    Reset instructions sent — check your inbox.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    A reset link will be sent to {user.email}.
+                  </p>
+                )}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                loading={sendingReset}
+                disabled={resetSent}
+                onClick={handleChangePassword}
+              >
+                {resetSent ? "Email sent" : "Change Password"}
+              </Button>
+            </div>
+          </>
+        ) : user?.role === "parent" ? (
+          <>
+            <CardHeader title="Security" />
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <Smartphone className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                You sign in with a one-time code sent to your mobile number —
+                there's no password to manage.
               </p>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                A reset link will be sent to {user?.email}.
+            </div>
+          </>
+        ) : (
+          <>
+            <CardHeader title="Security" />
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <KeyRound className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your password is set by your school. Ask your teacher or the
+                school office to reset it if you've forgotten it.
               </p>
-            )}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            loading={sendingReset}
-            disabled={resetSent}
-            onClick={handleChangePassword}
-          >
-            {resetSent ? "Email sent" : "Change Password"}
-          </Button>
-        </div>
+            </div>
+          </>
+        )}
       </Card>
     </div>
   );
