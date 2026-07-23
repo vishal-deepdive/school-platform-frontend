@@ -1,6 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useDebounce } from "@/shared/hooks/useDebounce";
+import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
 import { GraduationCap } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import {
@@ -33,12 +37,30 @@ export function StudentLoginForm({
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<StudentLoginFormData>({
     resolver: zodResolver(studentLoginSchema),
     mode: "onTouched",
   });
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebounce(searchQuery, 300);
+
+  const { data: schools = [], isLoading: isSchoolsLoading } = useQuery({
+    queryKey: ["schools", debouncedQuery],
+    queryFn: () => authApi.searchSchools(debouncedQuery),
+    staleTime: 60000,
+  });
+
+  const schoolOptions = schools
+    .filter((s) => s.code)
+    .map((s) => ({
+      label: s.name,
+      value: s.code!,
+      sublabel: [s.city, s.state].filter(Boolean).join(", ") || undefined,
+    }));
 
   const onSubmit = async (data: StudentLoginFormData) => {
     try {
@@ -57,15 +79,23 @@ export function StudentLoginForm({
       className="flex flex-col gap-4"
       noValidate
     >
-      <AuthInput
-        label="School Code"
-        type="text"
-        autoComplete="off"
-        autoFocus
-        placeholder="e.g. SPE-001"
-        hint="Ask your teacher if you don't know your school's code"
-        error={errors.school_code?.message}
-        {...register("school_code")}
+      <Controller
+        name="school_code"
+        control={control}
+        render={({ field }) => (
+          <SearchableSelect
+            label="School"
+            placeholder="Select your school..."
+            searchPlaceholder="Search by name, city or code..."
+            options={schoolOptions}
+            value={field.value}
+            onChange={field.onChange}
+            onSearchChange={setSearchQuery}
+            isLoading={isSchoolsLoading}
+            error={errors.school_code?.message}
+            hint="Ask your teacher if you can't find your school"
+          />
+        )}
       />
       <AuthInput
         label="Admission / Roll Number"

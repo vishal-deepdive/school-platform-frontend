@@ -163,6 +163,7 @@ export interface ResetPasswordRequest {
 
 export interface SchoolSearchItem {
   id: string;
+  code: string | null;
   name: string;
   address: string | null;
   city: string | null;

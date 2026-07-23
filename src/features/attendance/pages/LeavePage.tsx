@@ -7,7 +7,6 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
 import { Select } from "@/shared/components/ui/Select";
-import { Input } from "@/shared/components/ui/Input";
 import { Textarea } from "@/shared/components/ui/Textarea";
 import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
