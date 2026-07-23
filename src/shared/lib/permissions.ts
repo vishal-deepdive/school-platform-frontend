@@ -26,7 +26,7 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
   "/attendance/mark": ["admin", "principal", "teacher"],
   "/attendance/view": ["admin", "principal", "teacher", "student", "parent"],
   "/attendance/leave": ["admin", "principal", "teacher", "student", "parent"],
-  "/attendance/holidays": ["admin", "principal", "teacher"],
+  "/attendance/holidays": ["admin", "principal", "teacher", "student", "parent"],
   "/attendance/manage": ["admin", "principal", "teacher"],
   "/attendance/stats": ["admin", "principal", "teacher"],
   "/attendance/audit-log": ["admin", "principal"],

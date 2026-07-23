@@ -72,25 +72,40 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
     setImgError(false);
   }, [user?.avatar_url]);
 
-  // Fetch profile once when the user has no display name yet. We track by userId
-  // so that calling updateUser (which creates a new user object reference) can
-  // never retrigger this effect — avoiding an infinite loop when full_name is null.
+  // Fetch profile once when the user has nothing to display yet — no name AND
+  // no contact identifier (a guardian whose enrollment row had no
+  // guardian_name would otherwise show a blank avatar/label forever, since
+  // the JWT never carries `mobile`). We track by userId so that calling
+  // updateUser (which creates a new user object reference) can never
+  // retrigger this effect — avoiding an infinite loop.
   const fetchedForUserId = useRef<string | null>(null);
   useEffect(() => {
-    if (!user?.id || user.full_name || fetchedForUserId.current === user.id) return;
+    if (
+      !user?.id ||
+      user.full_name ||
+      user.email ||
+      user.mobile ||
+      fetchedForUserId.current === user.id
+    )
+      return;
     fetchedForUserId.current = user.id;
     let cancelled = false;
     authApi
       .me()
       .then((profile) => {
         if (!cancelled)
-          updateUser({ full_name: profile.full_name, avatar_url: profile.avatar_url });
+          updateUser({
+            full_name: profile.full_name,
+            avatar_url: profile.avatar_url,
+            email: profile.email,
+            mobile: profile.mobile,
+          });
       })
       .catch(console.error);
     return () => {
       cancelled = true;
     };
-  }, [user?.id, user?.full_name, updateUser]);
+  }, [user?.id, user?.full_name, user?.email, user?.mobile, updateUser]);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -105,7 +120,8 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
     }
   };
 
-  const displayName = user?.full_name ?? user?.email ?? "";
+  const displayName = user?.full_name ?? user?.email ?? user?.mobile ?? "";
+  const contactLine = user?.email ?? user?.mobile ?? "";
 
   const getRoleBadge = (role?: string) => {
     if (!role) return null;
@@ -152,7 +168,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
               {getRoleBadge(user?.role)}
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">
-              {user?.email}
+              {contactLine}
             </p>
           </div>
           <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
@@ -209,7 +225,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
                   {getRoleBadge(user?.role)}
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">
-                  {user?.email}
+                  {contactLine}
                 </p>
               </div>
             </div>

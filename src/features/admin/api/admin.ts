@@ -282,6 +282,14 @@ export const adminApi = {
       )
       .then((r) => r.data),
 
+  /** Reset a student's password to their date-of-birth default (DDMMYYYY) and enable login. */
+  resetStudentPassword: (schoolId: string, rollNo: string) =>
+    apiClient
+      .post<{ message: string }>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/students/${enc(rollNo)}/reset-password`,
+      )
+      .then((r) => r.data),
+
   promoteClass: (schoolId: string, data: PromoteClassRequest) =>
     apiClient
       .post<PromoteClassResult>(`${ADMIN_BASE}/schools/${enc(schoolId)}/classes/promote`, data)
