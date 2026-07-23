@@ -106,10 +106,19 @@ export interface SchoolSetupStatus {
   recordings: number;
 }
 
+export interface GuardianConflict {
+  roll_no: string;
+  guardian_mobile: string;
+  reason: string;
+}
+
 export interface BulkImportResult {
   created: number;
   skipped: number;
   errors: { row: number; reason: string }[];
+  guardians_created: number;
+  guardians_linked: number;
+  guardian_conflicts: GuardianConflict[];
 }
 
 export interface RejectApplicationRequest {
@@ -354,12 +363,17 @@ export interface ProvisionPrincipalRequest {
 
 export interface ProvisionedUser {
   id: string;
-  email: string;
+  // Null for a managed student account with no email on file.
+  email: string | null;
   full_name: string | null;
   role: string;
   school_id: string | null;
   account_status: string;
   message: string;
+  // Student-only (undefined for admin/principal/teacher provisioning).
+  login_enabled?: boolean;
+  guardian_linked?: boolean;
+  guardian_conflicts?: GuardianConflict[];
 }
 
 export interface ClassCode {
@@ -409,12 +423,16 @@ export interface RagAccessItem {
 // ── Student lifecycle (create / promote) ───────────────────────────────────
 
 export interface CreateStudentRequest {
-  email: string;
   full_name?: string;
   roll_no: string;
   class_name: string;
   section?: string;
   session?: string;
+  dob?: string; // ISO date (YYYY-MM-DD) — seeds the initial DDMMYYYY password
+  guardian_name?: string;
+  guardian_mobile?: string;
+  guardian_email?: string;
+  guardian_relation?: "father" | "mother" | "guardian" | "other";
 }
 
 export interface PromoteStudentRequest {
@@ -474,7 +492,10 @@ export type UserRoleFilter =
 
 export interface AdminUserListItem {
   id: string;
-  email: string;
+  // Null for guardian (mobile-only) and managed student accounts with no
+  // email on file — see `mobile`.
+  email: string | null;
+  mobile: string | null;
   full_name: string | null;
   role: string;
   school_id: string | null;
