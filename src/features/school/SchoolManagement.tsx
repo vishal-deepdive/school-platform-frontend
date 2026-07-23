@@ -116,7 +116,11 @@ function useActiveUsers(schoolId: string, role: string, enabled = true) {
 }
 
 function userLabel(u: AdminUserListItem): string {
-  return u.full_name ? `${u.full_name} · ${u.email}` : u.email;
+  // Guardian (mobile-only) and managed student (no contact on file) accounts
+  // can have a null email — fall back to whatever identifier is available.
+  const contact = u.email || u.mobile;
+  if (u.full_name && contact) return `${u.full_name} · ${contact}`;
+  return u.full_name || contact || (u.roll_number ? `Roll ${u.roll_number}` : "Unnamed user");
 }
 
 function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {

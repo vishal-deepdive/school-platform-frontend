@@ -2,7 +2,9 @@ import type { User } from "@/features/auth/types";
 
 export interface DecodedToken {
   sub: string;
-  email: string;
+  // Null for guardian (mobile-only) and managed student accounts that have
+  // no email on file — see the mobile-OTP and admission-number login flows.
+  email: string | null;
   school_id: string | null;
   role: "admin" | "principal" | "teacher" | "student" | "parent";
   iat: number;
@@ -34,12 +36,15 @@ export function decodeJwt(token: string): DecodedToken | null {
 /** Build a User object from a decoded JWT. Applies safe fallbacks when decoding failed. */
 export function buildUserFromJwt(
   decoded: DecodedToken | null,
-  fallbackEmail: string,
+  fallbackEmail: string | null,
   fullName: string | null = null,
 ): User {
   return {
     id: decoded?.sub ?? "",
     email: decoded?.email ?? fallbackEmail,
+    // Never carried in the JWT — filled in lazily via GET /me where needed
+    // (guardian display name/contact fallback; see UserProfileMenu).
+    mobile: null,
     full_name: fullName,
     // A valid backend access token always carries a role; this fallback only
     // fires if decoding failed outright (malformed token), in which case the

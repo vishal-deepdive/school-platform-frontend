@@ -105,6 +105,7 @@ export function LandingNavbar() {
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                 {user?.full_name?.charAt(0).toUpperCase() ??
                   user?.email?.charAt(0).toUpperCase() ??
+                  user?.mobile?.charAt(0).toUpperCase() ??
                   "U"}
               </span>
             </Link>
