@@ -291,6 +291,7 @@ export interface LeaveRequestItem {
   start_date: string;
   end_date: string;
   reason: string | null;
+  description: string | null;
   status: LeaveStatus;
   review_note: string | null;
   created_at: string | null;
@@ -310,7 +311,8 @@ export interface LeaveCreateRequest {
   section?: string;
   start_date: string; // DD-MM-YYYY
   end_date: string; // DD-MM-YYYY
-  reason?: string;
+  reason: "Medical" | "Family Event" | "Emergency" | "Vacation" | "Other";
+  description?: string;
 }
 
 export interface LeaveCreateResponse {
