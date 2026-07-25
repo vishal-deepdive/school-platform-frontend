@@ -374,6 +374,12 @@ export interface ProvisionedUser {
   login_enabled?: boolean;
   guardian_linked?: boolean;
   guardian_conflicts?: GuardianConflict[];
+  // This year's class roll number, if supplied — distinct from the
+  // permanent admission number (roll_no, used to build the account above).
+  class_roll_no?: string | null;
+  // Roll number of another active student in the same class already
+  // holding class_roll_no, if any — a non-blocking heads-up, not an error.
+  class_roll_no_conflict_with?: string | null;
 }
 
 export interface ClassCode {
@@ -424,7 +430,7 @@ export interface RagAccessItem {
 
 export interface CreateStudentRequest {
   full_name?: string;
-  roll_no: string;
+  roll_no: string; // Permanent admission number — used for login, never changes
   class_name: string;
   section?: string;
   session?: string;
@@ -433,6 +439,18 @@ export interface CreateStudentRequest {
   guardian_mobile?: string;
   guardian_email?: string;
   guardian_relation?: "father" | "mother" | "guardian" | "other";
+  class_roll_no?: string; // This year's roll-call number, e.g. "22" — reassigned every promotion
+}
+
+export interface SetClassRollNoRequest {
+  class_roll_no: string | null;
+}
+
+export interface SetClassRollNoResult {
+  roll_no: string;
+  class_roll_no: string | null;
+  conflict_with: string | null;
+  message: string;
 }
 
 export interface PromoteStudentRequest {

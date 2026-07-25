@@ -28,6 +28,8 @@ import type {
   PaginatedAudit,
   AuditLogParams,
   CreateStudentRequest,
+  SetClassRollNoRequest,
+  SetClassRollNoResult,
   PromoteStudentRequest,
   PromoteStudentResult,
   PromoteClassRequest,
@@ -287,6 +289,17 @@ export const adminApi = {
     apiClient
       .post<{ message: string }>(
         `${ADMIN_BASE}/schools/${enc(schoolId)}/students/${enc(rollNo)}/reset-password`,
+      )
+      .then((r) => r.data),
+
+  /** Set (or clear, with class_roll_no: null) a student's roll number for the
+   * current session — the number a teacher calls out. Distinct from rollNo in
+   * the URL (the permanent admission number). */
+  setStudentClassRollNo: (schoolId: string, rollNo: string, data: SetClassRollNoRequest) =>
+    apiClient
+      .patch<SetClassRollNoResult>(
+        `${ADMIN_BASE}/schools/${enc(schoolId)}/students/${enc(rollNo)}/class-roll-no`,
+        data,
       )
       .then((r) => r.data),
 

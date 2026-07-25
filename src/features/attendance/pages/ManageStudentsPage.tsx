@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap, KeyRound } from "lucide-react";
+import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap, KeyRound, Hash } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { adminApi } from "@/features/admin/api/admin";
@@ -82,11 +82,15 @@ export function ManageStudentsPage() {
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [newFullName, setNewFullName] = useState("");
   const [newRollNo, setNewRollNo] = useState("");
+  const [newClassRollNo, setNewClassRollNo] = useState("");
   const [newDob, setNewDob] = useState("");
   const [newGuardianName, setNewGuardianName] = useState("");
   const [newGuardianMobile, setNewGuardianMobile] = useState("");
   const [newGuardianRelation, setNewGuardianRelation] =
     useState<CreateStudentRequest["guardian_relation"]>("guardian");
+
+  const [studentToSetRollNo, setStudentToSetRollNo] = useState<RosterStudent | null>(null);
+  const [rollNoInput, setRollNoInput] = useState("");
 
   const [studentToPromote, setStudentToPromote] = useState<RosterStudent | null>(null);
   const [promoteTargetClass, setPromoteTargetClass] = useState("");
@@ -167,6 +171,7 @@ export function ManageStudentsPage() {
         guardian_name: newGuardianName.trim() || undefined,
         guardian_mobile: newGuardianMobile.trim() || undefined,
         guardian_relation: newGuardianMobile.trim() ? newGuardianRelation : undefined,
+        class_roll_no: newClassRollNo.trim() || undefined,
       });
     },
     onSuccess: (res) => {
@@ -174,11 +179,35 @@ export function ManageStudentsPage() {
       setAddStudentOpen(false);
       setNewFullName("");
       setNewRollNo("");
+      setNewClassRollNo("");
       setNewDob("");
       setNewGuardianName("");
       setNewGuardianMobile("");
       setNewGuardianRelation("guardian");
       if (className && section) loadMutation.mutate();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const setRollNoMutation = useMutation({
+    mutationFn: () => {
+      if (!schoolId || !studentToSetRollNo) throw new Error("No student selected");
+      return adminApi.setStudentClassRollNo(schoolId, studentToSetRollNo.roll_no, {
+        class_roll_no: rollNoInput.trim() || null,
+      });
+    },
+    onSuccess: (res) => {
+      if (res.conflict_with) {
+        toast.warning(res.message);
+      } else {
+        toast.success(res.message);
+      }
+      setRoster((prev) =>
+        prev?.map((s) =>
+          s.roll_no === res.roll_no ? { ...s, class_roll_no: res.class_roll_no } : s,
+        ) ?? null,
+      );
+      setStudentToSetRollNo(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -241,7 +270,8 @@ export function ManageStudentsPage() {
   const handleExportCSV = () => {
     if (!visible || visible.length === 0) return;
     const csvContent = jsonToCsv(visible, [
-      { header: "Roll No", getValue: (s) => String(s.roll_no) },
+      { header: "Admission No", getValue: (s) => String(s.roll_no) },
+      { header: "Class Roll No", getValue: (s) => String(s.class_roll_no ?? "") },
       { header: "Name", getValue: (s) => String(s.name ?? "—") },
     ]);
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -272,6 +302,7 @@ export function ManageStudentsPage() {
     return roster.filter(
       (s) =>
         s.roll_no.toLowerCase().includes(q) ||
+        (s.class_roll_no ?? "").toLowerCase().includes(q) ||
         (s.name ?? "").toLowerCase().includes(q),
     );
   }, [roster, search]);
@@ -443,11 +474,25 @@ export function ManageStudentsPage() {
                         {s.name ?? s.roll_no}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Roll #{s.roll_no}
+                        {s.class_roll_no && (
+                          <span className="font-medium text-foreground">Roll {s.class_roll_no} · </span>
+                        )}
+                        Admission No. {s.roll_no}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setRollNoInput(s.class_roll_no ?? "");
+                        setStudentToSetRollNo(s);
+                      }}
+                      icon={<Hash className="h-4 w-4" />}
+                    >
+                      Set Roll No.
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -521,7 +566,7 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToDelete?.name ?? studentToDelete?.roll_no}
             </span>{" "}
-            (Roll #{studentToDelete?.roll_no}). This cannot be undone.
+            (Admission #{studentToDelete?.roll_no}). This cannot be undone.
           </p>
           <Select
             label="What to delete"
@@ -557,10 +602,51 @@ export function ManageStudentsPage() {
           <span className="font-medium text-foreground">
             {studentToResetPassword?.name ?? studentToResetPassword?.roll_no}
           </span>{" "}
-          (Roll #{studentToResetPassword?.roll_no}) to their date of birth
+          (Admission #{studentToResetPassword?.roll_no}) to their date of birth
           (DDMMYYYY) and signs them out everywhere. Requires a date of birth on
           file — add one via the roster import if this fails.
         </p>
+      </Modal>
+
+      <Modal
+        open={studentToSetRollNo !== null}
+        onClose={() => setStudentToSetRollNo(null)}
+        title="Set roll number"
+        icon={<Hash className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setStudentToSetRollNo(null)}>
+              Cancel
+            </Button>
+            <Button
+              loading={setRollNoMutation.isPending}
+              onClick={() => setRollNoMutation.mutate()}
+            >
+              Save
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Sets this year's class roll number for{" "}
+            <span className="font-medium text-foreground">
+              {studentToSetRollNo?.name ?? studentToSetRollNo?.roll_no}
+            </span>{" "}
+            (Admission #{studentToSetRollNo?.roll_no}) — the number you call
+            out for roll-call. Separate from their admission number, and not
+            checked for uniqueness — double-check the class list yourself.
+            Leave blank to clear it.
+          </p>
+          <Input
+            label="Class Roll No."
+            placeholder="22"
+            value={rollNoInput}
+            onChange={(e) => setRollNoInput(e.target.value)}
+            autoFocus
+          />
+        </div>
       </Modal>
 
       <Modal
@@ -649,19 +735,27 @@ export function ManageStudentsPage() {
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Roll Number"
+              label="Admission Number"
+              hint="Permanent — used for login, never changes"
               placeholder="2026-10A-001"
               value={newRollNo}
               onChange={(e) => setNewRollNo(e.target.value)}
             />
             <Input
-              label="Date of Birth"
-              type="date"
-              hint="Sets the initial password"
-              value={newDob}
-              onChange={(e) => setNewDob(e.target.value)}
+              label="Class Roll No. (optional)"
+              hint="This year's roll number"
+              placeholder="22"
+              value={newClassRollNo}
+              onChange={(e) => setNewClassRollNo(e.target.value)}
             />
           </div>
+          <Input
+            label="Date of Birth"
+            type="date"
+            hint="Sets the initial password"
+            value={newDob}
+            onChange={(e) => setNewDob(e.target.value)}
+          />
 
           <div className="border-t border-border/50 pt-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -725,7 +819,7 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToPromote?.name ?? studentToPromote?.roll_no}
             </span>{" "}
-            (Roll #{studentToPromote?.roll_no}) to the next class and session.
+            (Admission #{studentToPromote?.roll_no}) to the next class and session.
             Leave the fields below empty to use the auto-suggested class/section/session,
             or override them explicitly. If this is the school's terminal class, the
             student is marked passed out instead.

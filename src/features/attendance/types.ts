@@ -68,6 +68,9 @@ export interface MarkAttendanceResponse {
 export interface RosterStudent {
   roll_no: string;
   name: string | null;
+  // This year's roll-call number (distinct from roll_no, the permanent
+  // admission number) — null until staff assign one.
+  class_roll_no: string | null;
   // Stored status on the requested date, or null if not yet marked.
   status: AttendanceStatus | null;
 }

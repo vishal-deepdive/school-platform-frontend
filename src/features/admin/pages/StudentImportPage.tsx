@@ -25,9 +25,9 @@ import { StatCard } from "@/shared/components/ui/Card";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 
 const SAMPLE_CSV =
-  "roll_no,name,class_name,section,session,dob,guardian_name,guardian_mobile,guardian_relation\n" +
-  "1,Aarav Sharma,7,A,2025-26,2013-04-01,Vikram Sharma,9876543210,father\n" +
-  "2,Diya Patel,7,A,2025-26,2013-06-15,Meera Patel,9123456780,mother\n";
+  "roll_no,class_roll_no,name,class_name,section,session,dob,guardian_name,guardian_mobile,guardian_relation\n" +
+  "2026-7A-014,1,Aarav Sharma,7,A,2025-26,2013-04-01,Vikram Sharma,9876543210,father\n" +
+  "2026-7A-015,2,Diya Patel,7,A,2025-26,2013-06-15,Meera Patel,9123456780,mother\n";
 
 export function StudentImportPage() {
   // Admins act on the globally-selected school; principals use their own. The
@@ -73,7 +73,11 @@ export function StudentImportPage() {
           <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
             <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div className="text-xs leading-relaxed text-muted-foreground">
-              CSV columns (header row): <code>roll_no</code> (required),{" "}
+              CSV columns (header row): <code>roll_no</code> (required —
+              the permanent admission number, used for login and never
+              reassigned even after promotion), <code>class_roll_no</code>{" "}
+              (optional — this year's roll-call number, e.g. "22";
+              reassigned every promotion, not checked for uniqueness),{" "}
               <code>name</code>, <code>class_name</code>, <code>section</code>,{" "}
               <code>session</code>, <code>dob</code> (YYYY-MM-DD, seeds each
               student's default password), <code>guardian_name</code>,{" "}
