@@ -49,7 +49,7 @@ export function MonthCalendarShell({
   );
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn("space-y-2", className)}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <button
@@ -71,7 +71,7 @@ export function MonthCalendarShell({
           </button>
         </div>
 
-        <h3 className="text-sm font-semibold text-foreground sm:text-base">
+        <h3 className="text-sm font-semibold tracking-tight text-foreground">
           {format(monthStart, "MMMM yyyy")}
         </h3>
 
@@ -90,11 +90,11 @@ export function MonthCalendarShell({
       </div>
 
       <div className={cn("relative", loading && "pointer-events-none opacity-60")}>
-        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+        <div className="grid grid-cols-7 gap-1">
           {WEEKDAY_LABELS.map((w) => (
             <div
               key={w}
-              className="py-1 text-center text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground"
+              className="py-0.5 text-center text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
             >
               {w}
             </div>

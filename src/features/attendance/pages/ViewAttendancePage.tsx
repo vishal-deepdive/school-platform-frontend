@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef,useState,useEffect } from "react";
 import {  CalendarDays, CalendarRange } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { cn } from "@/shared/lib/utils";
@@ -49,6 +49,8 @@ const viewTabs = [
 export function ViewAttendancePage() {
   // const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { schoolName } = useActiveSchool();
+
+  const resultsRef = useRef<HTMLDivElement>(null);
   
   const [attendanceFilter, setAttendanceFilter] = useState<{
   date: string;
@@ -81,10 +83,20 @@ export function ViewAttendancePage() {
   },
 });
 
+useEffect(() => {
+    if (!attendanceFilter || isLoading || !data) return;
+
+    resultsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+    });
+}, [attendanceFilter, data, isLoading]);
+
 const rows = useMemo(() => data?.data ?? [], [data]);
   if (!isStaff(role)) {
     return <SelfAttendanceView />;
   }
+
 
   return (
     <div className="space-y-6">
@@ -136,21 +148,23 @@ const rows = useMemo(() => data?.data ?? [], [data]);
       </Alert>
     )}
 
-    {data && rows.length === 0 && (
-      <EmptyState
-        icon={<CalendarX className="h-10 w-10" />}
-        title="No records for this date"
-        description="No attendance has been marked for the selected class and date."
-      />
-    )}
+    <div ref={resultsRef} className="mt-8 scroll-mt-24">
+      {data && rows.length === 0 && (
+        <EmptyState
+          icon={<CalendarX className="h-10 w-10" />}
+          title="No records for this date"
+          description="No attendance has been marked for the selected class and date."
+        />
+      )}
 
-    {data && rows.length > 0 && (
-      <AttendanceResults
-        rows={rows}
-        date={data.date}
-        totalRecords={data.total_records}
-      />
-    )}
+      {data && rows.length > 0 && (
+          <AttendanceResults
+            rows={rows}
+            date={data.date}
+            totalRecords={data.total_records}
+          />
+      )}
+    </div>
   </>
 )}
     </div>

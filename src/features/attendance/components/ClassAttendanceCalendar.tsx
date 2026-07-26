@@ -71,7 +71,7 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
   // never be paired with the grid for the month the user just navigated to.
   const isCurrentMonthData = data?.month === monthKey;
   const showingStale = isFetching && !isCurrentMonthData;
-
+console.log("Calendar API Response:", data);
   const dayByDate = useMemo(() => {
     const map = new Map<string, ClassCalendarDay>();
     if (!isCurrentMonthData) return map;
@@ -91,9 +91,7 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
 
   return (
     <div className="space-y-6">
-      {/* <FilterBar title="Scope" icon={<Users className="h-4 w-4" />}>
-        <AttendanceScopeFilters value={scope} onChange={setScope} showSubject={false} />
-      </FilterBar> */}
+      
 
       {isError && (
         <Alert variant="error">
@@ -106,19 +104,16 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
         title="Daily attendance %"
         description={isFetching ? "Updating…" : undefined}
         actions={
-          <div className="flex items-end gap-5">
-            <div className="min-w-[180px]">
+          <div className="ml-auto flex items-end gap-8">
+            <div className="min-w-[220px]">
                 <AttendanceScopeFilters
                 value={scope}
                 onChange={setScope}
                 showSubject={false}
                 />
             </div>
-          </div>
-            
+          </div> 
           }
-        
-        
       >
         
 
@@ -151,6 +146,7 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
 
             const key = format(day, "yyyy-MM-dd");
             const cell = dayByDate.get(key);
+            console.log(key, cell);
             const isFuture = isAfter(day, todayDate);
             const isToday = key === format(todayDate, "yyyy-MM-dd");
             const dayLabel = format(day, "d MMM yyyy");
@@ -170,12 +166,14 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
                 }}
                 className={cn(
                   "appearance-none border-0 bg-transparent p-0",
-                  "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg text-xs transition-colors",
+                  "flex h-24 w-full flex-col items-center justify-start pt-3 rounded-lg text-xs transition-colors",
                   isFuture
-                    ? "text-muted-foreground/25"
+                    ? "bg-transparent text-muted-foreground/25"
                     : showingStale
                       ? "bg-muted/30 text-muted-foreground/40"
-                      : percentageCellClass(cell?.percentage ?? null),
+                      : cell?.marked === 0
+                        ? percentageCellClass(null)
+                        : percentageCellClass(cell?.percentage ?? null),
                   isToday && !showingStale && "ring-2 ring-primary",
                   selectedDate === key && "ring-2 ring-blue-500"
                 )}

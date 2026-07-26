@@ -30,8 +30,13 @@ export function AttendanceScopeFilters({ value, onChange, showSubject = true }: 
   const sectionOptions = value.className ? getSectionOptions(value.className) : [];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-      <Select
+    <div className={
+    showSubject
+      ? "grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"
+      : "flex items-end gap-6"}>
+
+        <div className="w-60">
+          <Select
         label="Class"
         placeholder="Select class"
         options={classNameOptions}
@@ -40,14 +45,20 @@ export function AttendanceScopeFilters({ value, onChange, showSubject = true }: 
           onChange({ ...value, className: e.target.value, section: "" })
         }
       />
+        </div>
+      
       {sectionOptions.length > 0 ? (
-        <Select
-          label="Section"
-          placeholder="Select section"
-          options={sectionOptions}
-          value={value.section}
-          onChange={(e) => onChange({ ...value, section: e.target.value })}
-        />
+        
+        <div className="w-60">
+            <Select
+            label="Section"
+            placeholder="Select section"
+            options={sectionOptions}
+            value={value.section}
+            onChange={(e) => onChange({ ...value, section: e.target.value })}
+            />
+        </div>
+        
       ) : (
         <Input
           label="Section"

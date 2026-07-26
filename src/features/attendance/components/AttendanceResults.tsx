@@ -152,9 +152,9 @@ export function AttendanceResults({rows, date, totalRecords}: AttendanceResultsP
             }, [rows, statusFilter, search, sortBy]);
             
             return(
-                <>
+                <div className="space-y-6">
                 
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 ">
                         <StatCard label="Present" value={counts.P} icon={<UserCheck className="h-5 w-5" />} color="success" />
                         <StatCard label="Absent" value={counts.A} icon={<UserX className="h-5 w-5" />} color="danger" />
                         <StatCard label="Late" value={counts.L} icon={<Clock className="h-5 w-5" />} color="warning" />
@@ -203,6 +203,6 @@ export function AttendanceResults({rows, date, totalRecords}: AttendanceResultsP
                       </Panel>
 
                       
-                </>
+                </div>
             );
 }
