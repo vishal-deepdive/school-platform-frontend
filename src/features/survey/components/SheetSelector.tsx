@@ -52,9 +52,18 @@ export function SheetSelector({
     [data],
   );
 
-  // Let the parent seed a default selection once sheets are available.
+  // Let the parent seed a default selection once sheets are available,
+  // and purge any selected IDs that do not belong to the current school's sheets.
   useEffect(() => {
-    if (sheets.length > 0) onSheetsLoaded?.(sheets);
+    if (sheets.length > 0) {
+      if (value.length > 0) {
+        const validIds = value.filter((id) => sheets.some((s) => s.id === id));
+        if (validIds.length !== value.length) {
+          onChange(validIds);
+        }
+      }
+      onSheetsLoaded?.(sheets);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheets]);
 

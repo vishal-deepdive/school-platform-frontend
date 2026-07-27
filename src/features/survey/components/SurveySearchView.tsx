@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
@@ -206,6 +206,12 @@ export function SurveySearchView() {
   const streamingRef = useRef(false);
 
   const { isAdmin, schoolId, schoolParam, ready: adminReady } = useActiveSchool();
+
+  // Reset selected sheets whenever the active school changes so stale source IDs
+  // from the previous school are never sent with the new school's queries.
+  useEffect(() => {
+    setSelectedSourceIds([]);
+  }, [schoolId, schoolParam.school_name]);
 
   useQuery({
     queryKey: ["survey", "status", schoolId ?? "platform"],

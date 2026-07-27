@@ -13,6 +13,7 @@ interface Props {
   value: ScopeValue;
   onChange: (next: ScopeValue) => void;
   showSubject?: boolean;
+  layout?: "grid" | "inline";
 }
 
 /**
@@ -24,46 +25,79 @@ interface Props {
  * driven by that school's class codes, with a free-text section fallback for
  * classes that define none.
  */
-export function AttendanceScopeFilters({ value, onChange, showSubject = true }: Props) {
+export function AttendanceScopeFilters({
+  value,
+  onChange,
+  showSubject = true,
+  layout = "grid",
+}: Props) {
   const { schoolId } = useActiveSchool();
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = value.className ? getSectionOptions(value.className) : [];
 
+  const containerClass =
+    layout === "inline"
+      ? "flex flex-wrap items-center gap-2 sm:gap-3"
+      : "grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3";
+
+  const fieldWrapperClass = layout === "inline" ? "w-32 sm:w-40" : "w-full";
+
+  const classOptionsWithAll = [
+    { value: "", label: "All Classes" },
+    ...classNameOptions,
+  ];
+
+  const sectionOptionsWithAll = [
+    { value: "", label: "All Sections" },
+    ...sectionOptions,
+  ];
+
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-      <Select
-        label="Class"
-        placeholder="Select class"
-        options={classNameOptions}
-        value={value.className}
-        onChange={(e) =>
-          onChange({ ...value, className: e.target.value, section: "" })
-        }
-      />
-      {sectionOptions.length > 0 ? (
+    <div className={containerClass}>
+      <div className={fieldWrapperClass}>
         <Select
-          label="Section"
-          placeholder="Select section"
-          options={sectionOptions}
-          value={value.section}
-          onChange={(e) => onChange({ ...value, section: e.target.value })}
+          label={layout === "inline" ? undefined : "Class"}
+          placeholder="Select Class"
+          options={classOptionsWithAll}
+          value={value.className}
+          className={layout === "inline" ? "h-9 text-xs sm:text-sm" : undefined}
+          onChange={(e) =>
+            onChange({ ...value, className: e.target.value, section: "" })
+          }
         />
-      ) : (
-        <Input
-          label="Section"
-          placeholder="A"
-          value={value.section}
-          onChange={(e) => onChange({ ...value, section: e.target.value })}
-        />
-      )}
+      </div>
+      <div className={fieldWrapperClass}>
+        {sectionOptions.length > 0 ? (
+          <Select
+            label={layout === "inline" ? undefined : "Section"}
+            placeholder="Select Section"
+            options={sectionOptionsWithAll}
+            value={value.section}
+            className={layout === "inline" ? "h-9 text-xs sm:text-sm" : undefined}
+            onChange={(e) => onChange({ ...value, section: e.target.value })}
+          />
+        ) : (
+          <Input
+            label={layout === "inline" ? undefined : "Section"}
+            placeholder="Section (A)"
+            value={value.section}
+            className={layout === "inline" ? "h-9 text-xs sm:text-sm" : undefined}
+            onChange={(e) => onChange({ ...value, section: e.target.value })}
+          />
+        )}
+      </div>
       {showSubject && (
-        <Input
-          label="Subject (optional)"
-          placeholder="Mathematics"
-          value={value.subject}
-          onChange={(e) => onChange({ ...value, subject: e.target.value })}
-        />
+        <div className={fieldWrapperClass}>
+          <Input
+            label={layout === "inline" ? undefined : "Subject"}
+            placeholder="Subject"
+            value={value.subject}
+            className={layout === "inline" ? "h-9 text-xs sm:text-sm" : undefined}
+            onChange={(e) => onChange({ ...value, subject: e.target.value })}
+          />
+        </div>
       )}
     </div>
   );
 }
+

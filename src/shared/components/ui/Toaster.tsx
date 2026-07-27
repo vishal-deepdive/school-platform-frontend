@@ -27,7 +27,7 @@ export function Toaster() {
     <SonnerToaster
       className="dd-toaster"
       theme={isDark ? "dark" : "light"}
-      position="top-right"
+      position="bottom-right"
       richColors
       closeButton
       expand={false}
