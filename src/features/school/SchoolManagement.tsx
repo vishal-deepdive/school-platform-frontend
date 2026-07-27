@@ -19,6 +19,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useClassOptions } from "@/shared/hooks/useClassOptions";
 import {
   ArrowLeft,
   Building2,
@@ -68,6 +69,7 @@ import { Tabs } from "@/shared/components/ui/Tabs";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { PageSkeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+
 
 // ── Capabilities ──────────────────────────────────────────────────────────────
 
@@ -474,6 +476,13 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
   const [className, setClassName] = useState("");
   const [section, setSection] = useState("");
 
+
+  const { getSectionOptions } = useClassOptions(schoolId);
+
+  const sectionOptions = className
+    ? getSectionOptions(className)
+    : [];
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "teacher-assignments", schoolId],
     queryFn: () => adminApi.listTeacherAssignments(schoolId),
@@ -600,16 +609,23 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
               This school has no active teachers yet. Invite one first.
             </Alert>
           )}
-          <Input
+          <Select
             label="Class"
-            placeholder="Grade 10"
+            placeholder="Select a class"
+            options={GRADE_OPTIONS.map((g) => ({
+              value: g.label,
+              label: g.label,
+            }))}
             value={className}
-            onChange={(e) => setClassName(e.target.value)}
+            onChange={(e) => {
+              setClassName(e.target.value);
+              setSection("");
+            }}
           />
-          <Input
+          <Select
             label="Section"
-            hint="Optional"
-            placeholder="A"
+            placeholder="Select section"
+            options={sectionOptions}
             value={section}
             onChange={(e) => setSection(e.target.value)}
           />
