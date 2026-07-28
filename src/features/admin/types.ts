@@ -114,8 +114,15 @@ export interface GuardianConflict {
 
 export interface BulkImportResult {
   created: number;
+  // Existing rows that had a missing dob/guardian_mobile/class_roll_no
+  // filled in from this pass — distinct from `created` (the roster row
+  // itself wasn't new).
+  repaired: number;
   skipped: number;
   errors: { row: number; reason: string }[];
+  // Rows with a dob value present but unparseable — account was still
+  // created, login stays disabled until a valid date is on file.
+  dob_warnings: { row: number; reason: string }[];
   guardians_created: number;
   guardians_linked: number;
   guardian_conflicts: GuardianConflict[];

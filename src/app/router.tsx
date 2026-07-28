@@ -26,6 +26,7 @@ const RegisterPage = lazyPage(auth, "RegisterPage");
 const VerifyOtpPage = lazyPage(auth, "VerifyOtpPage");
 const ForgotPasswordPage = lazyPage(auth, "ForgotPasswordPage");
 const ResetPasswordPage = lazyPage(auth, "ResetPasswordPage");
+const SetPasswordPage = lazyPage(auth, "SetPasswordPage");
 const AuthCallbackPage = lazyPage(auth, "AuthCallbackPage");
 const GoogleCompleteProfilePage = lazyPage(auth, "GoogleCompleteProfilePage");
 
@@ -158,6 +159,7 @@ export const router = createBrowserRouter([
       { path: "/verify-otp", element: <VerifyOtpPage /> },
       { path: "/forgot-password", element: <ForgotPasswordPage /> },
       { path: "/reset-password", element: <ResetPasswordPage /> },
+      { path: "/set-password", element: <SetPasswordPage /> },
       { path: "/auth/callback", element: <AuthCallbackPage /> },
       { path: "/complete-profile", element: <GoogleCompleteProfilePage /> },
       // ── School onboarding (public, auth-layout) ──────────────────────────

@@ -11,4 +11,5 @@ export * from "./pages/GoogleCompleteProfilePage";
 export * from "./pages/LoginPage";
 export * from "./pages/RegisterPage";
 export * from "./pages/ResetPasswordPage";
+export * from "./pages/SetPasswordPage";
 export * from "./pages/VerifyOtpPage";

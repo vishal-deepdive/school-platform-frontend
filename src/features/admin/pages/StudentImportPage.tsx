@@ -58,7 +58,10 @@ export function StudentImportPage() {
     try {
       const res = await adminApi.bulkImportStudents(schoolId, file);
       setResult(res);
-      toast.success(`Imported ${res.created} student(s)`);
+      toast.success(
+        `Imported ${res.created} student(s)` +
+          (res.repaired ? `, repaired ${res.repaired}` : ""),
+      );
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -79,14 +82,18 @@ export function StudentImportPage() {
               (optional — this year's roll-call number, e.g. "22";
               reassigned every promotion, not checked for uniqueness),{" "}
               <code>name</code>, <code>class_name</code>, <code>section</code>,{" "}
-              <code>session</code>, <code>dob</code> (YYYY-MM-DD, seeds each
-              student's default password), <code>guardian_name</code>,{" "}
+              <code>session</code>, <code>dob</code> (seeds each student's
+              default password — accepts <code>YYYY-MM-DD</code> or{" "}
+              <code>DD-MM-YYYY</code>, with <code>-</code>, <code>/</code> or{" "}
+              <code>.</code> as the separator), <code>guardian_name</code>,{" "}
               <code>guardian_mobile</code>, <code>guardian_email</code>,{" "}
               <code>guardian_relation</code>. Every row gets a login account;
               a guardian mobile is linked as an approved parent automatically
               — siblings sharing a mobile collapse onto one parent account.
-              Re-importing is safe — existing students/guardians are reused,
-              not duplicated.
+              Re-importing is safe and self-healing — existing students/
+              guardians are reused, and a row that's missing a date of birth
+              or guardian mobile gets it filled in from the new file instead
+              of being skipped.
               <button
                 type="button"
                 onClick={downloadSample}
@@ -125,14 +132,19 @@ export function StudentImportPage() {
           icon={<CheckCircle2 className="h-4 w-4" />}
         >
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <StatCard
                 label="Created"
                 value={result.created}
                 color="success"
               />
               <StatCard
-                label="Skipped (existing)"
+                label="Repaired (existing)"
+                value={result.repaired}
+                color="info"
+              />
+              <StatCard
+                label="Skipped (complete)"
                 value={result.skipped}
                 color="warning"
               />
@@ -165,6 +177,21 @@ export function StudentImportPage() {
                   {result.errors.slice(0, 50).map((e) => (
                     <li key={e.row}>
                       Row {e.row}: {e.reason}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
+            {result.dob_warnings.length > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.dob_warnings.length} date of birth value(s) couldn't be read`}
+              >
+                <ul className="mt-1 max-h-40 space-y-0.5 overflow-auto text-xs">
+                  {result.dob_warnings.slice(0, 50).map((w) => (
+                    <li key={w.row}>
+                      Row {w.row}: {w.reason}
                     </li>
                   ))}
                 </ul>

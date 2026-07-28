@@ -11,6 +11,9 @@ export interface DecodedToken {
   exp: number;
   roll_no?: string | null;
   avatar_url?: string | null;
+  // Omitted (falsy) unless true — forces the account through /set-password
+  // before anything else. See ProtectedRoute.
+  must_change_password?: boolean;
 }
 
 export function decodeJwt(token: string): DecodedToken | null {
@@ -55,5 +58,6 @@ export function buildUserFromJwt(
     is_active: true,
     is_email_verified: true,
     avatar_url: decoded?.avatar_url ?? null,
+    must_change_password: decoded?.must_change_password ?? false,
   };
 }

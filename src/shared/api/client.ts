@@ -48,6 +48,8 @@ export function reconcileUserFromToken(token?: string | null): void {
   const patch: Partial<typeof user> = {};
   if (decoded.role && decoded.role !== user.role) patch.role = decoded.role;
   if (decoded.school_id !== user.school_id) patch.school_id = decoded.school_id;
+  const mustChangePassword = decoded.must_change_password ?? false;
+  if (mustChangePassword !== user.must_change_password) patch.must_change_password = mustChangePassword;
   if (Object.keys(patch).length > 0) updateUser(patch);
 }
 

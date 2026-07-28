@@ -465,7 +465,19 @@ function AddSourceWizard({
     },
     onSuccess: (res) => {
       const sync = res.sync;
-      if (sync?.ok) {
+      if (sync?.ok && sync.records_added === 0) {
+        // A brand-new source importing 0 rows on its first sync is unusual (as
+        // opposed to a later re-sync, where 0-new-rows is the normal outcome
+        // once everything is already imported) — surface it as a warning, not
+        // a plain success, so it isn't mistaken for "added and ready to use."
+        toast.warning(
+          "Source registered, but the first sync imported 0 rows" +
+            (sync.records_skipped ? ` (${sync.records_skipped} skipped as duplicates)` : "") +
+            ". Open the source and click Sync again, or check the sheet has data " +
+            "under the header row.",
+          { duration: 8000 },
+        );
+      } else if (sync?.ok) {
         toast.success(
           `Source added & synced: +${sync.records_added} rows imported` +
             (sync.records_skipped ? `, ${sync.records_skipped} skipped` : ""),
