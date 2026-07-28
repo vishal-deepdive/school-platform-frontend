@@ -5,9 +5,11 @@ import { getErrorMessage } from "@/shared/lib/utils";
 import { SESSION_KEYS } from "@/shared/lib/session";
 
 export interface GoogleAuthOptions {
-  role?: "student" | "teacher" | "parent";
+  // Only "teacher" is meaningful now — it flags the teacher/co-principal
+  // invite-claim flow on GoogleCompleteProfilePage. Students and parents
+  // don't self-register via Google (see MobileLoginForm / StudentLoginForm).
+  role?: "teacher";
   inviteToken?: string;
-  schoolId?: string;
 }
 
 /**
@@ -32,11 +34,6 @@ export function useGoogleAuth() {
         sessionStorage.setItem(
           SESSION_KEYS.PENDING_INVITE_TOKEN,
           options.inviteToken,
-        );
-      if (options.schoolId)
-        sessionStorage.setItem(
-          SESSION_KEYS.PENDING_SCHOOL_ID,
-          options.schoolId,
         );
       window.location.href = auth_url;
     } catch (err) {

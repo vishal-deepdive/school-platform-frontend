@@ -2,10 +2,7 @@ import { apiClient } from "@/shared/api/client";
 import { API_V1 } from "@/shared/config/apiVersion";
 import type {
   LoginRequest,
-  RegisterRequest,
-  StudentRegisterRequest,
   TeacherRegisterRequest,
-  ParentRegisterRequest,
   TokenResponse,
   RegisterResponse,
   MessageResponse,
@@ -13,6 +10,7 @@ import type {
   VerifyOtpResponse,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ChangePasswordRequest,
   ResendOtpRequest,
   GoogleAuthUrlResponse,
   GoogleCallbackResponse,
@@ -21,8 +19,10 @@ import type {
   UserResponse,
   SchoolSearchItem,
   ClassCodeItem,
-  StudentSearchItem,
   PendingParentsResponse,
+  MobileOtpRequestRequest,
+  MobileOtpLoginVerifyRequest,
+  StudentAdmissionLoginRequest,
 } from "@/features/auth/types";
 
 const BASE = `${API_V1}/auth`;
@@ -120,28 +120,31 @@ export const authApi = {
       })
       .then((r) => r.data),
 
-  register: (data: RegisterRequest) =>
-    apiClient
-      .post<RegisterResponse>(`${BASE}/register`, data)
-      .then((r) => r.data),
-
-  registerStudent: (data: StudentRegisterRequest) =>
-    apiClient
-      .post<RegisterResponse>(`${BASE}/register`, data)
-      .then((r) => r.data),
-
   registerTeacher: (data: TeacherRegisterRequest) =>
     apiClient
       .post<RegisterResponse>(`${BASE}/register/teacher`, data)
       .then((r) => r.data),
 
-  registerParent: (data: ParentRegisterRequest) =>
-    apiClient
-      .post<RegisterResponse>(`${BASE}/register/parent`, data)
-      .then((r) => r.data),
-
   login: (data: LoginRequest) =>
     apiClient.post<TokenResponse>(`${BASE}/login`, data).then((r) => r.data),
+
+  /** Guardian login step 1 — send a login OTP to a registered mobile number. */
+  requestMobileOtp: (data: MobileOtpRequestRequest) =>
+    apiClient
+      .post<MessageResponse>(`${BASE}/login/mobile/request-otp`, data)
+      .then((r) => r.data),
+
+  /** Guardian login step 2 — verify the OTP and receive a session. */
+  verifyMobileOtp: (data: MobileOtpLoginVerifyRequest) =>
+    apiClient
+      .post<TokenResponse>(`${BASE}/login/mobile/verify`, data)
+      .then((r) => r.data),
+
+  /** Student login — school code + admission (roll) number + password. */
+  loginStudent: (data: StudentAdmissionLoginRequest) =>
+    apiClient
+      .post<TokenResponse>(`${BASE}/login/student`, data)
+      .then((r) => r.data),
 
   verifyOtp: (data: VerifyOtpRequest) =>
     apiClient
@@ -158,6 +161,12 @@ export const authApi = {
   resetPassword: (data: ResetPasswordRequest) =>
     apiClient
       .post<MessageResponse>(`${BASE}/reset-password`, data)
+      .then((r) => r.data),
+
+  /** Self-service change for an already-authenticated user (requires current_password). */
+  changePassword: (data: ChangePasswordRequest) =>
+    apiClient
+      .post<TokenResponse>(`${BASE}/change-password`, data)
       .then((r) => r.data),
 
   resendOtp: (data: ResendOtpRequest) =>
@@ -218,13 +227,6 @@ export const authApi = {
   getSchoolClasses: (school_id: string) =>
     apiClient
       .get<ClassCodeItem[]>(`${BASE}/schools/${school_id}/classes`)
-      .then((r) => r.data),
-
-  searchStudentsByRoll: (school_id: string, roll_number: string) =>
-    apiClient
-      .get<
-        StudentSearchItem[]
-      >(`${BASE}/schools/${school_id}/students`, { params: { roll_number } })
       .then((r) => r.data),
 
   // ── Parent approval (principal / admin) ──────────────────────────────────

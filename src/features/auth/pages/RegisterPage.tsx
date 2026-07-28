@@ -1,31 +1,19 @@
-import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  GraduationCap,
-  Users,
   School,
   ShieldAlert,
   MailOpen,
   Loader2,
+  GraduationCap,
+  Users,
 } from "lucide-react";
 import { AuthButton } from "@/shared/components/ui/auth-fuse";
 import { AuthPageHeader } from "@/shared/components/common/AuthPageHeader";
 import { isValidInviteToken } from "@/shared/lib/validators";
 import { getErrorInfo } from "@/shared/lib/utils";
 import { authApi } from "@/features/auth/api/auth";
-import {
-  TeacherInviteRegisterForm,
-  StudentRegisterForm,
-  ParentRegisterForm,
-} from "@/features/auth/components";
-
-const tabs = [
-  { id: "student", label: "Student", icon: GraduationCap },
-  { id: "parent", label: "Parent", icon: Users },
-] as const;
-
-type TabType = (typeof tabs)[number]["id"];
+import { TeacherInviteRegisterForm } from "@/features/auth/components";
 
 /** Shared shell for the invite error/invalid states so they stay consistent. */
 function InviteProblem({ message }: { message: string }) {
@@ -40,17 +28,8 @@ function InviteProblem({ message }: { message: string }) {
       </div>
       <div className="flex flex-col gap-3">
         <AuthButton asChild variant="outline" className="w-full">
-          <Link to="/register">Register as Student or Parent</Link>
+          <Link to="/login">Back to Sign In</Link>
         </AuthButton>
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link
-            to="/login"
-            className="font-semibold text-primary transition-colors hover:text-primary/80"
-          >
-            Sign in
-          </Link>
-        </p>
       </div>
     </div>
   );
@@ -61,20 +40,13 @@ export function RegisterPage() {
   const [searchParams] = useSearchParams();
 
   const tokenParam = searchParams.get("token");
-  const schoolParam =
-    searchParams.get("school") || searchParams.get("school_id");
-  const roleParam = searchParams.get("role");
-
-  const initialTab: TabType = roleParam === "parent" ? "parent" : "student";
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const trimmedToken = (tokenParam ?? "").trim();
   const hasValidToken = tokenParam !== null && isValidInviteToken(trimmedToken);
 
   // Verify the invite server-side up front so we can greet the teacher with
   // their school, pre-fill the bound email, and fail fast on an
-  // expired/used/invalid token instead of only at submit. `enabled` keeps this
-  // from firing for the normal (no-token) student/parent registration.
+  // expired/used/invalid token instead of only at submit.
   const preview = useQuery({
     queryKey: ["invite-preview", trimmedToken],
     queryFn: () => authApi.previewInvite(trimmedToken),
@@ -83,7 +55,9 @@ export function RegisterPage() {
     staleTime: 60_000,
   });
 
-  // ── Invite-claim flow (teacher / co-principal) ──────────────────────────────
+  // ── Invite-claim flow (teacher / co-principal) — the only registration
+  // path left. Students and parents are provisioned by the school at
+  // enrollment, not self-registered (see /login for their dedicated tabs). ──
   if (tokenParam !== null) {
     if (!hasValidToken) {
       return (
@@ -185,72 +159,43 @@ export function RegisterPage() {
     );
   }
 
-  // ── Normal self-registration (student / parent) ─────────────────────────────
+  // ── No invite token: registration is staff-only from here ──────────────────
   return (
-    <div className="mx-auto grid w-full max-w-[400px] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="mx-auto grid w-full max-w-[400px] gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <AuthPageHeader
-        title="Create an account"
-        subtitle="Enter your details below to sign up"
-        className="mb-4"
+        title="Registration is school-managed"
+        subtitle="Student and parent accounts are set up by your school"
+        className="mb-1"
       />
 
-      <div
-        role="tablist"
-        className="mb-6 flex gap-1 p-1.5 bg-muted rounded-xl border border-border/50"
-      >
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`tabpanel-register-${tab.id}`}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                isActive
-                  ? "text-primary bg-background shadow-sm border border-border/50"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-              }`}
-            >
-              <Icon
-                className={`h-4 w-4 transition-colors ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}
-              />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Both forms always mounted — CSS toggles visibility to preserve entered data */}
-      <div className="relative px-1">
-        <div
-          id="tabpanel-register-student"
-          role="tabpanel"
-          className={activeTab !== "student" ? "hidden" : ""}
-        >
-          <StudentRegisterForm
-            defaultSchoolId={schoolParam || ""}
-            navigate={navigate}
-          />
+      <div className="flex flex-col gap-3 rounded-xl border border-border/50 bg-muted/30 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <GraduationCap className="h-4 w-4" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">Students</span> get
+            their login (school code + admission number) from their school at
+            enrollment.
+          </p>
         </div>
-        <div
-          id="tabpanel-register-parent"
-          role="tabpanel"
-          className={activeTab !== "parent" ? "hidden" : ""}
-        >
-          <ParentRegisterForm
-            defaultSchoolId={schoolParam || ""}
-            navigate={navigate}
-          />
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Users className="h-4 w-4" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">Parents</span> sign
+            in with the mobile number given to the school — no account to
+            create.
+          </p>
         </div>
       </div>
 
-      <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/50 px-3 py-3 mt-1">
+      <AuthButton asChild className="w-full">
+        <Link to="/login">Go to Sign In</Link>
+      </AuthButton>
+
+      <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/50 px-3 py-3">
         <School className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
           <span className="font-semibold text-foreground">
@@ -260,16 +205,6 @@ export function RegisterPage() {
           principal. Contact your principal if you haven't received one.
         </p>
       </div>
-
-      <p className="text-center text-sm mt-2">
-        Already have an account?{" "}
-        <Link
-          to="/login"
-          className="pl-1 font-semibold text-primary hover:text-primary/80 transition-colors"
-        >
-          Sign in
-        </Link>
-      </p>
     </div>
   );
 }

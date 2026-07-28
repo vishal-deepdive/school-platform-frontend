@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap } from "lucide-react";
+import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap, KeyRound, Hash } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { adminApi } from "@/features/admin/api/admin";
@@ -24,6 +24,14 @@ import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Modal } from "@/shared/components/ui/Modal";
 import { downloadBlob, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
+import type { CreateStudentRequest } from "@/features/admin/types";
+
+const RELATION_OPTIONS: { value: NonNullable<CreateStudentRequest["guardian_relation"]>; label: string }[] = [
+  { value: "guardian", label: "Guardian" },
+  { value: "father", label: "Father" },
+  { value: "mother", label: "Mother" },
+  { value: "other", label: "Other" },
+];
 
 type DeleteMode = "full" | "database" | "attendance";
 
@@ -72,9 +80,17 @@ export function ManageStudentsPage() {
   const [classDeleteConfirmText, setClassDeleteConfirmText] = useState("");
 
   const [addStudentOpen, setAddStudentOpen] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
   const [newFullName, setNewFullName] = useState("");
   const [newRollNo, setNewRollNo] = useState("");
+  const [newClassRollNo, setNewClassRollNo] = useState("");
+  const [newDob, setNewDob] = useState("");
+  const [newGuardianName, setNewGuardianName] = useState("");
+  const [newGuardianMobile, setNewGuardianMobile] = useState("");
+  const [newGuardianRelation, setNewGuardianRelation] =
+    useState<CreateStudentRequest["guardian_relation"]>("guardian");
+
+  const [studentToSetRollNo, setStudentToSetRollNo] = useState<RosterStudent | null>(null);
+  const [rollNoInput, setRollNoInput] = useState("");
 
   const [studentToPromote, setStudentToPromote] = useState<RosterStudent | null>(null);
   const [promoteTargetClass, setPromoteTargetClass] = useState("");
@@ -83,6 +99,9 @@ export function ManageStudentsPage() {
 
   const [classPromoteOpen, setClassPromoteOpen] = useState(false);
   const [classPromoteTargetSession, setClassPromoteTargetSession] = useState("");
+
+  const [studentToResetPassword, setStudentToResetPassword] =
+    useState<RosterStudent | null>(null);
 
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
@@ -143,21 +162,52 @@ export function ManageStudentsPage() {
     mutationFn: () => {
       if (!schoolId) throw new Error("No school selected");
       return adminApi.createStudent(schoolId, {
-        email: newEmail.trim(),
         full_name: newFullName.trim() || undefined,
         roll_no: newRollNo.trim(),
         class_name: className,
         section: section || undefined,
         session,
+        dob: newDob || undefined,
+        guardian_name: newGuardianName.trim() || undefined,
+        guardian_mobile: newGuardianMobile.trim() || undefined,
+        guardian_relation: newGuardianMobile.trim() ? newGuardianRelation : undefined,
+        class_roll_no: newClassRollNo.trim() || undefined,
       });
     },
     onSuccess: (res) => {
       toast.success(res.message ?? "Student account created");
       setAddStudentOpen(false);
-      setNewEmail("");
       setNewFullName("");
       setNewRollNo("");
+      setNewClassRollNo("");
+      setNewDob("");
+      setNewGuardianName("");
+      setNewGuardianMobile("");
+      setNewGuardianRelation("guardian");
       if (className && section) loadMutation.mutate();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const setRollNoMutation = useMutation({
+    mutationFn: () => {
+      if (!schoolId || !studentToSetRollNo) throw new Error("No student selected");
+      return adminApi.setStudentClassRollNo(schoolId, studentToSetRollNo.roll_no, {
+        class_roll_no: rollNoInput.trim() || null,
+      });
+    },
+    onSuccess: (res) => {
+      if (res.conflict_with) {
+        toast.warning(res.message);
+      } else {
+        toast.success(res.message);
+      }
+      setRoster((prev) =>
+        prev?.map((s) =>
+          s.roll_no === res.roll_no ? { ...s, class_roll_no: res.class_roll_no } : s,
+        ) ?? null,
+      );
+      setStudentToSetRollNo(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -186,6 +236,18 @@ export function ManageStudentsPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: () => {
+      if (!schoolId || !studentToResetPassword) throw new Error("No student selected");
+      return adminApi.resetStudentPassword(schoolId, studentToResetPassword.roll_no);
+    },
+    onSuccess: (res) => {
+      toast.success(res.message ?? "Password reset");
+      setStudentToResetPassword(null);
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
   const classPromoteMutation = useMutation({
     mutationFn: () => {
       if (!schoolId) throw new Error("No school selected");
@@ -208,7 +270,8 @@ export function ManageStudentsPage() {
   const handleExportCSV = () => {
     if (!visible || visible.length === 0) return;
     const csvContent = jsonToCsv(visible, [
-      { header: "Roll No", getValue: (s) => String(s.roll_no) },
+      { header: "Admission No", getValue: (s) => String(s.roll_no) },
+      { header: "Class Roll No", getValue: (s) => String(s.class_roll_no ?? "") },
       { header: "Name", getValue: (s) => String(s.name ?? "—") },
     ]);
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -239,6 +302,7 @@ export function ManageStudentsPage() {
     return roster.filter(
       (s) =>
         s.roll_no.toLowerCase().includes(q) ||
+        (s.class_roll_no ?? "").toLowerCase().includes(q) ||
         (s.name ?? "").toLowerCase().includes(q),
     );
   }, [roster, search]);
@@ -410,11 +474,25 @@ export function ManageStudentsPage() {
                         {s.name ?? s.roll_no}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Roll #{s.roll_no}
+                        {s.class_roll_no && (
+                          <span className="font-medium text-foreground">Roll {s.class_roll_no} · </span>
+                        )}
+                        Admission No. {s.roll_no}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setRollNoInput(s.class_roll_no ?? "");
+                        setStudentToSetRollNo(s);
+                      }}
+                      icon={<Hash className="h-4 w-4" />}
+                    >
+                      Set Roll No.
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"
@@ -427,6 +505,14 @@ export function ManageStudentsPage() {
                       icon={<GraduationCap className="h-4 w-4" />}
                     >
                       Promote
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setStudentToResetPassword(s)}
+                      icon={<KeyRound className="h-4 w-4" />}
+                    >
+                      Reset Password
                     </Button>
                     <Button
                       size="sm"
@@ -480,13 +566,85 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToDelete?.name ?? studentToDelete?.roll_no}
             </span>{" "}
-            (Roll #{studentToDelete?.roll_no}). This cannot be undone.
+            (Admission #{studentToDelete?.roll_no}). This cannot be undone.
           </p>
           <Select
             label="What to delete"
             options={DELETE_MODE_OPTIONS}
             value={studentDeleteMode}
             onChange={(e) => setStudentDeleteMode(e.target.value as DeleteMode)}
+          />
+        </div>
+      </Modal>
+
+      <Modal
+        open={studentToResetPassword !== null}
+        onClose={() => setStudentToResetPassword(null)}
+        title="Reset student password?"
+        icon={<KeyRound className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setStudentToResetPassword(null)}>
+              Cancel
+            </Button>
+            <Button
+              loading={resetPasswordMutation.isPending}
+              onClick={() => resetPasswordMutation.mutate()}
+            >
+              Reset Password
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Resets the password for{" "}
+          <span className="font-medium text-foreground">
+            {studentToResetPassword?.name ?? studentToResetPassword?.roll_no}
+          </span>{" "}
+          (Admission #{studentToResetPassword?.roll_no}) to their date of birth
+          (DDMMYYYY) and signs them out everywhere. Requires a date of birth on
+          file — add one via the roster import if this fails.
+        </p>
+      </Modal>
+
+      <Modal
+        open={studentToSetRollNo !== null}
+        onClose={() => setStudentToSetRollNo(null)}
+        title="Set roll number"
+        icon={<Hash className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setStudentToSetRollNo(null)}>
+              Cancel
+            </Button>
+            <Button
+              loading={setRollNoMutation.isPending}
+              onClick={() => setRollNoMutation.mutate()}
+            >
+              Save
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Sets this year's class roll number for{" "}
+            <span className="font-medium text-foreground">
+              {studentToSetRollNo?.name ?? studentToSetRollNo?.roll_no}
+            </span>{" "}
+            (Admission #{studentToSetRollNo?.roll_no}) — the number you call
+            out for roll-call. Separate from their admission number, and not
+            checked for uniqueness — double-check the class list yourself.
+            Leave blank to clear it.
+          </p>
+          <Input
+            label="Class Roll No."
+            placeholder="22"
+            value={rollNoInput}
+            onChange={(e) => setRollNoInput(e.target.value)}
+            autoFocus
           />
         </div>
       </Modal>
@@ -542,7 +700,7 @@ export function ManageStudentsPage() {
         onClose={() => setAddStudentOpen(false)}
         title="Add Student"
         icon={<UserPlus className="h-4 w-4" />}
-        size="sm"
+        size="md"
         footer={
           <>
             <Button variant="outline" onClick={() => setAddStudentOpen(false)}>
@@ -550,7 +708,7 @@ export function ManageStudentsPage() {
             </Button>
             <Button
               loading={addStudentMutation.isPending}
-              disabled={!newEmail.trim() || !newRollNo.trim()}
+              disabled={!newRollNo.trim()}
               onClick={() => addStudentMutation.mutate()}
             >
               Create Account
@@ -564,28 +722,74 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               Class {className}{section ? `-${section}` : ""} · {session}
             </span>{" "}
-            and links it to a roll number in one step. The student gets a
-            set-password email with a one-time OTP.
+            and links it to a roll number in one step — no email needed. The
+            student's default password is their date of birth (DDMMYYYY); a
+            guardian mobile, if given, is linked as an approved parent account
+            automatically.
           </p>
-          <Input
-            label="Email"
-            type="email"
-            placeholder="student@school.edu"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-          />
           <Input
             label="Full Name"
             placeholder="Student's name"
             value={newFullName}
             onChange={(e) => setNewFullName(e.target.value)}
           />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Admission Number"
+              hint="Permanent — used for login, never changes"
+              placeholder="2026-10A-001"
+              value={newRollNo}
+              onChange={(e) => setNewRollNo(e.target.value)}
+            />
+            <Input
+              label="Class Roll No. (optional)"
+              hint="This year's roll number"
+              placeholder="22"
+              value={newClassRollNo}
+              onChange={(e) => setNewClassRollNo(e.target.value)}
+            />
+          </div>
           <Input
-            label="Roll Number"
-            placeholder="2026-10A-001"
-            value={newRollNo}
-            onChange={(e) => setNewRollNo(e.target.value)}
+            label="Date of Birth"
+            type="date"
+            hint="Sets the initial password"
+            value={newDob}
+            onChange={(e) => setNewDob(e.target.value)}
           />
+
+          <div className="border-t border-border/50 pt-4">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Parent / guardian (optional)
+            </p>
+            <div className="space-y-4">
+              <Input
+                label="Guardian Name"
+                placeholder="Parent's name"
+                value={newGuardianName}
+                onChange={(e) => setNewGuardianName(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  label="Guardian Mobile"
+                  type="tel"
+                  placeholder="9876543210"
+                  hint="Becomes the parent's login"
+                  value={newGuardianMobile}
+                  onChange={(e) => setNewGuardianMobile(e.target.value)}
+                />
+                <Select
+                  label="Relation"
+                  options={RELATION_OPTIONS}
+                  value={newGuardianRelation}
+                  onChange={(e) =>
+                    setNewGuardianRelation(
+                      e.target.value as CreateStudentRequest["guardian_relation"],
+                    )
+                  }
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </Modal>
 
@@ -615,7 +819,7 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToPromote?.name ?? studentToPromote?.roll_no}
             </span>{" "}
-            (Roll #{studentToPromote?.roll_no}) to the next class and session.
+            (Admission #{studentToPromote?.roll_no}) to the next class and session.
             Leave the fields below empty to use the auto-suggested class/section/session,
             or override them explicitly. If this is the school's terminal class, the
             student is marked passed out instead.

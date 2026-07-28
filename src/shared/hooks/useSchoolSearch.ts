@@ -4,10 +4,7 @@ import { useDebounce } from "./useDebounce";
 import { useSchoolClassesQuery } from "./useSchoolClassesQuery";
 import { formatClassName, getClassNameWeight } from "@/shared/lib/utils";
 import type { SearchableSelectOption } from "@/shared/components/ui/SearchableSelect";
-import type {
-  SchoolSearchItem,
-  StudentSearchItem,
-} from "@/features/auth/types";
+import type { SchoolSearchItem } from "@/features/auth/types";
 
 /** Searches schools by query string with debouncing. */
 export function useSchoolSearch(debounceMs = 500) {
@@ -68,46 +65,4 @@ export function useSchoolClasses(schoolId: string | undefined) {
     });
 
   return { options, isLoading };
-}
-
-/** Searches students by roll number within a school, with debouncing. */
-export function useStudentSearch(
-  schoolId: string | undefined,
-  debounceMs = 500,
-) {
-  const [query, setQuery] = useState("");
-  const debouncedQuery = useDebounce(query, debounceMs);
-  const [students, setStudents] = useState<StudentSearchItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-
-  useEffect(() => {
-    if (!schoolId || debouncedQuery.length === 0) {
-      setStudents([]);
-      return;
-    }
-    let cancelled = false;
-    setIsSearching(true);
-    authApi
-      .searchStudentsByRoll(schoolId, debouncedQuery)
-      .then((results) => {
-        if (!cancelled) setStudents(results);
-      })
-      .catch(() => {
-        /* silently ignore */
-      })
-      .finally(() => {
-        if (!cancelled) setIsSearching(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedQuery, schoolId]);
-
-  const options: SearchableSelectOption[] = students.map((s) => ({
-    label: s.full_name || "Unnamed Student",
-    value: s.id,
-    sublabel: `Roll No: ${s.roll_number}`,
-  }));
-
-  return { query, setQuery, options, isSearching };
 }

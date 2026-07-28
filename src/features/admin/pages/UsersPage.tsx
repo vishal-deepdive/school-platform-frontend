@@ -60,6 +60,12 @@ type PendingAction = {
   action: "deactivate" | "revoke";
 } | null;
 
+/** Best available label for a user — guardian (mobile-only) and managed
+ * student (no contact on file) accounts can have a null email. */
+function userLabel(u: AdminUserListItem): string {
+  return u.full_name || u.email || u.mobile || (u.roll_number ? `Roll ${u.roll_number}` : "this user");
+}
+
 export function UsersPage() {
   const queryClient = useQueryClient();
   const [role, setRole] = useState("");
@@ -226,12 +232,18 @@ export function UsersPage() {
                   {users.map((u) => {
                     const busy = rowPending.has(u.id);
                     const isAdmin = u.role === "admin";
+                    // Guardian (mobile-only) and managed student (no contact
+                    // on file) accounts can have a null email — fall back to
+                    // whatever identifier is actually available.
+                    const primaryIdentifier =
+                      u.email || u.mobile || (u.roll_number ? `Roll ${u.roll_number}` : "—");
+                    const showRollSuffix = !!u.roll_number && (!!u.email || !!u.mobile);
                     return (
                       <tr key={u.id} className="transition-colors hover:bg-muted/30">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
                             <Avatar
-                              name={u.full_name || u.email}
+                              name={userLabel(u)}
                               seed={u.id}
                               size="sm"
                             />
@@ -240,8 +252,8 @@ export function UsersPage() {
                                 {u.full_name || "—"}
                               </p>
                               <p className="truncate text-xs text-muted-foreground">
-                                {u.email}
-                                {u.roll_number ? ` · Roll ${u.roll_number}` : ""}
+                                {primaryIdentifier}
+                                {showRollSuffix ? ` · Roll ${u.roll_number}` : ""}
                               </p>
                             </div>
                           </div>
@@ -342,9 +354,11 @@ export function UsersPage() {
         open={!!confirm}
         variant="danger"
         title={
-          confirm?.action === "deactivate"
-            ? `Deactivate ${confirm?.user.full_name || confirm?.user.email}?`
-            : `Revoke sessions for ${confirm?.user.full_name || confirm?.user.email}?`
+          confirm
+            ? confirm.action === "deactivate"
+              ? `Deactivate ${userLabel(confirm.user)}?`
+              : `Revoke sessions for ${userLabel(confirm.user)}?`
+            : ""
         }
         description={
           confirm?.action === "deactivate"

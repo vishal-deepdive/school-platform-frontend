@@ -1,16 +1,14 @@
 /**
  * GoogleCompleteProfilePage
  *
- * Phase 2 of the Google OAuth sign-up flow.
- * Shown only to new Google users who don't have an account yet.
+ * Phase 2 of the Google OAuth sign-up flow — teacher/co-principal invite
+ * claim only. Students and parents don't self-register (they use the
+ * school-code/admission-number and mobile-OTP login tabs respectively), so
+ * this page has no role selection: it either completes a pending teacher
+ * invite or tells the visitor Google sign-in is staff-only.
  *
  * Session data is read from sessionStorage (never the URL) via session.ts helpers.
  * Key: SESSION_KEYS.GOOGLE_SIGNUP → { google_token, email, full_name, avatar_url }
- *
- * Optional hints for pre-filling (set before the Google redirect):
- *   - PENDING_ROLE         → pre-select a tab or trigger teacher-invite flow
- *   - PENDING_INVITE_TOKEN → invite token for teacher registration (hidden from UI)
- *   - PENDING_SCHOOL_ID    → pre-fill student school_id
  *
  * ── Teacher-invite via Google OAuth ──────────────────────────────────────────
  * When a teacher follows the principal's invite link (/register?token=xxx) and
@@ -20,23 +18,22 @@
  * invisibly when calling the API.
  *
  * Edge cases handled:
- *   - PENDING_ROLE === 'teacher' but NO invite token  → error state
+ *   - no PENDING_INVITE_TOKEN at all                  → staff-only message
  *   - invite token present but invalid format         → error state
  *   - API rejects the token (expired / already used)  → toast error
- *   - GOOGLE_SIGNUP session missing                   → bounce to login
- *   - google_token expired                            → expiry banner + re-login link
+ *   - GOOGLE_SIGNUP session missing                    → bounce to login
+ *   - google_token expired                             → expiry banner + re-login link
  */
 
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
-  GraduationCap,
-  Users,
   Clock,
   AlertTriangle,
   School,
   MailOpen,
   ShieldAlert,
+  Smartphone,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 
@@ -51,12 +48,7 @@ import { isValidInviteToken } from "@/shared/lib/validators";
 import { AuthButton } from "@/shared/components/ui/auth-fuse";
 import type { TokenResponse } from "@/features/auth/types";
 
-import {
-  GoogleButton,
-  TeacherInviteCompleteForm,
-  StudentCompleteForm,
-  ParentCompleteForm,
-} from "@/features/auth/components";
+import { GoogleButton, TeacherInviteCompleteForm } from "@/features/auth/components";
 
 // ─── Token expiry countdown ───────────────────────────────────────────────────
 
@@ -93,15 +85,6 @@ function formatCountdown(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-// ─── Tabs config ──────────────────────────────────────────────────────────────
-
-const TABS = [
-  { id: "student", label: "Student", icon: GraduationCap },
-  { id: "parent", label: "Parent", icon: Users },
-] as const;
-
-type TabType = (typeof TABS)[number]["id"];
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function GoogleCompleteProfilePage() {
@@ -116,13 +99,6 @@ export function GoogleCompleteProfilePage() {
   );
 
   const isTeacherInviteFlow = hintRole === "teacher";
-
-  const validTabs: TabType[] = ["student", "parent"];
-  const initialTab: TabType =
-    hintRole && validTabs.includes(hintRole as TabType)
-      ? (hintRole as TabType)
-      : "student";
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   /* ── Guard: no signup session ───────────────────────────────────────────── */
   if (!session) {
@@ -173,12 +149,6 @@ export function GoogleCompleteProfilePage() {
     clearSignupSession();
     toast.success("Account created! Welcome 🎉");
     navigate("/dashboard", { replace: true });
-  };
-
-  const handleParentPending = (message: string) => {
-    clearSignupSession();
-    toast.success(message, { duration: 6000 });
-    navigate("/login", { replace: true });
   };
 
   /* ── Teacher-invite via Google OAuth ────────────────────────────────────── */
@@ -257,93 +227,41 @@ export function GoogleCompleteProfilePage() {
     );
   }
 
-  /* ── Normal flow: Student / Parent tabs ─────────────────────────────────── */
+  /* ── No invite hint: Google sign-in is staff-only ───────────────────────── */
   return (
     <div className="w-full max-w-md mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-6">
-        <IdentityBadge
-          email={email}
-          fullName={full_name}
-          avatarUrl={avatar_url}
-        />
-        <h1 className="text-2xl font-bold tracking-tight text-foreground mt-4">
-          Complete your profile
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Choose your role and fill in the details to finish setting up your
-          account.
+      <IdentityBadge email={email} fullName={full_name} avatarUrl={avatar_url} />
+
+      <div className="flex flex-col items-center gap-3 text-center mt-4">
+        <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+          <ShieldAlert className="h-7 w-7 text-primary" />
+        </div>
+        <h2 className="text-xl font-bold text-foreground">
+          Google sign-in is for staff accounts
+        </h2>
+        <p className="text-sm text-muted-foreground text-balance">
+          Teachers and principals register via an invite link from their
+          school. Students sign in with their school code and admission
+          number; parents sign in with their registered mobile number — no
+          account to create.
         </p>
       </div>
 
-      <ExpiryBanner googleToken={google_token} />
-
-      <div
-        role="tablist"
-        className="mb-6 flex gap-1 p-1.5 bg-muted rounded-xl border border-border/50"
-      >
-        {TABS.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`tabpanel-complete-${tab.id}`}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 text-sm font-semibold rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-                isActive
-                  ? "text-primary bg-background shadow-sm border border-border/50"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-              }`}
-            >
-              <Icon
-                className={`h-4 w-4 transition-colors ${
-                  isActive ? "text-primary" : "text-muted-foreground"
-                }`}
-              />
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/50 px-3 py-2.5 mb-5">
-        <School className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+      <div className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/50 px-3 py-2.5 mt-5 mb-6">
+        <Smartphone className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
         <p className="text-xs text-muted-foreground leading-relaxed">
           <span className="font-semibold text-foreground">
-            Are you a teacher?
+            Are you a parent or student?
           </span>{" "}
-          Teachers register via an invite link sent by their school principal.
-          Please use the invite link from your email.
+          Use the dedicated Parent / Student tabs on the sign-in page instead
+          of Google.
         </p>
       </div>
 
-      {/* Both panels always mounted; CSS toggles visibility to preserve form state */}
-      <div className="relative min-h-[320px]">
-        <div
-          id="tabpanel-complete-student"
-          role="tabpanel"
-          className={activeTab !== "student" ? "hidden" : ""}
-        >
-          <StudentCompleteForm
-            googleToken={google_token}
-            prefillName={full_name ?? ""}
-            onSuccess={handleTokenSuccess}
-          />
-        </div>
-        <div
-          id="tabpanel-complete-parent"
-          role="tabpanel"
-          className={activeTab !== "parent" ? "hidden" : ""}
-        >
-          <ParentCompleteForm
-            googleToken={google_token}
-            prefillName={full_name ?? ""}
-            onPending={handleParentPending}
-          />
-        </div>
+      <div className="flex flex-col gap-3">
+        <AuthButton asChild className="w-full">
+          <Link to="/login">Go to Sign In</Link>
+        </AuthButton>
       </div>
     </div>
   );

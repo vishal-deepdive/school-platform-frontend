@@ -14,40 +14,6 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Password is required").max(128),
 });
 
-export const registerSchema = z
-  .object({
-    email: emailField,
-    password: passwordField,
-    confirm_password: z.string(),
-    full_name: optionalNameField,
-    role: z.enum(["admin", "teacher"]),
-    school_id: z
-      .string()
-      .uuid("Invalid school ID")
-      .optional()
-      .or(z.literal("")),
-  })
-  .refine((d) => d.password === d.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
-  });
-
-export const studentRegisterSchema = z
-  .object({
-    email: emailField,
-    password: passwordField,
-    confirm_password: z.string(),
-    full_name: optionalNameField,
-    school_id: z.string().uuid("Invalid school ID"),
-    class_code: z.string().trim().min(1, "Class code is required").max(16),
-    roll_number: z.string().trim().min(1, "Roll number is required").max(50),
-    terms: termsField,
-  })
-  .refine((d) => d.password === d.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
-  });
-
 /**
  * Teacher registration via invite link — invite_token comes from the URL,
  * not from the form, so it is injected at submit time.
@@ -65,21 +31,31 @@ export const teacherInviteFormSchema = z
     path: ["confirm_password"],
   });
 
-export const parentRegisterSchema = z
-  .object({
-    email: emailField,
-    password: passwordField,
-    confirm_password: z.string(),
-    full_name: optionalNameField,
-    school_id: z.string().uuid("Invalid school ID"),
-    student_id: z.string().uuid("Invalid student ID"),
-    relation: z.enum(["father", "mother", "guardian", "other"]),
-    terms: termsField,
-  })
-  .refine((d) => d.password === d.confirm_password, {
-    message: "Passwords do not match",
-    path: ["confirm_password"],
-  });
+// ─── Guardian mobile+OTP login ──────────────────────────────────────────────
+
+const mobileField = z
+  .string()
+  .trim()
+  .min(6, "Enter a valid mobile number")
+  .max(20, "Enter a valid mobile number")
+  .regex(/^[0-9+\s-]+$/, "Enter a valid mobile number");
+
+export const mobileOtpRequestSchema = z.object({
+  mobile: mobileField,
+});
+
+export const mobileOtpVerifySchema = z.object({
+  mobile: mobileField,
+  otp: otpField,
+});
+
+// ─── Student admission-number login ─────────────────────────────────────────
+
+export const studentLoginSchema = z.object({
+  school_code: z.string().trim().min(1, "School code is required").max(50),
+  roll_no: z.string().trim().min(1, "Roll / admission number is required").max(100),
+  password: z.string().min(1, "Password is required").max(128),
+});
 
 export const verifyOtpSchema = z.object({
   email: emailField,
@@ -102,43 +78,43 @@ export const resetPasswordSchema = z
     path: ["confirm_password"],
   });
 
-// ─── Google OAuth completion ──────────────────────────────────────────────────
+// ─── Self-service password change (already authenticated) ───────────────────
 
-export const googleCompleteStudentSchema = z.object({
-  full_name: optionalNameField,
-  school_id: z.string().uuid("Invalid school ID"),
-  class_code: z.string().trim().min(1, "Class code is required").max(16),
-  roll_number: z.string().trim().min(1, "Roll number is required").max(50),
-});
+export const changePasswordSchema = z
+  .object({
+    current_password: z.string().min(1, "Current password is required").max(128),
+    new_password: passwordField,
+    confirm_password: z.string(),
+  })
+  .refine((d) => d.new_password === d.confirm_password, {
+    message: "Passwords do not match",
+    path: ["confirm_password"],
+  })
+  .refine((d) => d.new_password !== d.current_password, {
+    message: "New password must be different from your current password",
+    path: ["new_password"],
+  });
+
+// ─── Google OAuth completion ──────────────────────────────────────────────────
+// Teacher / co-principal invite claim only — students and parents don't
+// self-register, so there is no student/parent Google-completion schema.
 
 /** Teacher-via-invite OAuth completion — token comes from sessionStorage, not the form. */
 export const googleCompleteTeacherInviteSchema = z.object({
   full_name: optionalNameField,
 });
 
-export const googleCompleteParentSchema = z.object({
-  full_name: optionalNameField,
-  school_id: z.string().uuid("Invalid school ID"),
-  student_id: z.string().uuid("Invalid student ID"),
-  relation: z.enum(["father", "mother", "guardian", "other"]),
-});
-
 // ─── Inferred types ───────────────────────────────────────────────────────────
 
 export type LoginFormData = z.infer<typeof loginSchema>;
-export type RegisterFormData = z.infer<typeof registerSchema>;
-export type StudentRegisterFormData = z.infer<typeof studentRegisterSchema>;
 export type TeacherInviteFormData = z.infer<typeof teacherInviteFormSchema>;
-export type ParentRegisterFormData = z.infer<typeof parentRegisterSchema>;
+export type MobileOtpRequestFormData = z.infer<typeof mobileOtpRequestSchema>;
+export type MobileOtpVerifyFormData = z.infer<typeof mobileOtpVerifySchema>;
+export type StudentLoginFormData = z.infer<typeof studentLoginSchema>;
 export type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
-export type GoogleCompleteStudentFormData = z.infer<
-  typeof googleCompleteStudentSchema
->;
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 export type GoogleCompleteTeacherInviteFormData = z.infer<
   typeof googleCompleteTeacherInviteSchema
->;
-export type GoogleCompleteParentFormData = z.infer<
-  typeof googleCompleteParentSchema
 >;

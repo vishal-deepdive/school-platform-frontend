@@ -191,7 +191,7 @@ export const navItems: NavItem[] = [
         group: "Learn",
       },
       {
-        label: "Practice",
+        label: "Practice & Assignments",
         href: "/rag/practice",
         icon: <Dumbbell className="h-4 w-4" />,
         group: "Learn",
@@ -215,7 +215,7 @@ export const navItems: NavItem[] = [
         group: "Create",
       },
       {
-        label: "Assignments",
+        label: "Manage Assignments",
         href: "/rag/assignments",
         icon: <ClipboardList className="h-4 w-4" />,
         group: "Create",

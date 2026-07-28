@@ -1,10 +1,14 @@
 /**
  * Bulk student roster import (CSV) — so a school never types 500 students by hand.
  *
- * Uploads a CSV to POST /admin/schools/{id}/students/bulk and shows a per-row
- * result summary (created / skipped duplicates / errored rows). The target
- * school is the principal's own school, or — for platform admins — the school
- * currently selected in the global active-school switcher.
+ * Uploads a CSV to POST /admin/schools/{id}/students/bulk. Every row gets a
+ * managed login account (roll-based, password defaults to DOB when given)
+ * and, when a guardian_mobile is supplied, a deduped-or-created guardian
+ * account is linked pre-verified — no approval queue, since the school
+ * itself is the source. Shows a result summary (created / skipped / errored
+ * rows plus guardian stats). The target school is the principal's own
+ * school, or — for platform admins — the school currently selected in the
+ * global active-school switcher.
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -21,9 +25,9 @@ import { StatCard } from "@/shared/components/ui/Card";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 
 const SAMPLE_CSV =
-  "roll_no,name,class_name,section,session\n" +
-  "1,Aarav Sharma,7,A,2025-26\n" +
-  "2,Diya Patel,7,A,2025-26\n";
+  "roll_no,class_roll_no,name,class_name,section,session,dob,guardian_name,guardian_mobile,guardian_relation\n" +
+  "2026-7A-014,1,Aarav Sharma,7,A,2025-26,2013-04-01,Vikram Sharma,9876543210,father\n" +
+  "2026-7A-015,2,Diya Patel,7,A,2025-26,2013-06-15,Meera Patel,9123456780,mother\n";
 
 export function StudentImportPage() {
   // Admins act on the globally-selected school; principals use their own. The
@@ -54,7 +58,10 @@ export function StudentImportPage() {
     try {
       const res = await adminApi.bulkImportStudents(schoolId, file);
       setResult(res);
-      toast.success(`Imported ${res.created} student(s)`);
+      toast.success(
+        `Imported ${res.created} student(s)` +
+          (res.repaired ? `, repaired ${res.repaired}` : ""),
+      );
     } catch (err) {
       toast.error(getErrorMessage(err));
     } finally {
@@ -69,10 +76,24 @@ export function StudentImportPage() {
           <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
             <FileSpreadsheet className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
             <div className="text-xs leading-relaxed text-muted-foreground">
-              CSV columns (header row): <code>roll_no</code> (required),{" "}
+              CSV columns (header row): <code>roll_no</code> (required —
+              the permanent admission number, used for login and never
+              reassigned even after promotion), <code>class_roll_no</code>{" "}
+              (optional — this year's roll-call number, e.g. "22";
+              reassigned every promotion, not checked for uniqueness),{" "}
               <code>name</code>, <code>class_name</code>, <code>section</code>,{" "}
-              <code>session</code>. Re-importing is safe — existing students are
-              skipped, not duplicated.
+              <code>session</code>, <code>dob</code> (seeds each student's
+              default password — accepts <code>YYYY-MM-DD</code> or{" "}
+              <code>DD-MM-YYYY</code>, with <code>-</code>, <code>/</code> or{" "}
+              <code>.</code> as the separator), <code>guardian_name</code>,{" "}
+              <code>guardian_mobile</code>, <code>guardian_email</code>,{" "}
+              <code>guardian_relation</code>. Every row gets a login account;
+              a guardian mobile is linked as an approved parent automatically
+              — siblings sharing a mobile collapse onto one parent account.
+              Re-importing is safe and self-healing — existing students/
+              guardians are reused, and a row that's missing a date of birth
+              or guardian mobile gets it filled in from the new file instead
+              of being skipped.
               <button
                 type="button"
                 onClick={downloadSample}
@@ -111,14 +132,19 @@ export function StudentImportPage() {
           icon={<CheckCircle2 className="h-4 w-4" />}
         >
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               <StatCard
                 label="Created"
                 value={result.created}
                 color="success"
               />
               <StatCard
-                label="Skipped (existing)"
+                label="Repaired (existing)"
+                value={result.repaired}
+                color="info"
+              />
+              <StatCard
+                label="Skipped (complete)"
                 value={result.skipped}
                 color="warning"
               />
@@ -126,6 +152,19 @@ export function StudentImportPage() {
                 label="Errored rows"
                 value={result.errors.length}
                 color="danger"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <StatCard
+                label="New guardian accounts"
+                value={result.guardians_created}
+                color="info"
+              />
+              <StatCard
+                label="Guardian links created"
+                value={result.guardians_linked}
+                color="info"
               />
             </div>
 
@@ -138,6 +177,36 @@ export function StudentImportPage() {
                   {result.errors.slice(0, 50).map((e) => (
                     <li key={e.row}>
                       Row {e.row}: {e.reason}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
+            {result.dob_warnings.length > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.dob_warnings.length} date of birth value(s) couldn't be read`}
+              >
+                <ul className="mt-1 max-h-40 space-y-0.5 overflow-auto text-xs">
+                  {result.dob_warnings.slice(0, 50).map((w) => (
+                    <li key={w.row}>
+                      Row {w.row}: {w.reason}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
+            {result.guardian_conflicts.length > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.guardian_conflicts.length} guardian mobile(s) could not be linked`}
+              >
+                <ul className="mt-1 max-h-40 space-y-0.5 overflow-auto text-xs">
+                  {result.guardian_conflicts.slice(0, 50).map((c) => (
+                    <li key={`${c.roll_no}-${c.guardian_mobile}`}>
+                      Roll {c.roll_no} ({c.guardian_mobile}): {c.reason}
                     </li>
                   ))}
                 </ul>

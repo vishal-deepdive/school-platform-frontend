@@ -32,7 +32,6 @@ export function TeacherInviteCompleteForm({
     try {
       const result = await authApi.googleCompleteRegistration({
         google_token: googleToken,
-        role: "teacher",
         full_name: data.full_name || undefined,
         invite_token: inviteToken,
       });

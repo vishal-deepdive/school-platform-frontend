@@ -77,10 +77,31 @@ interface AttendanceResultsProps {
 
     
 
+import { Download } from "lucide-react";
+import { Button } from "@/shared/components/ui/Button";
+import { attendanceApi } from "@/features/attendance/api/attendance";
+import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
+import toast from "@/shared/lib/toast";
+
 export function AttendanceResults({rows, date, totalRecords}: AttendanceResultsProps) {
     const [statusFilter, setStatusFilter] = useState("");
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState("roll");
+    const [exporting, setExporting] = useState(false);
+
+    const handleExport = async () => {
+      try {
+        setExporting(true);
+        const blob = await attendanceApi.exportAttendanceOnDate({ date });
+        const filename = `attendance_${date.replace(/[\/\s]/g, "-")}.csv`;
+        downloadBlob(blob, filename);
+        toast.success("Attendance report downloaded successfully");
+      } catch (err) {
+        toast.error(getErrorMessage(err) || "Failed to download attendance report");
+      } finally {
+        setExporting(false);
+      }
+    };
 
     const counts = useMemo(() => {
     const c: Record<AttendanceStatus, number> = {
@@ -152,8 +173,7 @@ export function AttendanceResults({rows, date, totalRecords}: AttendanceResultsP
             }, [rows, statusFilter, search, sortBy]);
             
             return(
-                <>
-                
+                <div className="space-y-6 animate-in fade-in-50 duration-300">
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
                         <StatCard label="Present" value={counts.P} icon={<UserCheck className="h-5 w-5" />} color="success" />
                         <StatCard label="Absent" value={counts.A} icon={<UserX className="h-5 w-5" />} color="danger" />
@@ -165,7 +185,7 @@ export function AttendanceResults({rows, date, totalRecords}: AttendanceResultsP
                 
                     <Panel
                         icon={<ListChecks className="h-4 w-4" />}
-                        title={`Records · ${date}`}
+                        title={`Daily Records · ${date}`}
                         description={`${totalRecords} record(s) · showing ${visible.length}`}
                         actions={
                           <div className="flex flex-wrap items-center gap-2">
@@ -173,25 +193,35 @@ export function AttendanceResults({rows, date, totalRecords}: AttendanceResultsP
                               value={search}
                               onChange={setSearch}
                               placeholder="Search roll or name…"
-                              className="w-full sm:w-48"
+                              className="w-full sm:w-44"
                             />
-                            <div className="w-36">
+                            <div className="w-32">
                               <Select
                                 options={STATUS_FILTER_OPTIONS}
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
                               />
                             </div>
-                            <div className="w-36">
+                            <div className="w-32">
                               <Select
                                 options={SORT_OPTIONS}
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value)}
                               />
                             </div>
-                            </div>
-                            }
-                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={handleExport}
+                              disabled={exporting || rows.length === 0}
+                              className="h-10 text-xs sm:text-sm gap-1.5"
+                            >
+                              <Download className="h-3.5 w-3.5" />
+                              Export
+                            </Button>
+                          </div>
+                        }
+                      >
                         <StatusLegend className="mb-4" />
                         {visible.length === 0 ? (
                           <p className="py-8 text-center text-sm text-muted-foreground">
@@ -201,8 +231,6 @@ export function AttendanceResults({rows, date, totalRecords}: AttendanceResultsP
                           <Table columns={DATE_COLUMNS} data={visible} stickyHeader />
                         )}
                       </Panel>
-
-                      
-                </>
+                </div>
             );
-}
+}
