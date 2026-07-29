@@ -21,9 +21,27 @@ import type {
   UpdateSourceRequest,
   SurveySourceDeleteResponse,
   SyncMode,
+  DetachedResponsesResponse,
+  PurgeDetachedResponse,
 } from "@/features/survey/types";
 
 const BASE = `${API_V1}/survey`;
+
+/**
+ * Single source of truth for the survey feature's react-query keys. The
+ * sources list was previously fetched under three different key shapes
+ * across SurveySourcePage/SurveyDashboardPage/SheetSelector — three separate
+ * cache entries for the same server list, each mounted component fetching
+ * its own copy instead of sharing one.
+ */
+export const surveyKeys = {
+  all: ["survey"] as const,
+  status: (schoolId?: string | null) => ["survey", "status", schoolId ?? "platform"] as const,
+  sources: (schoolId?: string | null) => ["survey", "sources", schoolId ?? "platform"] as const,
+  sourceById: (sourceId: string) => ["survey", "source", sourceId] as const,
+  syncStatus: (jobId?: string | null) => ["survey", "sync-status", jobId ?? null] as const,
+  detached: () => ["survey", "detached"] as const,
+};
 
 export const surveyApi = {
   getStatus: (schoolName?: string) =>
@@ -116,6 +134,20 @@ export const surveyApi = {
   deleteSourceById: (sourceId: string) =>
     apiClient
       .delete<SurveySourceDeleteResponse>(`${BASE}/source/${sourceId}`)
+      .then((r) => r.data),
+
+  // ── Detached responses (admin cleanup) ──────────────────────────────────
+
+  getDetachedResponses: () =>
+    apiClient
+      .get<DetachedResponsesResponse>(`${BASE}/detached`)
+      .then((r) => r.data),
+
+  purgeDetachedResponses: (schoolId?: string) =>
+    apiClient
+      .delete<PurgeDetachedResponse>(`${BASE}/detached`, {
+        params: schoolId ? { school_id: schoolId } : undefined,
+      })
       .then((r) => r.data),
 
   // ── Legacy endpoints (kept for backward compat) ────────────────────────

@@ -113,6 +113,14 @@ export interface SummarySheet {
   rows_deleted?: number;
 }
 
+/**
+ * "failed" never reaches the client as a 200 — the backend raises a 400 for a
+ * total-failure sync (see controller.sync_source) — but a caller reading the
+ * register-and-autosync response (`SourceSyncResult`, which IS a 200 even when
+ * `ok: false`) should still be able to distinguish it from "partial"/"ok".
+ */
+export type SyncOutcome = "ok" | "partial" | "no_new_rows" | "failed" | string;
+
 export type SyncMode = "append" | "replace";
 
 export interface DatabaseChange {
@@ -129,15 +137,27 @@ export interface SchemaDrift {
   unchanged: number;
 }
 
+export interface FailedRecord {
+  name: string | null;
+  roll_number: string | null;
+  reason: string;
+}
+
 export interface LoadRecentResponse {
   status: string;
   timestamp: string;
   mode: SyncMode;
   cycle: string;
+  /** "partial"/"no_new_rows" need a visibly different treatment than a plain
+   * success even though both are HTTP 200 — "failed" never reaches here. */
+  sync_outcome: SyncOutcome;
   summary: SummarySheet;
+  /** First few distinct, truncated row-level error messages, if any failed. */
+  error_reasons: string[];
   database_change: DatabaseChange;
   added_records: unknown[];
   skipped_records: unknown[];
+  failed_records: FailedRecord[];
   embedding_status: EmbeddingStatus;
   job_id?: string | null;
   schema_drift?: SchemaDrift | null;
@@ -191,6 +211,10 @@ export interface SourceItem {
   last_synced_at?: string | null;
   updated_at?: string | null;
   created_at?: string | null;
+  /** Imported survey rows currently attached to this source. Deleting the
+   * source deletes these too (see DELETE /source/{id}) — shown in the delete
+   * confirmation so the impact is never a surprise. */
+  row_count: number;
 }
 
 /** Outcome of the auto-sync run when a source is registered (POST /source). */
@@ -199,6 +223,8 @@ export interface SourceSyncResult {
   records_added: number;
   records_skipped: number;
   records_failed: number;
+  sync_outcome: SyncOutcome;
+  error_reasons: string[];
   embedding_status?: string | null;
   job_id?: string | null;
   error?: string | null;
@@ -227,6 +253,11 @@ export interface SourceListResponse {
   school_name?: string | null;
 }
 
+export interface ParseWarning {
+  column: string;
+  unparsed_sample_rows: number;
+}
+
 export interface HeaderPreviewResponse {
   status: string;
   sheet_id: string;
@@ -235,6 +266,10 @@ export interface HeaderPreviewResponse {
   auto_mapped: Record<string, string>;
   unmapped: string[];
   canonical_columns: string[];
+  /** Canonical columns where a real (non-blank) value in the sampled rows
+   * failed to coerce — a heads-up at registration time instead of only
+   * discovering it after a full sync. */
+  parse_warnings: ParseWarning[];
 }
 
 export interface RegisterSourceRequest {
@@ -258,6 +293,28 @@ export interface SurveySourceDeleteResponse {
   status: string;
   message: string;
   deleted: boolean;
+  /** Survey rows deleted along with the source (see migration 048 — deleting
+   * a source now deletes the rows it brought in, not just unlinks them). */
+  deleted_rows?: number;
+}
+
+// ── Detached responses (admin cleanup) ─────────────────────────────────────
+
+export interface DetachedGroup {
+  school_id: string | null;
+  school_name: string | null;
+  count: number;
+}
+
+export interface DetachedResponsesResponse {
+  status: string;
+  total_detached: number;
+  groups: DetachedGroup[];
+}
+
+export interface PurgeDetachedResponse {
+  status: string;
+  deleted_count: number;
 }
 
 export interface ChartFile {
