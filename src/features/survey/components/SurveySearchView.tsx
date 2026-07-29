@@ -23,7 +23,7 @@ import {
   surveySearchSchema,
   type SurveySearchFormData,
 } from "@/features/survey/schema";
-import { surveyApi } from "@/features/survey/api/survey";
+import { surveyApi, surveyKeys } from "@/features/survey/api/survey";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
 import { getErrorMessage } from "@/shared/lib/utils";
@@ -214,7 +214,7 @@ export function SurveySearchView() {
   }, [schoolId, schoolParam.school_name]);
 
   useQuery({
-    queryKey: ["survey", "status", schoolId ?? "platform"],
+    queryKey: surveyKeys.status(schoolId),
     queryFn: () => surveyApi.getStatus(schoolParam.school_name),
     staleTime: 5 * 60000,
   });
@@ -357,6 +357,7 @@ export function SurveySearchView() {
             value={selectedSourceIds}
             onChange={setSelectedSourceIds}
             disabled={streaming}
+            schoolId={schoolId}
             showSchoolName={isAdmin}
             schoolName={isAdmin ? schoolParam.school_name : undefined}
           />

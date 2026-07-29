@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart2,
@@ -15,7 +14,8 @@ import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { surveyApi } from "@/features/survey/api/survey";
+import { surveyApi, surveyKeys } from "@/features/survey/api/survey";
+import { useSyncJobPolling } from "@/features/survey/hooks/useSyncJobPolling";
 import type { SourceItem } from "@/features/survey/types";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Panel } from "@/shared/components/ui/Panel";
@@ -48,8 +48,6 @@ function SurveyDashboardSkeleton() {
   );
 }
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-
-const SYNC_POLL_MS = 3000;
 
 interface RankedRow {
   label: string;
@@ -114,7 +112,8 @@ export function SurveyDashboardPage() {
   // cross-school aggregate. Staff are scoped to their own school server-side.
   const { schoolId, schoolParam } = useActiveSchool();
   const canSync = isSchoolAdmin(role);
-  const [syncJobId, setSyncJobId] = useState<string | null>(null);
+  const { job: syncJob, isGenerating: embeddingsGenerating, track: trackSyncJob } =
+    useSyncJobPolling();
 
   const {
     data,
@@ -124,14 +123,14 @@ export function SurveyDashboardPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["survey", "status", schoolId ?? "platform"],
+    queryKey: surveyKeys.status(schoolId),
     queryFn: () => surveyApi.getStatus(schoolParam.school_name),
     staleTime: 2 * 60_000,
   });
 
   // Fetch sources list for the sync-all button (admin/principal only).
   const { data: sourcesData } = useQuery({
-    queryKey: ["survey", "sources", "self", schoolId ?? "platform"],
+    queryKey: surveyKeys.sources(schoolId),
     queryFn: () => surveyApi.getSources(schoolParam.school_name),
     enabled: canSync,
     staleTime: 5 * 60_000,
@@ -152,11 +151,20 @@ export function SurveyDashboardPage() {
       // Track failures instead of silently discarding them — previously a
       // partial failure (e.g. 2 of 5 sources) still showed a plain success
       // toast built only from the successes, so the user never learned a
-      // specific sheet stopped syncing.
+      // specific sheet stopped syncing. A source whose sync_outcome is
+      // "partial" doesn't throw (it's still a 200), so it's tracked
+      // separately from a hard failure (network/validation error, 400s).
       const failedLabels: string[] = [];
+      const partialLabels: string[] = [];
+      let lastJobId: string | null = null;
       for (const source of activeSources) {
         try {
-          results.push(await surveyApi.syncSource(source.id, "append"));
+          const result = await surveyApi.syncSource(source.id, "append");
+          results.push(result);
+          if (result.sync_outcome === "partial") {
+            partialLabels.push(source.label || source.sheet_id || source.id);
+          }
+          if (result.job_id) lastJobId = result.job_id;
         } catch {
           failedLabels.push(source.label || source.sheet_id || source.id);
         }
@@ -177,57 +185,37 @@ export function SurveyDashboardPage() {
             (acc, r) => acc + (r.summary?.records_skipped || 0),
             0,
           ),
+          records_failed: results.reduce(
+            (acc, r) => acc + (r.summary?.records_failed || 0),
+            0,
+          ),
         },
+        job_id: lastJobId,
         _syncedCount: results.length,
         _failedLabels: failedLabels,
+        _partialLabels: partialLabels,
       };
     },
     onSuccess: (res) => {
       const count = (res as Record<string, unknown>)._syncedCount as number;
       const failedLabels = (res as Record<string, unknown>)._failedLabels as string[];
+      const partialLabels = (res as Record<string, unknown>)._partialLabels as string[];
       const summaryMsg = `Synced ${count} source${count !== 1 ? "s" : ""}: +${res.summary.records_added} added, ${res.summary.records_skipped} skipped`;
       if (failedLabels.length > 0) {
-        toast.warning(`${summaryMsg}. Failed: ${failedLabels.join(", ")}`);
+        toast.warning(`${summaryMsg}. Failed entirely: ${failedLabels.join(", ")}`);
+      } else if (partialLabels.length > 0) {
+        toast.warning(
+          `${summaryMsg}, ${res.summary.records_failed} row(s) failed. ` +
+            `Check: ${partialLabels.join(", ")}`,
+        );
       } else {
         toast.success(summaryMsg);
       }
-      qc.invalidateQueries({ queryKey: ["survey", "status"] });
-      if (res.embedding_status !== "completed" && res.job_id) {
-        setSyncJobId(res.job_id);
-      }
+      qc.invalidateQueries({ queryKey: surveyKeys.all });
+      trackSyncJob(res.job_id);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
-
-  const { data: syncJob } = useQuery({
-    queryKey: ["survey", "sync-status", syncJobId],
-    queryFn: () => surveyApi.getSyncStatus(syncJobId as string),
-    enabled: !!syncJobId,
-    retry: false,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "done" || status === "failed") return false;
-      return SYNC_POLL_MS;
-    },
-  });
-
-  const embeddingsGenerating =
-    !!syncJobId &&
-    !!syncJob &&
-    syncJob.status !== "done" &&
-    syncJob.status !== "failed";
-
-  useEffect(() => {
-    if (!syncJobId || !syncJob) return;
-    if (syncJob.status === "done") {
-      toast.success("Embeddings generated — search is fully up to date.");
-      qc.invalidateQueries({ queryKey: ["survey", "status"] });
-      setSyncJobId(null);
-    } else if (syncJob.status === "failed") {
-      toast.error(syncJob.error || "Embedding generation failed.");
-      setSyncJobId(null);
-    }
-  }, [syncJob, syncJobId, qc]);
 
   if (isLoading) return <SurveyDashboardSkeleton />;
   if (isError)
