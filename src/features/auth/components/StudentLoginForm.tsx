@@ -54,13 +54,19 @@ export function StudentLoginForm({
     staleTime: 60000,
   });
 
-  const schoolOptions = schools
-    .filter((s) => s.code)
-    .map((s) => ({
-      label: s.name,
-      value: s.code!,
-      sublabel: [s.city, s.state].filter(Boolean).join(", ") || undefined,
-    }));
+  // const schoolOptions = schools
+  //   .filter((s) => s.code)
+  //   .map((s) => ({
+  //     label: s.name,
+  //     value: s.code!,
+  //     sublabel: [s.city, s.state].filter(Boolean).join(", ") || undefined,
+  //   }));
+
+  const schoolOptions = schools.map((s) => ({
+  label: s.name,
+  value: s.code ?? s.name, // temporary fallback
+  sublabel: [s.city, s.state].filter(Boolean).join(", ") || undefined,
+}));
 
   const onSubmit = async (data: StudentLoginFormData) => {
     try {

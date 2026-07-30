@@ -256,6 +256,16 @@ export function SurveySearchView() {
       if (streamingRef.current) return;
       streamingRef.current = true;
 
+      const query = formData.query.trim();
+
+      if (!query) {
+        toast.error("Please enter a question.");
+        return;
+      }
+
+      if (streamingRef.current) return;
+        streamingRef.current = true;
+
       const controller = begin();
 
       setStreaming(true);
@@ -273,7 +283,7 @@ export function SurveySearchView() {
       try {
         for await (const event of surveyApi.searchStream(
           {
-            query: formData.query,
+            query,
             // Empty selection = "All sheets" → omit the filter entirely so the
             // backend searches every accessible row (including legacy rows that
             // predate sheet-sources and have a NULL source_id).
