@@ -11,6 +11,15 @@ export interface SkippedEntry {
   reason: string;
 }
 
+// A photo whose parsed roll number didn't resolve to exactly one student on
+// the roster — reported back instead of silently attached, since face
+// enrollment never creates a student (it only attaches to an existing one).
+export interface UnresolvedPhoto {
+  roll_no: string;
+  name: string;
+  reason: string;
+}
+
 export interface EnrollResponse {
   enrolled_students: EnrolledStudent[];
   school_name: string;
@@ -20,7 +29,9 @@ export interface EnrollResponse {
   subject: string | null;
   endpoint: string;
   skipped?: SkippedEntry[];
-  removed_count?: number | null;
+  unresolved?: UnresolvedPhoto[];
+  // Always the true total; `unresolved` may be truncated for large batches.
+  unresolved_count: number;
 }
 
 export interface UpdatedStudent {
@@ -39,6 +50,8 @@ export interface UpdateEmbeddingResponse {
   updated_students: UpdatedStudent[];
   added_students: UpdatedStudent[];
   skipped?: SkippedEntry[];
+  unresolved?: UnresolvedPhoto[];
+  unresolved_count: number;
 }
 
 export interface AttendanceRecord {
@@ -46,6 +59,26 @@ export interface AttendanceRecord {
   name: string;
   similarity?: number;
   status: AttendanceStatus;
+}
+
+// A roster student with no face on file — face recognition can't assess
+// them, so they're reported separately instead of being marked Absent.
+export interface NotEnrolledStudent {
+  roll_no: string;
+  name: string;
+}
+
+export interface AmbiguousCandidate {
+  roll_no: string;
+  name: string;
+  similarity: number;
+}
+
+// A detected face that cleared the match threshold but was too close to a
+// second candidate to safely pick one — reported instead of silently
+// dropped into the absent bucket.
+export interface AmbiguousMatch {
+  candidates: AmbiguousCandidate[];
 }
 
 export interface MarkAttendanceResponse {
@@ -59,8 +92,12 @@ export interface MarkAttendanceResponse {
   total_enrolled: number;
   present_count: number;
   absent_count: number;
+  not_enrolled_count: number;
+  ambiguous_count: number;
   present_students: AttendanceRecord[];
   absent_students: AttendanceRecord[];
+  not_enrolled_students: NotEnrolledStudent[];
+  ambiguous_faces: AmbiguousMatch[];
 }
 
 // ── Manual roll-call ──────────────────────────────────────────────────────────
@@ -71,6 +108,8 @@ export interface RosterStudent {
   // This year's roll-call number (distinct from roll_no, the permanent
   // admission number) — null until staff assign one.
   class_roll_no: string | null;
+  // Whether this student has a face embedding on file yet.
+  has_face: boolean;
   // Stored status on the requested date, or null if not yet marked.
   status: AttendanceStatus | null;
 }

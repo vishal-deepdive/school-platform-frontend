@@ -128,6 +128,21 @@ export interface BulkImportResult {
   guardian_conflicts: GuardianConflict[];
 }
 
+export interface RepairedStudent {
+  roll_no: string;
+  name: string | null;
+}
+
+export interface ReconcileStudentsResult {
+  repaired: number;
+  repaired_students: RepairedStudent[];
+  guardians_created: number;
+  guardians_linked: number;
+  guardian_conflicts: GuardianConflict[];
+  // True if the per-call cap was hit — call again to continue.
+  has_more: boolean;
+}
+
 export interface RejectApplicationRequest {
   rejection_reason?: string;
 }

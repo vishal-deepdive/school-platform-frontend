@@ -43,10 +43,10 @@ export const scaleIn: Variants = {
 export const cardHover: Variants = {
   rest: { y: 0, scale: 1, boxShadow: "0px 4px 10px rgba(0,0,0,0.02)" },
   hover: { 
-    y: -4, 
-    scale: 1.02, 
-    boxShadow: "0px 12px 24px rgba(0,0,0,0.08)",
-    transition: { type: "spring", stiffness: 400, damping: 25 }
+    y: 0, 
+    scale: 1, 
+    boxShadow: "0px 8px 20px rgba(0,0,0,0.08)",
+    transition: { duration: 0.2, ease: "easeOut" }
   }
 };
 

@@ -405,9 +405,6 @@ export function DashboardPage() {
   // instead of a blank page.
   const hasRoleView = isSchoolStaff || isAdmin || isConsumer;
 
-  // Defer rendering the heavy charts until the entry animation fully completes.
-  const [isReady, setIsReady] = useState(false);
-
   const handleQuickLinkClick = (e: React.MouseEvent, href: string) => {
     if (isAdmin && !ready && needsActiveSchool(href)) {
       e.preventDefault();
@@ -437,10 +434,9 @@ export function DashboardPage() {
 
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      onAnimationComplete={() => setIsReady(true)}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className="space-y-6"
     >
       <PageHeader
@@ -468,7 +464,7 @@ export function DashboardPage() {
               to={link.href}
               title={link.desc}
               onClick={(e) => handleQuickLinkClick(e, link.href)}
-              className="group inline-flex items-center gap-2 rounded-full glass-panel px-3.5 py-2 text-[13px] font-medium text-foreground transition-all hover:scale-105 hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="group inline-flex items-center gap-2 rounded-full glass-panel px-3.5 py-2 text-[13px] font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <span className="text-primary [&>svg]:h-4 [&>svg]:w-4">
                 {link.icon}
@@ -479,38 +475,27 @@ export function DashboardPage() {
         </div>
       )}
 
-      {isReady ? (
+      {/* Admins own their own layout (platform ↔ selected-school toggle, plus
+          the cross-domain sections in school view); staff render the school
+          dashboard and cross-domain sections directly. */}
+      {isSchoolStaff && (
         <>
-          {/* Admins own their own layout (platform ↔ selected-school toggle, plus
-              the cross-domain sections in school view); staff render the school
-              dashboard and cross-domain sections directly. */}
-          {isSchoolStaff && (
-            <>
-              <StaffDashboard />
-              <CrossDomainSections />
-            </>
-          )}
-          {isAdmin && <AdminDashboardArea />}
-          {isConsumer && <MyDashboard isParent={role === "parent"} />}
-
-          {!hasRoleView && (
-            <EmptyState
-              icon={<Eye className="h-12 w-12" />}
-              title="View-only access"
-              description="Your account doesn't have a module dashboard yet. Use the search (Ctrl/⌘ K) to open the pages you can access, or contact your school admin if you need more."
-            />
-          )}
-
-          {isConsumer && <RecordingAnalyticsSection />}
+          <StaffDashboard />
+          <CrossDomainSections />
         </>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-        </div>
       )}
+      {isAdmin && <AdminDashboardArea />}
+      {isConsumer && <MyDashboard isParent={role === "parent"} />}
+
+      {!hasRoleView && (
+        <EmptyState
+          icon={<Eye className="h-12 w-12" />}
+          title="View-only access"
+          description="Your account doesn't have a module dashboard yet. Use the search (Ctrl/⌘ K) to open the pages you can access, or contact your school admin if you need more."
+        />
+      )}
+
+      {isConsumer && <RecordingAnalyticsSection />}
     </motion.div>
   );
 }

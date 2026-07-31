@@ -54,7 +54,7 @@ export function BarList({
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full"
+              className="h-full rounded-full transition-all duration-300 ease-out"
               style={{
                 width: `${Math.min(100, Math.round((it.value / scale) * 100))}%`,
                 backgroundColor: it.color ?? "oklch(var(--primary))",

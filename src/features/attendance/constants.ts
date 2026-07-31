@@ -23,6 +23,5 @@ export function getCurrentSession(): string {
 export const ENROLL_MODE_OPTIONS: SelectOption[] = [
   { value: "new", label: "New Batch" },
   { value: "single", label: "Single Student" },
-  { value: "replace", label: "Batch with Replacement" },
   { value: "refresh", label: "Refresh Embeddings (Decay Blend)" },
 ];

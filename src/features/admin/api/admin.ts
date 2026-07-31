@@ -11,6 +11,7 @@ import type {
   RequestChangesRequest,
   SchoolSetupStatus,
   BulkImportResult,
+  ReconcileStudentsResult,
   PlatformOverview,
   SchoolListItem,
   SchoolDetail,
@@ -143,6 +144,13 @@ export const adminApi = {
       )
       .then((r) => r.data);
   },
+
+  reconcileOrphanedStudents: (schoolId: string) =>
+    apiClient
+      .post<ReconcileStudentsResult>(
+        `${ADMIN_BASE}/schools/${encodeURIComponent(schoolId)}/students/reconcile`,
+      )
+      .then((r) => r.data),
 
   // ── Schools management ─────────────────────────────────────────────────────
 
