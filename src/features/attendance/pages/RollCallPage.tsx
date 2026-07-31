@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect, memo, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckSquare, Users, UserCheck, UserX } from "lucide-react";
+import { CheckSquare, Users, UserCheck, UserX, ScanFace } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
@@ -70,6 +70,14 @@ const StudentRow = memo(function StudentRow({
             Roll #{student.roll_no}
           </p>
         </div>
+        {!student.has_face && (
+          <ScanFace
+            className="h-4 w-4 shrink-0 text-amber-500"
+            aria-label="No face on file"
+          >
+            <title>No face on file — mark manually</title>
+          </ScanFace>
+        )}
       </div>
       <div className="flex gap-1">
         {STATUSES.map((st) => {
@@ -356,8 +364,16 @@ export function RollCallPage() {
                 <div className="col-span-full">
                   <EmptyState
                     icon={<Users className="h-9 w-9" />}
-                    title="No students match your search"
-                    description="Try a different roll number or name."
+                    title={
+                      roster.length === 0
+                        ? "No students in this class yet"
+                        : "No students match your search"
+                    }
+                    description={
+                      roster.length === 0
+                        ? "Import students for this class, then come back to mark attendance."
+                        : "Try a different roll number or name."
+                    }
                   />
                 </div>
               ) : (

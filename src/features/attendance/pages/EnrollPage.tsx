@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { UserPlus, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-react";
+import { UserPlus, CheckCircle2, RefreshCw, Info } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import {
   enrollSchema,
@@ -21,7 +21,6 @@ import { Button } from "@/shared/components/ui/Button";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
-import { Modal } from "@/shared/components/ui/Modal";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import type { EnrollResponse, UpdateEmbeddingResponse } from "@/features/attendance/types";
@@ -72,11 +71,6 @@ export function EnrollPage() {
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [alpha, setAlpha] = useState("0.3");
   const [result, setResult] = useState<EnrollResponse | UpdateEmbeddingResponse | null>(
-    null,
-  );
-  // Holds the validated form data while the destructive "replace" mode awaits
-  // an explicit confirmation before the enrollment is actually mutated.
-  const [pendingReplace, setPendingReplace] = useState<EnrollFormData | null>(
     null,
   );
 
@@ -143,8 +137,6 @@ export function EnrollPage() {
         return attendanceApi.updateEmbedding(vars.file, vars.params);
       if (mode === "single")
         return attendanceApi.enrollNewStudent(vars.file, vars.params);
-      if (mode === "replace")
-        return attendanceApi.enrollWithReplacement(vars.file, vars.params);
       return attendanceApi.enroll(vars.file, vars.params);
     },
     onSuccess: (data) => {
@@ -154,10 +146,14 @@ export function EnrollPage() {
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       if (isRefreshResult(data)) {
         toast.success(
-          `Refreshed ${data.updated_count} · added ${data.added_count} embedding(s)`,
+          `Refreshed ${data.updated_count} · attached ${data.added_count} new face(s)` +
+            (data.unresolved_count ? ` · ${data.unresolved_count} unresolved` : ""),
         );
       } else {
-        toast.success(`Enrolled ${data.enrolled_students.length} student(s)`);
+        toast.success(
+          `Attached faces for ${data.enrolled_students.length} student(s)` +
+            (data.unresolved_count ? ` · ${data.unresolved_count} unresolved` : ""),
+        );
       }
     },
     onError: (err) => toast.error(getErrorMessage(err)),
@@ -214,19 +210,6 @@ export function EnrollPage() {
         return;
       }
     }
-    // "Batch with Replacement" permanently deletes students who are not in the
-    // uploaded ZIP (and their attendance). Gate it behind an explicit confirm.
-    if (mode === "replace") {
-      setPendingReplace(data);
-      return;
-    }
-    runEnroll(data);
-  };
-
-  const confirmReplace = () => {
-    if (!pendingReplace) return;
-    const data = pendingReplace;
-    setPendingReplace(null);
     runEnroll(data);
   };
 
@@ -235,6 +218,17 @@ export function EnrollPage() {
       <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
         <Panel>
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+            <div className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-muted/30 p-3 text-xs leading-relaxed text-muted-foreground">
+              <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <p>
+                Photos are matched to students already on your roster (added via{" "}
+                <span className="font-medium text-foreground">Import Students</span> or{" "}
+                <span className="font-medium text-foreground">Student Roster → Add Student</span>).
+                A photo that doesn&apos;t match anyone is reported below instead of creating a
+                new record — add the student first, then re-upload.
+              </p>
+            </div>
+
             <Select
               label="Enrollment Mode"
               options={ENROLL_MODE_OPTIONS}
@@ -376,7 +370,7 @@ export function EnrollPage() {
                 onChange={setFiles}
                 hint={
                   mode === "refresh"
-                    ? "Max 100 MB. Folders keyed by existing roll numbers are blended into their current embedding; new roll numbers are added."
+                    ? "Max 100 MB. Folders keyed by an existing roll number are blended into their current embedding; a student with no face yet gets one attached."
                     : "Max 100 MB. Each student's folder should contain 3-5 clear face photos."
                 }
               />
@@ -418,7 +412,7 @@ export function EnrollPage() {
             {result.added_students.length > 0 && (
               <Panel
                 icon={<CheckCircle2 className="h-4 w-4" />}
-                title={`${result.added_students.length} new student(s) added`}
+                title={`${result.added_students.length} student(s) got their first face on file`}
               >
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {result.added_students.map((s) => (
@@ -440,6 +434,26 @@ export function EnrollPage() {
               </Alert>
             )}
 
+            {result.unresolved && result.unresolved.length > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.unresolved_count} photo(s) didn't match a student`}
+              >
+                <ul className="mt-1 max-h-40 space-y-1 overflow-auto">
+                  {result.unresolved.map((u, i) => (
+                    <li key={i} className="text-xs">
+                      <span className="font-medium">{u.roll_no}</span> — {u.reason}
+                    </li>
+                  ))}
+                </ul>
+                {result.unresolved_count > result.unresolved.length && (
+                  <p className="mt-2 text-xs italic text-muted-foreground">
+                    Showing the first {result.unresolved.length} of {result.unresolved_count}.
+                  </p>
+                )}
+              </Alert>
+            )}
+
             <div className="flex flex-wrap gap-2">
               {result.school_name && (
                 <Badge variant="info">School: {result.school_name}</Badge>
@@ -455,7 +469,7 @@ export function EnrollPage() {
             {result.enrolled_students.length > 0 && (
               <Panel
                 icon={<CheckCircle2 className="h-4 w-4" />}
-                title={`${result.enrolled_students.length} student(s) enrolled`}
+                title={`${result.enrolled_students.length} student(s) — face attached`}
               >
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {result.enrolled_students.map((s) => (
@@ -477,6 +491,26 @@ export function EnrollPage() {
               </Alert>
             )}
 
+            {result.unresolved && result.unresolved.length > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.unresolved_count} photo(s) didn't match a student`}
+              >
+                <ul className="mt-1 max-h-40 space-y-1 overflow-auto">
+                  {result.unresolved.map((u, i) => (
+                    <li key={i} className="text-xs">
+                      <span className="font-medium">{u.roll_no}</span> — {u.reason}
+                    </li>
+                  ))}
+                </ul>
+                {result.unresolved_count > result.unresolved.length && (
+                  <p className="mt-2 text-xs italic text-muted-foreground">
+                    Showing the first {result.unresolved.length} of {result.unresolved_count}.
+                  </p>
+                )}
+              </Alert>
+            )}
+
             <div className="flex flex-wrap gap-2">
               {result.school_name && (
                 <Badge variant="info">School: {result.school_name}</Badge>
@@ -484,60 +518,10 @@ export function EnrollPage() {
               {result.session && <Badge>Session: {result.session}</Badge>}
               {result.class_name && <Badge>Class: {result.class_name}</Badge>}
               {result.section && <Badge>Section: {result.section}</Badge>}
-              {result.removed_count != null && (
-                <Badge variant={result.removed_count > 0 ? "warning" : "default"}>
-                  Removed: {result.removed_count} student(s)
-                </Badge>
-              )}
             </div>
           </div>
         )}
       </div>
-
-      <Modal
-        open={pendingReplace !== null}
-        onClose={() => setPendingReplace(null)}
-        title="Confirm Batch Replacement"
-        size="md"
-      >
-        <div className="space-y-4">
-          <Alert variant="error" title="This action is destructive">
-            <p className="text-sm">
-              Replacing the batch for{" "}
-              <span className="font-semibold">
-                {pendingReplace?.class_name
-                  ? `Class ${pendingReplace.class_name}${
-                      pendingReplace.section
-                        ? `-${pendingReplace.section}`
-                        : ""
-                    }`
-                  : "the selected class"}
-              </span>{" "}
-              (session{" "}
-              <span className="font-semibold">{pendingReplace?.session}</span>)
-              will <span className="font-semibold">permanently delete</span>{" "}
-              every enrolled student who is not present in the uploaded ZIP,
-              along with all of their attendance records. This cannot be undone.
-            </p>
-          </Alert>
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setPendingReplace(null)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="danger"
-              loading={isPending}
-              onClick={confirmReplace}
-              icon={<AlertTriangle className="h-4 w-4" />}
-            >
-              Replace Batch
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }

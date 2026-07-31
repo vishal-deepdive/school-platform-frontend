@@ -155,7 +155,7 @@ export function WeekdayPatternChart({
                 content={<WeekdayTooltip />}
                 cursor={{ fill: "oklch(var(--muted-foreground))", opacity: 0.08 }}
               />
-              <Bar dataKey="percentage" name="Attendance" radius={[4, 4, 0, 0]} maxBarSize={32}>
+              <Bar dataKey="percentage" name="Attendance" radius={[4, 4, 0, 0]} maxBarSize={32} animationDuration={250} animationEasing="ease-out">
                 {data.map((d) => (
                   <Cell key={d.day} fill={barColor(d.percentage)} fillOpacity={0.85} />
                 ))}

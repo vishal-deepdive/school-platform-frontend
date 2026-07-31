@@ -27,6 +27,8 @@ const CHANGE_LOG_JSON_LIMIT = 1000;
 const CHANGE_TYPE_VARIANTS: Record<string, BadgeVariant> = {
   delete: "danger",
   insert: "success",
+  face_enroll: "success",
+  face_attach: "success",
   embedding_update: "info",
   manual_mark: "primary",
   attendance_correction: "warning",

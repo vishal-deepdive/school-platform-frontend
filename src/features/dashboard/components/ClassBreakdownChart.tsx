@@ -143,6 +143,8 @@ export function ClassBreakdownChart({
                 fill="oklch(var(--primary))"
                 radius={[4, 4, 0, 0]}
                 maxBarSize={28}
+                animationDuration={250}
+                animationEasing="ease-out"
               />
               <Bar
                 dataKey="window_percentage"
@@ -151,6 +153,8 @@ export function ClassBreakdownChart({
                 fillOpacity={0.55}
                 radius={[4, 4, 0, 0]}
                 maxBarSize={28}
+                animationDuration={250}
+                animationEasing="ease-out"
               />
             </BarChart>
           </ResponsiveContainer>

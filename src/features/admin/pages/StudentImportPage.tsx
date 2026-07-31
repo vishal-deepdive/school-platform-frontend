@@ -12,11 +12,11 @@
  */
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UploadCloud, FileSpreadsheet, CheckCircle2 } from "lucide-react";
+import { UploadCloud, FileSpreadsheet, CheckCircle2, Wrench, KeyRound } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { adminApi } from "@/features/admin/api/admin";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import type { BulkImportResult } from "@/features/admin/types";
+import type { BulkImportResult, ReconcileStudentsResult } from "@/features/admin/types";
 import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -39,9 +39,37 @@ export function StudentImportPage() {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<BulkImportResult | null>(null);
 
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] =
+    useState<ReconcileStudentsResult | null>(null);
+
   const downloadSample = () => {
     const blob = new Blob([SAMPLE_CSV], { type: "text/csv" });
     downloadBlob(blob, "student_roster_template.csv");
+  };
+
+  const handleReconcile = async () => {
+    if (!schoolId) {
+      toast.error("Your account is not linked to a school");
+      return;
+    }
+    setReconciling(true);
+    try {
+      const res = await adminApi.reconcileOrphanedStudents(schoolId);
+      setReconcileResult(res);
+      if (res.repaired > 0) {
+        toast.success(
+          `Repaired login access for ${res.repaired} student(s)` +
+            (res.has_more ? " — run again to continue" : ""),
+        );
+      } else {
+        toast.success("No students needed repair — everyone already has login access");
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setReconciling(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -230,6 +258,88 @@ export function StudentImportPage() {
           </div>
         </Panel>
       )}
+
+      <Panel title="Repair existing students" icon={<Wrench className="h-4 w-4" />}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 p-3">
+            <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              A small number of students may have been added before login
+              accounts were required — they show up on rosters and attendance
+              but can&apos;t sign in. This scans for any and provisions a
+              login (plus a guardian link, if guardian details are on file)
+              using their existing roster data. Safe to run anytime — it never
+              touches a student who can already log in.
+            </p>
+          </div>
+          <Button
+            onClick={handleReconcile}
+            disabled={reconciling}
+            loading={reconciling}
+            icon={!reconciling ? <Wrench className="h-4 w-4" /> : undefined}
+            variant="outline"
+            className="self-start"
+          >
+            {reconciling ? "Checking…" : "Check & repair student logins"}
+          </Button>
+
+          {reconcileResult && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <StatCard label="Repaired" value={reconcileResult.repaired} color="success" />
+                <StatCard
+                  label="New guardian accounts"
+                  value={reconcileResult.guardians_created}
+                  color="info"
+                />
+                <StatCard
+                  label="Guardian links created"
+                  value={reconcileResult.guardians_linked}
+                  color="info"
+                />
+              </div>
+
+              {reconcileResult.has_more && (
+                <Alert variant="warning" title="More students may still need repair">
+                  <p className="text-xs">
+                    This run hit its per-check limit. Click the button again to continue.
+                  </p>
+                </Alert>
+              )}
+
+              {reconcileResult.guardian_conflicts.length > 0 && (
+                <Alert
+                  variant="warning"
+                  title={`${reconcileResult.guardian_conflicts.length} guardian mobile(s) could not be linked`}
+                >
+                  <ul className="mt-1 max-h-40 space-y-0.5 overflow-auto text-xs">
+                    {reconcileResult.guardian_conflicts.slice(0, 50).map((c) => (
+                      <li key={`${c.roll_no}-${c.guardian_mobile}`}>
+                        Roll {c.roll_no} ({c.guardian_mobile}): {c.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </Alert>
+              )}
+
+              {reconcileResult.repaired_students.length > 0 && (
+                <details className="text-xs text-muted-foreground">
+                  <summary className="cursor-pointer font-medium text-foreground">
+                    View repaired students ({reconcileResult.repaired_students.length})
+                  </summary>
+                  <ul className="mt-2 max-h-40 space-y-0.5 overflow-auto">
+                    {reconcileResult.repaired_students.map((s) => (
+                      <li key={s.roll_no}>
+                        {s.name ?? "—"} · Roll #{s.roll_no}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </div>
+          )}
+        </div>
+      </Panel>
     </div>
   );
 }

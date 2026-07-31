@@ -51,21 +51,25 @@ export const attendanceApi = {
       .then((r) => r.data);
   },
 
+  // Attaches a face to ONE existing roster student, named explicitly by
+  // roll_no — no filename convention, so it's the safe path for a single
+  // "Add Face" action (e.g. the roster page's per-row button).
+  enrollStudentFace: (rollNo: string, files: File[], params: Record<string, string>) => {
+    const form = new FormData();
+    files.forEach((f) => form.append("photos", f));
+    form.append("roll_no", rollNo);
+    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
+    return multipartClient
+      .post<EnrollResponse>(`${BASE}/enroll-student-face/`, form)
+      .then((r) => r.data);
+  },
+
   enrollNewStudentPhotos: (files: File[], params: Record<string, string>) => {
     const form = new FormData();
     files.forEach((f) => form.append("photos", f));
     Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
     return multipartClient
       .post<EnrollResponse>(`${BASE}/enroll-new-student-photos/`, form)
-      .then((r) => r.data);
-  },
-
-  enrollWithReplacement: (file: File, params: Record<string, string>) => {
-    const form = new FormData();
-    form.append("faces_zip", file);
-    Object.entries(params).forEach(([k, v]) => v && form.append(k, v));
-    return multipartClient
-      .post<EnrollResponse>(`${BASE}/enroll-new-batch-with-replacement/`, form)
       .then((r) => r.data);
   },
 
