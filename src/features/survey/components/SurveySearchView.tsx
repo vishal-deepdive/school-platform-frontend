@@ -253,9 +253,7 @@ export function SurveySearchView() {
 
   const runSearch = useCallback(
     async (formData: SurveySearchFormData) => {
-      if (streamingRef.current) return;
-      streamingRef.current = true;
-
+      
       const query = formData.query.trim();
 
       if (!query) {
