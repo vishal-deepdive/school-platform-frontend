@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Panel } from "@/shared/components/ui/Panel";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { mapWithConcurrency } from "@/shared/lib/concurrency";
 import { getErrorMessage } from "@/shared/lib/utils";
 import type { PromptSummary, PromptRefreshResponse } from "@/features/admin/types";
 
@@ -230,10 +231,13 @@ export function PromptsPage() {
   const handleCheckAll = useCallback(async () => {
     if (!prompts) return;
     setRefreshAllError(null);
-    // Run all in parallel — each updates independently as it settles
     const errors: string[] = [];
-    await Promise.allSettled(
-      prompts.map(async (p) => {
+    // Bounded rather than fully parallel — each updates independently as it
+    // settles, but a large prompt library shouldn't burst past the backend's
+    // per-minute read limit all at once.
+    await mapWithConcurrency(
+      prompts,
+      async (p) => {
         setCheckingNames((prev) => new Set(prev).add(p.name));
         try {
           const result = await promptsApi.refresh(p.name);
@@ -257,7 +261,8 @@ export function PromptsPage() {
             return next;
           });
         }
-      }),
+      },
+      4,
     );
     if (errors.length) {
       setRefreshAllError(`Failed to check ${errors.length} prompt(s): ${errors.join("; ")}`);
