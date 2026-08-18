@@ -23,7 +23,7 @@ export function useSyncJobPolling() {
     queryKey: surveyKeys.syncStatus(jobId),
     queryFn: () => surveyApi.getSyncStatus(jobId as string),
     enabled: !!jobId,
-    retry: false,
+    retry: 2,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status === "done" || status === "failed") return false;
