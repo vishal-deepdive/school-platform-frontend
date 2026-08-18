@@ -34,6 +34,7 @@ import { isStaff } from "@/shared/lib/permissions";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import {
   useRagDocuments,
+  useRagDocumentStatus,
   useRagClassLevels,
   useUploadRagDocument,
   useDeleteRagDocument,
@@ -108,26 +109,15 @@ export function RagDocumentsPage() {
     ...sortedClasses.map((c) => ({ value: c, label: c })),
   ];
 
-  // Auto-refresh while any document is still being ingested.
+  // List documents with filter & pagination (individual in-progress items poll targeted status below)
   const { data, isLoading, isError, error, refetch, isFetching } =
-    useRagDocuments(
-      {
-        limit: PAGE_SIZE,
-        offset,
-        ...(statusFilter && { status: statusFilter }),
-        ...(debouncedSearch && { search: debouncedSearch }),
-        ...(schoolId && { school_id: schoolId }),
-      },
-      {
-        refetchInterval: (query) => {
-          const items = query.state.data?.items ?? [];
-          const stillWorking = items.some(
-            (d) => !TERMINAL_STATUSES.has(d.status.toLowerCase()),
-          );
-          return stillWorking ? 4000 : false;
-        },
-      },
-    );
+    useRagDocuments({
+      limit: PAGE_SIZE,
+      offset,
+      ...(statusFilter && { status: statusFilter }),
+      ...(debouncedSearch && { search: debouncedSearch }),
+      ...(schoolId && { school_id: schoolId }),
+    });
 
   const total = data?.total ?? 0;
   const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
@@ -237,23 +227,6 @@ export function RagDocumentsPage() {
   const handleStatusFilter = (value: string) => {
     setStatusFilter(value);
     setOffset(0);
-  };
-
-  const getStatusBadge = (status: string, error?: string) => {
-    switch (status.toLowerCase()) {
-      case "completed":
-        return <Badge variant="success">Completed</Badge>;
-      case "failed":
-        return (
-          <span title={error}>
-            <Badge variant="danger">Failed</Badge>
-          </span>
-        );
-      case "pending":
-      case "processing":
-      default:
-        return <Badge variant="warning">{status}</Badge>;
-    }
   };
 
   if (isForbidden) {
@@ -373,10 +346,13 @@ export function RagDocumentsPage() {
                         <div className="text-xs text-muted-foreground">Ch {doc.chapter_number}: {doc.chapter_name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(doc.status, doc.error)}
-                        {doc.status.toLowerCase() === 'failed' && doc.error && (
-                          <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={doc.error}>{doc.error}</div>
-                        )}
+                        <DocumentStatusCell
+                          doc={doc}
+                          onTerminalState={() => {
+                            queryClient.invalidateQueries({ queryKey: ragKeys.documents() });
+                            queryClient.invalidateQueries({ queryKey: ragKeys.metadata() });
+                          }}
+                        />
                       </td>
                       {canManage && (
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -641,6 +617,87 @@ function DocumentChunksPreview({ documentId }: { documentId: string }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Renders live status for an individual document row with targeted polling. */
+function DocumentStatusCell({
+  doc,
+  onTerminalState,
+}: {
+  doc: DocumentItem;
+  onTerminalState?: () => void;
+}) {
+  const isInitiallyTerminal = TERMINAL_STATUSES.has(doc.status.toLowerCase());
+  const { data: liveStatus } = useRagDocumentStatus(doc.id, {
+    enabled: !isInitiallyTerminal,
+    refetchInterval: isInitiallyTerminal ? undefined : 2000,
+  });
+
+  const effectiveStatus = (liveStatus?.status || doc.status).toLowerCase();
+  const effectiveProgress = liveStatus?.progress;
+  const effectiveError = liveStatus?.error || doc.error;
+
+  React.useEffect(() => {
+    if (
+      liveStatus?.status &&
+      TERMINAL_STATUSES.has(liveStatus.status.toLowerCase()) &&
+      !isInitiallyTerminal
+    ) {
+      onTerminalState?.();
+    }
+  }, [liveStatus?.status, isInitiallyTerminal, onTerminalState]);
+
+  if (effectiveStatus === "completed") {
+    return (
+      <div>
+        <Badge variant="success">Completed</Badge>
+        {liveStatus?.total_chunks || doc.total_chunks ? (
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {liveStatus?.total_chunks || doc.total_chunks} chunks
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  if (effectiveStatus === "failed") {
+    return (
+      <div>
+        <Badge variant="danger">Failed</Badge>
+        {effectiveError && (
+          <div className="text-xs text-destructive mt-1 max-w-xs truncate" title={effectiveError}>
+            {effectiveError}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-1.5">
+        <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-500" />
+        <Badge variant="warning">
+          {effectiveStatus === "parsing"
+            ? "Parsing"
+            : effectiveStatus === "chunking"
+            ? "Chunking"
+            : effectiveStatus === "embedding"
+            ? "Embedding"
+            : effectiveStatus === "inserting"
+            ? "Saving"
+            : effectiveStatus === "processing"
+            ? "Processing"
+            : "Pending"}
+        </Badge>
+      </div>
+      {effectiveProgress && (
+        <div className="text-xs text-muted-foreground truncate max-w-xs" title={effectiveProgress}>
+          {effectiveProgress}
+        </div>
+      )}
     </div>
   );
 }
