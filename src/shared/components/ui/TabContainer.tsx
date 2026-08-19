@@ -82,7 +82,7 @@ export function TabContainer({ className }: TabContainerProps) {
     >
       {active && (
         <div className="flex h-10 shrink-0 items-center gap-3 px-1 md:h-14">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-xs">
             {active.tab.icon}
           </div>
           <div className="min-w-0">
@@ -109,8 +109,8 @@ export function TabContainer({ className }: TabContainerProps) {
           inside stay visibly elevated. */}
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-muted/10 to-primary/[0.03] dark:from-black/20 dark:to-primary/[0.03]",
-          "border border-border/60 dark:border-border/50",
+          "min-h-0 flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-primary/[0.03] via-background to-primary/[0.06] dark:from-card/40 dark:via-background dark:to-primary/[0.04]",
+          "border border-border/60 dark:border-border/50 shadow-[0_1px_3px_0_rgba(0,0,0,0.02)]",
         )}
       >
         <div

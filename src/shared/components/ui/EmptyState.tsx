@@ -27,11 +27,11 @@ export function EmptyState({
 }: EmptyStateProps) {
   const content = (
     <>
-      <div className="text-muted-foreground/40 animate-float">{icon}</div>
+      <div className="text-primary/45 dark:text-primary/60 animate-float">{icon}</div>
       <div>
-        <p className="font-semibold text-foreground">{title}</p>
+        <p className="font-bold text-slate-900 dark:text-slate-100">{title}</p>
         {description && (
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 max-w-md">{description}</p>
         )}
       </div>
       {action}
