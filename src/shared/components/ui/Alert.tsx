@@ -23,26 +23,26 @@ const config: Record<
 > = {
   error: {
     icon: AlertCircle,
-    classes: "bg-destructive/10 border-destructive/20 text-destructive",
+    classes: "bg-rose-500/12 border-rose-500/25 text-rose-800 dark:text-rose-300 shadow-2xs",
   },
   danger: {
     icon: AlertCircle,
-    classes: "bg-destructive/10 border-destructive/20 text-destructive",
+    classes: "bg-rose-500/12 border-rose-500/25 text-rose-800 dark:text-rose-300 shadow-2xs",
   }, // Alias for error
   success: {
     icon: CheckCircle2,
     classes:
-      "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400",
+      "bg-emerald-500/12 border-emerald-500/25 text-emerald-800 dark:text-emerald-300 shadow-2xs",
   },
   warning: {
     icon: AlertTriangle,
     classes:
-      "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
+      "bg-amber-500/12 border-amber-500/25 text-amber-800 dark:text-amber-300 shadow-2xs",
   },
   info: {
     icon: Info,
     classes:
-      "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
+      "bg-blue-500/12 border-blue-500/25 text-blue-800 dark:text-blue-300 shadow-2xs",
   },
 };
 

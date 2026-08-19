@@ -140,18 +140,18 @@ export function StudentAttendanceCalendar({
                 aria-label={`${dayLabel}: ${statusLabel}`}
                 title={showingStale ? undefined : `${dayLabel} — ${statusLabel}`}
                 className={cn(
-                  "flex h-11 sm:h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-xs transition-colors font-medium",
+                  "flex h-11 sm:h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-xs transition-colors font-semibold",
                   isFuture
-                    ? "text-muted-foreground/25 bg-muted/10"
+                    ? "text-slate-400 dark:text-slate-600 bg-muted/25 opacity-35 border border-dashed border-border/60"
                     : showingStale
-                      ? "bg-muted/30 text-muted-foreground/40"
+                      ? "bg-muted/40 text-slate-400"
                       : statusCellClass(status ?? ""),
-                  isToday && !showingStale && "ring-2 ring-primary ring-offset-1 font-bold",
+                  isToday && !showingStale && "ring-2 ring-primary ring-offset-2 font-bold shadow-xs",
                 )}
               >
-                <span className="text-[0.75rem] sm:text-xs leading-none">{dayNumber}</span>
+                <span className="text-[0.8rem] sm:text-xs font-bold leading-none">{dayNumber}</span>
                 {!isFuture && !showingStale && status && (
-                  <span className="text-[0.65rem] sm:text-[0.7rem] font-bold leading-none tracking-tight">{status}</span>
+                  <span className="text-[0.7rem] sm:text-[0.75rem] font-extrabold leading-none tracking-tight">{status}</span>
                 )}
               </div>
             );

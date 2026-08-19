@@ -21,7 +21,7 @@ function UserAvatar({
 }: {
   url?: string | null;
   name: string;
-  /** "fill" — fills parent container (no own border/size). "sm" — 36px. "md" — 40px. */
+  /** "fill" — fills parent container. "sm" — 36px. "md" — 40px. */
   size: "fill" | "sm" | "md";
   error: boolean;
   onError: () => void;
@@ -37,8 +37,8 @@ function UserAvatar({
           size === "fill"
             ? "h-full w-full object-cover"
             : size === "sm"
-            ? "h-9 w-9 shrink-0 rounded-lg object-cover border border-slate-300 dark:border-slate-700 shadow-sm"
-            : "h-10 w-10 shrink-0 rounded-xl object-cover border border-slate-300 dark:border-slate-700 shadow-sm"
+            ? "h-9 w-9 shrink-0 rounded-lg object-cover border border-border shadow-xs"
+            : "h-10 w-10 shrink-0 rounded-xl object-cover border border-border shadow-xs"
         }
         referrerPolicy="no-referrer"
         onError={onError}
@@ -51,7 +51,7 @@ function UserAvatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center bg-background text-foreground font-bold shadow-sm border border-slate-300 dark:border-slate-700",
+        "flex shrink-0 items-center justify-center bg-background text-foreground font-bold shadow-xs border border-border text-sm",
         size === "sm" ? "h-9 w-9 rounded-lg" : "h-10 w-10 rounded-xl",
       )}
     >
@@ -126,18 +126,18 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
   const getRoleBadge = (role?: string) => {
     if (!role) return null;
     const colors: Record<string, string> = {
-      admin: "bg-rose-500/10 text-rose-500 border-rose-500/20",
-      principal: "bg-purple-500/10 text-purple-500 border-purple-500/20",
-      teacher: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-      student: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      parent: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+      admin: "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30",
+      principal: "bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30",
+      teacher: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
+      student: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
+      parent: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
     };
     const colorClass =
-      colors[role.toLowerCase()] || "bg-slate-500/10 text-slate-500 border-slate-500/20";
+      colors[role.toLowerCase()] || "bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30";
     return (
       <span
         className={cn(
-          "inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider uppercase border",
+          "inline-flex items-center rounded px-1.5 py-0.5 text-[9px] font-extrabold tracking-wider uppercase border shadow-2xs",
           colorClass,
         )}
       >
@@ -151,7 +151,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
       {mobile ? (
         <button
           onClick={() => setOpen(!open)}
-          className="flex w-full items-center gap-3 rounded-xl px-4 py-3 hover:bg-muted/50 transition-colors"
+          className="flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 hover:bg-muted/60 transition-all"
         >
           <UserAvatar
             url={user?.avatar_url}
@@ -162,12 +162,12 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
           />
           <div className="flex-1 text-left min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-semibold text-foreground truncate">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                 {user?.full_name ?? "User"}
               </p>
               {getRoleBadge(user?.role)}
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate mt-0.5">
               {contactLine}
             </p>
           </div>
@@ -177,7 +177,7 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
         <>
           <button
             onClick={() => setOpen(!open)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-background text-foreground font-bold shadow-sm border border-slate-300 dark:border-slate-700 transition-all duration-200 hover:bg-muted/50 overflow-hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white font-bold shadow-sm border border-white/20 transition-all duration-200 hover:border-white/40 hover:bg-white/20 hover:ring-2 hover:ring-white/25 overflow-hidden"
             aria-label="User Profile"
           >
             <UserAvatar
@@ -202,14 +202,14 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
             className={cn(
-              "absolute z-50 w-64 rounded-xl border border-slate-200 dark:border-slate-800 bg-background shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_0_20px_rgba(255,255,255,0.07)] overflow-hidden animate-in fade-in zoom-in-95 duration-200",
+              "absolute z-50 w-64 rounded-xl border border-border/80 bg-popover text-popover-foreground shadow-lg dark:shadow-[0_12px_36px_-6px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.08)] overflow-hidden animate-in fade-in zoom-in-95 duration-150",
               mobile
                 ? "bottom-[calc(100%+8px)] left-0"
-                : "bottom-0 left-[calc(100%+16px)]",
+                : "bottom-0 left-[calc(100%+12px)]",
             )}
           >
             {/* Dropdown header */}
-            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 bg-muted/30 p-3">
+            <div className="flex items-center gap-3 border-b border-border/60 bg-muted/40 p-3">
               <UserAvatar
                 url={user?.avatar_url}
                 name={displayName}
@@ -218,53 +218,57 @@ export function UserProfileMenu({ mobile }: UserProfileMenuProps) {
                 onError={() => setImgError(true)}
               />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold text-foreground truncate">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                     {user?.full_name ?? "User"}
                   </p>
                   {getRoleBadge(user?.role)}
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5">
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 truncate mt-0.5">
                   {contactLine}
                 </p>
               </div>
             </div>
 
             {/* Dropdown links */}
-            <div className="p-2 space-y-1">
+            <div className="p-1.5 space-y-0.5">
               <button
                 onClick={() => {
                   setOpen(false);
                   navigate("/profile");
                 }}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-muted/50 hover:text-foreground transition-all"
+                className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-muted/70 hover:text-foreground transition-colors"
               >
-                <UserIcon className="h-4 w-4" />
-                My Profile
+                <UserIcon className="h-4 w-4 text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors" />
+                <span>My Profile</span>
               </button>
 
               <button
                 onClick={toggleTheme}
-                className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-muted/50 hover:text-foreground transition-all"
+                className="group flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium text-slate-800 dark:text-slate-200 hover:bg-muted/70 hover:text-foreground transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  {isDark ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-                  Theme
+                <div className="flex items-center gap-2.5">
+                  {isDark ? (
+                    <Moon className="h-4 w-4 text-blue-400" />
+                  ) : (
+                    <Sun className="h-4 w-4 text-amber-500" />
+                  )}
+                  <span>Theme</span>
                 </div>
-                <span className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider">
+                <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 border border-border/70 shadow-2xs">
                   {isDark ? "Dark" : "Light"}
                 </span>
               </button>
 
-              <div className="my-1 border-t border-slate-200 dark:border-slate-800" />
+              <div className="my-1 border-t border-border/60" />
 
               <button
                 onClick={handleLogout}
                 disabled={loggingOut}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-rose-500/80 dark:text-rose-400/80 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 transition-all"
+                className="group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-700 dark:hover:text-rose-300 transition-colors disabled:opacity-50"
               >
-                <LogOut className="h-4 w-4" />
-                {loggingOut ? "Logging out..." : "Log out"}
+                <LogOut className="h-4 w-4 text-rose-500 group-hover:scale-105 transition-transform" />
+                <span>{loggingOut ? "Logging out..." : "Log out"}</span>
               </button>
             </div>
           </div>

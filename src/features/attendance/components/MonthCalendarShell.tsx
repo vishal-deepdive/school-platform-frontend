@@ -56,7 +56,7 @@ export function MonthCalendarShell({
             type="button"
             aria-label="Previous month"
             onClick={() => onMonthChange(subMonths(monthStart, 1))}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/80 bg-background text-slate-700 dark:text-slate-300 shadow-2xs transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -65,13 +65,13 @@ export function MonthCalendarShell({
             aria-label="Next month"
             disabled={atMaxMonth}
             onClick={() => onMonthChange(addMonths(monthStart, 1))}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-input disabled:hover:bg-background"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border/80 bg-background text-slate-700 dark:text-slate-300 shadow-2xs transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-border disabled:hover:bg-background"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
 
-        <h3 className="text-sm font-semibold text-foreground sm:text-base">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 sm:text-base">
           {format(monthStart, "MMMM yyyy")}
         </h3>
 
@@ -81,7 +81,7 @@ export function MonthCalendarShell({
           <button
             type="button"
             onClick={() => onMonthChange(new Date())}
-            className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-background px-2.5 py-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 shadow-2xs transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1"
           >
             <RotateCcw className="h-3 w-3" />
             Today
@@ -94,7 +94,7 @@ export function MonthCalendarShell({
           {WEEKDAY_LABELS.map((w) => (
             <div
               key={w}
-              className="py-1 text-center text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground"
+              className="py-1.5 text-center text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400"
             >
               {w}
             </div>

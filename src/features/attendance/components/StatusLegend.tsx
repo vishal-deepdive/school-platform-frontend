@@ -14,20 +14,20 @@ const ORDER: AttendanceStatus[] = ["P", "A", "L", "E", "H"];
  */
 export function StatusLegend({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 text-xs ${className}`}>
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 border-t border-border/40 text-xs ${className}`}>
       {ORDER.map((s) => {
         const Icon = STATUS_ICONS[s];
         return (
-          <span key={s} className="flex items-center gap-1.5">
+          <span key={s} className="flex items-center gap-1.5 font-medium">
             <Icon className={`h-3.5 w-3.5 ${statusTextClass(s)}`} />
-            <span className="font-semibold text-foreground">{s}</span>
-            <span className="text-muted-foreground">{STATUS_LABELS[s]}</span>
+            <span className="font-bold text-slate-900 dark:text-slate-100">{s}</span>
+            <span className="text-slate-600 dark:text-slate-400">{STATUS_LABELS[s]}</span>
           </span>
         );
       })}
-      <span className="flex items-center gap-1.5">
-        <span className="font-semibold text-muted-foreground">—</span>
-        <span className="text-muted-foreground">Not marked</span>
+      <span className="flex items-center gap-1.5 font-medium">
+        <span className="font-bold text-slate-500 dark:text-slate-400">—</span>
+        <span className="text-slate-600 dark:text-slate-400">Not marked</span>
       </span>
     </div>
   );

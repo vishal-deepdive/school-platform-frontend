@@ -53,11 +53,11 @@ export function statusVariant(status: string): BadgeVariant {
 }
 
 export const STATUS_TEXT_CLASSES: Record<AttendanceStatus, string> = {
-  P: "text-green-600 dark:text-green-400",
-  A: "text-red-500 dark:text-red-400",
-  L: "text-amber-500 dark:text-amber-400",
-  E: "text-blue-500 dark:text-blue-400",
-  H: "text-muted-foreground",
+  P: "text-emerald-600 dark:text-emerald-400 font-semibold",
+  A: "text-rose-600 dark:text-rose-400 font-semibold",
+  L: "text-amber-600 dark:text-amber-400 font-semibold",
+  E: "text-blue-600 dark:text-blue-400 font-semibold",
+  H: "text-slate-600 dark:text-slate-400 font-semibold",
 };
 
 export function statusTextClass(status: string): string {
@@ -67,17 +67,17 @@ export function statusTextClass(status: string): string {
 // Full cell treatment (background + text + subtle ring) for calendar-grid days,
 // where a status needs to read at a glance without relying on a text label.
 export const STATUS_CELL_CLASSES: Record<AttendanceStatus, string> = {
-  P: "bg-green-500/10 text-green-700 ring-1 ring-inset ring-green-500/25 dark:text-green-400",
-  A: "bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/25",
-  L: "bg-amber-500/10 text-amber-700 ring-1 ring-inset ring-amber-500/25 dark:text-amber-400",
-  E: "bg-blue-500/10 text-blue-700 ring-1 ring-inset ring-blue-500/25 dark:text-blue-400",
-  H: "bg-secondary text-secondary-foreground ring-1 ring-inset ring-border/60",
+  P: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 ring-1 ring-inset ring-emerald-500/30 shadow-2xs font-semibold",
+  A: "bg-rose-500/15 text-rose-800 dark:text-rose-300 ring-1 ring-inset ring-rose-500/30 shadow-2xs font-semibold",
+  L: "bg-amber-500/15 text-amber-800 dark:text-amber-300 ring-1 ring-inset ring-amber-500/30 shadow-2xs font-semibold",
+  E: "bg-blue-500/15 text-blue-800 dark:text-blue-300 ring-1 ring-inset ring-blue-500/30 shadow-2xs font-semibold",
+  H: "bg-secondary text-secondary-foreground ring-1 ring-inset ring-border/80 shadow-2xs font-semibold",
 };
 
 export function statusCellClass(status: string): string {
   return (
     STATUS_CELL_CLASSES[status as AttendanceStatus] ??
-    "bg-muted/40 text-muted-foreground ring-1 ring-inset ring-border/40"
+    "bg-muted/60 text-slate-700 dark:text-slate-300 ring-1 ring-inset ring-border/60"
   );
 }
 
@@ -92,10 +92,10 @@ export function percentageBucket(pct: number | null): "success" | "warning" | "d
 
 // Full cell treatment for a day showing a class-wide attendance percentage.
 export const PERCENTAGE_CELL_CLASSES: Record<ReturnType<typeof percentageBucket>, string> = {
-  success: "bg-green-500/10 text-green-700 ring-1 ring-inset ring-green-500/25 dark:text-green-400",
-  warning: "bg-amber-500/10 text-amber-700 ring-1 ring-inset ring-amber-500/25 dark:text-amber-400",
-  danger: "bg-destructive/10 text-destructive ring-1 ring-inset ring-destructive/25",
-  none: "bg-muted/40 text-muted-foreground ring-1 ring-inset ring-border/40",
+  success: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 ring-1 ring-inset ring-emerald-500/30 shadow-2xs font-semibold",
+  warning: "bg-amber-500/15 text-amber-800 dark:text-amber-300 ring-1 ring-inset ring-amber-500/30 shadow-2xs font-semibold",
+  danger: "bg-rose-500/15 text-rose-800 dark:text-rose-300 ring-1 ring-inset ring-rose-500/30 shadow-2xs font-semibold",
+  none: "bg-muted/50 text-slate-700 dark:text-slate-300 ring-1 ring-inset ring-border/60",
 };
 
 export function percentageCellClass(pct: number | null): string {

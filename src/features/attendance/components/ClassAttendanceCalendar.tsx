@@ -116,22 +116,22 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
           onMonthChange={setMonth}
           loading={isLoading}
           legend={
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 text-xs">
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-sm" />
-                <span className="text-muted-foreground">≥ 75% Present</span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 border-t border-border/40 text-xs">
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-emerald-500 shadow-xs ring-1 ring-emerald-600/20" />
+                <span>≥ 75% Present</span>
               </span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-sm" />
-                <span className="text-muted-foreground">60–74% Present</span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-amber-500 shadow-xs ring-1 ring-amber-600/20" />
+                <span>60–74% Present</span>
               </span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-500 shadow-sm" />
-                <span className="text-muted-foreground">&lt; 60% Present</span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-rose-500 shadow-xs ring-1 ring-rose-600/20" />
+                <span>&lt; 60% Present</span>
               </span>
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
-                <span className="text-muted-foreground">Not marked</span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-muted-foreground/30 ring-1 ring-border" />
+                <span>Not marked</span>
               </span>
             </div>
           }
@@ -161,25 +161,25 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
                 disabled={isFuture}
                 className={cn(
                   "appearance-none border-0 bg-transparent p-0",
-                  "flex h-16 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium transition-all duration-150",
+                  "flex h-16 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold transition-all duration-150",
                   isFuture
-                    ? "cursor-not-allowed opacity-30 bg-muted/20 text-muted-foreground"
+                    ? "cursor-not-allowed opacity-35 bg-muted/25 text-slate-400 dark:text-slate-600 border border-dashed border-border/60"
                     : showingStale
-                      ? "bg-muted/30 text-muted-foreground/40"
+                      ? "bg-muted/40 text-slate-400"
                       : percentageCellClass(cell?.percentage ?? null),
                   !isFuture && "hover:scale-[1.03] active:scale-95 hover:shadow-md cursor-pointer",
-                  isToday && !showingStale && "ring-2 ring-primary ring-offset-1 font-bold",
-                  isSelected && "ring-2 ring-blue-600 dark:ring-blue-400 ring-offset-2 scale-[1.03] z-10 shadow-lg"
+                  isToday && !showingStale && "ring-2 ring-primary ring-offset-2 font-bold shadow-xs",
+                  isSelected && "ring-2 ring-blue-600 dark:ring-blue-400 ring-offset-2 scale-[1.03] z-10 shadow-md"
                 )}
                 title={showingStale ? undefined : `${dayLabel} — ${statusLabel}`}
                 aria-label={`${dayLabel}: ${statusLabel}`}
               >
-                <span className="text-[0.75rem] sm:text-xs leading-none">
+                <span className="text-[0.8rem] sm:text-xs font-bold leading-none">
                   {dayNumber}
                 </span>
 
                 {!isFuture && !showingStale && cell?.percentage != null && (
-                  <span className="text-[0.65rem] sm:text-[0.7rem] font-bold leading-none tracking-tight">
+                  <span className="text-[0.7rem] sm:text-[0.75rem] font-extrabold leading-none tracking-tight">
                     {Math.round(cell.percentage)}%
                   </span>
                 )}
