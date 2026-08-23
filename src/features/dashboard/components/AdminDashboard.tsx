@@ -257,6 +257,8 @@ export function AdminDashboard() {
                     fill="url(#platform-fill)"
                     dot={false}
                     activeDot={{ r: 4, strokeWidth: 2, stroke: "oklch(var(--card))" }}
+                    animationDuration={250}
+                    animationEasing="ease-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -310,7 +312,7 @@ export function AdminDashboard() {
                     content={<RoleTooltip />}
                     cursor={{ fill: "oklch(var(--muted-foreground))", opacity: 0.08 }}
                   />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                  <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={20} animationDuration={250} animationEasing="ease-out">
                     {roles.map((r) => (
                       <Cell key={r.name} fill={r.color} />
                     ))}

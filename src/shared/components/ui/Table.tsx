@@ -84,16 +84,16 @@ export function Table<T extends object>({
   return (
     <div
       className={cn(
-        "overflow-x-auto rounded-lg border border-border/50 bg-background",
+        "overflow-x-auto rounded-xl border border-border/60 bg-background shadow-2xs",
         stickyHeader && "max-h-[70vh] overflow-y-auto scrollbar-thin",
         className,
       )}
     >
-      <table className="min-w-full divide-y divide-border/50">
+      <table className="min-w-full divide-y divide-border/60">
         <thead
           className={cn(
-            "bg-muted/50",
-            stickyHeader && "sticky top-0 z-10 bg-muted backdrop-blur",
+            "bg-muted/70 dark:bg-muted/40",
+            stickyHeader && "sticky top-0 z-10 bg-muted/90 backdrop-blur",
           )}
         >
           <tr>
@@ -112,7 +112,7 @@ export function Table<T extends object>({
                       : undefined
                   }
                   className={cn(
-                    "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground",
+                    "px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300",
                     alignClasses[col.align ?? "left"],
                     col.className,
                   )}

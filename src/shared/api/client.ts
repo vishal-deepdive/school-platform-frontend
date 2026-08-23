@@ -48,6 +48,8 @@ export function reconcileUserFromToken(token?: string | null): void {
   const patch: Partial<typeof user> = {};
   if (decoded.role && decoded.role !== user.role) patch.role = decoded.role;
   if (decoded.school_id !== user.school_id) patch.school_id = decoded.school_id;
+  const mustChangePassword = decoded.must_change_password ?? false;
+  if (mustChangePassword !== user.must_change_password) patch.must_change_password = mustChangePassword;
   if (Object.keys(patch).length > 0) updateUser(patch);
 }
 
@@ -63,6 +65,26 @@ function hasSession(): boolean {
 }
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+// A refresh 429 comes with a Retry-After header (see the backend's
+// rate_limit_headers()) — the actual seconds left in that rate-limit window,
+// which is far more accurate than guessing with a flat per-attempt backoff.
+// Capped so a misbehaving/looser tier can never wedge this loop (and every
+// caller awaiting refreshAccessToken with it) for an unreasonable stretch.
+const MAX_RETRY_AFTER_MS = 5_000;
+
+/** Backoff for the next refresh attempt: the server's Retry-After on a 429
+ * (capped), else the existing flat `attempt * 1s` for other transient errors. */
+function retryDelayMs(err: unknown, attempt: number): number {
+  if (axios.isAxiosError(err) && err.response?.status === 429) {
+    const header = err.response.headers?.["retry-after"];
+    const seconds = Number(header);
+    if (Number.isFinite(seconds) && seconds > 0) {
+      return Math.min(seconds * 1_000, MAX_RETRY_AFTER_MS);
+    }
+  }
+  return attempt * 1_000;
+}
 
 /**
  * Raised when there is genuinely no session to work with. Treated the same as a
@@ -130,7 +152,7 @@ async function performRefresh(): Promise<string> {
       // A genuinely-rejected refresh token will never succeed on retry.
       if (isDefinitiveAuthFailure(err)) throw err;
       // Transient (network / timeout / 429 / 5xx) — back off and retry.
-      if (attempt < MAX_ATTEMPTS) await delay(attempt * 1_000);
+      if (attempt < MAX_ATTEMPTS) await delay(retryDelayMs(err, attempt));
     }
   }
 

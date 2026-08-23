@@ -24,7 +24,7 @@ export function SecondaryNav({
   return (
     <aside
       className={cn(
-        "z-10 h-full overflow-hidden bg-background",
+        "z-10 h-full overflow-hidden bg-background/95",
         hasSecondary ? "transition-all duration-300 ease-in-out" : "transition-none",
         hasSecondary && !isCollapsed ? "w-60" : "w-0",
       )}
@@ -32,8 +32,8 @@ export function SecondaryNav({
       {hasSecondary && (
         <div className="flex h-full w-60 flex-col">
           {/* Header title aligns with item text below (24px inset). */}
-          <div className="flex h-16 shrink-0 items-center justify-between pl-6 pr-3 border-b border-transparent">
-            <h2 className="min-w-0 font-display text-[15px] font-semibold tracking-tight text-foreground">
+          <div className="flex h-16 shrink-0 items-center justify-between pl-6 pr-3 border-b border-border/40">
+            <h2 className="min-w-0 font-display text-[15px] font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {activeCategory?.children?.[0]?.href ? (
                 <Link
                   to={activeCategory.children[0].href}
@@ -48,7 +48,7 @@ export function SecondaryNav({
             <Tooltip content="Collapse sidebar" side="right">
               <button
                 onClick={() => setCollapsed(true)}
-                className="shrink-0 rounded-lg p-1.5 text-slate-400 dark:text-slate-500 transition-colors duration-200 hover:bg-muted hover:text-foreground"
+                className="shrink-0 rounded-lg p-1.5 text-slate-500 dark:text-slate-400 transition-colors duration-200 hover:bg-primary/10 hover:text-primary"
                 aria-label="Collapse sidebar"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -71,7 +71,7 @@ export function SecondaryNav({
                       {showGroup && (
                         <p
                           className={cn(
-                            "eyebrow px-3 pb-1 text-muted-foreground/60",
+                            "eyebrow px-2.5 pb-1 text-slate-500 dark:text-slate-400 font-bold tracking-wider",
                             i === 0 ? "pt-1" : "pt-4",
                           )}
                         >
@@ -83,10 +83,10 @@ export function SecondaryNav({
                         end={child.end !== undefined ? child.end : child.href === "/"}
                         className={({ isActive }) =>
                           cn(
-                            "group relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             isActive
-                              ? "bg-primary/15 dark:bg-primary/10 font-semibold text-primary"
-                              : "font-medium text-slate-600 dark:text-slate-400 hover:bg-primary/5 dark:hover:bg-muted/60 hover:text-foreground",
+                              ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-blue-300 font-semibold"
+                              : "font-medium text-slate-800 dark:text-slate-200 hover:bg-muted/70 hover:text-primary dark:hover:text-white",
                           )
                         }
                       >
@@ -94,10 +94,10 @@ export function SecondaryNav({
                           <>
                             <div
                               className={cn(
-                                "flex h-4 w-4 shrink-0 items-center justify-center transition-colors duration-150 [&>svg]:h-4 [&>svg]:w-4",
+                                "flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-all duration-150 [&>svg]:h-4 [&>svg]:w-4",
                                 isActive
-                                  ? "text-primary"
-                                  : "text-slate-400 dark:text-slate-500 group-hover:text-foreground",
+                                  ? "text-primary dark:text-blue-300"
+                                  : "text-slate-500 dark:text-slate-400 group-hover:text-primary",
                               )}
                             >
                               {child.icon}

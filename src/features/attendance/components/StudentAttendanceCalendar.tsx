@@ -23,7 +23,7 @@ interface StudentAttendanceCalendarProps {
 }
 
 function dayCellSkeleton(i: number) {
-  return <Skeleton key={i} className="aspect-square rounded-lg" />;
+  return <Skeleton key={i} className="h-11 sm:h-12 w-full rounded-xl" />;
 }
 
 /**
@@ -140,23 +140,24 @@ export function StudentAttendanceCalendar({
                 aria-label={`${dayLabel}: ${statusLabel}`}
                 title={showingStale ? undefined : `${dayLabel} — ${statusLabel}`}
                 className={cn(
-                  "flex aspect-square flex-col items-center justify-center gap-0.5 rounded-lg text-xs transition-colors",
+                  "flex h-11 sm:h-12 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-xs transition-colors font-semibold",
                   isFuture
-                    ? "text-muted-foreground/25"
+                    ? "text-slate-400 dark:text-slate-600 bg-muted/25 opacity-35 border border-dashed border-border/60"
                     : showingStale
-                      ? "bg-muted/30 text-muted-foreground/40"
+                      ? "bg-muted/40 text-slate-400"
                       : statusCellClass(status ?? ""),
-                  isToday && !showingStale && "ring-2 ring-primary",
+                  isToday && !showingStale && "ring-2 ring-primary ring-offset-2 font-bold shadow-xs",
                 )}
               >
-                <span className="text-[0.7rem] font-medium sm:text-sm">{dayNumber}</span>
+                <span className="text-[0.8rem] sm:text-xs font-bold leading-none">{dayNumber}</span>
                 {!isFuture && !showingStale && status && (
-                  <span className="text-[0.6rem] font-bold sm:text-xs">{status}</span>
+                  <span className="text-[0.7rem] sm:text-[0.75rem] font-extrabold leading-none tracking-tight">{status}</span>
                 )}
               </div>
             );
           }}
         />
+
 
         {!isLoading && isCurrentMonthData && data && data.day_statuses.length === 0 && (
           <EmptyState

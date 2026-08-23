@@ -118,6 +118,8 @@ function MonthlyChart({ monthly }: { monthly: MyMonthlyStat[] }) {
             fill="oklch(var(--primary))"
             radius={[4, 4, 0, 0]}
             maxBarSize={36}
+            animationDuration={250}
+            animationEasing="ease-out"
           />
         </BarChart>
       </ResponsiveContainer>

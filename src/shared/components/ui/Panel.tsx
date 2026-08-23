@@ -33,25 +33,25 @@ export function Panel({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-xl border border-border/60 bg-card",
+        "overflow-hidden rounded-xl border border-border/60 bg-card shadow-[0_1px_3px_0_rgba(0,0,0,0.03),0_1px_2px_-1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
         className,
       )}
     >
       {hasHeader && (
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 md:px-5">
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 px-4 py-3 md:px-5 bg-card">
           {title ? (
             <div className="flex items-center gap-2.5 min-w-0">
               {icon && (
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-2xs">
                   {icon}
                 </span>
               )}
               <div className="min-w-0">
-                <h3 className="truncate text-sm font-semibold text-foreground">
+                <h3 className="truncate text-sm font-bold text-slate-900 dark:text-slate-100">
                   {title}
                 </h3>
                 {description && (
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-xs font-medium text-slate-600 dark:text-slate-400">
                     {description}
                   </p>
                 )}

@@ -65,10 +65,10 @@ export function DesktopSidebar({
         <Tooltip content="Expand sidebar" side="right">
           <button
             onClick={() => setCollapsed(false)}
-            className="absolute -right-3 top-28 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-300 dark:border-slate-700 bg-background text-slate-500 dark:text-slate-400 shadow-sm transition-transform duration-300 hover:scale-110 hover:bg-accent hover:text-foreground"
+            className="absolute -right-3 top-28 z-30 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background text-slate-500 dark:text-slate-400 shadow-sm transition-all duration-200 hover:scale-110 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
             aria-label="Expand sidebar"
           >
-            <ChevronRight className="h-3.5 w-3.5 transition-transform duration-300 hover:translate-x-0.5" />
+            <ChevronRight className="h-3.5 w-3.5 transition-transform duration-200 hover:translate-x-0.5" />
           </button>
         </Tooltip>
       )}

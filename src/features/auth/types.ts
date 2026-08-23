@@ -19,6 +19,10 @@ export interface User {
   is_active: boolean;
   is_email_verified: boolean;
   avatar_url: string | null;
+  // True until the user sets their own password via POST /auth/change-password
+  // — ProtectedRoute redirects to /set-password while this is true. Only
+  // ever true for a student on a DOB-derived default.
+  must_change_password: boolean;
 }
 
 export interface TokenResponse {
@@ -109,6 +113,7 @@ export interface UserResponse {
   is_active: boolean;
   is_email_verified: boolean;
   avatar_url: string | null;
+  must_change_password: boolean;
 }
 
 export type OtpPurpose = "verify_email" | "reset_password";
@@ -158,6 +163,13 @@ export type ResendOtpRequest = ForgotPasswordRequest;
 
 export interface ResetPasswordRequest {
   reset_token: string;
+  new_password: string;
+}
+
+/** Self-service change for an already-authenticated user — requires the
+ * current password even though a valid Bearer token is already presented. */
+export interface ChangePasswordRequest {
+  current_password: string;
   new_password: string;
 }
 

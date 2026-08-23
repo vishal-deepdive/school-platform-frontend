@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap, KeyRound, Hash } from "lucide-react";
+import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap, KeyRound, Hash, ScanFace, SmilePlus } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { adminApi } from "@/features/admin/api/admin";
@@ -21,8 +21,9 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Modal } from "@/shared/components/ui/Modal";
-import { downloadBlob, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
+import { cn, downloadBlob, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
 import type { RosterStudent } from "@/features/attendance/types";
 import type { CreateStudentRequest } from "@/features/admin/types";
 
@@ -71,6 +72,7 @@ export function ManageStudentsPage() {
   const [session, setSession] = useState(getCurrentSession());
   const [roster, setRoster] = useState<RosterStudent[] | null>(null);
   const [search, setSearch] = useState("");
+  const [missingFaceOnly, setMissingFaceOnly] = useState(false);
   const [studentToDelete, setStudentToDelete] = useState<RosterStudent | null>(
     null,
   );
@@ -103,6 +105,9 @@ export function ManageStudentsPage() {
   const [studentToResetPassword, setStudentToResetPassword] =
     useState<RosterStudent | null>(null);
 
+  const [studentToAddFace, setStudentToAddFace] = useState<RosterStudent | null>(null);
+  const [addFacePhotos, setAddFacePhotos] = useState<File[]>([]);
+
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
 
@@ -111,6 +116,7 @@ export function ManageStudentsPage() {
     setClassName("");
     setSection("");
     setRoster(null);
+    setMissingFaceOnly(false);
   }, [schoolId]);
 
   const loadMutation = useMutation({
@@ -248,6 +254,33 @@ export function ManageStudentsPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  const addFaceMutation = useMutation({
+    mutationFn: () => {
+      if (!studentToAddFace || addFacePhotos.length === 0) {
+        throw new Error("Select at least one photo");
+      }
+      return attendanceApi.enrollStudentFace(studentToAddFace.roll_no, addFacePhotos, {
+        session,
+        ...schoolParam,
+      });
+    },
+    onSuccess: (res) => {
+      toast.success(
+        res.enrolled_students.length > 0
+          ? `Face attached for ${res.enrolled_students[0].name}`
+          : "Face attached",
+      );
+      const rollNo = studentToAddFace?.roll_no;
+      setRoster((prev) =>
+        prev?.map((s) => (s.roll_no === rollNo ? { ...s, has_face: true } : s)) ?? null,
+      );
+      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      setStudentToAddFace(null);
+      setAddFacePhotos([]);
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
   const classPromoteMutation = useMutation({
     mutationFn: () => {
       if (!schoolId) throw new Error("No school selected");
@@ -273,6 +306,7 @@ export function ManageStudentsPage() {
       { header: "Admission No", getValue: (s) => String(s.roll_no) },
       { header: "Class Roll No", getValue: (s) => String(s.class_roll_no ?? "") },
       { header: "Name", getValue: (s) => String(s.name ?? "—") },
+      { header: "Has Face", getValue: (s) => (s.has_face ? "Yes" : "No") },
     ]);
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     downloadBlob(blob, `students${className ? `-${className}${section ? `-${section}` : ""}` : ""}.csv`);
@@ -295,17 +329,24 @@ export function ManageStudentsPage() {
   const classLabel = `${className}${section ? `-${section}` : ""}`;
   const classDeleteConfirmed = classDeleteConfirmText.trim() === classLabel;
 
+  const missingFaceCount = useMemo(
+    () => roster?.filter((s) => !s.has_face).length ?? 0,
+    [roster],
+  );
+
   const visible = useMemo(() => {
     if (!roster) return [];
+    let out = roster;
+    if (missingFaceOnly) out = out.filter((s) => !s.has_face);
     const q = search.trim().toLowerCase();
-    if (!q) return roster;
-    return roster.filter(
+    if (!q) return out;
+    return out.filter(
       (s) =>
         s.roll_no.toLowerCase().includes(q) ||
         (s.class_roll_no ?? "").toLowerCase().includes(q) ||
         (s.name ?? "").toLowerCase().includes(q),
     );
-  }, [roster, search]);
+  }, [roster, search, missingFaceOnly]);
 
   return (
     <div className="space-y-6">
@@ -416,12 +457,33 @@ export function ManageStudentsPage() {
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="primary">{roster.length} enrolled</Badge>
+              {missingFaceCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setMissingFaceOnly((v) => !v)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                    missingFaceOnly
+                      ? "border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      : "border-border/70 bg-muted/40 text-muted-foreground hover:text-foreground",
+                  )}
+                  title="Toggle: show only students missing a face"
+                >
+                  <ScanFace className="h-3.5 w-3.5" />
+                  {missingFaceCount} missing face
+                </button>
+              )}
               <SearchInput
                 value={search}
                 onChange={setSearch}
                 placeholder="Search roll or name…"
                 className="w-full sm:w-56"
               />
+              {missingFaceCount > 0 && (
+                <Button asChild size="sm" variant="outline" icon={<SmilePlus className="h-4 w-4" />}>
+                  <Link to="/attendance/enroll">Enroll Faces</Link>
+                </Button>
+              )}
               {roster.length > 0 && (
                 <Button
                   size="sm"
@@ -456,8 +518,25 @@ export function ManageStudentsPage() {
             <div className="p-4">
               <EmptyState
                 icon={<Users className="h-9 w-9" />}
-                title="No students match your search"
-                description="Try a different roll number or name."
+                title={
+                  roster.length === 0
+                    ? "No students in this class yet"
+                    : "No students match your search"
+                }
+                description={
+                  roster.length === 0
+                    ? canImport
+                      ? "Import a roster CSV or add students one at a time."
+                      : "Ask an admin to import this class's roster."
+                    : "Try a different roll number or name."
+                }
+                action={
+                  roster.length === 0 && canImport ? (
+                    <Button asChild size="sm" variant="outline" icon={<FileUp className="h-4 w-4" />}>
+                      <Link to="/students/import">Import Students</Link>
+                    </Button>
+                  ) : undefined
+                }
               />
             </div>
           ) : (
@@ -480,8 +559,27 @@ export function ManageStudentsPage() {
                         Admission No. {s.roll_no}
                       </p>
                     </div>
+                    {!s.has_face && (
+                      <Badge variant="warning" className="shrink-0 gap-1">
+                        <ScanFace className="h-3 w-3" />
+                        No face
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                    {!s.has_face && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setAddFacePhotos([]);
+                          setStudentToAddFace(s);
+                        }}
+                        icon={<ScanFace className="h-4 w-4" />}
+                      >
+                        Add Face
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -606,6 +704,55 @@ export function ManageStudentsPage() {
           (DDMMYYYY) and signs them out everywhere. Requires a date of birth on
           file — add one via the roster import if this fails.
         </p>
+      </Modal>
+
+      <Modal
+        open={studentToAddFace !== null}
+        onClose={() => {
+          setStudentToAddFace(null);
+          setAddFacePhotos([]);
+        }}
+        title="Add face"
+        icon={<ScanFace className="h-4 w-4" />}
+        size="sm"
+        footer={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setStudentToAddFace(null);
+                setAddFacePhotos([]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              loading={addFaceMutation.isPending}
+              disabled={addFacePhotos.length === 0}
+              onClick={() => addFaceMutation.mutate()}
+            >
+              Attach Face
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Attach a face for{" "}
+            <span className="font-medium text-foreground">
+              {studentToAddFace?.name ?? studentToAddFace?.roll_no}
+            </span>{" "}
+            (Admission #{studentToAddFace?.roll_no}). Any filenames are fine —
+            matching is by roll number, not the photo name.
+          </p>
+          <FileUpload
+            accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+            multiple
+            maxSize={15 * 1024 * 1024}
+            hint="1-5 clear, front-facing photos work best. Max 15 MB each."
+            onChange={setAddFacePhotos}
+          />
+        </div>
       </Modal>
 
       <Modal

@@ -11,7 +11,7 @@ export function NavBadge({ count, className }: { count: number; className?: stri
   return (
     <span
       className={cn(
-        "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground",
+        "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-primary to-blue-600 px-1 text-[10px] font-bold leading-none text-white shadow-xs ring-1 ring-background",
         className,
       )}
     >
@@ -70,7 +70,7 @@ export function PrimaryRail({
         <Tooltip content="Search" shortcut="Ctrl K" side="right" delayDuration={400}>
           <button
             onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
-            className="flex w-full flex-col items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-background/70 py-2 text-slate-600 dark:text-slate-400 transition-colors duration-200 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="flex w-full flex-col items-center gap-1 rounded-lg border border-white/15 bg-white/10 py-2 text-blue-100/85 shadow-xs transition-all duration-200 hover:border-white/30 hover:bg-white/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label="Search pages and actions"
           >
             <Search className="h-4 w-4" />
@@ -79,7 +79,7 @@ export function PrimaryRail({
         </Tooltip>
       </div>
 
-      <div className="my-4 h-px w-8 shrink-0 bg-slate-200 dark:bg-slate-800" aria-hidden="true" />
+      <div className="my-3.5 h-px w-8 shrink-0 bg-white/15" aria-hidden="true" />
 
       {/* Primary Nav Items */}
       <nav className="relative flex w-full flex-1 flex-col items-center gap-1.5 overflow-visible px-2 pb-4">
@@ -114,7 +114,7 @@ export function PrimaryRail({
             <div key={idx} className="w-full">
               {firstAdmin && (
                 <div
-                  className="mx-auto mb-1.5 h-px w-8 bg-slate-200 dark:bg-slate-800"
+                  className="mx-auto mb-1.5 h-px w-8 bg-white/15"
                   aria-hidden="true"
                 />
               )}
@@ -134,11 +134,11 @@ export function PrimaryRail({
                     whileTap={gated ? undefined : { scale: 0.94 }}
                     onClick={() => onCategoryClick(item)}
                     className={cn(
-                      "flex flex-col items-center gap-1 py-2 transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "flex flex-col items-center gap-1 py-2 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       isActive
-                        ? "w-[calc(100%+0.5rem)] rounded-l-lg text-primary"
-                        : "w-full rounded-lg text-slate-600 dark:text-slate-400 hover:bg-primary/10 dark:hover:bg-slate-700/40 hover:text-primary dark:hover:text-foreground",
-                      gated && "opacity-45",
+                        ? "w-[calc(100%+0.5rem)] rounded-l-lg text-primary font-bold"
+                        : "w-full rounded-lg text-blue-100/75 hover:bg-white/12 hover:text-white",
+                      gated && "opacity-40",
                     )}
                     aria-label={item.label}
                     aria-disabled={gated || undefined}
@@ -148,7 +148,7 @@ export function PrimaryRail({
                       {item.icon}
                       {gated && (
                         <Lock
-                          className="absolute -right-2 -top-1 h-3 w-3 text-muted-foreground drop-shadow-sm"
+                          className="absolute -right-2 -top-1 h-3 w-3 text-blue-200/60 drop-shadow-sm"
                           aria-hidden="true"
                         />
                       )}

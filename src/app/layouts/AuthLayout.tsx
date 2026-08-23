@@ -79,6 +79,7 @@ export function AuthLayout() {
     "login",
     "forgot-password",
     "reset-password",
+    "set-password",
     "verify-otp",
     "auth/callback",
   ];

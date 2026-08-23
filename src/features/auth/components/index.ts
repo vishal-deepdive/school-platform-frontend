@@ -8,4 +8,5 @@ export * from "./LoginForm";
 export * from "./VerifyOtpForm";
 export * from "./ForgotPasswordForm";
 export * from "./ResetPasswordForm";
+export * from "./ChangePasswordForm";
 export * from "./types";

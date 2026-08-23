@@ -94,15 +94,15 @@ export function NeedsAttention({ analytics, loading, className, wide }: NeedsAtt
         >
           {unmarked.length > 0 && (
             <div className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-              <div className="mt-0.5 rounded-lg bg-amber-500/10 p-1.5 text-amber-600 dark:text-amber-400">
+              <div className="mt-0.5 rounded-lg bg-amber-500/15 p-2 text-amber-700 dark:text-amber-400 border border-amber-500/25 shadow-2xs">
                 <ClipboardList className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {unmarked.length} {unmarked.length === 1 ? "class" : "classes"} not
                   marked today
                 </p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                <p className="mt-0.5 truncate text-xs font-medium text-slate-600 dark:text-slate-400">
                   {unmarked.slice(0, 4).map((c) => classLabel(c.class_name, c.section)).join(", ")}
                   {unmarked.length > 4 && ` +${unmarked.length - 4} more`}
                 </p>
@@ -115,15 +115,15 @@ export function NeedsAttention({ analytics, loading, className, wide }: NeedsAtt
 
           {pendingTotal > 0 && (
             <div className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-              <div className="mt-0.5 rounded-lg bg-blue-500/10 p-1.5 text-blue-600 dark:text-blue-400">
+              <div className="mt-0.5 rounded-lg bg-blue-500/15 p-2 text-blue-700 dark:text-blue-400 border border-blue-500/25 shadow-2xs">
                 <CalendarClock className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   {pendingTotal} leave {pendingTotal === 1 ? "request" : "requests"} awaiting
                   review
                 </p>
-                <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                <p className="mt-0.5 truncate text-xs font-medium text-slate-600 dark:text-slate-400">
                   {pending
                     .slice(0, 3)
                     .map((l) => l.student_name || l.roll_no)
@@ -138,11 +138,11 @@ export function NeedsAttention({ analytics, loading, className, wide }: NeedsAtt
 
           {lowAttendance.length > 0 && (
             <div className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-              <div className="mt-0.5 rounded-lg bg-destructive/10 p-1.5 text-destructive">
+              <div className="mt-0.5 rounded-lg bg-rose-500/15 p-2 text-rose-700 dark:text-rose-400 border border-rose-500/25 shadow-2xs">
                 <TrendingDown className="h-4 w-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
                   Low attendance (last 30 days)
                 </p>
                 <ul className="mt-1.5 space-y-1.5">
@@ -151,9 +151,9 @@ export function NeedsAttention({ analytics, loading, className, wide }: NeedsAtt
                       key={`${s.roll_no}-${s.class_name}`}
                       className="flex items-center justify-between gap-2"
                     >
-                      <span className="truncate text-xs text-muted-foreground">
+                      <span className="truncate text-xs font-medium text-slate-700 dark:text-slate-300">
                         {s.student_name || s.roll_no}
-                        <span className="text-muted-foreground/60">
+                        <span className="text-slate-500 dark:text-slate-400">
                           {" "}
                           · {classLabel(s.class_name, s.section)}
                         </span>

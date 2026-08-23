@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "@/shared/lib/toast";
 import { recordingApi } from "@/features/recording/api/recording";
+import { mapWithConcurrency } from "@/shared/lib/concurrency";
 import { downloadBlob, getErrorMessage } from "@/shared/lib/utils";
 import type {
   MarkdownResult,
@@ -92,8 +93,13 @@ export function useBulkRetryRecordings() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const results = await Promise.allSettled(
-        ids.map((id) => recordingApi.retryRecording(id)),
+      // Bounded rather than one request per id at once — a large selection
+      // would otherwise burst well past the backend's per-minute write limit
+      // and have the tail of the batch come back as 429s.
+      const results = await mapWithConcurrency(
+        ids,
+        (id) => recordingApi.retryRecording(id),
+        4,
       );
       const ok = results.filter((r) => r.status === "fulfilled").length;
       return { ok, total: ids.length };

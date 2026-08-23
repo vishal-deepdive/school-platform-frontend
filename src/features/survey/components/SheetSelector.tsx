@@ -4,7 +4,7 @@ import { ChevronDown, Check, Loader2, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { useClickOutside } from "@/shared/hooks/useClickOutside";
 import { Badge } from "@/shared/components/ui/Badge";
-import { surveyApi } from "@/features/survey/api/survey";
+import { surveyApi, surveyKeys } from "@/features/survey/api/survey";
 import type { SourceItem } from "@/features/survey/types";
 
 interface SheetSelectorProps {
@@ -12,7 +12,10 @@ interface SheetSelectorProps {
   value: string[];
   onChange: (ids: string[]) => void;
   disabled?: boolean;
-  /** Optional school scope (admins inspecting one school). */
+  /** Stable id for the sources cache key — shares one cache entry with the
+   * Data Source tab's own sources list instead of each fetching its own copy. */
+  schoolId?: string;
+  /** Optional school scope (admins inspecting one school) — the actual API param. */
   schoolName?: string;
   /** Show each sheet's school in the label — useful for admins (cross-school). */
   showSchoolName?: boolean;
@@ -32,6 +35,7 @@ export function SheetSelector({
   value,
   onChange,
   disabled = false,
+  schoolId,
   schoolName,
   showSchoolName = false,
   onSheetsLoaded,
@@ -41,7 +45,7 @@ export function SheetSelector({
   useClickOutside(containerRef, () => setIsOpen(false));
 
   const { data, isLoading } = useQuery({
-    queryKey: ["survey", "sources", schoolName ?? null],
+    queryKey: surveyKeys.sources(schoolId),
     queryFn: () => surveyApi.getSources(schoolName),
     staleTime: 60_000,
   });
@@ -52,9 +56,18 @@ export function SheetSelector({
     [data],
   );
 
-  // Let the parent seed a default selection once sheets are available.
+  // Let the parent seed a default selection once sheets are available,
+  // and purge any selected IDs that do not belong to the current school's sheets.
   useEffect(() => {
-    if (sheets.length > 0) onSheetsLoaded?.(sheets);
+    if (sheets.length > 0) {
+      if (value.length > 0) {
+        const validIds = value.filter((id) => sheets.some((s) => s.id === id));
+        if (validIds.length !== value.length) {
+          onChange(validIds);
+        }
+      }
+      onSheetsLoaded?.(sheets);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheets]);
 

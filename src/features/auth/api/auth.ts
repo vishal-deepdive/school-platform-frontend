@@ -10,6 +10,7 @@ import type {
   VerifyOtpResponse,
   ForgotPasswordRequest,
   ResetPasswordRequest,
+  ChangePasswordRequest,
   ResendOtpRequest,
   GoogleAuthUrlResponse,
   GoogleCallbackResponse,
@@ -160,6 +161,12 @@ export const authApi = {
   resetPassword: (data: ResetPasswordRequest) =>
     apiClient
       .post<MessageResponse>(`${BASE}/reset-password`, data)
+      .then((r) => r.data),
+
+  /** Self-service change for an already-authenticated user (requires current_password). */
+  changePassword: (data: ChangePasswordRequest) =>
+    apiClient
+      .post<TokenResponse>(`${BASE}/change-password`, data)
       .then((r) => r.data),
 
   resendOtp: (data: ResendOtpRequest) =>

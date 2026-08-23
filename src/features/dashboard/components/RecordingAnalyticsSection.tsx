@@ -251,6 +251,8 @@ export function RecordingAnalyticsSection() {
                     fill="url(#recording-fill)"
                     dot={false}
                     activeDot={{ r: 4, strokeWidth: 2, stroke: "oklch(var(--card))" }}
+                    animationDuration={250}
+                    animationEasing="ease-out"
                   />
                 </AreaChart>
               </ResponsiveContainer>

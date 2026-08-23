@@ -1,3 +1,4 @@
+import axios from "axios";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -64,12 +65,20 @@ export function isForbiddenError(error: unknown): boolean {
 }
 
 export function getErrorMessage(error: unknown): string {
-  if (error && typeof error === "object" && "response" in error) {
-    const axiosError = error as {
-      response?: { status?: number; data?: { detail?: unknown } };
-    };
-    const detail = axiosError.response?.data?.detail;
-    const status = axiosError.response?.status;
+  if (axios.isAxiosError(error)) {
+    // Axios only sets `.response` when a response was actually received. No
+    // response means the request never completed as HTTP — dropped
+    // connection, timeout, DNS failure, or a response blocked by the browser
+    // (e.g. missing CORS headers on a 500 raised before any body was sent).
+    // Axios's own `.message` for this case is the literal string
+    // "Network Error", which reads as a raw internal detail, not something to
+    // show a user — replace it with an honest, friendly sentence instead.
+    if (!error.response) {
+      return "Unable to reach the server. Please check your connection and try again.";
+    }
+
+    const detail = error.response.data?.detail;
+    const status = error.response.status;
 
     if (typeof detail === "string" && detail.trim()) {
       return detail;

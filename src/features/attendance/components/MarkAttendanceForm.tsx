@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
-import { CheckSquare, Users, UserX, Pencil, ListChecks } from "lucide-react";
+import { CheckSquare, Users, UserX, UserCog, Pencil, ListChecks } from "lucide-react";
+import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "@/shared/lib/toast";
 import {
@@ -162,7 +163,10 @@ export function MarkAttendanceForm() {
       // Views and stats may now be stale after marking attendance.
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       toast.success(
-        `Attendance marked: ${data.present_count} present, ${data.absent_count} absent`,
+        `Attendance marked: ${data.present_count} present, ${data.absent_count} absent` +
+          (data.not_enrolled_count
+            ? `, ${data.not_enrolled_count} not yet face-enrolled`
+            : ""),
       );
     },
     onError: (err) => toast.error(getErrorMessage(err)),
@@ -428,7 +432,7 @@ export function MarkAttendanceForm() {
 
         {result && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${result.not_enrolled_count > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
               <StatCard
                 label="Present"
                 value={result.present_count}
@@ -441,7 +445,59 @@ export function MarkAttendanceForm() {
                 icon={<UserX className="h-5 w-5" />}
                 color="danger"
               />
+              {result.not_enrolled_count > 0 && (
+                <StatCard
+                  label="No Face on File"
+                  value={result.not_enrolled_count}
+                  icon={<UserCog className="h-5 w-5" />}
+                  color="warning"
+                />
+              )}
             </div>
+
+            {result.not_enrolled_count > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.not_enrolled_count} student(s) weren't assessed — no face on file`}
+              >
+                <p className="text-xs">
+                  Face recognition can't tell if they're present. Mark them manually below,
+                  or{" "}
+                  <Link to="/attendance/enroll" className="font-medium underline">
+                    enroll their face
+                  </Link>{" "}
+                  for next time.
+                </p>
+                <ul className="mt-2 max-h-32 space-y-0.5 overflow-auto text-xs">
+                  {result.not_enrolled_students.map((s) => (
+                    <li key={s.roll_no}>
+                      <span className="font-medium">{s.name}</span> · #{s.roll_no}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
+
+            {result.ambiguous_count > 0 && (
+              <Alert
+                variant="warning"
+                title={`${result.ambiguous_count} face(s) detected but too uncertain to mark`}
+              >
+                <p className="text-xs">
+                  Two students looked similar enough that we couldn't safely tell them
+                  apart — neither was marked. Check manually below.
+                </p>
+                <ul className="mt-2 max-h-32 space-y-0.5 overflow-auto text-xs">
+                  {result.ambiguous_faces.map((a, i) => (
+                    <li key={i}>
+                      {a.candidates
+                        .map((c) => `${c.name} (#${c.roll_no}, ${(c.similarity * 100).toFixed(0)}%)`)
+                        .join(" vs. ")}
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            )}
 
             <div className="rounded-xl border border-border/60 bg-card p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -464,7 +520,11 @@ export function MarkAttendanceForm() {
           flush
           icon={<ListChecks className="h-4 w-4" />}
           title={`Attendance record · ${result.date}`}
-          description={`${result.total_enrolled} enrolled · ${result.present_count} present · ${result.absent_count} absent`}
+          description={
+            `${result.total_enrolled} enrolled · ${result.present_count} present · ${result.absent_count} absent` +
+            (result.not_enrolled_count ? ` · ${result.not_enrolled_count} not face-enrolled` : "") +
+            (result.ambiguous_count ? ` · ${result.ambiguous_count} uncertain` : "")
+          }
         >
           <div className="border-b border-border/50 px-4 py-3 md:px-5">
             <p className="text-xs text-muted-foreground">

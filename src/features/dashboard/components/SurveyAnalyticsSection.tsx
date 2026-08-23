@@ -507,7 +507,7 @@ export function SurveyAnalyticsSection() {
                     content={<RecTooltip />}
                     cursor={{ fill: "oklch(var(--muted-foreground))", opacity: 0.08 }}
                   />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={36} animationDuration={250} animationEasing="ease-out">
                     {rec.distribution.map((d) => (
                       <Cell key={d.score} fill={SCORE_COLORS[d.score - 1] ?? "#94a3b8"} />
                     ))}

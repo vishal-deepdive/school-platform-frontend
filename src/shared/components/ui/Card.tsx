@@ -25,9 +25,9 @@ const paddingClasses = {
 };
 
 const variantClasses = {
-  default: "bg-card border-border/60",
-  glass: "bg-card/70 backdrop-blur-md border-border/40 dark:bg-card/45",
-  gradient: "bg-gradient-to-br from-card via-card to-muted/10 border-border/60",
+  default: "bg-card border-border/60 shadow-[0_1px_3px_0_rgba(0,0,0,0.03),0_1px_2px_-1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
+  glass: "bg-card/70 backdrop-blur-md border-border/40 dark:bg-card/45 shadow-[0_1px_3px_0_rgba(0,0,0,0.03)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
+  gradient: "bg-gradient-to-br from-card via-card to-muted/10 border-border/60 shadow-[0_1px_3px_0_rgba(0,0,0,0.03),0_1px_2px_-1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
 };
 
 export function Card({
@@ -42,9 +42,9 @@ export function Card({
     <Component
       className={cn(
         "rounded-xl border",
-        !hoverable && "transition-all duration-300 ease-out shadow-none",
+        !hoverable && "transition-all duration-300 ease-out",
         variantClasses[variant],
-        hoverable && "cursor-pointer hover:border-primary/25 dark:hover:border-primary/35",
+        hoverable && "cursor-pointer hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 dark:hover:border-primary/35",
         paddingClasses[padding],
         className,
       )}
@@ -121,11 +121,11 @@ interface StatCardProps {
 }
 
 const statColors: Record<StatCardColor, string> = {
-  primary: "bg-primary/10 text-primary",
-  success: "bg-green-500/10 text-green-600 dark:text-green-400",
-  warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-  danger:  "bg-destructive/10 text-destructive",
-  info:    "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  primary: "bg-primary/12 text-primary border border-primary/15",
+  success: "bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border border-emerald-500/15",
+  warning: "bg-amber-500/12 text-amber-600 dark:text-amber-400 border border-amber-500/15",
+  danger:  "bg-rose-500/12 text-rose-600 dark:text-rose-400 border border-rose-500/15",
+  info:    "bg-sky-500/12 text-sky-600 dark:text-sky-400 border border-sky-500/15",
 };
 
 export function StatCard({

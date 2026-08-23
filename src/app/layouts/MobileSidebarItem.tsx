@@ -15,7 +15,7 @@ interface MobileSidebarItemProps {
 function Badge({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold leading-none text-primary-foreground">
+    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-primary to-blue-600 px-1.5 text-[11px] font-bold leading-none text-white shadow-xs">
       {count > 99 ? "99+" : count}
     </span>
   );
@@ -53,14 +53,14 @@ export function MobileSidebarItem({
         onClick={onClose}
         className={({ isActive }) =>
           cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
             isActive
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              ? "bg-primary/12 text-primary font-semibold shadow-xs"
+              : "text-slate-600 dark:text-slate-400 hover:bg-primary/5 hover:text-foreground",
           )
         }
       >
-        {item.icon}
+        <span className="text-primary [&>svg]:h-5 [&>svg]:w-5">{item.icon}</span>
         <span className="flex-1">{item.label}</span>
         <Badge count={badgeFor(item)} />
       </NavLink>
@@ -75,11 +75,13 @@ export function MobileSidebarItem({
         className={cn(
           "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
           isChildActive
-            ? "text-primary bg-primary/5"
-            : "text-muted-foreground hover:bg-accent hover:text-foreground",
+            ? "text-primary bg-primary/10 font-semibold"
+            : "text-slate-800 dark:text-slate-200 hover:bg-primary/5 hover:text-foreground",
         )}
       >
-        {item.icon}
+        <span className={cn("[&>svg]:h-5 [&>svg]:w-5", isChildActive ? "text-primary" : "text-slate-500 dark:text-slate-400")}>
+          {item.icon}
+        </span>
         <span className="flex-1 text-left">{item.label}</span>
         {!open && <Badge count={railBadge} />}
         <ChevronRight
@@ -100,7 +102,7 @@ export function MobileSidebarItem({
                 {showGroup && (
                   <p
                     className={cn(
-                      "eyebrow px-3 pb-1 text-muted-foreground/60",
+                      "eyebrow px-2.5 pb-1 text-slate-500 dark:text-slate-400 font-bold",
                       i === 0 ? "pt-1" : "pt-3",
                     )}
                   >
@@ -113,14 +115,16 @@ export function MobileSidebarItem({
                   end={child.end !== undefined ? child.end : child.href === "/"}
                   className={({ isActive }) =>
                     cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all",
                       isActive
-                        ? "text-primary bg-primary/10"
-                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                        ? "text-primary bg-primary/10 dark:bg-primary/20 dark:text-blue-300 font-semibold"
+                        : "text-slate-800 dark:text-slate-200 hover:bg-muted/70 hover:text-foreground",
                     )
                   }
                 >
-                  <div className="scale-90">{child.icon}</div>
+                  <div className="flex h-5 w-5 shrink-0 items-center justify-center text-primary [&>svg]:h-4 [&>svg]:w-4">
+                    {child.icon}
+                  </div>
                   <span className="flex-1 truncate">{child.label}</span>
                   <Badge count={badgeFor(child)} />
                 </NavLink>

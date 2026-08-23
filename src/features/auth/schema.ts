@@ -78,6 +78,23 @@ export const resetPasswordSchema = z
     path: ["confirm_password"],
   });
 
+// ─── Self-service password change (already authenticated) ───────────────────
+
+export const changePasswordSchema = z
+  .object({
+    current_password: z.string().min(1, "Current password is required").max(128),
+    new_password: passwordField,
+    confirm_password: z.string(),
+  })
+  .refine((d) => d.new_password === d.confirm_password, {
+    message: "Passwords do not match",
+    path: ["confirm_password"],
+  })
+  .refine((d) => d.new_password !== d.current_password, {
+    message: "New password must be different from your current password",
+    path: ["new_password"],
+  });
+
 // ─── Google OAuth completion ──────────────────────────────────────────────────
 // Teacher / co-principal invite claim only — students and parents don't
 // self-register, so there is no student/parent Google-completion schema.
@@ -97,6 +114,7 @@ export type StudentLoginFormData = z.infer<typeof studentLoginSchema>;
 export type VerifyOtpFormData = z.infer<typeof verifyOtpSchema>;
 export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+export type ChangePasswordFormData = z.infer<typeof changePasswordSchema>;
 export type GoogleCompleteTeacherInviteFormData = z.infer<
   typeof googleCompleteTeacherInviteSchema
 >;

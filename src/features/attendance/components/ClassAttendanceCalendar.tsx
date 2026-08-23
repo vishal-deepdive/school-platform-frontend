@@ -18,7 +18,7 @@ import { cn, getErrorMessage } from "@/shared/lib/utils";
 import type { ClassCalendarDay } from "@/features/attendance/types";
 
 function dayCellSkeleton(i: number) {
-  return <Skeleton key={i} className="aspect-square rounded-lg" />;
+  return <Skeleton key={i} className="h-11 sm:h-12 w-full rounded-xl" />;
 }
 
 interface Props {
@@ -56,8 +56,8 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
       attendanceApi.getClassCalendar({
         month: monthKey,
         ...(schoolName ? { school_name: schoolName } : {}),
-        ...(scope.className ? { class_name: scope.className } : {}),
-        ...(scope.section ? { section: scope.section } : {}),
+        ...(scope.className?.trim() ? { class_name: scope.className.trim() } : {}),
+        ...(scope.section?.trim() ? { section: scope.section.trim() } : {}),
       }),
     enabled: ready,
     staleTime: 60_000,
@@ -88,13 +88,8 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
     return isValid(parsed) ? parsed : new Date();
   }, [data?.today]);
 
-
   return (
     <div className="space-y-6">
-      {/* <FilterBar title="Scope" icon={<Users className="h-4 w-4" />}>
-        <AttendanceScopeFilters value={scope} onChange={setScope} showSubject={false} />
-      </FilterBar> */}
-
       {isError && (
         <Alert variant="error">
           {getErrorMessage(error) || "Failed to load the class attendance calendar."}
@@ -103,46 +98,40 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
 
       <Panel
         icon={<CalendarDays className="h-4 w-4" />}
-        title="Daily attendance %"
+        title="Class Attendance Calendar"
         description={isFetching ? "Updating…" : undefined}
         actions={
-          <div className="flex items-end gap-5">
-            <div className="min-w-[180px]">
-                <AttendanceScopeFilters
-                value={scope}
-                onChange={setScope}
-                showSubject={false}
-                />
-            </div>
+          <div className="flex items-center justify-end gap-3">
+            <AttendanceScopeFilters
+              value={scope}
+              onChange={setScope}
+              showSubject={false}
+              layout="inline"
+            />
           </div>
-            
-          }
-        
-        
+        }
       >
-        
-
         <MonthCalendarShell
           month={month}
           onMonthChange={setMonth}
           loading={isLoading}
           legend={
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1 text-xs">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-green-500/60" />
-                <span className="text-muted-foreground">≥ 75%</span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 border-t border-border/40 text-xs">
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-emerald-500 shadow-xs ring-1 ring-emerald-600/20" />
+                <span>≥ 75% Present</span>
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500/60" />
-                <span className="text-muted-foreground">60–74%</span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-amber-500 shadow-xs ring-1 ring-amber-600/20" />
+                <span>60–74% Present</span>
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
-                <span className="text-muted-foreground">&lt; 60%</span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-rose-500 shadow-xs ring-1 ring-rose-600/20" />
+                <span>&lt; 60% Present</span>
               </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/30" />
-                <span className="text-muted-foreground">Not marked</span>
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <span className="h-3 w-3 rounded-md bg-muted-foreground/30 ring-1 ring-border" />
+                <span>Not marked</span>
               </span>
             </div>
           }
@@ -153,6 +142,7 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
             const cell = dayByDate.get(key);
             const isFuture = isAfter(day, todayDate);
             const isToday = key === format(todayDate, "yyyy-MM-dd");
+            const isSelected = selectedDate === key;
             const dayLabel = format(day, "d MMM yyyy");
             const statusLabel = isFuture
               ? "upcoming"
@@ -168,26 +158,28 @@ export function ClassAttendanceCalendar({selectedDate,onDateSelect}:Props) {
                     onDateSelect?.(key, scope);
                   }
                 }}
+                disabled={isFuture}
                 className={cn(
                   "appearance-none border-0 bg-transparent p-0",
-                  "flex aspect-square w-full flex-col items-center justify-center gap-0.5 rounded-lg text-xs transition-colors",
+                  "flex h-16 w-full flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-semibold transition-all duration-150",
                   isFuture
-                    ? "text-muted-foreground/25"
+                    ? "cursor-not-allowed opacity-35 bg-muted/25 text-slate-400 dark:text-slate-600 border border-dashed border-border/60"
                     : showingStale
-                      ? "bg-muted/30 text-muted-foreground/40"
+                      ? "bg-muted/40 text-slate-400"
                       : percentageCellClass(cell?.percentage ?? null),
-                  isToday && !showingStale && "ring-2 ring-primary",
-                  selectedDate === key && "ring-2 ring-blue-500"
+                  !isFuture && "hover:scale-[1.03] active:scale-95 hover:shadow-md cursor-pointer",
+                  isToday && !showingStale && "ring-2 ring-primary ring-offset-2 font-bold shadow-xs",
+                  isSelected && "ring-2 ring-blue-600 dark:ring-blue-400 ring-offset-2 scale-[1.03] z-10 shadow-md"
                 )}
                 title={showingStale ? undefined : `${dayLabel} — ${statusLabel}`}
                 aria-label={`${dayLabel}: ${statusLabel}`}
               >
-                <span className="text-[0.7rem] font-medium sm:text-sm">
+                <span className="text-[0.8rem] sm:text-xs font-bold leading-none">
                   {dayNumber}
                 </span>
 
                 {!isFuture && !showingStale && cell?.percentage != null && (
-                  <span className="text-[0.6rem] font-bold sm:text-xs">
+                  <span className="text-[0.7rem] sm:text-[0.75rem] font-extrabold leading-none tracking-tight">
                     {Math.round(cell.percentage)}%
                   </span>
                 )}
