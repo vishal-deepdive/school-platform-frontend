@@ -128,8 +128,8 @@ export function TabContainer({ className }: TabContainerProps) {
               pages flow top-down and let this container scroll. */}
           <div
             className={cn(
-              "mx-auto flex w-full max-w-6xl flex-col",
-              fullBleed ? "h-full min-h-0" : "min-h-full",
+              "mx-auto flex w-full flex-col",
+              fullBleed ? "h-full min-h-0 max-w-none" : "min-h-full max-w-6xl",
             )}
           >
             <Outlet />

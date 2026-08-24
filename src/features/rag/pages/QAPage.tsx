@@ -459,7 +459,7 @@ export function QAPage() {
                 </div>
               </div>
             ) : (
-              <div className="mx-auto w-full max-w-3xl space-y-6">
+              <div className="mx-auto w-full max-w-5xl space-y-6">
                 {chat.map((msg, i) => {
                   const question =
                     msg.role === "assistant" ? chat[i - 1]?.content ?? "" : "";
@@ -536,7 +536,7 @@ export function QAPage() {
 
         {/* Composer — pinned; never scrolls out of view. */}
         <div className="shrink-0 border-t border-border/60 bg-card px-3 py-3 md:px-4">
-          <div className="mx-auto w-full max-w-3xl">
+          <div className="mx-auto w-full max-w-5xl">
             {canRetry ? (
               <div className="mb-2 flex justify-center">
                 <Button
