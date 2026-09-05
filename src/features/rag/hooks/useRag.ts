@@ -27,12 +27,15 @@ interface DocumentParams {
   search?: string;
   /** Admin only: scope the listing to one school's uploads + global content. */
   school_id?: string;
+  /** Narrow to one book medium within what the caller can see. */
+  medium?: string;
 }
 
 export const ragKeys = {
   all: ["rag"] as const,
   metadata: () => ["rag", "metadata"] as const,
   classLevels: () => ["rag", "classLevels"] as const,
+  mediums: () => ["rag", "mediums"] as const,
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
   documentStatus: (id: string) => ["rag", "documentStatus", id] as const,
   documentChunks: (id: string) => ["rag", "documentChunks", id] as const,
@@ -63,6 +66,16 @@ export function useRagClassLevels() {
   return useQuery({
     queryKey: ragKeys.classLevels(),
     queryFn: () => ragApi.getClassLevels(),
+    staleTime: 30 * 60_000,
+  });
+}
+
+/** Book medium(s) the caller may select — one entry for an English/Hindi-only
+ * school, two for a Bilingual school or an admin. */
+export function useRagMediums() {
+  return useQuery({
+    queryKey: ragKeys.mediums(),
+    queryFn: () => ragApi.getMediums(),
     staleTime: 30 * 60_000,
   });
 }

@@ -386,14 +386,7 @@ export function ApplicationDetailPage() {
         >
           <dl>
             <InfoRow label="Student Count" value={app.student_count} />
-            <InfoRow
-              label="Medium of Instruction"
-              value={
-                app.medium_of_instruction === "Other"
-                  ? app.other_medium_of_instruction
-                  : app.medium_of_instruction
-              }
-            />
+            <InfoRow label="Medium of Instruction" value={app.medium_of_instruction} />
             <InfoRow
               label="Classes"
               value={

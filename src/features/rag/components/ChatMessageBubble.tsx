@@ -183,8 +183,11 @@ interface ChatMessageBubbleProps {
   onToggleSave?: () => void;
   /** Re-ask the same question for a simpler explanation. */
   onExplainSimpler?: () => void;
-  /** Re-ask the same question, answered in a regional language. */
+  /** Re-ask the same question, answered in a different language. */
   onTranslate?: () => void;
+  /** Button label for onTranslate — the language it switches TO (e.g. "Hindi"
+   * for an English-default school, "English" for a Hindi-default one). */
+  translateLabel?: string;
 }
 
 export const ChatMessageBubble = memo(function ChatMessageBubble({
@@ -196,6 +199,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
   onToggleSave,
   onExplainSimpler,
   onTranslate,
+  translateLabel = "Hindi",
 }: ChatMessageBubbleProps) {
   const [copied, setCopied] = useState(false);
 
@@ -352,7 +356,7 @@ export const ChatMessageBubble = memo(function ChatMessageBubble({
                 icon={<Languages className="h-3 w-3" />}
                 className="px-1.5 py-0.5 text-muted-foreground"
               >
-                Hindi
+                {translateLabel}
               </Button>
             )}
           </div>

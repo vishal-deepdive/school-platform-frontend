@@ -21,7 +21,11 @@ import { RagFilterPanel } from "@/features/rag/components/RagFilterPanel";
 import { ChatMessageBubble } from "@/features/rag/components/ChatMessageBubble";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
-import { useSubmitRagFeedback, useDownloadPdf } from "@/features/rag/hooks/useRag";
+import {
+  useSubmitRagFeedback,
+  useDownloadPdf,
+  useRagMediums,
+} from "@/features/rag/hooks/useRag";
 import { useSavedAnswers } from "@/features/rag/store/savedAnswersStore";
 import { getErrorMessage, downloadBlob } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/Button";
@@ -78,6 +82,13 @@ export function QAPage() {
 
   const { mutate: submitFeedback } = useSubmitRagFeedback();
   const { mutate: downloadPdf, isPending: downloadingPdf } = useDownloadPdf();
+  const { data: mediumData } = useRagMediums();
+  // A Hindi-only school already gets Hindi answers by default (backend
+  // default_answer_language) — offer the flip back to English there.
+  // English-only, Bilingual, and admin all default to English, so offer Hindi.
+  const isHindiDefault =
+    mediumData?.mediums.length === 1 && mediumData.mediums[0] === "Hindi";
+  const translateLanguage = isHindiDefault ? "English" : "Hindi";
   const savedItems = useSavedAnswers((s) => s.items);
   const saveAnswer = useSavedAnswers((s) => s.save);
   const removeSaved = useSavedAnswers((s) => s.remove);
@@ -509,10 +520,11 @@ export function QAPage() {
                         msg.role === "assistant" && !msg.isError && question
                           ? () => {
                               if (!isStreaming)
-                                void runQuery(question, { language: "Hindi" });
+                                void runQuery(question, { language: translateLanguage });
                             }
                           : undefined
                       }
+                      translateLabel={translateLanguage}
                     />
                   );
                 })}

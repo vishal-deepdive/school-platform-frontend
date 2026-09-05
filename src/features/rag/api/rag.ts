@@ -16,6 +16,7 @@ import type {
   DocumentListResponse,
   DocumentChunksResponse,
   ClassLevelsResponse,
+  MediumsResponse,
   RagAnalyticsResponse,
   FeedbackRequest,
   FeedbackResponse,
@@ -51,6 +52,10 @@ export const ragApi = {
     apiClient
       .get<ClassLevelsResponse>(`${BASE}/classes`)
       .then((r) => r.data),
+
+  /** Book medium(s) the caller may select for uploads and filters. */
+  getMediums: () =>
+    apiClient.get<MediumsResponse>(`${BASE}/mediums`).then((r) => r.data),
 
   refreshMetadata: () =>
     apiClient.post(`${BASE}/metadata/refresh`).then((r) => r.data),
@@ -99,6 +104,8 @@ export const ragApi = {
     search?: string;
     /** Admin only: scope the listing to one school's uploads + global content. */
     school_id?: string;
+    /** Narrow to one book medium within what the caller can see. */
+    medium?: string;
   }) =>
     apiClient
       .get<DocumentListResponse>(`${BASE}/documents`, { params })

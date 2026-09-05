@@ -36,6 +36,7 @@ import {
   useRagDocuments,
   useRagDocumentStatus,
   useRagClassLevels,
+  useRagMediums,
   useUploadRagDocument,
   useDeleteRagDocument,
   useRetryRagIngest,
@@ -55,12 +56,22 @@ const STATUS_FILTER_OPTIONS = [
   { value: "failed", label: "Failed" },
 ];
 
+/** Small pill for a book's language edition — same visual weight as a status
+ * badge, distinct color per medium so it scans at a glance in the table. */
+function MediumBadge({ medium }: { medium?: string }) {
+  if (!medium) return null;
+  return (
+    <Badge variant={medium === "Hindi" ? "purple" : "info"}>{medium}</Badge>
+  );
+}
+
 const EMPTY_FORM = {
   class_level: "",
   subject: "",
   subject_other: "",
   chapter_number: "",
   chapter_name: "",
+  medium: "",
   school_id: "",
 };
 
@@ -76,6 +87,7 @@ export function RagDocumentsPage() {
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
   const [statusFilter, setStatusFilter] = useState("");
+  const [mediumFilter, setMediumFilter] = useState("");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 350);
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
@@ -95,10 +107,23 @@ export function RagDocumentsPage() {
   const queryClient = useQueryClient();
   const uploadFormId = useId();
 
+  const { data: mediumData } = useRagMediums();
+  const mediumValues = mediumData?.mediums ?? [];
+  const mediumSelectOptions = [
+    { value: "", label: "Select medium" },
+    ...mediumValues.map((m) => ({ value: m, label: m })),
+  ];
+
   // Open the upload modal with the school prefilled to the one the admin is
   // currently viewing (they can still clear it to publish global content).
+  // Medium defaults too when the caller only has one to pick from (an
+  // English- or Hindi-only school) — a Bilingual school or admin must choose.
   const openUploadModal = () => {
-    setFormData({ ...EMPTY_FORM, school_id: isAdmin && schoolId ? schoolId : "" });
+    setFormData({
+      ...EMPTY_FORM,
+      medium: mediumValues.length === 1 ? mediumValues[0] : "",
+      school_id: isAdmin && schoolId ? schoolId : "",
+    });
     setIsModalOpen(true);
   };
 
@@ -117,6 +142,7 @@ export function RagDocumentsPage() {
       ...(statusFilter && { status: statusFilter }),
       ...(debouncedSearch && { search: debouncedSearch }),
       ...(schoolId && { school_id: schoolId }),
+      ...(mediumFilter && { medium: mediumFilter }),
     });
 
   const total = data?.total ?? 0;
@@ -178,6 +204,10 @@ export function RagDocumentsPage() {
       toast.error("Chapter number and chapter name are required.");
       return;
     }
+    if (!formData.medium) {
+      toast.error("Please select a medium.");
+      return;
+    }
 
     const payload = new FormData();
     payload.append("file", file);
@@ -185,6 +215,7 @@ export function RagDocumentsPage() {
     payload.append("subject", resolvedSubject);
     payload.append("chapter_number", formData.chapter_number.trim());
     payload.append("chapter_name", formData.chapter_name.trim());
+    payload.append("medium", formData.medium);
     if (formData.school_id) {
       payload.append("school_id", formData.school_id);
     }
@@ -229,6 +260,19 @@ export function RagDocumentsPage() {
     setOffset(0);
   };
 
+  const handleMediumFilter = (value: string) => {
+    setMediumFilter(value);
+    setOffset(0);
+  };
+
+  // Same rule as the upload form's default: a redundant single-value filter
+  // is noise for an English- or Hindi-only school.
+  const mediumFilterOptions = [
+    { value: "", label: "All mediums" },
+    ...mediumValues.map((m) => ({ value: m, label: m })),
+  ];
+  const showMediumFilter = mediumValues.length > 1;
+
   if (isForbidden) {
     return (
       <ForbiddenState
@@ -262,6 +306,16 @@ export function RagDocumentsPage() {
                   onChange={(e) => handleStatusFilter(e.target.value)}
                 />
               </div>
+              {showMediumFilter && (
+                <div className="w-40">
+                  <Select
+                    options={mediumFilterOptions}
+                    value={mediumFilter}
+                    onChange={(e) => handleMediumFilter(e.target.value)}
+                    aria-label="Filter by medium"
+                  />
+                </div>
+              )}
               <SearchInput
                 value={search}
                 onChange={(v) => {
@@ -342,7 +396,10 @@ export function RagDocumentsPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-foreground">{doc.class_level}, {doc.subject}</div>
+                        <div className="flex items-center gap-2 text-sm text-foreground">
+                          {doc.class_level}, {doc.subject}
+                          <MediumBadge medium={doc.medium} />
+                        </div>
                         <div className="text-xs text-muted-foreground">Ch {doc.chapter_number}: {doc.chapter_name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -497,6 +554,15 @@ export function RagDocumentsPage() {
               }
             />
           </div>
+          <Select
+            label="Medium *"
+            hint="Language edition of this book"
+            options={mediumSelectOptions}
+            value={formData.medium}
+            onChange={(e) =>
+              setFormData({ ...formData, medium: e.target.value })
+            }
+          />
           {isAdmin && (
             <Input
               label="School ID"

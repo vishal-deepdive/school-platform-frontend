@@ -32,6 +32,7 @@ import { AuthButton, AuthInput } from "@/shared/components/ui/auth-fuse";
 import { Modal } from "@/shared/components/ui/Modal";
 import type { OnboardingApplicationResponse } from "@/features/onboarding/types";
 import { SCHOOL_BOARDS, SCHOOL_TYPES } from "@/features/onboarding/constants";
+import { MEDIUM_OPTIONS } from "@/features/admin/constants";
 
 import {
   StepIndicator,
@@ -99,7 +100,6 @@ const STEP_FIELDS: Record<StepIndex, FieldPath<SchoolOnboardingFormData>[]> = {
     "classes_from",
     "classes_to",
     "medium_of_instruction",
-    "other_medium_of_instruction",
   ],
   4: [],
   5: ["principal_name", "principal_email", "filled_by_email", "terms"],
@@ -173,8 +173,7 @@ export function SchoolOnboardingPage() {
           pin_code: d.pin_code,
           area: "", // not stored — user re-selects the post office on step 2
           student_count: String(d.student_count ?? ""),
-          medium_of_instruction: d.medium_of_instruction ?? "",
-          other_medium_of_instruction: d.other_medium_of_instruction ?? "",
+          medium_of_instruction: (d.medium_of_instruction ?? "") as never,
           classes_from: d.classes_from ?? "",
           classes_to: d.classes_to ?? "",
           udise_code: d.udise_code ?? "",
@@ -412,13 +411,7 @@ export function SchoolOnboardingPage() {
 
       // Step 3
       fd.append("student_count", data.student_count);
-      if (data.medium_of_instruction?.trim())
-        fd.append("medium_of_instruction", data.medium_of_instruction.trim());
-      if (data.other_medium_of_instruction?.trim())
-        fd.append(
-          "other_medium_of_instruction",
-          data.other_medium_of_instruction.trim(),
-        );
+      fd.append("medium_of_instruction", data.medium_of_instruction);
       if (data.classes_from?.trim())
         fd.append("classes_from", data.classes_from.trim());
       if (data.classes_to?.trim())
@@ -810,6 +803,15 @@ function ReviewSummary({
         <ReviewRow label="Mobile" value={values.mobile} step={2} onEdit={onEdit} />
         <ReviewRow label="Address" value={address} step={2} onEdit={onEdit} />
         <ReviewRow label="Students" value={values.student_count} step={3} onEdit={onEdit} />
+        <ReviewRow
+          label="Medium"
+          value={
+            MEDIUM_OPTIONS.find((m) => m.value === values.medium_of_instruction)
+              ?.label ?? values.medium_of_instruction
+          }
+          step={3}
+          onEdit={onEdit}
+        />
         <ReviewRow label="UDISE" value={values.udise_code} step={3} onEdit={onEdit} />
         <ReviewRow label="Principal" value={values.principal_name} step={5} onEdit={onEdit} />
         <ReviewRow label="Principal email" value={values.principal_email} step={5} onEdit={onEdit} />

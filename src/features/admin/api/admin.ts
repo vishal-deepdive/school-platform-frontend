@@ -183,6 +183,13 @@ export const adminApi = {
       })
       .then((r) => r.data),
 
+  setSchoolMedium: (schoolId: string, mediumOfInstruction: string) =>
+    apiClient
+      .patch<SchoolDetail>(`${ADMIN_BASE}/schools/${enc(schoolId)}/medium`, {
+        medium_of_instruction: mediumOfInstruction,
+      })
+      .then((r) => r.data),
+
   provisionPrincipal: (schoolId: string, data: ProvisionPrincipalRequest) =>
     apiClient
       .post<ProvisionedUser>(`${ADMIN_BASE}/schools/${enc(schoolId)}/principal`, data)

@@ -6,6 +6,9 @@ export interface RagFilters {
   subject?: string;
   chapter_name?: string[];
   title?: string[];
+  /** Narrows within the caller's school-derived medium scope; omit for every
+   * medium the caller's school allows (all of them for a Bilingual school). */
+  medium?: "English" | "Hindi";
 }
 
 export interface QARequest {
@@ -121,10 +124,17 @@ export interface ClassLevelsResponse {
   class_levels: string[];
 }
 
+/** Selectable book mediums for the current user (derived from their school's
+ * medium of instruction; admin gets both unconditionally). */
+export interface MediumsResponse {
+  mediums: string[];
+}
+
 export interface CascadingFiltersRequest {
   class_level?: string;
   subject?: string;
   chapter_name?: string;
+  medium?: "English" | "Hindi";
 }
 
 /**
@@ -186,6 +196,7 @@ export interface DocumentItem {
   subject: string;
   chapter_number: string;
   chapter_name: string;
+  medium: "English" | "Hindi";
   original_filename: string;
   mime_type?: string;
   file_size: number;
@@ -230,6 +241,11 @@ export interface RagClassStat {
   count: number;
 }
 
+export interface RagMediumStat {
+  medium: string;
+  count: number;
+}
+
 export interface RagStatusStat {
   status: string;
   count: number;
@@ -240,6 +256,7 @@ export interface RagRecentDocument {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   status: string;
   total_chunks?: number | null;
   is_global: boolean;
@@ -258,6 +275,7 @@ export interface RagAnalyticsResponse {
   totals: RagLibraryTotals;
   by_subject: RagSubjectStat[];
   by_class: RagClassStat[];
+  by_medium: RagMediumStat[];
   by_status: RagStatusStat[];
   recent: RagRecentDocument[];
   feedback?: RagFeedbackSummary | null;
