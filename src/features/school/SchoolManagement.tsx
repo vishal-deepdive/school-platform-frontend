@@ -42,6 +42,7 @@ import {
   Layers,
   RefreshCw,
   AlertTriangle,
+  Languages,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { adminApi } from "@/features/admin/api/admin";
@@ -52,7 +53,11 @@ import {
 } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { getErrorMessage, formatDate, cn } from "@/shared/lib/utils";
-import { GRADE_OPTIONS, gradeRangeToClassNames } from "@/features/admin/constants";
+import {
+  GRADE_OPTIONS,
+  gradeRangeToClassNames,
+  MEDIUM_OPTIONS,
+} from "@/features/admin/constants";
 import type { SchoolDetail, AdminUserListItem } from "@/features/admin/types";
 import type { PendingParentItem } from "@/features/auth/types";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -84,6 +89,9 @@ export interface SchoolCaps {
   inviteStaff: boolean;
   /** Set / change the academic session (admin + principal). */
   editSession: boolean;
+  /** Set / change the medium of instruction — drives the RAG library's
+   * language scope (admin + principal, mirrors editSession). */
+  editMedium: boolean;
 }
 
 export const ADMIN_CAPS: SchoolCaps = {
@@ -92,6 +100,7 @@ export const ADMIN_CAPS: SchoolCaps = {
   principalTab: true,
   inviteStaff: true,
   editSession: true,
+  editMedium: true,
 };
 
 export const PRINCIPAL_CAPS: SchoolCaps = {
@@ -100,6 +109,7 @@ export const PRINCIPAL_CAPS: SchoolCaps = {
   principalTab: false,
   inviteStaff: true,
   editSession: true,
+  editMedium: true,
 };
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
@@ -1729,6 +1739,77 @@ function SetSessionModal({
   );
 }
 
+function SetMediumModal({
+  school,
+  onClose,
+}: {
+  school: SchoolDetail;
+  onClose: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const current = school.medium_of_instruction ?? "";
+  const [medium, setMedium] = useState(current);
+
+  const save = useMutation({
+    mutationFn: () => adminApi.setSchoolMedium(school.id, medium),
+    onSuccess: () => {
+      toast.success("Medium of instruction updated");
+      queryClient.invalidateQueries({ queryKey: ["admin", "school", school.id] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "schools"] });
+      // The school's book-library visibility is derived from its medium —
+      // bump every RAG query (document list, cascading filters, insights,
+      // Q&A/notes/questions) so a narrowed medium hides the other language's
+      // books immediately instead of waiting out the reference-tier TTL.
+      queryClient.invalidateQueries({ queryKey: ["rag"] });
+      onClose();
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  // Narrowing away from Bilingual is the one transition that can suddenly
+  // hide books a teacher already relies on — worth a heads-up before saving.
+  const otherMedium = medium === "English" ? "Hindi" : "English";
+  const isNarrowing = current === "Bilingual" && medium !== "" && medium !== "Bilingual";
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title="Set Medium of Instruction"
+      icon={<Languages className="h-4 w-4" />}
+      description="Determines which language books this school's RAG library shows."
+      size="sm"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={() => save.mutate()} loading={save.isPending} disabled={!medium}>
+            Save medium
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <Select
+          label="Medium of Instruction"
+          options={MEDIUM_OPTIONS.map((m) => ({ value: m.value, label: m.label }))}
+          value={medium}
+          onChange={(e) => setMedium(e.target.value)}
+        />
+        {isNarrowing && (
+          <Alert variant="warning">
+            Narrowing from Bilingual to {medium} will immediately hide the
+            school&apos;s {otherMedium} books from teachers and students.
+            Books already uploaded aren&apos;t deleted — they reappear if you
+            switch back to Bilingual.
+          </Alert>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 // ── Cockpit ─────────────────────────────────────────────────────────────────
 
 type TabId =
@@ -1767,6 +1848,7 @@ export function SchoolManagement({
   const [tab, setTab] = useState<TabId>("overview");
   const [showInvite, setShowInvite] = useState(false);
   const [showSession, setShowSession] = useState(false);
+  const [showMedium, setShowMedium] = useState(false);
   const [bulk, setBulk] = useState<{ from: string; to: string } | null>(null);
   const [confirmToggle, setConfirmToggle] = useState(false);
 
@@ -1879,6 +1961,15 @@ export function SchoolManagement({
                 {school.current_session ? "Change Session" : "Set Session"}
               </Button>
             )}
+            {caps.editMedium && (
+              <Button
+                variant="outline"
+                icon={<Languages className="h-4 w-4" />}
+                onClick={() => setShowMedium(true)}
+              >
+                {school.medium_of_instruction ? "Change Medium" : "Set Medium"}
+              </Button>
+            )}
             {caps.inviteStaff && (
               <Button
                 variant="outline"
@@ -1964,6 +2055,10 @@ export function SchoolManagement({
 
       {showSession && (
         <SetSessionModal school={school} onClose={() => setShowSession(false)} />
+      )}
+
+      {showMedium && (
+        <SetMediumModal school={school} onClose={() => setShowMedium(false)} />
       )}
 
       {bulk && (

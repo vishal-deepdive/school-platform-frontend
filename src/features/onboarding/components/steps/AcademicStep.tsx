@@ -5,6 +5,7 @@ import { Button } from "@/shared/components/ui/Button";
 import { InfoHint } from "@/shared/components/ui/InfoHint";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { useOnboardingCapabilities } from "@/features/onboarding/hooks";
+import { MEDIUM_OPTIONS } from "@/features/admin/constants";
 import type { StepPropsExtra } from "./types";
 
 const CLASS_OPTIONS = Array.from({ length: 13 }, (_, i) => {
@@ -15,21 +16,12 @@ const CLASS_OPTIONS = Array.from({ length: 13 }, (_, i) => {
   };
 });
 
-const MEDIUM_OPTIONS = [
-  { value: "English", label: "English" },
-  { value: "Hindi", label: "Hindi" },
-  { value: "Regional", label: "Regional Language" },
-  { value: "Bilingual", label: "Bilingual (English + Regional)" },
-  { value: "Other", label: "Other" },
-];
-
 export function AcademicStep({
   register,
   errors,
   watch,
   setValue,
 }: StepPropsExtra) {
-  const selectedMedium = watch("medium_of_instruction");
   const udiseCode = watch("udise_code");
   const udiseReg = register("udise_code");
   const { data: capabilities } = useOnboardingCapabilities();
@@ -84,30 +76,18 @@ export function AcademicStep({
       />
 
       <AuthSelect
-        label="Medium of Instruction"
+        label="Medium of Instruction *"
         error={errors.medium_of_instruction?.message}
-        hint="Primary language used for teaching"
+        hint="Primary language used for teaching — drives which language books your teachers can upload"
         {...register("medium_of_instruction")}
       >
-        <option value="">— Select medium (optional) —</option>
+        <option value="">— Select medium —</option>
         {MEDIUM_OPTIONS.map((m) => (
           <option key={m.value} value={m.value}>
             {m.label}
           </option>
         ))}
       </AuthSelect>
-
-      {selectedMedium === "Other" && (
-        <div className="lg:col-span-2 animate-in fade-in slide-in-from-top-2 duration-300">
-          <AuthInput
-            label="Please specify medium *"
-            type="text"
-            placeholder="e.g. French, German"
-            error={errors.other_medium_of_instruction?.message}
-            {...register("other_medium_of_instruction")}
-          />
-        </div>
-      )}
 
       <div className="grid grid-cols-2 gap-3 lg:col-span-2">
         <AuthSelect

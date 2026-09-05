@@ -19,6 +19,8 @@ const _typeValues = [
   "autonomous",
   "other",
 ] as const;
+// Mirrors app.shared.mediums.SCHOOL_MEDIUMS on the backend (DB CHECK constraint).
+const _mediumValues = ["English", "Hindi", "Bilingual"] as const;
 
 const _currentYear = new Date().getFullYear();
 
@@ -131,14 +133,9 @@ const _step3Base = z.object({
       (v) => parseInt(v, 10) <= 200_000,
       "Cannot exceed 200,000 students",
     ),
-  medium_of_instruction: z.preprocess(
-    preprocessOptional,
-    z.string().max(100).optional(),
-  ),
-  other_medium_of_instruction: z.preprocess(
-    preprocessOptional,
-    z.string().max(100, "Medium is too long").optional(),
-  ),
+  medium_of_instruction: z.enum(_mediumValues, {
+    errorMap: () => ({ message: "Please select a medium of instruction" }),
+  }),
   classes_from: z.preprocess(preprocessOptional, z.string().optional()),
   classes_to: z.preprocess(preprocessOptional, z.string().optional()),
   udise_code: z.preprocess(
@@ -203,26 +200,6 @@ function _refineStep1(
   }
 }
 
-function _refineStep3Medium(
-  data: {
-    medium_of_instruction?: string;
-    other_medium_of_instruction?: string;
-  },
-  ctx: z.RefinementCtx,
-) {
-  if (
-    data.medium_of_instruction === "Other" &&
-    (!data.other_medium_of_instruction ||
-      data.other_medium_of_instruction.trim() === "")
-  ) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Please specify your medium of instruction",
-      path: ["other_medium_of_instruction"],
-    });
-  }
-}
-
 function _refineClassRange(data: {
   classes_from?: string;
   classes_to?: string;
@@ -241,12 +218,10 @@ export const onboardingStep1Schema = _step1Base.superRefine(_refineStep1);
 
 export const onboardingStep2Schema = _step2Base.superRefine(_refineStep2Area);
 
-export const onboardingStep3Schema = _step3Base
-  .superRefine(_refineStep3Medium)
-  .refine(_refineClassRange, {
-    message: "Starting class must be ≤ ending class",
-    path: ["classes_to"],
-  });
+export const onboardingStep3Schema = _step3Base.refine(_refineClassRange, {
+  message: "Starting class must be ≤ ending class",
+  path: ["classes_to"],
+});
 
 export const onboardingStep5Schema = _step5Base;
 
@@ -259,7 +234,6 @@ export const schoolOnboardingSchema = _step1Base
   .superRefine((data, ctx) => {
     _refineStep1(data, ctx);
     _refineStep2Area(data, ctx);
-    _refineStep3Medium(data, ctx);
   })
   .refine(_refineClassRange, {
     message: "Starting class must be ≤ ending class",

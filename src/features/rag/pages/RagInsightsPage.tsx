@@ -16,6 +16,7 @@ import {
   Activity,
   Zap,
   UserCheck,
+  Languages,
 } from "lucide-react";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Panel } from "@/shared/components/ui/Panel";
@@ -25,7 +26,11 @@ import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
 import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
-import { useRagAnalytics, useUsageAnalytics } from "@/features/rag/hooks/useRag";
+import {
+  useRagAnalytics,
+  useRagMediums,
+  useUsageAnalytics,
+} from "@/features/rag/hooks/useRag";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 
 /** A horizontal breakdown list with a proportional fill bar per row. */
@@ -178,6 +183,7 @@ export function RagInsightsPage() {
   const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const { data, isLoading, isError, error, refetch, isFetching } =
     useRagAnalytics(schoolId);
+  const { data: mediumData } = useRagMediums();
 
   const subjectRows = useMemo(
     () =>
@@ -192,6 +198,14 @@ export function RagInsightsPage() {
       (data?.by_class ?? []).map((c) => ({
         label: c.class_level || "Unspecified",
         count: c.count,
+      })),
+    [data],
+  );
+  const mediumRows = useMemo(
+    () =>
+      (data?.by_medium ?? []).map((m) => ({
+        label: m.medium || "Unspecified",
+        count: m.count,
       })),
     [data],
   );
@@ -227,6 +241,12 @@ export function RagInsightsPage() {
                 ? `${schoolName} + global`
                 : "Your school + global"}
           </Badge>
+          {!isAdmin && mediumData && mediumData.mediums.length > 0 && (
+            <Badge variant="purple">
+              <Languages className="mr-1 h-3 w-3" />
+              {mediumData.mediums.join(" + ")}
+            </Badge>
+          )}
         </div>
         <Button
           variant="outline"
@@ -366,7 +386,7 @@ export function RagInsightsPage() {
           </Panel>
 
           {/* Breakdowns */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <Panel
               flush
               icon={<BookOpen className="h-4 w-4" />}
@@ -390,6 +410,19 @@ export function RagInsightsPage() {
                 rows={classRows}
                 total={totals.documents}
                 emptyLabel="No class data yet."
+              />
+            </Panel>
+
+            <Panel
+              flush
+              icon={<Languages className="h-4 w-4" />}
+              title="Documents by medium"
+              actions={<Badge variant="info">{mediumRows.length}</Badge>}
+            >
+              <BreakdownList
+                rows={mediumRows}
+                total={totals.documents}
+                emptyLabel="No medium data yet."
               />
             </Panel>
           </div>

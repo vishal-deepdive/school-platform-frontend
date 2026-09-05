@@ -27,7 +27,7 @@ export function useOnboardingForm() {
     established_year: "",
     phone: "",
     address_line_2: "",
-    medium_of_instruction: "",
+    medium_of_instruction: "" as never,
     classes_from: "",
     classes_to: "",
     udise_code: "",

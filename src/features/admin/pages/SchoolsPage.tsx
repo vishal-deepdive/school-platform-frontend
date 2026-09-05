@@ -75,8 +75,7 @@ const createSchoolSchema = z
       .string()
       .trim()
       .regex(SESSION_RE, "Use a session like 2025-26"),
-    medium_of_instruction: z.string().optional().or(z.literal("")),
-    other_medium_of_instruction: z.string().trim().max(100).optional().or(z.literal("")),
+    medium_of_instruction: z.string().min(1, "Select a medium of instruction"),
     classes_from: z.string().optional().or(z.literal("")),
     classes_to: z.string().optional().or(z.literal("")),
     student_count: z
@@ -174,7 +173,6 @@ function CreateSchoolModal({
 
   const board = watch("board");
   const schoolType = watch("school_type");
-  const medium = watch("medium_of_instruction");
   const formId = useId();
 
   const createMutation = useMutation({
@@ -211,11 +209,7 @@ function CreateSchoolModal({
       address_line_1: clean(data.address_line_1),
       address_line_2: clean(data.address_line_2),
       pin_code: clean(data.pin_code),
-      medium_of_instruction: clean(data.medium_of_instruction),
-      other_medium_of_instruction:
-        data.medium_of_instruction === "Other"
-          ? clean(data.other_medium_of_instruction)
-          : undefined,
+      medium_of_instruction: data.medium_of_instruction,
       classes_from: clean(data.classes_from),
       classes_to: clean(data.classes_to),
       student_count: clean(data.student_count) ? Number(data.student_count) : undefined,
@@ -232,7 +226,7 @@ function CreateSchoolModal({
     ...SCHOOL_TYPES.map((t) => ({ value: t.value, label: t.label })),
   ];
   const mediumOptions = [
-    { value: "", label: "Select a medium (optional)…" },
+    { value: "", label: "Select a medium…" },
     ...MEDIUM_OPTIONS.map((m) => ({ value: m.value, label: m.label })),
   ];
   const gradeFrom = [
@@ -407,19 +401,11 @@ function CreateSchoolModal({
             />
           </div>
           <Select
-            label="Medium of Instruction"
+            label="Medium of Instruction *"
             options={mediumOptions}
             error={errors.medium_of_instruction?.message}
             {...register("medium_of_instruction")}
           />
-          {medium === "Other" && (
-            <Input
-              label="Medium name *"
-              placeholder="e.g. French"
-              error={errors.other_medium_of_instruction?.message}
-              {...register("other_medium_of_instruction")}
-            />
-          )}
           <Select
             label="Classes From"
             options={gradeFrom}

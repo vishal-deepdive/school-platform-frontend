@@ -42,12 +42,14 @@ export const SCHOOL_TYPES = [
   { value: "OTHER", label: "Other" },
 ] as const;
 
+// Single source of truth for the school medium-of-instruction vocabulary —
+// mirrors app.shared.mediums.SCHOOL_MEDIUMS on the backend exactly (enforced
+// there by a DB CHECK constraint). Re-exported from onboarding's AcademicStep
+// rather than duplicated, so the two option lists can never drift.
 export const MEDIUM_OPTIONS = [
   { value: "English", label: "English" },
   { value: "Hindi", label: "Hindi" },
-  { value: "Regional", label: "Regional Language" },
-  { value: "Bilingual", label: "Bilingual (English + Regional)" },
-  { value: "Other", label: "Other" },
+  { value: "Bilingual", label: "Bilingual (English + Hindi)" },
 ] as const;
 
 /**

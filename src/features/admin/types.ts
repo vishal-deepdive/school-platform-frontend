@@ -330,6 +330,7 @@ export interface SchoolDetail {
   pin_code: string | null;
   student_count: number | null;
   medium_of_instruction: string | null;
+  other_medium_of_instruction: string | null;
   classes_from: string | null;
   classes_to: string | null;
   udise_code: string | null;
@@ -364,8 +365,7 @@ export interface CreateSchoolRequest {
   pin_code?: string;
   // Academics (current_session required)
   current_session: string;
-  medium_of_instruction?: string;
-  other_medium_of_instruction?: string;
+  medium_of_instruction: string;
   classes_from?: string;
   classes_to?: string;
   student_count?: number;

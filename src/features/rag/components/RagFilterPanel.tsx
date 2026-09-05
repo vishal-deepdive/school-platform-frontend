@@ -1,6 +1,10 @@
 import { Select } from "@/shared/components/ui/Select";
 import { sortClassesDescending } from "@/shared/lib/utils";
-import { useRagClassLevels, useRagMetadata } from "@/features/rag/hooks/useRag";
+import {
+  useRagClassLevels,
+  useRagMediums,
+  useRagMetadata,
+} from "@/features/rag/hooks/useRag";
 import {
   subjectsForClass,
   chaptersForClassSubject,
@@ -56,6 +60,12 @@ export function RagFilterPanel({
 }: RagFilterPanelProps) {
   const { data: classData, isLoading: classesLoading } = useRagClassLevels();
   const { data: meta } = useRagMetadata();
+  const { data: mediumData } = useRagMediums();
+
+  // Only a Bilingual school (or an admin) has more than one medium to choose
+  // from — an English- or Hindi-only school never sees this redundant control.
+  const mediumValues = mediumData?.mediums ?? [];
+  const showMedium = mediumValues.length > 1;
 
   const classValues = sortClassesDescending(classData?.class_levels ?? []);
   const subjectValues = subjectsForClass(meta, filters.class_level);
@@ -71,11 +81,21 @@ export function RagFilterPanel({
     filters.chapter_name?.[0],
   );
 
+  const handleMedium = (value: string) =>
+    onChange({
+      ...filters,
+      medium: (value || undefined) as RagFilters["medium"],
+    });
+
   const handleClass = (value: string) =>
-    onChange({ class_level: value || undefined });
+    onChange({ medium: filters.medium, class_level: value || undefined });
 
   const handleSubject = (value: string) =>
-    onChange({ class_level: filters.class_level, subject: value || undefined });
+    onChange({
+      medium: filters.medium,
+      class_level: filters.class_level,
+      subject: value || undefined,
+    });
 
   const handleChapter = (value: string) =>
     onChange({
@@ -102,6 +122,14 @@ export function RagFilterPanel({
 
   return (
     <div className={className}>
+      {showMedium && (
+        <Select
+          label="Medium"
+          options={toOptions(mediumValues, "All mediums")}
+          value={filters.medium ?? ""}
+          onChange={(e) => handleMedium(e.target.value)}
+        />
+      )}
       <Select
         label="Class"
         options={toOptions(classValues, "All classes")}
