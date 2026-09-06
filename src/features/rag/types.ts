@@ -146,6 +146,7 @@ export interface AuditCountRow {
   book?: string;
   class_level?: string;
   subject?: string;
+  medium?: string;
   name?: string;
   count?: number;
   total?: number;
@@ -154,6 +155,7 @@ export interface AuditCountRow {
 export interface AuditCounts {
   by_class: AuditCountRow[];
   by_subject: AuditCountRow[];
+  by_medium: AuditCountRow[];
 }
 
 export interface AuditMissingFields {
@@ -539,6 +541,8 @@ export interface CreateContentRequestRequest {
   class_level?: string;
   subject?: string;
   chapter_name?: string;
+  /** Which book medium the missing content is needed in. */
+  medium?: "English" | "Hindi";
   note?: string;
 }
 
@@ -547,6 +551,7 @@ export interface ContentRequestItem {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   note?: string | null;
   status: ContentRequestStatus;
   requested_by_name?: string | null;

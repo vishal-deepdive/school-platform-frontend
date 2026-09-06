@@ -139,7 +139,7 @@ function FeedbackRow({
   onToggle: () => void;
 }) {
   const filters = item.filters ?? {};
-  const chips = [filters.class_level, filters.subject, ...(Array.isArray(filters.chapter_name) ? filters.chapter_name : [])]
+  const chips = [filters.medium, filters.class_level, filters.subject, ...(Array.isArray(filters.chapter_name) ? filters.chapter_name : [])]
     .filter(Boolean)
     .map(String);
 

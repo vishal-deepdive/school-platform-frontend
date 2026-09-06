@@ -180,6 +180,11 @@ function RequestRow({
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="truncate font-medium text-foreground">{label}</p>
+          {item.medium && (
+            <Badge variant={item.medium === "Hindi" ? "purple" : "info"}>
+              {item.medium}
+            </Badge>
+          )}
           <Badge variant={meta.variant}>{meta.label}</Badge>
         </div>
         {item.note && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.note}</p>}
@@ -234,6 +239,7 @@ function CreateRequestModal({
         class_level: filters.class_level,
         subject: filters.subject,
         chapter_name: filters.chapter_name?.[0],
+        medium: filters.medium,
         note: note.trim() || undefined,
       },
       {

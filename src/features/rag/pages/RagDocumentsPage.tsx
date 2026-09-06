@@ -107,12 +107,14 @@ export function RagDocumentsPage() {
   const queryClient = useQueryClient();
   const uploadFormId = useId();
 
-  const { data: mediumData } = useRagMediums();
+  const { data: mediumData, isLoading: mediumsLoading } = useRagMediums();
   const mediumValues = mediumData?.mediums ?? [];
-  const mediumSelectOptions = [
-    { value: "", label: "Select medium" },
-    ...mediumValues.map((m) => ({ value: m, label: m })),
-  ];
+  const mediumSelectOptions = mediumsLoading
+    ? [{ value: "", label: "Loading mediums…" }]
+    : [
+        { value: "", label: "Select medium" },
+        ...mediumValues.map((m) => ({ value: m, label: m })),
+      ];
 
   // Open the upload modal with the school prefilled to the one the admin is
   // currently viewing (they can still clear it to publish global content).

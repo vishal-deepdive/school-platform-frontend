@@ -7,6 +7,7 @@ import {
   Wrench,
   Layers,
   BookOpen,
+  Languages,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
@@ -145,7 +146,7 @@ export function RagAuditPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             {[
               {
                 label: "By Class",
@@ -156,6 +157,11 @@ export function RagAuditPage() {
                 label: "By Subject",
                 icon: <BookOpen className="h-4 w-4" />,
                 data: data?.counts?.by_subject,
+              },
+              {
+                label: "By Medium",
+                icon: <Languages className="h-4 w-4" />,
+                data: data?.counts?.by_medium,
               },
             ].map(({ label, icon, data: rows }) => (
               <Panel
@@ -176,6 +182,7 @@ export function RagAuditPage() {
                         row.book ??
                         row.class_level ??
                         row.subject ??
+                        row.medium ??
                         row.name ??
                         "—";
                       const rawCount = row.count ?? row.total;
