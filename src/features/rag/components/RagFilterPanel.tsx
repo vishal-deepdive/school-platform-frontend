@@ -3,13 +3,13 @@ import { sortClassesDescending } from "@/shared/lib/utils";
 import {
   useRagClassLevels,
   useRagMediums,
-  useRagMetadata,
+  useRagCascadingOptions,
 } from "@/features/rag/hooks/useRag";
-import {
-  subjectsForClass,
-  chaptersForClassSubject,
-  titlesForClassSubjectChapter,
-} from "@/features/rag/filters";
+// import {
+//   subjectsForClass,
+//   chaptersForClassSubject,
+//   titlesForClassSubjectChapter,
+// } from "@/features/rag/filters";
 import type { RagFilters } from "@/features/rag/types";
 import type { SelectOption } from "@/shared/types/common";
 
@@ -59,32 +59,36 @@ export function RagFilterPanel({
   className = DEFAULT_LAYOUT,
 }: RagFilterPanelProps) {
   const { data: classData, isLoading: classesLoading } = useRagClassLevels();
-  const { data: meta } = useRagMetadata();
   const { data: mediumData } = useRagMediums();
 
-  // Only a Bilingual school (or an admin) has more than one medium to choose
-  // from — an English- or Hindi-only school never sees this redundant control.
   const mediumValues = mediumData?.mediums ?? [];
   const showMedium = mediumValues.length > 1;
 
   const classValues = sortClassesDescending(classData?.class_levels ?? []);
-  const subjectValues = subjectsForClass(meta, filters.class_level);
-  const chapterValues = chaptersForClassSubject(
-    meta,
-    filters.class_level,
-    filters.subject,
-  );
-  const titleValues = titlesForClassSubjectChapter(
-    meta,
-    filters.class_level,
-    filters.subject,
-    filters.chapter_name?.[0],
-  );
+
+  const cascadingFilters = {
+    medium: filters.medium,
+    class_level: filters.class_level,
+    subject: filters.subject,
+    chapter_name: filters.chapter_name?.[0],
+  };
+
+  const {
+    data: cascadingData,
+    isLoading: cascadingLoading,
+  } = useRagCascadingOptions(cascadingFilters);
+
+  const subjectValues = cascadingData?.subject ?? [];
+  const chapterValues = cascadingData?.chapter_name ?? [];
+  const titleValues = cascadingData?.title ?? [];
 
   const handleMedium = (value: string) =>
     onChange({
-      ...filters,
       medium: (value || undefined) as RagFilters["medium"],
+      class_level: filters.class_level,
+      subject: undefined,
+      chapter_name: undefined,
+      title: undefined,
     });
 
   const handleClass = (value: string) =>
@@ -141,7 +145,13 @@ export function RagFilterPanel({
         options={toOptions(subjectValues, "All subjects")}
         value={filters.subject ?? ""}
         onChange={(e) => handleSubject(e.target.value)}
-        hint={!filters.class_level ? "Select a class first" : undefined}
+        hint={
+          !filters.class_level
+            ? "Select a class first"
+            : cascadingLoading
+              ? "Loading subjects…"
+              : undefined
+        }
       />
       {showChapter && (
         <Select
@@ -149,7 +159,13 @@ export function RagFilterPanel({
           options={toOptions(chapterValues, "All chapters")}
           value={filters.chapter_name?.[0] ?? ""}
           onChange={(e) => handleChapter(e.target.value)}
-          hint={!filters.subject ? "Select a subject first" : undefined}
+          hint={
+            !filters.subject
+              ? "Select a subject first"
+              : cascadingLoading
+                ? "Loading chapters…"
+                : undefined
+          }
         />
       )}
       {showTitle && (
@@ -161,7 +177,9 @@ export function RagFilterPanel({
           hint={
             !filters.chapter_name?.length
               ? "Select a chapter first"
-              : undefined
+              : cascadingLoading
+                ? "Loading topics…"
+                : undefined
           }
         />
       )}

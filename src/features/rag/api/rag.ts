@@ -44,6 +44,13 @@ import type {
 
 const BASE = `${API_V1}/rag`;
 
+export interface RagCascadingOptions {
+  class_level: string[];
+  subject: string[];
+  chapter_name: string[];
+  title: string[];
+}
+
 export const ragApi = {
   getMetadata: () =>
     apiClient.get<RagMetadata>(`${BASE}/metadata`).then((r) => r.data),
@@ -56,6 +63,16 @@ export const ragApi = {
   /** Book medium(s) the caller may select for uploads and filters. */
   getMediums: () =>
     apiClient.get<MediumsResponse>(`${BASE}/mediums`).then((r) => r.data),
+
+  getCascadingOptions: (filters: {
+    class_level?: string;
+    subject?: string;
+    chapter_name?: string;
+    medium?: "English" | "Hindi";
+  }) =>
+    apiClient
+      .post<RagCascadingOptions>(`${BASE}/metadata/cascading`, filters)
+      .then((r) => r.data),
 
   refreshMetadata: () =>
     apiClient.post(`${BASE}/metadata/refresh`).then((r) => r.data),
