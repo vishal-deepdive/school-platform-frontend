@@ -36,6 +36,12 @@ export const ragKeys = {
   metadata: () => ["rag", "metadata"] as const,
   classLevels: () => ["rag", "classLevels"] as const,
   mediums: () => ["rag", "mediums"] as const,
+  cascading: (filters: {
+    class_level?: string;
+    subject?: string;
+    chapter_name?: string;
+    medium?: "English" | "Hindi";
+  }) => ["rag", "cascading", filters] as const,
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
   documentStatus: (id: string) => ["rag", "documentStatus", id] as const,
   documentChunks: (id: string) => ["rag", "documentChunks", id] as const,
@@ -80,6 +86,20 @@ export function useRagMediums() {
   });
 }
 
+export function useRagCascadingOptions(filters: {
+  class_level?: string;
+  subject?: string;
+  chapter_name?: string;
+  medium?: "English" | "Hindi";
+}) {
+  return useQuery({
+    queryKey: ragKeys.cascading(filters),
+    queryFn: () => ragApi.getCascadingOptions(filters),
+    enabled: Object.values(filters).some(Boolean),
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useRagAnalytics(schoolId?: string) {
   return useQuery({
     queryKey: ragKeys.analytics(schoolId),
@@ -92,9 +112,9 @@ export function useRagDocuments(
   params: DocumentParams,
   options?: {
     refetchInterval?:
-      | number
-      | false
-      | ((query: Query<DocumentListResponse>) => number | false);
+    | number
+    | false
+    | ((query: Query<DocumentListResponse>) => number | false);
   },
 ) {
   return useQuery({
