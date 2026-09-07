@@ -33,7 +33,7 @@ interface DocumentParams {
 
 export const ragKeys = {
   all: ["rag"] as const,
-  metadata: () => ["rag", "metadata"] as const,
+  metadata: (medium?: string) => ["rag", "metadata", medium ?? "__all__"] as const,
   classLevels: () => ["rag", "classLevels"] as const,
   mediums: () => ["rag", "mediums"] as const,
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
@@ -54,11 +54,21 @@ export const ragKeys = {
     ["rag", "usage", days, schoolId ?? "platform"] as const,
 };
 
-export function useRagMetadata() {
+/**
+ * The class → subject → chapter → title hierarchy that drives the cascading
+ * filter dropdowns. Pass the currently-selected medium to scope it to just
+ * that medium's chapters (a Bilingual school/admin picking "Hindi" then never
+ * sees an English-only chapter mixed into Subject/Chapter); omit it for the
+ * caller's full allowed set (unscoped coverage views like `CoverageMatrix`).
+ */
+export function useRagMetadata(medium?: string) {
   return useQuery({
-    queryKey: ragKeys.metadata(),
-    queryFn: () => ragApi.getMetadata(),
+    queryKey: ragKeys.metadata(medium),
+    queryFn: () => ragApi.getMetadata(medium),
     staleTime: 10 * 60_000,
+    // Keep the previous medium's hierarchy on screen while the new one loads,
+    // instead of the Subject/Chapter dropdowns flashing empty on every switch.
+    placeholderData: (prev) => prev,
   });
 }
 
