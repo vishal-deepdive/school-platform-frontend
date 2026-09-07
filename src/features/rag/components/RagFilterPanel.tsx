@@ -59,8 +59,11 @@ export function RagFilterPanel({
   className = DEFAULT_LAYOUT,
 }: RagFilterPanelProps) {
   const { data: classData, isLoading: classesLoading } = useRagClassLevels();
-  const { data: meta } = useRagMetadata();
   const { data: mediumData } = useRagMediums();
+  // Re-fetches whenever the selected medium changes, so Subject/Chapter/Topic
+  // only ever offer that medium's chapters (a Bilingual school picking
+  // "Hindi" never sees an English-only chapter mixed in, and vice versa).
+  const { data: meta, isFetching: metaFetching } = useRagMetadata(filters.medium);
 
   // Only a Bilingual school (or an admin) has more than one medium to choose
   // from — an English- or Hindi-only school never sees this redundant control.
@@ -81,10 +84,13 @@ export function RagFilterPanel({
     filters.chapter_name?.[0],
   );
 
+  // Subject/Chapter/Topic cascade from the medium-scoped hierarchy (see
+  // useRagMetadata above), so a selection made under the old medium may no
+  // longer exist under the new one — reset them, same as switching class.
   const handleMedium = (value: string) =>
     onChange({
-      ...filters,
       medium: (value || undefined) as RagFilters["medium"],
+      class_level: filters.class_level,
     });
 
   const handleClass = (value: string) =>
@@ -141,7 +147,13 @@ export function RagFilterPanel({
         options={toOptions(subjectValues, "All subjects")}
         value={filters.subject ?? ""}
         onChange={(e) => handleSubject(e.target.value)}
-        hint={!filters.class_level ? "Select a class first" : undefined}
+        hint={
+          !filters.class_level
+            ? "Select a class first"
+            : metaFetching
+              ? "Updating for the selected medium…"
+              : undefined
+        }
       />
       {showChapter && (
         <Select

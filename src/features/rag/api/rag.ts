@@ -45,8 +45,11 @@ import type {
 const BASE = `${API_V1}/rag`;
 
 export const ragApi = {
-  getMetadata: () =>
-    apiClient.get<RagMetadata>(`${BASE}/metadata`).then((r) => r.data),
+  /** Pass `medium` to scope the hierarchy to one book medium (see useRagMetadata). */
+  getMetadata: (medium?: string) =>
+    apiClient
+      .get<RagMetadata>(`${BASE}/metadata`, { params: medium ? { medium } : undefined })
+      .then((r) => r.data),
 
   getClassLevels: () =>
     apiClient
