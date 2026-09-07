@@ -146,6 +146,7 @@ export interface AuditCountRow {
   book?: string;
   class_level?: string;
   subject?: string;
+  medium?: string;
   name?: string;
   count?: number;
   total?: number;
@@ -154,6 +155,7 @@ export interface AuditCountRow {
 export interface AuditCounts {
   by_class: AuditCountRow[];
   by_subject: AuditCountRow[];
+  by_medium: AuditCountRow[];
 }
 
 export interface AuditMissingFields {
@@ -332,6 +334,8 @@ export interface CreateAssignmentRequest {
   class_level?: string;
   subject?: string;
   chapter_name?: string;
+  /** Which book medium this set was generated from; falls back to filters.medium. */
+  medium?: "English" | "Hindi";
   difficulty?: Difficulty;
   questions: QuizQuestion[];
   filters?: RagFilters;
@@ -351,6 +355,7 @@ export interface AssignmentSummary {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   difficulty?: string | null;
   num_questions: number;
   status: string;
@@ -408,6 +413,7 @@ export interface AssignmentDetail {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   difficulty?: string | null;
   num_questions: number;
   status: string;
@@ -495,6 +501,7 @@ export interface FlashcardDeckSummary {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   card_count: number;
   created_at?: string | null;
   created_by_name?: string | null;
@@ -539,6 +546,8 @@ export interface CreateContentRequestRequest {
   class_level?: string;
   subject?: string;
   chapter_name?: string;
+  /** Which book medium the missing content is needed in. */
+  medium?: "English" | "Hindi";
   note?: string;
 }
 
@@ -547,6 +556,7 @@ export interface ContentRequestItem {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   note?: string | null;
   status: ContentRequestStatus;
   requested_by_name?: string | null;

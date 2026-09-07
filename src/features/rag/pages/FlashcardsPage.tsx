@@ -187,7 +187,7 @@ export function FlashcardsPage() {
         title={activeDeck?.title ?? "Flashcards"}
         description={
           activeDeck
-            ? [activeDeck.class_level, activeDeck.subject].filter(Boolean).join(" · ")
+            ? [activeDeck.class_level, activeDeck.subject, activeDeck.medium].filter(Boolean).join(" · ")
             : undefined
         }
         icon={<Layers className="h-5 w-5" />}
@@ -276,7 +276,12 @@ function DeckCard({
           </div>
         </div>
       </button>
-      <Badge variant="info">Revise</Badge>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge variant="info">Revise</Badge>
+        {deck.medium && (
+          <Badge variant={deck.medium === "Hindi" ? "purple" : "default"}>{deck.medium}</Badge>
+        )}
+      </div>
     </div>
   );
 }

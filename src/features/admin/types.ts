@@ -285,6 +285,7 @@ export interface SchoolListItem {
   state: string | null;
   board: string | null;
   udise_code: string | null;
+  medium_of_instruction: string | null;
   current_session: string | null;
   is_active: boolean;
   created_at: string | null;

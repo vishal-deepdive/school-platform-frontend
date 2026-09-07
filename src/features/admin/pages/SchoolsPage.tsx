@@ -19,6 +19,7 @@ import {
   MapPin,
   AlertTriangle,
   Info,
+  Languages,
 } from "lucide-react";
 import { adminApi } from "@/features/admin/api/admin";
 import { getErrorMessage } from "@/shared/lib/utils";
@@ -591,6 +592,12 @@ export function SchoolsPage() {
                             <UsersIcon className="h-3 w-3" />
                             {s.teachers} teachers
                           </span>
+                          {s.medium_of_instruction && (
+                            <span className="inline-flex items-center gap-1">
+                              <Languages className="h-3 w-3" />
+                              {s.medium_of_instruction}
+                            </span>
+                          )}
                           {s.current_session && (
                             <span className="text-muted-foreground/70">
                               {s.current_session}

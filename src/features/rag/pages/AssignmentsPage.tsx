@@ -140,6 +140,9 @@ export function AssignmentsPage() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="truncate font-medium text-foreground">{a.title}</p>
+                    {a.medium && (
+                      <Badge variant={a.medium === "Hindi" ? "purple" : "info"}>{a.medium}</Badge>
+                    )}
                     <Badge variant={a.status === "active" ? "success" : "default"}>
                       {a.status}
                     </Badge>

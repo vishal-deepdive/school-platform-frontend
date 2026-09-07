@@ -161,9 +161,14 @@ function PracticeCard({
       className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm"
     >
       <div className="flex items-start justify-between gap-2">
-        <Badge variant={isSelf ? "purple" : "primary"}>
-          {isSelf ? "Self-quiz" : "Assigned"}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant={isSelf ? "purple" : "primary"}>
+            {isSelf ? "Self-quiz" : "Assigned"}
+          </Badge>
+          {a.medium && (
+            <Badge variant={a.medium === "Hindi" ? "purple" : "info"}>{a.medium}</Badge>
+          )}
+        </div>
         {submitted ? (
           <Badge variant="success">
             {a.my_score}/{a.my_total}

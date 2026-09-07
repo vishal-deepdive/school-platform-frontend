@@ -141,6 +141,7 @@ export function PracticeBuilderModal({
         class_level: filters.class_level,
         subject: filters.subject,
         chapter_name: filters.chapter_name?.[0],
+        medium: filters.medium,
         difficulty,
         questions,
         filters,
