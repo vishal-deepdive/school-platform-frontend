@@ -334,6 +334,8 @@ export interface CreateAssignmentRequest {
   class_level?: string;
   subject?: string;
   chapter_name?: string;
+  /** Which book medium this set was generated from; falls back to filters.medium. */
+  medium?: "English" | "Hindi";
   difficulty?: Difficulty;
   questions: QuizQuestion[];
   filters?: RagFilters;
@@ -353,6 +355,7 @@ export interface AssignmentSummary {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   difficulty?: string | null;
   num_questions: number;
   status: string;
@@ -410,6 +413,7 @@ export interface AssignmentDetail {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   difficulty?: string | null;
   num_questions: number;
   status: string;
@@ -497,6 +501,7 @@ export interface FlashcardDeckSummary {
   class_level?: string | null;
   subject?: string | null;
   chapter_name?: string | null;
+  medium?: string | null;
   card_count: number;
   created_at?: string | null;
   created_by_name?: string | null;

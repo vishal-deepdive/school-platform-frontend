@@ -126,7 +126,7 @@ export function LibraryAnalyticsSection() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         <Card padding="md">
           <div className="mb-4">
             <h4 className="text-sm font-semibold text-foreground">By subject</h4>
@@ -151,6 +151,17 @@ export function LibraryAnalyticsSection() {
 
         <Card padding="md">
           <div className="mb-4">
+            <h4 className="text-sm font-semibold text-foreground">By medium</h4>
+            <p className="mt-0.5 text-xs text-muted-foreground">Documents per language</p>
+          </div>
+          <BarList
+            items={(data.by_medium ?? []).map((m) => ({ label: m.medium, value: m.count }))}
+            emptyLabel="No documents yet."
+          />
+        </Card>
+
+        <Card padding="md">
+          <div className="mb-4">
             <h4 className="text-sm font-semibold text-foreground">Recently added</h4>
             <p className="mt-0.5 text-xs text-muted-foreground">Latest ingested documents</p>
           </div>
@@ -165,7 +176,7 @@ export function LibraryAnalyticsSection() {
                       {d.chapter_name || d.subject || "Document"}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {[d.class_level, d.subject].filter(Boolean).join(" · ") || "—"}
+                      {[d.class_level, d.subject, d.medium].filter(Boolean).join(" · ") || "—"}
                     </p>
                   </div>
                   <Badge variant={STATUS_BADGES[d.status] ?? "default"}>{d.status}</Badge>
