@@ -714,7 +714,7 @@ export function ManageStudentsPage() {
         }}
         title="Add face"
         icon={<ScanFace className="h-4 w-4" />}
-        size="sm"
+        size="lg"
         footer={
           <>
             <Button
@@ -801,7 +801,7 @@ export function ManageStudentsPage() {
         onClose={() => setClassDeleteOpen(false)}
         title="Delete this class?"
         icon={<AlertOctagon className="h-4 w-4" />}
-        size="sm"
+        size="md"
         footer={
           <>
             <Button variant="outline" onClick={() => setClassDeleteOpen(false)}>
@@ -847,7 +847,7 @@ export function ManageStudentsPage() {
         onClose={() => setAddStudentOpen(false)}
         title="Add Student"
         icon={<UserPlus className="h-4 w-4" />}
-        size="md"
+        size="lg"
         footer={
           <>
             <Button variant="outline" onClick={() => setAddStudentOpen(false)}>

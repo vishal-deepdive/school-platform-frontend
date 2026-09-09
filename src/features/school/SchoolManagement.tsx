@@ -272,7 +272,7 @@ function PrincipalTab({ school }: { school: SchoolDetail }) {
         />
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Provision Principal" size="sm">
+      <Modal open={open} onClose={() => setOpen(false)} title="Provision Principal" size="md">
         <div className="space-y-4">
           <Input
             label="Full Name"
@@ -449,7 +449,7 @@ function ClassCodesTab({
         </ul>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Create Class Code" size="sm">
+      <Modal open={open} onClose={() => setOpen(false)} title="Create Class Code" size="md">
         <div className="space-y-4">
           <Input
             label="Class / Subject"
@@ -612,7 +612,7 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
         </ul>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Assign Teacher to Class" size="sm">
+      <Modal open={open} onClose={() => setOpen(false)} title="Assign Teacher to Class" size="md">
         <div className="space-y-4">
           <Select
             label="Teacher"
@@ -766,7 +766,7 @@ function RagAccessTab({ schoolId }: { schoolId: string }) {
         </ul>
       )}
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Grant RAG Access" size="sm">
+      <Modal open={open} onClose={() => setOpen(false)} title="Grant RAG Access" size="md">
         <div className="space-y-4">
           <Select
             label="Role"
@@ -1031,7 +1031,7 @@ function InviteStaffModal({
   };
 
   return (
-    <Modal open={open} onClose={close} title="Invite Staff" size="sm">
+    <Modal open={open} onClose={close} title="Invite Staff" size="md">
       <div className="space-y-4">
         {allowPrincipal && (
           <Select
@@ -1143,7 +1143,7 @@ function BulkClassCodeModal({
   ];
 
   return (
-    <Modal open onClose={onClose} title="Bulk Generate Class Codes" size="md">
+    <Modal open onClose={onClose} title="Bulk Generate Class Codes" size="lg">
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
           Generate a class code for every grade in the range (optionally split by
@@ -1712,7 +1712,7 @@ function SetSessionModal({
   const valid = /^\d{4}-\d{2,4}$/.test(trimmed);
 
   return (
-    <Modal open onClose={onClose} title="Set Academic Session" size="sm">
+    <Modal open onClose={onClose} title="Set Academic Session" size="md">
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
           The single source of truth for the session dropdowns in Attendance,
@@ -1778,7 +1778,7 @@ function SetMediumModal({
       title="Set Medium of Instruction"
       icon={<Languages className="h-4 w-4" />}
       description="Determines which language books this school's RAG library shows."
-      size="sm"
+      size="md"
       footer={
         <>
           <Button variant="outline" onClick={onClose}>

@@ -261,7 +261,7 @@ function CreateRequestModal({
       title="Request content"
       description="Tell the team which chapter or topic is missing from the library."
       icon={<BookPlus className="h-5 w-5" />}
-      size="lg"
+      size="xl"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>

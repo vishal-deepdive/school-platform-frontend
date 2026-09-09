@@ -187,7 +187,7 @@ export function AdminManagementPage() {
           reset();
         }}
         title="Add Platform Admin"
-        size="sm"
+        size="md"
       >
         <form
           onSubmit={handleSubmit((data) => createMutation.mutate(data))}

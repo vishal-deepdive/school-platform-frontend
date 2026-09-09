@@ -1,4 +1,4 @@
-import React, { useId, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
 import {
   Plus,
   Trash2,
@@ -6,15 +6,21 @@ import {
   FileText,
   UploadCloud,
   Eye,
+  School,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { isAxiosError } from "axios";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/shared/components/ui/Button";
 import { Modal } from "@/shared/components/ui/Modal";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
+import {
+  SearchableSelect,
+  type SearchableSelectOption,
+} from "@/shared/components/ui/SearchableSelect";
+import { adminApi } from "@/features/admin/api/admin";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
 import { Badge } from "@/shared/components/ui/Badge";
@@ -76,7 +82,8 @@ const EMPTY_FORM = {
 };
 
 export function RagDocumentsPage() {
-  const role = useAuthStore((s) => s.user?.role);
+  const user = useAuthStore((s) => s.user);
+  const role = user?.role;
   const canManage = isStaff(role);
   const isAdmin = role === "admin";
   // Admins list a specific school's uploads (+ global content) when one is
@@ -86,6 +93,7 @@ export function RagDocumentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({ ...EMPTY_FORM });
+  const [forAllSchools, setForAllSchools] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
   const [mediumFilter, setMediumFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -107,6 +115,27 @@ export function RagDocumentsPage() {
   const queryClient = useQueryClient();
   const uploadFormId = useId();
 
+  const { data: schoolsList, isLoading: schoolsLoading } = useQuery({
+    queryKey: ["admin", "schools"],
+    queryFn: () => adminApi.listSchools(),
+    enabled: isAdmin,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const activeSchools = useMemo(() => {
+    return (schoolsList ?? [])
+      .filter((s) => s.is_active)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [schoolsList]);
+
+  const schoolOptions: SearchableSelectOption[] = useMemo(() => {
+    return activeSchools.map((s) => ({
+      value: s.id,
+      label: s.name,
+      sublabel: [s.code, s.city, s.state].filter(Boolean).join(" • ") || undefined,
+    }));
+  }, [activeSchools]);
+
   const { data: mediumData, isLoading: mediumsLoading } = useRagMediums();
   const mediumValues = mediumData?.mediums ?? [];
   const mediumSelectOptions = mediumsLoading
@@ -116,16 +145,17 @@ export function RagDocumentsPage() {
         ...mediumValues.map((m) => ({ value: m, label: m })),
       ];
 
-  // Open the upload modal with the school prefilled to the one the admin is
-  // currently viewing (they can still clear it to publish global content).
+  // Open the upload modal. For admins, content is global ("For all schools") by default;
+  // unchecking allows selecting a specific active school.
   // Medium defaults too when the caller only has one to pick from (an
   // English- or Hindi-only school) — a Bilingual school or admin must choose.
   const openUploadModal = () => {
     setFormData({
       ...EMPTY_FORM,
       medium: mediumValues.length === 1 ? mediumValues[0] : "",
-      school_id: isAdmin && schoolId ? schoolId : "",
+      school_id: "",
     });
+    setForAllSchools(true);
     setIsModalOpen(true);
   };
 
@@ -176,6 +206,7 @@ export function RagDocumentsPage() {
         setIsModalOpen(false);
         setFile(null);
         setFormData({ ...EMPTY_FORM });
+        setForAllSchools(true);
         queryClient.invalidateQueries({ queryKey: ragKeys.all });
       },
       onError: (err) => {
@@ -210,6 +241,10 @@ export function RagDocumentsPage() {
       toast.error("Please select a medium.");
       return;
     }
+    if (isAdmin && !forAllSchools && !formData.school_id) {
+      toast.error("Please select a school for this document.");
+      return;
+    }
 
     const payload = new FormData();
     payload.append("file", file);
@@ -218,8 +253,18 @@ export function RagDocumentsPage() {
     payload.append("chapter_number", formData.chapter_number.trim());
     payload.append("chapter_name", formData.chapter_name.trim());
     payload.append("medium", formData.medium);
-    if (formData.school_id) {
-      payload.append("school_id", formData.school_id);
+
+    if (isAdmin) {
+      // If unchecked, send the selected school's ID; if checked, omit to ingest globally.
+      if (!forAllSchools && formData.school_id) {
+        payload.append("school_id", formData.school_id);
+      }
+    } else {
+      // For non-admin, always include their school ID in the request body
+      const nonAdminSchoolId = user?.school_id || schoolId;
+      if (nonAdminSchoolId) {
+        payload.append("school_id", nonAdminSchoolId);
+      }
     }
 
     submitUpload(payload);
@@ -230,6 +275,7 @@ export function RagDocumentsPage() {
     setIsModalOpen(false);
     setFile(null);
     setFormData({ ...EMPTY_FORM });
+    setForAllSchools(true);
   };
 
   const handleDelete = (id: string) => {
@@ -476,7 +522,7 @@ export function RagDocumentsPage() {
         open={isModalOpen}
         onClose={closeUpload}
         title="Upload Document"
-        size="lg"
+        size="xl"
         icon={<UploadCloud />}
         description="Add a textbook chapter to the knowledge base for retrieval."
         footer={
@@ -566,15 +612,74 @@ export function RagDocumentsPage() {
             }
           />
           {isAdmin && (
-            <Input
-              label="School ID"
-              hint="Defaults to the school you're viewing. Clear it to make this content global to all schools."
-              placeholder="Optional"
-              value={formData.school_id}
-              onChange={(e) =>
-                setFormData({ ...formData, school_id: e.target.value })
-              }
-            />
+            <div className="rounded-xl border border-border/80 bg-muted/30 p-4 space-y-3.5 transition-all">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  <School className="h-3.5 w-3.5 text-primary" />
+                  <span>School Availability</span>
+                </div>
+                <Badge variant={forAllSchools ? "primary" : "info"}>
+                  {forAllSchools ? "All Schools" : "Single School"}
+                </Badge>
+              </div>
+
+              <label className="flex items-start gap-3 cursor-pointer group select-none">
+                <input
+                  type="checkbox"
+                  id="for-all-schools-checkbox"
+                  checked={forAllSchools}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setForAllSchools(checked);
+                    if (checked) {
+                      setFormData((prev) => ({ ...prev, school_id: "" }));
+                    } else {
+                      // If unchecking, prefill with active school if available
+                      if (
+                        !formData.school_id &&
+                        schoolId &&
+                        activeSchools.some((s) => s.id === schoolId)
+                      ) {
+                        setFormData((prev) => ({ ...prev, school_id: schoolId }));
+                      }
+                    }
+                  }}
+                  className="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20 accent-primary cursor-pointer transition-colors"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                    For all schools
+                  </span>
+                  <p className="text-xs text-muted-foreground leading-normal">
+                    {forAllSchools
+                      ? "This document will be available across all schools on the platform."
+                      : "This document will only be accessible to the selected active school."}
+                  </p>
+                </div>
+              </label>
+
+              {!forAllSchools && (
+                <div className="pt-3 border-t border-border/60 animate-in fade-in-50 slide-in-from-top-1 duration-200">
+                  <SearchableSelect
+                    label="Target School *"
+                    options={schoolOptions}
+                    value={formData.school_id}
+                    onChange={(val) =>
+                      setFormData((prev) => ({ ...prev, school_id: val }))
+                    }
+                    placeholder={
+                      schoolsLoading
+                        ? "Loading active schools…"
+                        : "Select an active school…"
+                    }
+                    searchPlaceholder="Search active schools…"
+                    hint="Only active schools are available. Documents are scoped to the selected school."
+                    isLoading={schoolsLoading}
+                    disabled={schoolsLoading}
+                  />
+                </div>
+              )}
+            </div>
           )}
         </form>
       </Modal>
