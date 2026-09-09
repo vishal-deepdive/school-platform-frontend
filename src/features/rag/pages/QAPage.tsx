@@ -625,7 +625,7 @@ export function QAPage() {
         open={showFilters}
         onClose={() => setShowFilters(false)}
         title="Answer scope"
-        size="sm"
+        size="md"
       >
         {filterPanel}
       </Modal>

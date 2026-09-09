@@ -445,7 +445,7 @@ export function ApplicationDetailPage() {
           rejectMutation.reset();
         }}
         title="Reject Application"
-        size="sm"
+        size="md"
       >
         <p className="text-sm text-muted-foreground">
           Optionally provide a reason — it will be shown to the applicant.
@@ -496,7 +496,7 @@ export function ApplicationDetailPage() {
           requestChangesMutation.reset();
         }}
         title="Request Changes"
-        size="sm"
+        size="md"
       >
         <p className="text-sm text-muted-foreground">
           The application stays open under the same ID — the applicant edits and
