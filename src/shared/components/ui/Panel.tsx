@@ -33,7 +33,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-xl border border-border/60 bg-card shadow-[0_1px_3px_0_rgba(0,0,0,0.03),0_1px_2px_-1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
+        "overflow-hidden rounded-xl border border-border/60 bg-card shadow-card",
         className,
       )}
     >

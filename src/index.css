@@ -28,11 +28,16 @@
     --card-foreground: 0.145 0 0;
     --popover: 1 0 0;
     --popover-foreground: 0.145 0 0;
-    /* App shell surfaces: canvas = main content area (solid equivalent of the
-       old bg-muted/30 composite), rail = icon sidebar strip. Solid values so
-       the sidebar "connected tab" notches can match them exactly. */
+    /* App shell surfaces: canvas = main content area, which the sidebar pane
+       and module shell share so they read as one faintly blue-tinted surface;
+       rail = icon sidebar strip, a navy gradient from --rail to --rail-end.
+       Canvas stays solid so the "connected tab" body can match it exactly. */
     --canvas: 0.9805 0 0;
     --rail: 0.28 0.075 255;
+    --rail-end: 0.235 0.08 263;
+    /* Card elevation — a light navy-tinted lift, stronger on hover. */
+    --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 2px 6px -1px rgb(30 58 138 / 0.07);
+    --shadow-card-hover: 0 2px 4px -1px rgb(15 23 42 / 0.06), 0 8px 18px -4px rgb(30 58 138 / 0.13);
   }
 
   .dark {
@@ -57,8 +62,11 @@
     --card-foreground: 0.985 0 0;
     --popover: 0.20 0.02 260;
     --popover-foreground: 0.985 0 0;
-    --canvas: 0.183 0.02 260;
-    --rail: 0.17 0.055 255;
+    --canvas: 0.183 0.028 258;
+    --rail: 0.195 0.075 258;
+    --rail-end: 0.15 0.06 263;
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 2px 6px -1px rgb(0 0 0 / 0.22);
+    --shadow-card-hover: 0 2px 4px -1px rgb(0 0 0 / 0.35), 0 8px 18px -4px rgb(0 0 0 / 0.4);
   }
 
   *,

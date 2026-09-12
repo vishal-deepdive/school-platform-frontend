@@ -32,7 +32,7 @@ export function SecondaryNav({
       {hasSecondary && (
         <div className="flex h-full w-60 flex-col">
           {/* Header title aligns with item text below (24px inset). */}
-          <div className="flex h-16 shrink-0 items-center justify-between pl-6 pr-3 border-b border-border/40">
+          <div className="flex h-16 shrink-0 items-center justify-between pl-6 pr-3 border-b border-primary/10 dark:border-border/40">
             <h2 className="min-w-0 font-display text-[15px] font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {activeCategory?.children?.[0]?.href ? (
                 <Link
@@ -71,7 +71,7 @@ export function SecondaryNav({
                       {showGroup && (
                         <p
                           className={cn(
-                            "eyebrow px-2.5 pb-1 text-slate-500 dark:text-slate-400 font-bold tracking-wider",
+                            "eyebrow px-2.5 pb-1 text-slate-600 dark:text-slate-400 font-bold tracking-wider",
                             i === 0 ? "pt-1" : "pt-4",
                           )}
                         >
@@ -85,8 +85,8 @@ export function SecondaryNav({
                           cn(
                             "group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             isActive
-                              ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-blue-300 font-semibold"
-                              : "font-medium text-slate-800 dark:text-slate-200 hover:bg-muted/70 hover:text-primary dark:hover:text-white",
+                              ? "bg-primary/[0.13] text-primary dark:bg-primary/20 dark:text-blue-300 font-semibold"
+                              : "font-medium text-slate-800 dark:text-slate-200 hover:bg-primary/[0.07] hover:text-primary dark:hover:bg-muted/70 dark:hover:text-white",
                           )
                         }
                       >

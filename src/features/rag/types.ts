@@ -194,6 +194,9 @@ export interface DocumentStatusResponse {
 export interface DocumentItem {
   id: string;
   school_id?: string;
+  is_global?: boolean;
+  board?: string;
+  school_name?: string;
   class_level: string;
   subject: string;
   chapter_number: string;
@@ -217,6 +220,38 @@ export interface DocumentListResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface DocumentStatusesResponse {
+  items: DocumentStatusResponse[];
+}
+
+export interface DocumentSubjectSummary {
+  subject: string;
+  doc_count: number;
+  completed_count: number;
+  failed_count?: number;
+  mediums: string[];
+  boards: string[];
+}
+
+export interface DocumentClassSummary {
+  class_level: string;
+  doc_count: number;
+  completed_count: number;
+  failed_count?: number;
+  subjects: DocumentSubjectSummary[];
+}
+
+export interface DocumentSummaryResponse {
+  classes: DocumentClassSummary[];
+  total_documents: number;
+  completed_count?: number;
+  failed_count?: number;
+  public_count: number;
+  private_count: number;
+  available_boards: string[];
+  available_mediums: string[];
 }
 
 // ── Library analytics (GET /rag/analytics) ──────────────────────────────────

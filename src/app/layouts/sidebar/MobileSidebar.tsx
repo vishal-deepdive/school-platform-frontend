@@ -42,7 +42,7 @@ export function MobileSidebar({ allItems, pendingLeaves, onClose }: MobileSideba
           </div>
         ))}
       </div>
-      <div className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-muted/20 p-3">
+      <div className="shrink-0 border-t border-primary/10 dark:border-slate-800 bg-primary/[0.04] dark:bg-muted/20 p-3">
         <UserProfileMenu mobile />
       </div>
     </aside>

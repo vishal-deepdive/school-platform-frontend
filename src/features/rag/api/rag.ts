@@ -1,4 +1,5 @@
-import { apiClient } from "@/shared/api/client";
+import type { AxiosProgressEvent } from "axios";
+import { apiClient, multipartClient } from "@/shared/api/client";
 import { streamSSE } from "@/shared/api/streaming";
 import { API_V1 } from "@/shared/config/apiVersion";
 import type {
@@ -12,8 +13,9 @@ import type {
   RagDeleteResponse,
   RagFilters,
   IngestJobResponse,
-  DocumentStatusResponse,
+  DocumentStatusesResponse,
   DocumentListResponse,
+  DocumentSummaryResponse,
   DocumentChunksResponse,
   ClassLevelsResponse,
   MediumsResponse,
@@ -93,10 +95,14 @@ export const ragApi = {
   getAudit: () =>
     apiClient.get<RagAuditResponse>(`${BASE}/audit`).then((r) => r.data),
 
-  uploadDocument: (data: FormData) =>
-    apiClient
+  /** Multipart client: long timeout for large textbook PDFs, plus upload progress. */
+  uploadDocument: (
+    data: FormData,
+    options?: { onUploadProgress?: (event: AxiosProgressEvent) => void },
+  ) =>
+    multipartClient
       .post<IngestJobResponse>(`${BASE}/documents`, data, {
-        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: options?.onUploadProgress,
       })
       .then((r) => r.data),
 
@@ -105,6 +111,10 @@ export const ragApi = {
     offset?: number;
     status?: string;
     search?: string;
+    class_level?: string;
+    subject?: string;
+    board?: string;
+    scope?: string;
     /** Admin only: scope the listing to one school's uploads + global content. */
     school_id?: string;
     /** Narrow to one book medium within what the caller can see. */
@@ -114,14 +124,30 @@ export const ragApi = {
       .get<DocumentListResponse>(`${BASE}/documents`, { params })
       .then((r) => r.data),
 
+  getDocumentsSummary: (params?: {
+    school_id?: string;
+    medium?: string;
+    board?: string;
+    scope?: string;
+    search?: string;
+  }) =>
+    apiClient
+      .get<DocumentSummaryResponse>(`${BASE}/documents/summary`, { params })
+      .then((r) => r.data),
+
   getDocumentChunks: (documentId: string) =>
     apiClient
       .get<DocumentChunksResponse>(`${BASE}/documents/${documentId}/chunks`)
       .then((r) => r.data),
 
-  getDocumentStatus: (documentId: string) =>
+  /** Live ingest status for many documents in one request (list polling). */
+  getDocumentStatuses: (documentIds: string[]) =>
     apiClient
-      .get<DocumentStatusResponse>(`${BASE}/documents/${documentId}`)
+      .get<DocumentStatusesResponse>(`${BASE}/documents/statuses`, {
+        params: { ids: documentIds },
+        // FastAPI reads repeated keys (ids=a&ids=b), not axios' default ids[]=a.
+        paramsSerializer: { indexes: null },
+      })
       .then((r) => r.data),
 
   deleteDocument: (documentId: string) =>

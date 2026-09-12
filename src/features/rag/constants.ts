@@ -27,3 +27,22 @@ export const SUBJECT_OPTIONS: SelectOption[] = [
   { value: "General Knowledge", label: "General Knowledge" },
   { value: RAG_OTHER_SUBJECT, label: "Other…" },
 ];
+
+export const BOARD_OPTIONS: SelectOption[] = [
+  { value: "", label: "All Boards" },
+  { value: "CBSE", label: "CBSE" },
+  { value: "ICSE", label: "ICSE" },
+  { value: "State Board", label: "State Board" },
+  { value: "IB", label: "IB" },
+  { value: "Cambridge", label: "Cambridge" },
+  { value: "Other", label: "Other" },
+];
+
+export const UPLOAD_BOARD_OPTIONS: SelectOption[] = [
+  { value: "CBSE", label: "CBSE" },
+  { value: "ICSE", label: "ICSE" },
+  { value: "State Board", label: "State Board" },
+  { value: "IB", label: "IB" },
+  { value: "Cambridge", label: "Cambridge" },
+  { value: "Other", label: "Other" },
+];

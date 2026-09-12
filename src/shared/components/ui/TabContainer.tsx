@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import {
   navItems,
@@ -6,6 +6,10 @@ import {
   type NavItem,
 } from "@/app/layouts/navConfig";
 import { cn } from "@/shared/lib/utils";
+import {
+  ModuleHeaderSlotsContext,
+  type ModuleHeaderSlots,
+} from "./moduleHeaderSlots";
 
 interface TabContainerProps {
   className?: string;
@@ -55,6 +59,12 @@ function findActiveTab(pathname: string): ActiveTab | null {
  * and a rounded inset panel that owns its own scroll area. Navigation itself
  * lives in navConfig.tsx (the sidebar), not here.
  *
+ * The header's icon + title come from navConfig — module pages must NOT
+ * render their own page-title heading, or it duplicates this one. Pages
+ * instead teleport page-specific context/actions into the header's two slots
+ * via <ModuleHeaderLeading> (e.g. a view switcher, next to the title) and
+ * <ModuleHeaderActions> (primary CTAs, pinned to the right edge).
+ *
  * The outer shell shares the secondary sidebar's background and bleeds over
  * AppLayout's <main> padding (negative margins mirror those values) so the
  * two read as one continuous surface.
@@ -66,76 +76,91 @@ export function TabContainer({ className }: TabContainerProps) {
   // so the shell hands them an exact height and drops its own vertical padding.
   const fullBleed = active?.tab.fullBleed ?? false;
 
-  return (
-    <div
-      className={cn(
-        // "module-shell" flips AppLayout's <main> to overflow:hidden via a
-        // :has() rule in index.css, so the shell owns the only scroll area.
-        "module-shell",
-        // Cancel AppLayout <main> padding: px-4 py-4 md:px-6 md:pt-5 md:pb-3
-        "-mx-4 -my-4 h-[calc(100%+2rem)] md:-mx-6 md:-mb-3 md:-mt-5",
-        "flex min-h-0 flex-col bg-background/80",
-        "p-1",
-        !active && "pt-3 md:pt-4",
-        className,
-      )}
-    >
-      {active && (
-        <div className="flex h-10 shrink-0 items-center gap-3 px-1 md:h-14">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-xs">
-            {active.tab.icon}
-          </div>
-          <div className="min-w-0">
-            {/* {active.module !== active.tab && (
-              <p className="eyebrow text-muted-foreground/70">
-                {active.module.label}
-              </p>
-            )} */}
-            <h1 className="truncate font-display text-base font-semibold leading-tight tracking-tight text-foreground">
-              {active.tab.label}
-            </h1>
-          </div>
-          {/* Pages teleport their primary actions here via <ModuleHeaderActions>
-              so filters/CTAs stay visible while the content scrolls. */}
-          <div
-            id="module-header-actions"
-            className="ml-auto flex min-w-0 items-center gap-2 pr-1 md:pr-2"
-          />
-        </div>
-      )}
+  // Callback refs into state, so pages re-render with real portal targets
+  // once the slots mount.
+  const [leading, setLeading] = useState<HTMLElement | null>(null);
+  const [trailing, setTrailing] = useState<HTMLElement | null>(null);
+  const slots = useMemo<ModuleHeaderSlots>(
+    () => ({ leading, trailing }),
+    [leading, trailing],
+  );
 
-      {/* In dark mode the panel dips below the background instead of using
-          muted (which composites to ~the same lightness as bg-card), so cards
-          inside stay visibly elevated. */}
+  return (
+    <ModuleHeaderSlotsContext.Provider value={slots}>
       <div
         className={cn(
-          "min-h-0 flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-primary/[0.03] via-background to-primary/[0.06] dark:from-card/40 dark:via-background dark:to-primary/[0.04]",
-          "border border-border/60 dark:border-border/50 shadow-[0_1px_3px_0_rgba(0,0,0,0.02)]",
+          // "module-shell" flips AppLayout's <main> to overflow:hidden via a
+          // :has() rule in index.css, so the shell owns the only scroll area.
+          "module-shell",
+          // Cancel AppLayout <main> padding: px-4 py-4 md:px-6 md:pt-5 md:pb-3
+          "-mx-4 -my-4 h-[calc(100%+2rem)] md:-mx-6 md:-mb-3 md:-mt-5",
+          "flex min-h-0 flex-col bg-background/80",
+          "p-1",
+          !active && "pt-3 md:pt-4",
+          className,
         )}
       >
+        {active && (
+          <div className="flex h-10 shrink-0 items-center gap-3 px-1 md:h-14">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/25 bg-gradient-to-br from-primary/15 to-primary/5 text-primary shadow-xs">
+              {active.tab.icon}
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-base font-semibold leading-tight tracking-tight text-foreground">
+                {active.tab.label}
+              </h1>
+            </div>
+            {/* Page-supplied context (e.g. a view switcher) — sits right after
+                the title, sized to its content. */}
+            <div
+              ref={setLeading}
+              data-header-slot="leading"
+              className="flex min-w-0 items-center gap-2"
+            />
+            {/* Pages teleport their primary actions here via
+                <ModuleHeaderActions> so filters/CTAs stay visible while the
+                content scrolls. */}
+            <div
+              ref={setTrailing}
+              data-header-slot="trailing"
+              className="ml-auto flex min-w-0 items-center gap-2 pr-1 md:pr-2"
+            />
+          </div>
+        )}
+
+        {/* In dark mode the panel dips below the background instead of using
+            muted (which composites to ~the same lightness as bg-card), so cards
+            inside stay visibly elevated. */}
         <div
           className={cn(
-            "h-full scrollbar-custom",
-            // Full-bleed pages own their scroll and sit tight to the frame;
-            // regular pages scroll here with generous padding.
-            fullBleed
-              ? "overflow-hidden p-1.5 md:p-2"
-              : "overflow-y-auto px-3 py-4 md:px-4 md:py-5",
+            "min-h-0 flex-1 overflow-hidden rounded-2xl bg-gradient-to-b from-primary/[0.03] via-background to-primary/[0.06] dark:from-card/40 dark:via-background dark:to-primary/[0.04]",
+            "border border-border/60 dark:border-border/50 shadow-[0_1px_3px_0_rgba(0,0,0,0.02)]",
           )}
         >
-          {/* h-full gives full-bleed pages an exact height so they can pin a
-              footer and scroll internally; min-h-full lets normal content
-              pages flow top-down and let this container scroll. */}
           <div
             className={cn(
-              "mx-auto flex w-full flex-col",
-              fullBleed ? "h-full min-h-0 max-w-none" : "min-h-full max-w-6xl",
+              "h-full scrollbar-custom",
+              // Full-bleed pages own their scroll and sit tight to the frame;
+              // regular pages scroll here with generous padding.
+              fullBleed
+                ? "overflow-hidden p-1.5 md:p-2"
+                : "overflow-y-auto px-3 py-4 md:px-4 md:py-5",
             )}
           >
-            <Outlet />
+            {/* h-full gives full-bleed pages an exact height so they can pin a
+                footer and scroll internally; min-h-full lets normal content
+                pages flow top-down and let this container scroll. */}
+            <div
+              className={cn(
+                "mx-auto flex w-full flex-col",
+                fullBleed ? "h-full min-h-0 max-w-none" : "min-h-full max-w-6xl",
+              )}
+            >
+              <Outlet />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ModuleHeaderSlotsContext.Provider>
   );
 }
