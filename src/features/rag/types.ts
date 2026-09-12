@@ -335,6 +335,27 @@ export interface DocumentChunksResponse {
   chunks: DocumentChunk[];
 }
 
+// ── Readable preview (GET /rag/documents/{id}/markdown) ──────────────────────
+
+export interface DocumentPage {
+  /** 1-based source page, or 0 when the text couldn't be placed on a page. */
+  page: number;
+  markdown: string;
+}
+
+export interface DocumentMarkdownResponse {
+  document_id: string;
+  /** "parsed" = page-accurate parser output; "chunks" = rebuilt from passages. */
+  source: "parsed" | "chunks";
+  parser_name?: string | null;
+  total_pages: number;
+  pages: DocumentPage[];
+  /** Whether the original upload can still be fetched for the side-by-side pane. */
+  has_source: boolean;
+  source_filename?: string | null;
+  source_media_type?: string | null;
+}
+
 // ── Learning loop: practice / assignments ───────────────────────────────────
 
 export interface QuizQuestion {

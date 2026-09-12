@@ -1,19 +1,32 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { Inbox, Plus, BookPlus, User, Clock } from "lucide-react";
+import {
+  BookPlus,
+  CheckCircle2,
+  Clock,
+  Library,
+  PlayCircle,
+  Plus,
+  RotateCcw,
+  User,
+  XCircle,
+} from "lucide-react";
 import toast from "@/shared/lib/toast";
-import { Button } from "@/shared/components/ui/Button";
-import { Badge } from "@/shared/components/ui/Badge";
-import { Modal } from "@/shared/components/ui/Modal";
-import { Select } from "@/shared/components/ui/Select";
-import { Tabs } from "@/shared/components/ui/Tabs";
-import { Panel } from "@/shared/components/ui/Panel";
+import { ActionMenu, type ActionMenuItem } from "@/shared/components/ui/ActionMenu";
 import { Alert } from "@/shared/components/ui/Alert";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { Modal } from "@/shared/components/ui/Modal";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { Tabs } from "@/shared/components/ui/Tabs";
 import { Textarea } from "@/shared/components/ui/Textarea";
-import { getErrorMessage, formatDate } from "@/shared/lib/utils";
+import { useUrlState } from "@/shared/hooks/useUrlState";
+import { cn, formatDate, getErrorMessage } from "@/shared/lib/utils";
+import { isSchoolAdmin, isStaff } from "@/shared/lib/permissions";
 import { useAuthStore } from "@/features/auth/store/auth";
-import { isStaff, isSchoolAdmin } from "@/shared/lib/permissions";
 import {
   useContentRequests,
   useCreateContentRequest,
@@ -26,12 +39,9 @@ import type {
   RagFilters,
 } from "@/features/rag/types";
 
-const TABS = [
-  { id: "open", label: "Open" },
-  { id: "in_progress", label: "In progress" },
-  { id: "fulfilled", label: "Fulfilled" },
-  { id: "all", label: "All" },
-];
+type TabId = ContentRequestStatus | "all";
+const TAB_IDS: TabId[] = ["open", "in_progress", "fulfilled", "all"];
+const URL_DEFAULTS: { status: string } = { status: "open" };
 
 const STATUS_META: Record<
   ContentRequestStatus,
@@ -43,97 +53,119 @@ const STATUS_META: Record<
   dismissed: { label: "Dismissed", variant: "default" },
 };
 
-const STATUS_OPTIONS = [
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In progress" },
-  { value: "fulfilled", label: "Fulfilled" },
-  { value: "dismissed", label: "Dismissed" },
+/** The obvious next step for a request, shown as the row's one visible action. */
+const NEXT_STEP: Partial<
+  Record<ContentRequestStatus, { status: ContentRequestStatus; label: string; icon: React.ReactNode }>
+> = {
+  open: { status: "in_progress", label: "Start", icon: <PlayCircle className="h-4 w-4" /> },
+  in_progress: {
+    status: "fulfilled",
+    label: "Mark fulfilled",
+    icon: <CheckCircle2 className="h-4 w-4" />,
+  },
+};
+
+const MOVE_TO: { status: ContentRequestStatus; label: string; icon: React.ReactNode }[] = [
+  { status: "open", label: "Reopen", icon: <RotateCcw /> },
+  { status: "in_progress", label: "Mark in progress", icon: <PlayCircle /> },
+  { status: "fulfilled", label: "Mark fulfilled", icon: <CheckCircle2 /> },
+  { status: "dismissed", label: "Dismiss", icon: <XCircle /> },
 ];
 
-import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
-
-function ContentRequestsSkeleton() {
-  return (
-    <div className="space-y-6" aria-hidden="true">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Skeleton className="h-5 w-40" />
-        <Skeleton className="h-9 w-32 rounded-md" />
-      </div>
-      <div className="flex items-center gap-2">
-        <Skeleton className="h-9 w-20 rounded-full" />
-        <Skeleton className="h-9 w-20 rounded-full" />
-        <Skeleton className="h-9 w-20 rounded-full" />
-        <Skeleton className="h-9 w-20 rounded-full" />
-      </div>
-      <div className="rounded-xl border border-border/60 bg-card">
-        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
-          <Skeleton className="h-4 w-4" />
-          <Skeleton className="h-5 w-24" />
-        </div>
-        <ListSkeleton items={5} />
-      </div>
-    </div>
-  );
-}
+const EMPTY_COPY: Record<TabId, string> = {
+  open: "No open requests. When someone flags a missing chapter, it shows up here.",
+  in_progress: "Nothing is being worked on right now.",
+  fulfilled: "No fulfilled requests yet.",
+  all: "No content requests to show.",
+  dismissed: "No dismissed requests.",
+};
 
 export function ContentRequestsPage() {
   const queryClient = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
   const canManage = isSchoolAdmin(role);
 
-  const [tab, setTab] = useState("open");
-  const status = tab === "all" ? undefined : (tab as ContentRequestStatus);
-  const { data, isLoading, isError, error } = useContentRequests(status);
+  const [state, update] = useUrlState(URL_DEFAULTS);
+  const tab: TabId = (TAB_IDS as string[]).includes(state.status)
+    ? (state.status as TabId)
+    : "open";
+  const status = tab === "all" ? undefined : tab;
+  const { data, isLoading, isError, error, isPlaceholderData } = useContentRequests(status);
 
   const [createOpen, setCreateOpen] = useState(false);
 
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["rag", "contentRequests"] });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["rag", "contentRequests"] });
 
   const items = data?.items ?? [];
+  const tabs = [
+    { id: "open", label: "Open", count: data?.open_count },
+    { id: "in_progress", label: "In progress" },
+    { id: "fulfilled", label: "Fulfilled" },
+    { id: "all", label: "All" },
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Inbox className="h-4 w-4" />
-          {data ? `${data.open_count} open request${data.open_count === 1 ? "" : "s"}` : "Loading…"}
-        </div>
-        <Button icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
+    <div className="space-y-4">
+      <ModuleHeaderActions>
+        <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
           Request content
         </Button>
-      </div>
-
-      <Tabs tabs={TABS} active={tab} onChange={setTab} />
+      </ModuleHeaderActions>
 
       {isError && <Alert variant="error">{getErrorMessage(error)}</Alert>}
 
-      {isLoading ? (
-        <ContentRequestsSkeleton />
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={<BookPlus className="h-12 w-12" />}
-          title="No requests here"
-          description={
-            isStaff(role)
-              ? "Flag a chapter that's missing from the library and it'll show up here for the team to fill."
-              : "No content requests to show."
-          }
-          action={
-            <Button icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
-              Request content
-            </Button>
-          }
+      <section className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-card">
+        <Tabs
+          size="sm"
+          tabs={tabs}
+          active={tab}
+          onChange={(id) => update({ status: id }, { push: true })}
+          className="px-2 md:px-3"
         />
-      ) : (
-        <Panel flush icon={<Inbox className="h-4 w-4" />} title="Requests">
-          <ul className="divide-y divide-border/50">
-            {items.map((r) => (
-              <RequestRow key={r.id} item={r} canManage={canManage} onChanged={refresh} />
-            ))}
-          </ul>
-        </Panel>
-      )}
+        {isLoading ? (
+          <ListSkeleton items={5} />
+        ) : items.length === 0 ? (
+          <EmptyState
+            variant="plain"
+            icon={<BookPlus className="h-10 w-10" />}
+            title="No requests here"
+            description={
+              isStaff(role) || tab !== "open" ? EMPTY_COPY[tab] : "No content requests to show."
+            }
+            action={
+              tab === "open" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={<Plus className="h-4 w-4" />}
+                  onClick={() => setCreateOpen(true)}
+                >
+                  Request content
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <>
+            <ul
+              className={cn(
+                "divide-y divide-border/50 transition-opacity",
+                isPlaceholderData && "opacity-60",
+              )}
+              aria-busy={isPlaceholderData}
+            >
+              {items.map((r) => (
+                <RequestRow key={r.id} item={r} canManage={canManage} onChanged={refresh} />
+              ))}
+            </ul>
+            {data && data.total > items.length && (
+              <p className="border-t border-border/60 px-4 py-2.5 text-xs text-muted-foreground md:px-5">
+                Showing the latest {items.length} of {data.total.toLocaleString()} requests.
+              </p>
+            )}
+          </>
+        )}
+      </section>
 
       <CreateRequestModal
         open={createOpen}
@@ -156,18 +188,20 @@ function RequestRow({
   canManage: boolean;
   onChanged: () => void;
 }) {
+  const navigate = useNavigate();
   const { mutate: update, isPending } = useUpdateContentRequest();
   const meta = STATUS_META[item.status];
   const label =
     [item.class_level, item.subject, item.chapter_name].filter(Boolean).join(" · ") ||
     "General request";
+  const next = NEXT_STEP[item.status];
 
-  const changeStatus = (next: string) => {
+  const changeStatus = (nextStatus: ContentRequestStatus) => {
     update(
-      { id: item.id, status: next as ContentRequestStatus },
+      { id: item.id, status: nextStatus },
       {
         onSuccess: () => {
-          toast.success("Request updated.");
+          toast.success(`Request marked ${STATUS_META[nextStatus].label.toLowerCase()}.`);
           onChanged();
         },
         onError: (err) => toast.error(getErrorMessage(err)),
@@ -175,15 +209,35 @@ function RequestRow({
     );
   };
 
+  const openInLibrary = () => {
+    const params = new URLSearchParams();
+    if (item.class_level) params.set("class", item.class_level);
+    if (item.subject) params.set("subject", item.subject);
+    navigate(`/rag/documents?${params.toString()}`);
+  };
+
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: "Open in Textbook Library",
+      icon: <Library />,
+      onSelect: openInLibrary,
+      hidden: !item.class_level,
+    },
+    ...MOVE_TO.filter((m) => m.status !== item.status && m.status !== next?.status).map((m) => ({
+      label: m.label,
+      icon: m.icon,
+      disabled: isPending,
+      onSelect: () => changeStatus(m.status),
+    })),
+  ];
+
   return (
-    <li className="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
+    <li className="flex flex-col gap-3 px-4 py-3.5 md:flex-row md:items-center md:justify-between md:px-5">
       <div className="min-w-0">
         <div className="flex items-center gap-2">
           <p className="truncate font-medium text-foreground">{label}</p>
           {item.medium && (
-            <Badge variant={item.medium === "Hindi" ? "purple" : "info"}>
-              {item.medium}
-            </Badge>
+            <Badge variant={item.medium === "Hindi" ? "purple" : "info"}>{item.medium}</Badge>
           )}
           <Badge variant={meta.variant}>{meta.label}</Badge>
         </div>
@@ -203,14 +257,19 @@ function RequestRow({
       </div>
 
       {canManage && (
-        <div className="shrink-0">
-          <Select
-            options={STATUS_OPTIONS}
-            value={item.status}
-            onChange={(e) => changeStatus(e.target.value)}
-            disabled={isPending}
-            aria-label="Update status"
-          />
+        <div className="flex shrink-0 items-center gap-1">
+          {next && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={next.icon}
+              loading={isPending}
+              onClick={() => changeStatus(next.status)}
+            >
+              {next.label}
+            </Button>
+          )}
+          <ActionMenu label={`More actions for ${label}`} items={menuItems} />
         </div>
       )}
     </li>

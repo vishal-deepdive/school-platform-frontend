@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,6 +8,7 @@ import { adminApi } from "@/features/admin/api/admin";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { emailField, passwordField } from "@/shared/lib/validators";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
+import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Modal } from "@/shared/components/ui/Modal";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { Alert } from "@/shared/components/ui/Alert";
@@ -15,8 +16,10 @@ import { Button } from "@/shared/components/ui/Button";
 import { Input } from "@/shared/components/ui/Input";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Avatar } from "@/shared/components/ui/Avatar";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Panel } from "@/shared/components/ui/Panel";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import type { AdminUser } from "@/features/admin/types";
 
 const createAdminSchema = z.object({
@@ -37,7 +40,7 @@ function AdminRow({
   admin: AdminUser;
   currentUserId: string | undefined;
   currentUserCreatedBy: string | null | undefined;
-  onRemove: (id: string) => void;
+  onRemove: (admin: AdminUser) => void;
   removing: boolean;
 }) {
   const isSelf = admin.id === currentUserId;
@@ -45,7 +48,7 @@ function AdminRow({
   const canRemove = !isSelf && !isMyCreator;
 
   return (
-    <li className="group flex items-center justify-between gap-3 px-4 py-3.5 transition-colors hover:bg-muted/40 md:px-5">
+    <li className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5">
       <div className="flex min-w-0 items-center gap-3">
         <Avatar name={admin.full_name || admin.email} seed={admin.id} size="md" />
         <div className="min-w-0">
@@ -54,9 +57,7 @@ function AdminRow({
           </p>
           <p className="truncate text-xs text-muted-foreground">{admin.email}</p>
           <p className="truncate text-xs text-muted-foreground/70">
-            {admin.created_by_name
-              ? `Added by ${admin.created_by_name}`
-              : "Bootstrap admin"}
+            {admin.created_by_name ? `Added by ${admin.created_by_name}` : "Bootstrap admin"}
             {admin.created_at ? ` · ${formatDate(admin.created_at)}` : ""}
           </p>
         </div>
@@ -65,17 +66,18 @@ function AdminRow({
         {isSelf && <Badge variant="primary">You</Badge>}
         {isMyCreator && !isSelf && <Badge variant="default">Your creator</Badge>}
         {canRemove && (
-          <Button
-            variant="danger-ghost"
-            size="sm"
-            onClick={() => onRemove(admin.id)}
-            disabled={removing}
-            loading={removing}
-            icon={!removing ? <Trash2 className="h-4 w-4" /> : undefined}
-            className="opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-          >
-            Remove
-          </Button>
+          <ActionMenu
+            label={`Actions for ${admin.full_name || admin.email}`}
+            items={[
+              {
+                label: "Remove admin",
+                icon: <Trash2 />,
+                danger: true,
+                disabled: removing,
+                onSelect: () => onRemove(admin),
+              },
+            ]}
+          />
         )}
       </div>
     </li>
@@ -85,6 +87,7 @@ function AdminRow({
 export function AdminManagementPage() {
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
+  const formId = useId();
   const [showAddModal, setShowAddModal] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -136,70 +139,86 @@ export function AdminManagementPage() {
     removeMutation.mutate(id);
   };
 
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    reset();
+  };
+
   const currentAdminRecord = admins?.find((a) => a.id === user?.id);
   const currentUserCreatedBy = currentAdminRecord?.created_by ?? null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      <ModuleHeaderActions>
+        <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setShowAddModal(true)}>
+          Add<span className="hidden sm:inline">&nbsp;admin</span>
+        </Button>
+      </ModuleHeaderActions>
+
       {removeError && <Alert variant="error">{removeError}</Alert>}
-      {adminsError && <Alert variant="error">{getErrorMessage(adminsQueryError) || "Failed to load admins."}</Alert>}
-
-      {isLoading && <ListSkeleton items={5} />}
-
-      {!isLoading && !adminsError && admins && (
-        <Panel
-          flush
-          icon={<ShieldCheck className="h-4 w-4" />}
-          title="Platform admins"
-          actions={
-            <div className="flex items-center gap-2">
-              <Badge variant="primary">{admins.length} total</Badge>
-              <Button
-                size="sm"
-                icon={<Plus className="h-4 w-4" />}
-                onClick={() => setShowAddModal(true)}
-              >
-                Add Admin
-              </Button>
-            </div>
-          }
-        >
-          <ul className="divide-y divide-border/50">
-            {admins.map((admin) => (
-              <AdminRow
-                key={admin.id}
-                admin={admin}
-                currentUserId={user?.id}
-                currentUserCreatedBy={currentUserCreatedBy}
-                onRemove={() => setAdminToRemove(admin)}
-                removing={removingId === admin.id && removeMutation.isPending}
-              />
-            ))}
-          </ul>
-        </Panel>
+      {adminsError && (
+        <Alert variant="error">
+          {getErrorMessage(adminsQueryError) || "Failed to load admins."}
+        </Alert>
       )}
 
-      {/* Add Admin Modal */}
+      {isLoading ? (
+        <ListSkeleton items={5} />
+      ) : (
+        !adminsError &&
+        admins && (
+          <>
+            <StatLine
+              items={[
+                {
+                  value: admins.length,
+                  label: admins.length === 1 ? "platform admin" : "platform admins",
+                  icon: <ShieldCheck />,
+                },
+              ]}
+            />
+            <Panel flush>
+              <ul className="divide-y divide-border/50">
+                {admins.map((admin) => (
+                  <AdminRow
+                    key={admin.id}
+                    admin={admin}
+                    currentUserId={user?.id}
+                    currentUserCreatedBy={currentUserCreatedBy}
+                    onRemove={setAdminToRemove}
+                    removing={removingId === admin.id && removeMutation.isPending}
+                  />
+                ))}
+              </ul>
+            </Panel>
+          </>
+        )
+      )}
+
       <Modal
         open={showAddModal}
-        onClose={() => {
-          setShowAddModal(false);
-          reset();
-        }}
-        title="Add Platform Admin"
+        onClose={closeAddModal}
+        title="Add platform admin"
+        description="Platform admins can see and manage every school."
+        icon={<ShieldCheck className="h-5 w-5" />}
         size="md"
+        footer={
+          <>
+            <Button variant="outline" type="button" onClick={closeAddModal}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} loading={createMutation.isPending}>
+              Create admin
+            </Button>
+          </>
+        }
       >
         <form
+          id={formId}
           onSubmit={handleSubmit((data) => createMutation.mutate(data))}
           className="space-y-4"
         >
-          <Input
-            label="Full Name"
-            placeholder="Jane Doe"
-            hint="Optional"
-            {...register("full_name")}
-          />
-
+          <Input label="Full name" placeholder="Jane Doe" hint="Optional" {...register("full_name")} />
           <Input
             label="Email"
             type="email"
@@ -207,7 +226,6 @@ export function AdminManagementPage() {
             error={errors.email?.message}
             {...register("email")}
           />
-
           <Input
             label="Password"
             type="password"
@@ -215,28 +233,9 @@ export function AdminManagementPage() {
             error={errors.password?.message}
             {...register("password")}
           />
-
           {createMutation.isError && (
-            <Alert variant="error">
-              {getErrorMessage(createMutation.error)}
-            </Alert>
+            <Alert variant="error">{getErrorMessage(createMutation.error)}</Alert>
           )}
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setShowAddModal(false);
-                reset();
-              }}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" loading={createMutation.isPending}>
-              Create Admin
-            </Button>
-          </div>
         </form>
       </Modal>
 
@@ -249,12 +248,13 @@ export function AdminManagementPage() {
               <span className="font-medium text-foreground">
                 {adminToRemove.full_name || adminToRemove.email}
               </span>{" "}
-              will immediately lose all platform admin access. They can only be
-              re-added by another admin.
+              will immediately lose all platform admin access. They can only be re-added by another
+              admin.
             </>
           )
         }
         confirmLabel="Remove admin"
+        loading={removeMutation.isPending}
         onConfirm={() => adminToRemove && handleRemove(adminToRemove.id)}
         onClose={() => setAdminToRemove(null)}
       />

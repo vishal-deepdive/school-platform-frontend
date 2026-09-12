@@ -38,10 +38,14 @@ import { Select } from "@/shared/components/ui/Select";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Avatar } from "@/shared/components/ui/Avatar";
 import { Panel } from "@/shared/components/ui/Panel";
-import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { FilterToolbar } from "@/shared/components/ui/FilterToolbar";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { useUrlSearch, useUrlState } from "@/shared/hooks/useUrlState";
 
 const SESSION_RE = /^\d{4}-\d{2,4}$/;
 const optional = () => z.string().trim().max(500).optional().or(z.literal(""));
@@ -104,12 +108,15 @@ const createSchoolSchema = z
 
 type CreateSchoolForm = z.infer<typeof createSchoolSchema>;
 
-const STATUS_FILTERS = [
-  { value: "all", label: "All" },
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-  { value: "needs_setup", label: "Needs setup" },
-] as const;
+type StatusFilter = "all" | "active" | "inactive" | "needs_setup";
+const STATUS_FILTERS: StatusFilter[] = ["all", "active", "inactive", "needs_setup"];
+const STATUS_LABELS: Record<StatusFilter, string> = {
+  all: "All",
+  active: "Active",
+  inactive: "Inactive",
+  needs_setup: "Needs setup",
+};
+const URL_DEFAULTS: { status: string; q: string } = { status: "all", q: "" };
 
 /** Active but unusable: no academic session, or no class code for students to join. */
 function needsSetup(s: SchoolListItem): boolean {
@@ -446,9 +453,8 @@ function CreateSchoolModal({
 export function SchoolsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [statusFilter, setStatusFilter] =
-    useState<(typeof STATUS_FILTERS)[number]["value"]>("all");
-  const [search, setSearch] = useState("");
+  const [state, update] = useUrlState(URL_DEFAULTS);
+  const [search, setSearch] = useUrlSearch(state.q, (q) => update({ q }));
   const [showCreate, setShowCreate] = useState(false);
 
   const { data: schools, isLoading, error } = useQuery({
@@ -456,12 +462,27 @@ export function SchoolsPage() {
     queryFn: () => adminApi.listSchools(),
   });
 
+  const all = useMemo(() => schools ?? [], [schools]);
+  const status: StatusFilter = STATUS_FILTERS.includes(state.status as StatusFilter)
+    ? (state.status as StatusFilter)
+    : "all";
+
+  const counts = useMemo(
+    () => ({
+      all: all.length,
+      active: all.filter((s) => s.is_active).length,
+      inactive: all.filter((s) => !s.is_active).length,
+      needs_setup: all.filter(needsSetup).length,
+    }),
+    [all],
+  );
+
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return (schools ?? []).filter((s) => {
-      if (statusFilter === "active" && !s.is_active) return false;
-      if (statusFilter === "inactive" && s.is_active) return false;
-      if (statusFilter === "needs_setup" && !needsSetup(s)) return false;
+    const q = state.q.trim().toLowerCase();
+    return all.filter((s) => {
+      if (status === "active" && !s.is_active) return false;
+      if (status === "inactive" && s.is_active) return false;
+      if (status === "needs_setup" && !needsSetup(s)) return false;
       if (!q) return true;
       return (
         s.name.toLowerCase().includes(q) ||
@@ -470,7 +491,13 @@ export function SchoolsPage() {
         (s.principal_email ?? "").toLowerCase().includes(q)
       );
     });
-  }, [schools, statusFilter, search]);
+  }, [all, status, state.q]);
+
+  const hasFilters = status !== "all" || state.q !== "";
+  const clearFilters = () => {
+    setSearch("");
+    update({ status: "all", q: "" });
+  };
 
   const handleCreated = (payload: CreateSchoolRequest, id: string) => {
     queryClient.invalidateQueries({ queryKey: ["admin", "schools"] });
@@ -486,40 +513,57 @@ export function SchoolsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <FilterBar hideHeader>
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {STATUS_FILTERS.map((opt) => (
-              <Button
-                key={opt.value}
-                variant={statusFilter === opt.value ? "primary" : "outline"}
-                size="sm"
-                onClick={() => setStatusFilter(opt.value)}
-                className="rounded-full"
-              >
-                {opt.label}
-              </Button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <SearchInput
-              value={search}
-              onChange={setSearch}
-              placeholder="Search name, city, UDISE…"
-              className="w-full lg:w-72"
-            />
-            <Button
-              size="sm"
-              icon={<Plus className="h-4 w-4" />}
-              onClick={() => setShowCreate(true)}
-              className="shrink-0"
-            >
-              New School
-            </Button>
-          </div>
-        </div>
-      </FilterBar>
+    <div className="space-y-4">
+      <ModuleHeaderActions>
+        <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setShowCreate(true)}>
+          New<span className="hidden sm:inline">&nbsp;school</span>
+        </Button>
+      </ModuleHeaderActions>
+
+      <FilterToolbar
+        hasFilters={hasFilters}
+        onClear={clearFilters}
+        end={
+          <StatLine
+            loading={isLoading}
+            items={[
+              {
+                value: hasFilters ? filtered.length : counts.all,
+                label: hasFilters
+                  ? `of ${counts.all.toLocaleString()} schools`
+                  : counts.all === 1
+                    ? "school"
+                    : "schools",
+              },
+              {
+                value: counts.needs_setup,
+                label: "need setup",
+                tone: "warning",
+                hidden: counts.needs_setup === 0 || status === "needs_setup",
+                onClick: () => update({ status: "needs_setup" }, { push: true }),
+              },
+            ]}
+          />
+        }
+      >
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search name, city, UDISE…"
+          aria-label="Search schools"
+          className="w-full sm:w-72"
+        />
+        <SegmentedControl
+          aria-label="Filter by status"
+          value={status}
+          onChange={(next) => update({ status: next }, { push: true })}
+          options={STATUS_FILTERS.map((value) => ({
+            value,
+            label: STATUS_LABELS[value],
+            count: counts[value],
+          }))}
+        />
+      </FilterToolbar>
 
       {error && (
         <Alert variant="error">
@@ -530,24 +574,27 @@ export function SchoolsPage() {
       {isLoading ? (
         <ListSkeleton items={6} />
       ) : (
-        <Panel
-          flush
-          icon={<Building2 className="h-4 w-4" />}
-          title="Schools"
-          actions={<Badge variant="primary">{filtered.length} shown</Badge>}
-        >
+        <Panel flush>
           {filtered.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                icon={<Building2 className="h-10 w-10" />}
-                title="No schools found"
-                description={
-                  search
-                    ? `No results for “${search}”.`
+            <EmptyState
+              variant="plain"
+              icon={<Building2 className="h-10 w-10" />}
+              title="No schools found"
+              description={
+                state.q
+                  ? `No results for “${state.q}”.`
+                  : hasFilters
+                    ? "No schools match this filter."
                     : "Approve an onboarding application or add a school manually to get started."
-                }
-              />
-            </div>
+              }
+              action={
+                hasFilters ? (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             <ul className="divide-y divide-border/50">
               {filtered.map((s) => {

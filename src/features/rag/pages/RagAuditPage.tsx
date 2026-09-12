@@ -1,52 +1,40 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Database,
-  RefreshCw,
-  AlertTriangle,
-  Wrench,
-  Layers,
-  BookOpen,
-  Languages,
-} from "lucide-react";
+import { BookOpen, CheckCircle2, Database, Languages, Layers, Wrench } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { ragApi } from "@/features/rag/api/rag";
-import { StatCard } from "@/shared/components/ui/Card";
-import { Panel } from "@/shared/components/ui/Panel";
+import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
-import { Badge } from "@/shared/components/ui/Badge";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
+import { Panel } from "@/shared/components/ui/Panel";
+import { RefreshButton } from "@/shared/components/ui/RefreshButton";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
+import { CardSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
+import { useUrlState } from "@/shared/hooks/useUrlState";
 import { getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { canManageRecordings } from "@/shared/lib/permissions";
 import { CoverageMatrix } from "@/features/rag/components/CoverageMatrix";
-import { Skeleton, StatCardSkeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+
+type Dimension = "class" | "subject" | "medium";
+
+const DIMENSIONS: { value: Dimension; label: string; icon: React.ReactNode }[] = [
+  { value: "class", label: "Class", icon: <Layers className="h-3.5 w-3.5" /> },
+  { value: "subject", label: "Subject", icon: <BookOpen className="h-3.5 w-3.5" /> },
+  { value: "medium", label: "Medium", icon: <Languages className="h-3.5 w-3.5" /> },
+];
+const URL_DEFAULTS: { by: string } = { by: "class" };
 
 function RagAuditSkeleton() {
   return (
     <div className="space-y-6" aria-hidden="true">
-      <div className="flex justify-end gap-2">
-        <Skeleton className="h-9 w-40 rounded-md" />
-        <Skeleton className="h-9 w-24 rounded-md" />
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <StatCardSkeleton key={i} />
-        ))}
-      </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-border/60 bg-card">
-            <div className="flex items-center justify-between border-b border-border/40 px-4 py-3 sm:px-6">
-              <Skeleton className="h-5 w-24" />
-              <Skeleton className="h-5 w-8 rounded-full" />
-            </div>
-            <ListSkeleton items={3} />
-          </div>
-        ))}
-      </div>
-      <Skeleton className="h-64 w-full rounded-xl" />
+      <Skeleton className="h-4 w-72 max-w-full" />
+      <CardSkeleton lines={6} />
+      <CardSkeleton lines={4} />
     </div>
   );
 }
@@ -56,6 +44,9 @@ export function RagAuditPage() {
   const role = useAuthStore((s) => s.user?.role);
   const canRebuild = canManageRecordings(role);
   const [isRebuilding, setIsRebuilding] = useState(false);
+  const [state, update] = useUrlState(URL_DEFAULTS);
+  const dimension: Dimension =
+    state.by === "subject" || state.by === "medium" ? state.by : "class";
 
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["rag", "audit"],
@@ -76,168 +67,165 @@ export function RagAuditPage() {
     }
   };
 
-  if (isLoading) return <RagAuditSkeleton />;
-  if (isError)
-    return <Alert variant="error">{getErrorMessage(error) || "Failed to load RAG audit data."}</Alert>;
+  const header = (
+    <ModuleHeaderActions>
+      <RefreshButton
+        onClick={() => void refetch()}
+        refreshing={(isFetching && !isLoading) || isRebuilding}
+        label="Refresh coverage"
+      />
+      {canRebuild && (
+        <ActionMenu
+          label="More coverage actions"
+          items={[
+            {
+              label: isRebuilding ? "Rebuilding cache…" : "Rebuild metadata cache",
+              icon: <Wrench />,
+              disabled: isRebuilding,
+              onSelect: () => void handleRebuild(),
+            },
+          ]}
+        />
+      )}
+    </ModuleHeaderActions>
+  );
+
+  if (isLoading) {
+    return (
+      <>
+        {header}
+        <RagAuditSkeleton />
+      </>
+    );
+  }
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        {header}
+        <Alert variant="error">{getErrorMessage(error) || "Failed to load coverage data."}</Alert>
+      </div>
+    );
+  }
 
   const totalChunks = data?.total_chunks ?? 0;
   const isEmpty = totalChunks === 0;
-  const hasMissingMetadata =
-    (data?.missing_fields?.titles ?? 0) > 0 ||
-    (data?.missing_fields?.chapter_names ?? 0) > 0;
+  const missingTitles = data?.missing_fields?.titles ?? 0;
+  const missingChapters = data?.missing_fields?.chapter_names ?? 0;
+  const hasMissingMetadata = missingTitles > 0 || missingChapters > 0;
+
+  const rowsByDimension = {
+    class: data?.counts?.by_class,
+    subject: data?.counts?.by_subject,
+    medium: data?.counts?.by_medium,
+  };
+  const rows = rowsByDimension[dimension] ?? [];
+  const activeDimension = DIMENSIONS.find((d) => d.value === dimension) ?? DIMENSIONS[0];
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end gap-2">
-        {canRebuild && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRebuild}
-            loading={isRebuilding}
-            icon={<Wrench className="h-4 w-4" />}
-          >
-            Rebuild metadata cache
-          </Button>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          loading={isFetching}
-          icon={<RefreshCw className="h-4 w-4" />}
-        >
-          Refresh
-        </Button>
-      </div>
+      {header}
 
-      {isEmpty && (
+      {isEmpty ? (
         <EmptyState
           icon={<Database className="h-12 w-12" />}
           title="Your knowledge base is empty"
           description={
             canRebuild
-              ? "Upload textbook documents in Manage Documents to start indexing content."
+              ? "Upload textbook chapters to start indexing content."
               : "No indexed content is available yet. Ask a teacher or admin to upload textbooks."
           }
+          action={
+            canRebuild ? (
+              <Button asChild size="sm">
+                <Link to="/rag/documents">Open Textbook Library</Link>
+              </Button>
+            ) : undefined
+          }
         />
-      )}
-
-      {!isEmpty && (
+      ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard
-              label="Total Chunks"
-              value={data?.total_chunks ?? 0}
-              icon={<Database className="h-5 w-5" />}
-              color="primary"
+          <div className="space-y-3">
+            <StatLine
+              items={[
+                { value: totalChunks, label: "indexed passages" },
+                {
+                  value: missingTitles,
+                  label: missingTitles === 1 ? "missing a title" : "missing titles",
+                  tone: "warning",
+                  hidden: missingTitles === 0,
+                },
+                {
+                  value: missingChapters,
+                  label: missingChapters === 1 ? "missing a chapter name" : "missing chapter names",
+                  tone: "warning",
+                  hidden: missingChapters === 0,
+                },
+                {
+                  label: "Metadata complete",
+                  icon: <CheckCircle2 />,
+                  tone: "success",
+                  hidden: hasMissingMetadata,
+                },
+              ]}
             />
-            <StatCard
-              label="Missing Titles"
-              value={data?.missing_fields?.titles ?? 0}
-              icon={<AlertTriangle className="h-5 w-5" />}
-              color={data?.missing_fields?.titles ? "warning" : "success"}
-            />
-            <StatCard
-              label="Missing Chapters"
-              value={data?.missing_fields?.chapter_names ?? 0}
-              icon={<AlertTriangle className="h-5 w-5" />}
-              color={data?.missing_fields?.chapter_names ? "warning" : "success"}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {[
-              {
-                label: "By Class",
-                icon: <Layers className="h-4 w-4" />,
-                data: data?.counts?.by_class,
-              },
-              {
-                label: "By Subject",
-                icon: <BookOpen className="h-4 w-4" />,
-                data: data?.counts?.by_subject,
-              },
-              {
-                label: "By Medium",
-                icon: <Languages className="h-4 w-4" />,
-                data: data?.counts?.by_medium,
-              },
-            ].map(({ label, icon, data: rows }) => (
-              <Panel
-                key={label}
-                flush
-                icon={icon}
-                title={label}
-                actions={<Badge variant="info">{rows?.length ?? 0}</Badge>}
-              >
-                {!rows?.length ? (
-                  <p className="px-4 py-4 text-sm text-muted-foreground md:px-5">
-                    No data.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-border/50">
-                    {rows.map((row, i) => {
-                      const name =
-                        row.book ??
-                        row.class_level ??
-                        row.subject ??
-                        row.medium ??
-                        row.name ??
-                        "—";
-                      const rawCount = row.count ?? row.total;
-                      const pct =
-                        typeof rawCount === "number" && totalChunks > 0
-                          ? Math.round((rawCount / totalChunks) * 100)
-                          : null;
-                      return (
-                        <li key={i} className="px-4 py-3 md:px-5">
-                          <div className="flex items-center justify-between gap-3">
-                            <p className="truncate text-sm font-medium text-foreground">
-                              {name}
-                            </p>
-                            <Badge variant="info">
-                              {rawCount ?? "—"} chunks
-                            </Badge>
-                          </div>
-                          {pct !== null && (
-                            <div className="mt-2 flex items-center gap-2">
-                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                                <div
-                                  className="h-full rounded-full bg-primary"
-                                  style={{ width: `${pct}%` }}
-                                />
-                              </div>
-                              <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">
-                                {pct}%
-                              </span>
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </Panel>
-            ))}
+            {hasMissingMetadata && (
+              <Alert variant="warning" title="Some passages are missing metadata">
+                This can make answers harder to find.
+                {canRebuild
+                  ? " Rebuild the metadata cache from the ⋯ menu above, then re-upload any affected chapters."
+                  : " Ask an admin to rebuild the metadata cache and re-upload any affected chapters."}
+              </Alert>
+            )}
           </div>
 
           <CoverageMatrix />
 
-          {hasMissingMetadata ? (
-            <Alert variant="warning" title="Missing Metadata Detected">
-              Some chunks are missing title or chapter metadata. This may affect
-              search quality.
-              {canRebuild
-                ? ' Use "Rebuild metadata cache" above to refresh coverage, then re-upload any affected documents.'
-                : " Ask an admin to rebuild the metadata cache and re-upload any affected documents."}
-            </Alert>
-          ) : (
-            <Alert variant="success">
-              All chunks have complete metadata. Your knowledge base is in good
-              shape.
-            </Alert>
-          )}
+          <Panel
+            flush
+            icon={activeDimension.icon}
+            title="Indexed passages"
+            description="How the knowledge base is spread"
+            actions={
+              <SegmentedControl
+                aria-label="Group passages by"
+                options={DIMENSIONS}
+                value={dimension}
+                onChange={(by) => update({ by }, { push: true })}
+              />
+            }
+          >
+            {rows.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-muted-foreground md:px-5">No data.</p>
+            ) : (
+              <ul className="divide-y divide-border/50">
+                {rows.map((row, i) => {
+                  const name =
+                    row.book ?? row.class_level ?? row.subject ?? row.medium ?? row.name ?? "—";
+                  const rawCount = row.count ?? row.total;
+                  const pct =
+                    typeof rawCount === "number" && totalChunks > 0
+                      ? Math.round((rawCount / totalChunks) * 100)
+                      : null;
+                  return (
+                    <li key={i} className="px-4 py-3 md:px-5">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="truncate text-sm font-medium text-foreground">{name}</p>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {typeof rawCount === "number" ? rawCount.toLocaleString() : "—"}
+                          {pct !== null && ` · ${pct}%`}
+                        </span>
+                      </div>
+                      {pct !== null && (
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </Panel>
         </>
       )}
     </div>

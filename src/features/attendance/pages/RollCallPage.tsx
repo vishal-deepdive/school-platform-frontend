@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState, useEffect, memo, useCallback } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckSquare, Users, UserCheck, UserX, ScanFace } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CalendarDays, CheckSquare, ScanFace, Users } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
@@ -11,21 +11,22 @@ import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { isHolidayDate } from "@/features/attendance/lib/holidays";
 import { STATUS_LABELS } from "@/features/attendance/lib/status";
 import { getErrorMessage, isoToIndianDate, isSunday } from "@/shared/lib/utils";
-import { StatCard } from "@/shared/components/ui/Card";
-import { Input } from "@/shared/components/ui/Input";
-import { Select } from "@/shared/components/ui/Select";
-import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
-import { DatePicker } from "@/shared/components/ui/DatePicker";
-import { FilterBar } from "@/shared/components/ui/FilterBar";
-import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
-import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { Button } from "@/shared/components/ui/Button";
+import { DatePicker } from "@/shared/components/ui/DatePicker";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import type {
-  AttendanceStatus,
-  RosterStudent,
-} from "@/features/attendance/types";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { FormActions } from "@/shared/components/ui/FormActions";
+import { Input } from "@/shared/components/ui/Input";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
+import { Panel } from "@/shared/components/ui/Panel";
+import { RefreshButton } from "@/shared/components/ui/RefreshButton";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { Select } from "@/shared/components/ui/Select";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
+import type { AttendanceStatus, RosterStudent } from "@/features/attendance/types";
 
 function todayIso(): string {
   const d = new Date();
@@ -66,17 +67,13 @@ const StudentRow = memo(function StudentRow({
           <p className="truncate text-sm font-medium text-foreground">
             {student.name ?? student.roll_no}
           </p>
-          <p className="text-xs text-muted-foreground">
-            Roll #{student.roll_no}
-          </p>
+          <p className="text-xs text-muted-foreground">Roll #{student.roll_no}</p>
         </div>
         {!student.has_face && (
           <ScanFace
             className="h-4 w-4 shrink-0 text-amber-500"
-            aria-label="No face on file"
-          >
-            <title>No face on file — mark manually</title>
-          </ScanFace>
+            aria-label="No face on file — mark manually"
+          />
         )}
       </div>
       <div className="flex gap-1">
@@ -117,7 +114,6 @@ export function RollCallPage() {
   const [date, setDate] = useState(todayIso());
   const [allowHoliday, setAllowHoliday] = useState(false);
 
-  const [roster, setRoster] = useState<RosterStudent[] | null>(null);
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [search, setSearch] = useState("");
 
@@ -131,13 +127,6 @@ export function RollCallPage() {
   });
   const dateIsSunday = date ? isSunday(date) : false;
   const dateIsHoliday = date ? isHolidayDate(date, holidays) : false;
-
-  // Selecting a different class/section/date invalidates a loaded roster so the
-  // teacher can't accidentally save marks against the wrong slot.
-  useEffect(() => {
-    setRoster(null);
-    setStatuses({});
-  }, [schoolId, className, section, subject, session, date]);
 
   // When an admin switches the active school, the persisted class/section may
   // not exist in the new school — clear them. Skip the initial mount so a
@@ -155,28 +144,48 @@ export function RollCallPage() {
     if (!dateIsHoliday) setAllowHoliday(false);
   }, [dateIsHoliday]);
 
-  const loadMutation = useMutation({
-    mutationFn: () => {
-      const params: Record<string, string> = {
+  const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
+
+  // The class loads as soon as one is picked — no "Load class" step — and stays
+  // cached, so flipping back to a class you already marked is instant.
+  const rosterQuery = useQuery({
+    queryKey: [
+      "attendance",
+      "rollcall-roster",
+      schoolId ?? "",
+      className,
+      section,
+      subject,
+      session,
+      date,
+    ],
+    queryFn: () =>
+      attendanceApi.getRoster({
         class_name: className,
         section,
         session,
         date: isoToIndianDate(date),
-        ...(isAdmin && schoolName && { school_name: schoolName }),
-        ...(subject && { subject }),
-      };
-      return attendanceApi.getRoster(params);
-    },
-    onSuccess: (data) => {
-      setRoster(data.students);
-      // Pre-fill from any existing marks; default unmarked students to Present
-      // (mark-all-present-then-flag-absentees is the fastest real-world flow).
-      const next: Record<string, AttendanceStatus> = {};
-      for (const s of data.students) next[s.roll_no] = s.status ?? "P";
-      setStatuses(next);
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
+        ...(isAdmin && schoolName ? { school_name: schoolName } : {}),
+        ...(subject ? { subject } : {}),
+      }),
+    enabled: canLoad,
+    staleTime: 30_000,
   });
+  const roster = canLoad ? rosterQuery.data?.students : undefined;
+
+  // Seed the toggles from whatever is already stored, defaulting the rest to
+  // Present (mark-all-present-then-flag-absentees is the fastest real flow).
+  // Keyed so a background refetch never discards marks in progress.
+  const slotKey = `${schoolId}|${className}|${section}|${subject}|${session}|${date}`;
+  const seededFor = useRef<string | null>(null);
+  useEffect(() => {
+    const students = rosterQuery.data?.students;
+    if (!students || seededFor.current === slotKey) return;
+    seededFor.current = slotKey;
+    const next: Record<string, AttendanceStatus> = {};
+    for (const s of students) next[s.roll_no] = s.status ?? "P";
+    setStatuses(next);
+  }, [rosterQuery.data, slotKey]);
 
   const saveMutation = useMutation({
     mutationFn: () => {
@@ -215,16 +224,13 @@ export function RollCallPage() {
     setStatuses(next);
   };
 
-  const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
-
   const visible = useMemo(() => {
     if (!roster) return [];
     const q = search.trim().toLowerCase();
     if (!q) return roster;
     return roster.filter(
       (s) =>
-        s.roll_no.toLowerCase().includes(q) ||
-        (s.name ?? "").toLowerCase().includes(q),
+        s.roll_no.toLowerCase().includes(q) || (s.name ?? "").toLowerCase().includes(q),
     );
   }, [roster, search]);
 
@@ -234,21 +240,23 @@ export function RollCallPage() {
     return c;
   }, [statuses]);
 
+  const changeClass = (value: string) => {
+    const options = value ? getSectionOptions(value) : [];
+    setClassName(value);
+    setSection(options.length === 1 ? options[0].value : "");
+  };
+
   return (
-    <div className="space-y-6">
-      <FilterBar
-        title="Class & date"
-        actions={
-          <Button
-            onClick={() => loadMutation.mutate()}
-            loading={loadMutation.isPending}
-            disabled={!canLoad}
-            icon={<Users className="h-4 w-4" />}
-          >
-            {loadMutation.isPending ? "Loading…" : "Load Class"}
-          </Button>
-        }
-      >
+    <div className="space-y-4">
+      <ModuleHeaderActions>
+        <RefreshButton
+          onClick={() => void rosterQuery.refetch()}
+          refreshing={rosterQuery.isFetching && !rosterQuery.isLoading}
+          label="Reload class"
+        />
+      </ModuleHeaderActions>
+
+      <FilterBar title="Class & date" icon={<CalendarDays className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
           <Select
             label="Class"
@@ -256,10 +264,7 @@ export function RollCallPage() {
             options={classNameOptions}
             value={className}
             disabled={!schoolId}
-            onChange={(e) => {
-              setClassName(e.target.value);
-              setSection("");
-            }}
+            onChange={(e) => changeClass(e.target.value)}
           />
           {sectionOptions.length > 0 ? (
             <Select
@@ -307,7 +312,7 @@ export function RollCallPage() {
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
-                className="h-4 w-4 rounded border-input"
+                className="h-4 w-4 rounded border-input accent-primary"
                 checked={allowHoliday}
                 onChange={(e) => setAllowHoliday(e.target.checked)}
               />
@@ -317,97 +322,108 @@ export function RollCallPage() {
         )}
       </FilterBar>
 
-      {roster && (
+      {!canLoad ? (
+        <EmptyState
+          icon={<Users className="h-10 w-10" />}
+          title={isAdmin && !schoolName ? "Pick a school first" : "Choose a class"}
+          description={
+            isAdmin && !schoolName
+              ? "Select the school you're marking for from the dashboard, then pick a class and section."
+              : className
+                ? "Pick a section — the class list loads right away."
+                : "Pick a class and section — the class list loads right away."
+          }
+        />
+      ) : rosterQuery.isError ? (
+        <Alert variant="error">
+          {getErrorMessage(rosterQuery.error) || "Failed to load this class."}
+        </Alert>
+      ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            <StatCard
-              label="Present"
-              value={counts.P}
-              icon={<UserCheck className="h-5 w-5" />}
-              color="success"
-            />
-            <StatCard
-              label="Absent"
-              value={counts.A}
-              icon={<UserX className="h-5 w-5" />}
-              color="danger"
-            />
-            <StatCard label="Late" value={counts.L} color="warning" />
-            <StatCard label="Excused" value={counts.E} color="info" />
-            <StatCard label="Half Day" value={counts.H} />
-          </div>
-
           <Panel
             flush
             icon={<CheckSquare className="h-4 w-4" />}
             title="Mark students"
-            description={`${roster.length} student${roster.length === 1 ? "" : "s"} in this class`}
-            actions={
-              <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="secondary" onClick={() => setAll("P")}>
-                  All Present
-                </Button>
-                <Button size="sm" variant="secondary" onClick={() => setAll("A")}>
-                  All Absent
-                </Button>
-                <SearchInput
-                  value={search}
-                  onChange={setSearch}
-                  placeholder="Search roll or name…"
-                  className="w-full sm:w-56"
-                />
-              </div>
+            description={
+              roster
+                ? `${roster.length} student${roster.length === 1 ? "" : "s"} · ${isoToIndianDate(date)}`
+                : undefined
             }
-          >
-            <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-              {visible.length === 0 ? (
-                <div className="col-span-full">
-                  <EmptyState
-                    icon={<Users className="h-9 w-9" />}
-                    title={
-                      roster.length === 0
-                        ? "No students in this class yet"
-                        : "No students match your search"
-                    }
-                    description={
-                      roster.length === 0
-                        ? "Import students for this class, then come back to mark attendance."
-                        : "Try a different roll number or name."
-                    }
+            actions={
+              roster && roster.length > 0 ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="secondary" onClick={() => setAll("P")}>
+                    All present
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => setAll("A")}>
+                    All absent
+                  </Button>
+                  <SearchInput
+                    value={search}
+                    onChange={setSearch}
+                    placeholder="Search roll or name…"
+                    aria-label="Search this class"
+                    className="w-full sm:w-56"
                   />
                 </div>
-              ) : (
-                visible.map((s) => (
+              ) : undefined
+            }
+          >
+            {rosterQuery.isLoading ? (
+              <ListSkeleton items={6} />
+            ) : visible.length === 0 ? (
+              <EmptyState
+                variant="plain"
+                icon={<Users className="h-9 w-9" />}
+                title={
+                  (roster?.length ?? 0) === 0
+                    ? "No students in this class yet"
+                    : "No students match your search"
+                }
+                description={
+                  (roster?.length ?? 0) === 0
+                    ? "Import students for this class, then come back to mark attendance."
+                    : "Try a different roll number or name."
+                }
+              />
+            ) : (
+              <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+                {visible.map((s) => (
                   <StudentRow
                     key={s.roll_no}
                     student={s}
                     currentStatus={statuses[s.roll_no] ?? "P"}
                     onStatusChange={setStatus}
                   />
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
+          </Panel>
 
-            <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
-              <p className="text-sm text-muted-foreground">
-                <span className="font-semibold text-green-600 dark:text-green-400">
-                  {counts.P}
-                </span>{" "}
-                present ·{" "}
-                <span className="font-semibold text-red-500 dark:text-red-400">
-                  {counts.A}
-                </span>{" "}
-                absent · {roster.length} total
-              </p>
+          {roster && roster.length > 0 && (
+            <FormActions
+              info={
+                <StatLine
+                  items={[
+                    { value: counts.P, label: "present", tone: "success" },
+                    { value: counts.A, label: "absent", tone: "danger" },
+                    { value: counts.L, label: "late", tone: "warning", hidden: !counts.L },
+                    { value: counts.E, label: "excused", hidden: !counts.E },
+                    { value: counts.H, label: "half day", hidden: !counts.H },
+                    { value: roster.length, label: "in class" },
+                  ]}
+                />
+              }
+            >
               <Button
                 onClick={() => saveMutation.mutate()}
                 loading={saveMutation.isPending}
                 icon={<CheckSquare className="h-4 w-4" />}
               >
-                {saveMutation.isPending ? "Saving…" : "Save Attendance"}
+                {saveMutation.isPending ? "Saving…" : "Save attendance"}
               </Button>
-            </div>
-          </Panel>
+            </FormActions>
+          )}
         </>
       )}
     </div>

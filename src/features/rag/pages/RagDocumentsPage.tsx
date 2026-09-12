@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Eye, Layers, Library, List, Plus, RefreshCw, SearchX } from "lucide-react";
+import { Eye, Layers, Library, List, Plus, SearchX } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { Button } from "@/shared/components/ui/Button";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
@@ -10,13 +10,14 @@ import {
   ModuleHeaderLeading,
 } from "@/shared/components/ui/ModuleHeaderActions";
 import { Pagination } from "@/shared/components/ui/Pagination";
+import { RefreshButton } from "@/shared/components/ui/RefreshButton";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
 import { Skeleton, TableBodySkeleton } from "@/shared/components/ui/Skeleton";
-import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { isStaff } from "@/shared/lib/permissions";
-import { cn, getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
+import { getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import {
   useDeleteRagDocument,
@@ -36,7 +37,7 @@ import { compareChapters } from "@/features/rag/lib/documentStatus";
 import type { DocumentClassSummary, DocumentItem } from "@/features/rag/types";
 import { ChapterTable, type RowAction } from "@/features/rag/components/library/ChapterTable";
 import { ClassList } from "@/features/rag/components/library/ClassList";
-import { DocumentChunksPreview } from "@/features/rag/components/library/DocumentChunksPreview";
+import { ChapterPreview } from "@/features/rag/components/library/ChapterPreview";
 import {
   LibraryFilters,
   LibraryStats,
@@ -324,21 +325,17 @@ export function RagDocumentsPage() {
     <div className="space-y-4">
       {!libraryEmpty && (
         <ModuleHeaderLeading>
-          <ViewSwitch value={state.view} onChange={(view) => update({ view }, { push: true })} />
+          <SegmentedControl
+            aria-label="Library view"
+            compact
+            options={VIEWS}
+            value={state.view}
+            onChange={(view) => update({ view }, { push: true })}
+          />
         </ModuleHeaderLeading>
       )}
       <ModuleHeaderActions>
-        <Tooltip content="Refresh" side="bottom">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={refresh}
-            aria-label="Refresh library"
-          >
-            <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-          </Button>
-        </Tooltip>
+        <RefreshButton onClick={refresh} refreshing={refreshing} label="Refresh library" />
         {canManage && (
           <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={openUpload}>
             Upload<span className="hidden sm:inline">&nbsp;chapters</span>
@@ -500,9 +497,9 @@ export function RagDocumentsPage() {
             ? `${previewDoc.class_level} · ${previewDoc.subject} · ${previewDoc.original_filename}`
             : undefined
         }
-        size="3xl"
+        size="full"
       >
-        {previewDoc && <DocumentChunksPreview documentId={previewDoc.id} />}
+        {previewDoc && <ChapterPreview documentId={previewDoc.id} />}
       </Modal>
 
       {upload.session > 0 && (
@@ -516,45 +513,6 @@ export function RagDocumentsPage() {
           ownSchoolId={user?.school_id ?? schoolId}
         />
       )}
-    </div>
-  );
-}
-
-function ViewSwitch({
-  value,
-  onChange,
-}: {
-  value: LibraryView;
-  onChange: (view: LibraryView) => void;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Library view"
-      className="inline-flex rounded-lg border border-border/70 bg-background/70 p-0.5"
-    >
-      {VIEWS.map((view) => {
-        const active = view.value === value;
-        return (
-          <button
-            key={view.value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            aria-label={view.label}
-            onClick={() => onChange(view.value)}
-            className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              active
-                ? "bg-card text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {view.icon}
-            <span className="hidden sm:inline">{view.label}</span>
-          </button>
-        );
-      })}
     </div>
   );
 }

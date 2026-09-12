@@ -1,98 +1,90 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  BarChart3,
+  CalendarClock,
   ClipboardList,
   Plus,
-  BarChart3,
-  Trash2,
-  Users,
-  CalendarClock,
-  AlertTriangle,
-  TrendingDown,
   Target,
+  Trash2,
+  TrendingDown,
+  Users,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
-import { Button } from "@/shared/components/ui/Button";
-import { Badge } from "@/shared/components/ui/Badge";
-import { Panel } from "@/shared/components/ui/Panel";
-import { Modal } from "@/shared/components/ui/Modal";
-import { StatCard } from "@/shared/components/ui/Card";
-import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Alert } from "@/shared/components/ui/Alert";
-import { getErrorMessage, isForbiddenError, formatDate, cn } from "@/shared/lib/utils";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { KpiStrip } from "@/shared/components/ui/KpiStrip";
+import { Modal } from "@/shared/components/ui/Modal";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
+import { Panel } from "@/shared/components/ui/Panel";
+import { ListSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
+import { cn, formatDate, getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
 import {
-  useAssignments,
   useAssignmentResults,
+  useAssignments,
   useDeleteAssignment,
 } from "@/features/rag/hooks/useRag";
 import { PracticeBuilderModal } from "@/features/rag/components/PracticeBuilderModal";
-import type { RagFilters } from "@/features/rag/types";
+import type { AssignmentSummary, RagFilters } from "@/features/rag/types";
 
-import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
+function describeAssignment(a: AssignmentSummary): string {
+  const parts = [a.class_level, a.subject, a.chapter_name].filter(Boolean) as string[];
+  parts.push(`${a.num_questions} Qs`);
+  if (a.difficulty) parts.push(a.difficulty);
+  if (a.time_limit_seconds) parts.push(`${Math.round(a.time_limit_seconds / 60)} min`);
+  if (a.attempts_allowed) {
+    parts.push(`${a.attempts_allowed} attempt${a.attempts_allowed > 1 ? "s" : ""}`);
+  } else if (a.attempts_allowed === null) {
+    parts.push("unlimited attempts");
+  }
+  return parts.join(" · ");
+}
 
-function AssignmentsSkeleton() {
-  return (
-    <div className="space-y-6" aria-hidden="true">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Skeleton className="h-5 w-64" />
-        <Skeleton className="h-9 w-32 rounded-md" />
-      </div>
-      <div className="rounded-xl border border-border/60 bg-card">
-        <div className="flex items-center gap-2 border-b border-border/40 px-4 py-3.5 sm:px-6">
-          <Skeleton className="h-4 w-4" />
-          <Skeleton className="h-5 w-32" />
-        </div>
-        <ListSkeleton items={4} />
-      </div>
-    </div>
-  );
+interface BuilderPrefill {
+  filters?: RagFilters;
+  topic?: string;
 }
 
 export function AssignmentsPage() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useAssignments("manage");
-  const { mutate: remove } = useDeleteAssignment();
+  const { mutate: remove, isPending: deleting } = useDeleteAssignment();
 
   const [builderOpen, setBuilderOpen] = useState(false);
-  const [prefillFilters, setPrefillFilters] = useState<RagFilters | undefined>(undefined);
-  const [prefillTopic, setPrefillTopic] = useState<string | undefined>(undefined);
+  const [prefill, setPrefill] = useState<BuilderPrefill>({});
   const [resultsId, setResultsId] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<AssignmentSummary | null>(null);
 
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["rag", "assignments"] });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["rag", "assignments"] });
 
-  const openBlankBuilder = () => {
-    setPrefillFilters(undefined);
-    setPrefillTopic(undefined);
+  const openBuilder = (next: BuilderPrefill = {}) => {
+    setPrefill(next);
     setBuilderOpen(true);
   };
 
   const handleRemediate = (filters: RagFilters, topic: string) => {
     setResultsId(null);
-    setPrefillFilters(filters);
-    setPrefillTopic(topic);
-    setBuilderOpen(true);
+    openBuilder({ filters, topic });
   };
 
-  const items = data?.pages.flatMap((p) => p.items) ?? [];
-
   const handleDelete = () => {
-    if (!confirmId) return;
-    const id = confirmId;
-    setConfirmId(null);
-    remove(id, {
+    if (!toDelete) return;
+    remove(toDelete.id, {
       onSuccess: () => {
         toast.success("Assignment deleted.");
+        setToDelete(null);
         refresh();
       },
       onError: (err) => toast.error(getErrorMessage(err)),
     });
   };
-
-  if (isLoading) return <AssignmentsSkeleton />;
 
   // Ungranted teachers: clean access message instead of a raw error alert
   // alongside a misleading "No assignments yet" empty state.
@@ -105,110 +97,81 @@ export function AssignmentsPage() {
     );
   }
 
+  const items = data?.pages.flatMap((p) => p.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
+  // Counts across rows are only true once every page is loaded.
+  const allLoaded = !hasNextPage;
+  const activeCount = items.filter((a) => a.status === "active").length;
+  const submissions = items.reduce((n, a) => n + (a.submission_count ?? 0), 0);
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Assign auto-graded practice to a class and track how they do.
-        </p>
-        <Button icon={<Plus className="h-4 w-4" />} onClick={openBlankBuilder}>
+    <div className="space-y-4">
+      <ModuleHeaderActions>
+        <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => openBuilder()}>
           New assignment
         </Button>
-      </div>
+      </ModuleHeaderActions>
 
       {isError && <Alert variant="error">{getErrorMessage(error)}</Alert>}
 
-      {items.length === 0 ? (
-        <EmptyState
-          icon={<ClipboardList className="h-12 w-12" />}
-          title="No assignments yet"
-          description="Generate a quiz from a chapter and assign it to a class. You'll see completion and scores here."
-          action={
-            <Button icon={<Plus className="h-4 w-4" />} onClick={openBlankBuilder}>
-              New assignment
-            </Button>
-          }
-        />
+      {isLoading ? (
+        <>
+          <Skeleton className="h-4 w-56" />
+          <Panel flush>
+            <ListSkeleton items={4} />
+          </Panel>
+        </>
+      ) : items.length === 0 ? (
+        !isError && (
+          <EmptyState
+            icon={<ClipboardList className="h-12 w-12" />}
+            title="No assignments yet"
+            description="Generate a quiz from a chapter and assign it to a class. You'll see completion and scores here."
+            action={
+              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => openBuilder()}>
+                New assignment
+              </Button>
+            }
+          />
+        )
       ) : (
-        <Panel flush icon={<ClipboardList className="h-4 w-4" />} title="Your assignments">
-          <ul className="divide-y divide-border/50">
-            {items.map((a) => (
-              <li
-                key={a.id}
-                className="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5"
+        <>
+          <StatLine
+            items={[
+              { value: total, label: total === 1 ? "assignment" : "assignments" },
+              { value: activeCount, label: "active", hidden: !allLoaded },
+              {
+                value: submissions,
+                label: submissions === 1 ? "submission" : "submissions",
+                hidden: !allLoaded,
+              },
+            ]}
+          />
+          <Panel flush>
+            <ul className="divide-y divide-border/50">
+              {items.map((a) => (
+                <AssignmentRow
+                  key={a.id}
+                  assignment={a}
+                  onResults={() => setResultsId(a.id)}
+                  onDelete={() => setToDelete(a)}
+                />
+              ))}
+            </ul>
+          </Panel>
+          {hasNextPage && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchNextPage()}
+                loading={isFetchingNextPage}
               >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="truncate font-medium text-foreground">{a.title}</p>
-                    {a.medium && (
-                      <Badge variant={a.medium === "Hindi" ? "purple" : "info"}>{a.medium}</Badge>
-                    )}
-                    <Badge variant={a.status === "active" ? "success" : "default"}>
-                      {a.status}
-                    </Badge>
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {[a.class_level, a.subject, a.chapter_name].filter(Boolean).join(" · ") || "—"}
-                    {` · ${a.num_questions} Qs`}
-                    {a.difficulty ? ` · ${a.difficulty}` : ""}
-                    {a.time_limit_seconds ? ` · ${Math.round(a.time_limit_seconds / 60)} min` : ""}
-                    {a.attempts_allowed
-                      ? ` · ${a.attempts_allowed} attempt${a.attempts_allowed > 1 ? "s" : ""}`
-                      : a.attempts_allowed === null
-                        ? " · unlimited attempts"
-                        : ""}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      <span className="tabular-nums text-foreground">{a.submission_count ?? 0}</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                      <BarChart3 className="h-4 w-4" />
-                      <span className="tabular-nums text-foreground">
-                        {a.avg_percentage != null ? `${a.avg_percentage}%` : "—"}
-                      </span>
-                    </span>
-                    {a.due_at && (
-                      <span className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:inline-flex">
-                        <CalendarClock className="h-3.5 w-3.5" /> {formatDate(a.due_at)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      icon={<BarChart3 className="h-4 w-4" />}
-                      onClick={() => setResultsId(a.id)}
-                    >
-                      Results
-                    </Button>
-                    <Button
-                      variant="danger-ghost"
-                      size="icon"
-                      aria-label="Delete assignment"
-                      onClick={() => setConfirmId(a.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      )}
-
-      {hasNextPage && (
-        <div className="flex justify-center">
-          <Button variant="outline" onClick={() => fetchNextPage()} loading={isFetchingNextPage}>
-            Load more
-          </Button>
-        </div>
+                Load more
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       <PracticeBuilderModal
@@ -216,8 +179,8 @@ export function AssignmentsPage() {
         onClose={() => setBuilderOpen(false)}
         mode="assignment"
         onCreated={refresh}
-        initialFilters={prefillFilters}
-        initialTopic={prefillTopic}
+        initialFilters={prefill.filters}
+        initialTopic={prefill.topic}
       />
 
       <Modal
@@ -230,29 +193,92 @@ export function AssignmentsPage() {
         {resultsId && <ResultsContent assignmentId={resultsId} onRemediate={handleRemediate} />}
       </Modal>
 
-      <Modal
-        open={!!confirmId}
-        onClose={() => setConfirmId(null)}
+      <ConfirmDialog
+        open={toDelete !== null}
         title="Delete this assignment?"
-        description="This removes the assignment and all its submissions. This cannot be undone."
-        icon={<AlertTriangle className="h-5 w-5" />}
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmId(null)}>
-              Cancel
-            </Button>
-            <Button variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={handleDelete}>
-              Delete
-            </Button>
-          </>
+        description={
+          toDelete && (
+            <>
+              <span className="font-medium text-foreground">{toDelete.title}</span> and all of
+              its submissions will be removed. Students will no longer see it or their scores.
+              This can't be undone.
+            </>
+          )
         }
-      >
-        <p className="text-sm text-muted-foreground">
-          Students will no longer see this assignment or their scores for it.
-        </p>
-      </Modal>
+        confirmLabel="Delete assignment"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onClose={() => setToDelete(null)}
+      />
     </div>
+  );
+}
+
+function AssignmentRow({
+  assignment: a,
+  onResults,
+  onDelete,
+}: {
+  assignment: AssignmentSummary;
+  onResults: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li className="flex flex-col gap-3 px-4 py-3.5 md:flex-row md:items-center md:justify-between md:px-5">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="truncate font-medium text-foreground">{a.title}</p>
+          {a.medium && (
+            <Badge variant={a.medium === "Hindi" ? "purple" : "info"}>{a.medium}</Badge>
+          )}
+          <Badge variant={a.status === "active" ? "success" : "default"} className="capitalize">
+            {a.status}
+          </Badge>
+        </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">{describeAssignment(a)}</p>
+      </div>
+
+      <div className="flex shrink-0 items-center justify-between gap-4 md:justify-end">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground" title="Submissions">
+            <Users className="h-4 w-4" />
+            <span className="sr-only">Submissions:</span>
+            <span className="tabular-nums text-foreground">{a.submission_count ?? 0}</span>
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground" title="Class average">
+            <BarChart3 className="h-4 w-4" />
+            <span className="sr-only">Class average:</span>
+            <span className="tabular-nums text-foreground">
+              {a.avg_percentage != null ? `${a.avg_percentage}%` : "—"}
+            </span>
+          </span>
+          {a.due_at && (
+            <span
+              className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:inline-flex"
+              title="Due date"
+            >
+              <CalendarClock className="h-3.5 w-3.5" /> {formatDate(a.due_at)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          <Button variant="outline" size="sm" icon={<BarChart3 className="h-4 w-4" />} onClick={onResults}>
+            Results
+          </Button>
+          <ActionMenu
+            label={`More actions for ${a.title}`}
+            items={[
+              {
+                label: "Delete assignment",
+                icon: <Trash2 />,
+                danger: true,
+                onSelect: onDelete,
+              },
+            ]}
+          />
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -267,10 +293,10 @@ function ResultsContent({
 
   if (isLoading) {
     return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-lg bg-muted/60" />
-        ))}
+      <div className="space-y-3" aria-hidden="true">
+        <Skeleton className="h-10 w-2/3" />
+        <Skeleton className="h-20 w-full rounded-xl" />
+        <Skeleton className="h-40 w-full rounded-xl" />
       </div>
     );
   }
@@ -298,16 +324,17 @@ function ResultsContent({
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <StatCard label="Submissions" value={data.submission_count} icon={<Users className="h-5 w-5" />} color="primary" />
-        <StatCard
-          label="Class average"
-          value={data.avg_percentage != null ? `${data.avg_percentage}%` : "—"}
-          icon={<BarChart3 className="h-5 w-5" />}
-          color="info"
-        />
-        <StatCard label="Questions" value={a.num_questions} icon={<ClipboardList className="h-5 w-5" />} color="success" />
-      </div>
+      <KpiStrip
+        items={[
+          { label: "Submissions", value: data.submission_count, icon: <Users /> },
+          {
+            label: "Class average",
+            value: data.avg_percentage != null ? `${data.avg_percentage}%` : "—",
+            icon: <BarChart3 />,
+          },
+          { label: "Questions", value: a.num_questions, icon: <ClipboardList /> },
+        ]}
+      />
 
       {data.submission_count === 0 ? (
         <EmptyState
@@ -318,7 +345,6 @@ function ResultsContent({
         />
       ) : (
         <>
-          {/* Weak topics */}
           {data.weak_topics.length > 0 && (
             <Panel
               icon={<TrendingDown className="h-4 w-4" />}
@@ -358,7 +384,6 @@ function ResultsContent({
             </Panel>
           )}
 
-          {/* Per-question accuracy */}
           <Panel flush icon={<BarChart3 className="h-4 w-4" />} title="Per-question accuracy">
             <ul className="divide-y divide-border/50">
               {data.question_stats.map((q, i) => {
@@ -385,14 +410,11 @@ function ResultsContent({
             </ul>
           </Panel>
 
-          {/* Students */}
           <Panel flush icon={<Users className="h-4 w-4" />} title="Students">
             <ul className="divide-y divide-border/50">
               {data.students.map((s) => (
                 <li key={s.student_id} className="flex items-center justify-between gap-3 px-4 py-3 md:px-5">
-                  <span className="truncate text-sm text-foreground">
-                    {s.student_name || "Student"}
-                  </span>
+                  <span className="truncate text-sm text-foreground">{s.student_name || "Student"}</span>
                   <div className="flex items-center gap-3">
                     {s.submitted_at && (
                       <span className="hidden text-xs text-muted-foreground sm:inline">

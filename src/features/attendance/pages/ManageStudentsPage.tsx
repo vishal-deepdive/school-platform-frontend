@@ -1,33 +1,52 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Trash2, FileUp, Download, AlertOctagon, UserPlus, GraduationCap, KeyRound, Hash, ScanFace, SmilePlus } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  AlertOctagon,
+  Download,
+  FileUp,
+  GraduationCap,
+  Hash,
+  KeyRound,
+  ScanFace,
+  SmilePlus,
+  Trash2,
+  UserPlus,
+  Users,
+} from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { adminApi } from "@/features/admin/api/admin";
 import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { useUrlSearch, useUrlState } from "@/shared/hooks/useUrlState";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isSchoolAdmin } from "@/shared/lib/permissions";
-import { Select } from "@/shared/components/ui/Select";
-import { Input } from "@/shared/components/ui/Input";
-import { Button } from "@/shared/components/ui/Button";
-import { Badge } from "@/shared/components/ui/Badge";
+import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Alert } from "@/shared/components/ui/Alert";
-import { FilterBar } from "@/shared/components/ui/FilterBar";
-import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
-import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
-import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { FileUpload } from "@/shared/components/ui/FileUpload";
+import { FilterToolbar } from "@/shared/components/ui/FilterToolbar";
+import { Input } from "@/shared/components/ui/Input";
 import { Modal } from "@/shared/components/ui/Modal";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
+import { Panel } from "@/shared/components/ui/Panel";
+import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { Select } from "@/shared/components/ui/Select";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import { cn, downloadBlob, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
-import type { RosterStudent } from "@/features/attendance/types";
+import type { RosterResponse, RosterStudent } from "@/features/attendance/types";
 import type { CreateStudentRequest } from "@/features/admin/types";
 
-const RELATION_OPTIONS: { value: NonNullable<CreateStudentRequest["guardian_relation"]>; label: string }[] = [
+const RELATION_OPTIONS: {
+  value: NonNullable<CreateStudentRequest["guardian_relation"]>;
+  label: string;
+}[] = [
   { value: "guardian", label: "Guardian" },
   { value: "father", label: "Father" },
   { value: "mother", label: "Mother" },
@@ -61,21 +80,24 @@ const DELETE_MODE_CLASS_TOAST: Record<DeleteMode, (classLabel: string) => string
 };
 
 export function ManageStudentsPage() {
+  const navigate = useNavigate();
   const { schoolId, schoolName, isAdmin, schoolParam } = useActiveSchool();
   const queryClient = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
   // /students/import stays admin/principal-only — don't dead-end teachers here.
   const canImport = isSchoolAdmin(role);
 
-  const [className, setClassName] = useState("");
-  const [section, setSection] = useState("");
-  const [session, setSession] = useState(getCurrentSession());
-  const [roster, setRoster] = useState<RosterStudent[] | null>(null);
-  const [search, setSearch] = useState("");
-  const [missingFaceOnly, setMissingFaceOnly] = useState(false);
-  const [studentToDelete, setStudentToDelete] = useState<RosterStudent | null>(
-    null,
+  const defaults = useMemo(
+    () => ({ class: "", section: "", session: getCurrentSession(), q: "", face: "" }),
+    [],
   );
+  const [state, update] = useUrlState(defaults);
+  const { class: className, section, session } = state;
+  const missingFaceOnly = state.face === "missing";
+  const [search, setSearch] = useUrlSearch(state.q, (q) => update({ q }));
+  const [sectionText, setSectionText] = useUrlSearch(section, (v) => update({ section: v }));
+
+  const [studentToDelete, setStudentToDelete] = useState<RosterStudent | null>(null);
   const [studentDeleteMode, setStudentDeleteMode] = useState<DeleteMode>("full");
   const [classDeleteOpen, setClassDeleteOpen] = useState(false);
   const [classDeleteMode, setClassDeleteMode] = useState<DeleteMode>("full");
@@ -102,34 +124,51 @@ export function ManageStudentsPage() {
   const [classPromoteOpen, setClassPromoteOpen] = useState(false);
   const [classPromoteTargetSession, setClassPromoteTargetSession] = useState("");
 
-  const [studentToResetPassword, setStudentToResetPassword] =
-    useState<RosterStudent | null>(null);
+  const [studentToResetPassword, setStudentToResetPassword] = useState<RosterStudent | null>(null);
 
   const [studentToAddFace, setStudentToAddFace] = useState<RosterStudent | null>(null);
   const [addFacePhotos, setAddFacePhotos] = useState<File[]>([]);
 
   const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
   const sectionOptions = className ? getSectionOptions(className) : [];
+  const hasClassConfig = classNameOptions.length > 0;
 
-  // Reset the class picker and any loaded roster when the active school changes.
+  // The class picker belongs to the previously active school.
+  const lastSchool = useRef(schoolId);
   useEffect(() => {
-    setClassName("");
-    setSection("");
-    setRoster(null);
-    setMissingFaceOnly(false);
-  }, [schoolId]);
+    if (lastSchool.current === schoolId) return;
+    lastSchool.current = schoolId;
+    update({ class: "", section: "", face: "", q: "" });
+  }, [schoolId, update]);
 
-  const loadMutation = useMutation({
-    mutationFn: () =>
-      attendanceApi.getRoster({
-        class_name: className,
-        section,
-        session,
-        ...schoolParam,
-      }),
-    onSuccess: (data) => setRoster(data.students),
-    onError: (err) => toast.error(getErrorMessage(err)),
+  const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
+  const classLabel = `${className}${section ? `-${section}` : ""}`;
+  const classDeleteConfirmed = classDeleteConfirmText.trim() === classLabel;
+
+  // The roster loads as soon as a class and section are picked — and stays
+  // cached, so switching back to a class you've already viewed is instant.
+  const rosterKey = useMemo(
+    () => ["attendance", "manage-roster", schoolId ?? "", className, section, session] as const,
+    [schoolId, className, section, session],
+  );
+  const rosterQuery = useQuery({
+    queryKey: rosterKey,
+    queryFn: () =>
+      attendanceApi.getRoster({ class_name: className, section, session, ...schoolParam }),
+    enabled: canLoad,
+    staleTime: 30_000,
   });
+  const roster = canLoad ? rosterQuery.data?.students : undefined;
+
+  /** Apply a local edit to the cached roster so the row updates instantly. */
+  const patchRoster = (fn: (students: RosterStudent[]) => RosterStudent[]) =>
+    queryClient.setQueryData<RosterResponse>(rosterKey, (prev) => {
+      if (!prev) return prev;
+      const students = fn(prev.students);
+      return { ...prev, students, total_students: students.length };
+    });
+  const reloadRoster = () =>
+    queryClient.invalidateQueries({ queryKey: ["attendance", "manage-roster"] });
 
   const deleteMutation = useMutation({
     mutationFn: ({ rollNo, mode }: { rollNo: string; mode: DeleteMode }) => {
@@ -139,7 +178,7 @@ export function ManageStudentsPage() {
       return attendanceApi.deleteStudent(params);
     },
     onSuccess: (_res, { rollNo, mode }) => {
-      setRoster((prev) => prev?.filter((s) => s.roll_no !== rollNo) ?? null);
+      patchRoster((students) => students.filter((s) => s.roll_no !== rollNo));
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       toast.success(DELETE_MODE_STUDENT_TOAST[mode](rollNo));
       setStudentToDelete(null);
@@ -155,7 +194,6 @@ export function ManageStudentsPage() {
       return attendanceApi.deleteClass(params);
     },
     onSuccess: (_res, mode) => {
-      setRoster(null);
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       toast.success(DELETE_MODE_CLASS_TOAST[mode](classLabel));
       setClassDeleteOpen(false);
@@ -190,7 +228,7 @@ export function ManageStudentsPage() {
       setNewGuardianName("");
       setNewGuardianMobile("");
       setNewGuardianRelation("guardian");
-      if (className && section) loadMutation.mutate();
+      void reloadRoster();
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -203,15 +241,12 @@ export function ManageStudentsPage() {
       });
     },
     onSuccess: (res) => {
-      if (res.conflict_with) {
-        toast.warning(res.message);
-      } else {
-        toast.success(res.message);
-      }
-      setRoster((prev) =>
-        prev?.map((s) =>
+      if (res.conflict_with) toast.warning(res.message);
+      else toast.success(res.message);
+      patchRoster((students) =>
+        students.map((s) =>
           s.roll_no === res.roll_no ? { ...s, class_roll_no: res.class_roll_no } : s,
-        ) ?? null,
+        ),
       );
       setStudentToSetRollNo(null);
     },
@@ -233,7 +268,8 @@ export function ManageStudentsPage() {
           ? `${studentToPromote?.name ?? studentToPromote?.roll_no} marked as passed out`
           : `Promoted to ${res.class_name ?? "next class"}${res.section ? `-${res.section}` : ""} · ${res.session ?? ""}`,
       );
-      setRoster((prev) => prev?.filter((s) => s.roll_no !== studentToPromote?.roll_no) ?? null);
+      const rollNo = studentToPromote?.roll_no;
+      patchRoster((students) => students.filter((s) => s.roll_no !== rollNo));
       setStudentToPromote(null);
       setPromoteTargetClass("");
       setPromoteTargetSection("");
@@ -271,8 +307,8 @@ export function ManageStudentsPage() {
           : "Face attached",
       );
       const rollNo = studentToAddFace?.roll_no;
-      setRoster((prev) =>
-        prev?.map((s) => (s.roll_no === rollNo ? { ...s, has_face: true } : s)) ?? null,
+      patchRoster((students) =>
+        students.map((s) => (s.roll_no === rollNo ? { ...s, has_face: true } : s)),
       );
       queryClient.invalidateQueries({ queryKey: ["attendance"] });
       setStudentToAddFace(null);
@@ -292,42 +328,15 @@ export function ManageStudentsPage() {
       });
     },
     onSuccess: (res) => {
-      toast.success(`Promoted ${res.promoted} student(s)${res.passed_out ? `, ${res.passed_out} passed out` : ""}`);
-      setRoster(null);
+      toast.success(
+        `Promoted ${res.promoted} student(s)${res.passed_out ? `, ${res.passed_out} passed out` : ""}`,
+      );
+      void reloadRoster();
       setClassPromoteOpen(false);
       setClassPromoteTargetSession("");
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
-
-  const handleExportCSV = () => {
-    if (!visible || visible.length === 0) return;
-    const csvContent = jsonToCsv(visible, [
-      { header: "Admission No", getValue: (s) => String(s.roll_no) },
-      { header: "Class Roll No", getValue: (s) => String(s.class_roll_no ?? "") },
-      { header: "Name", getValue: (s) => String(s.name ?? "—") },
-      { header: "Has Face", getValue: (s) => (s.has_face ? "Yes" : "No") },
-    ]);
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    downloadBlob(blob, `students${className ? `-${className}${section ? `-${section}` : ""}` : ""}.csv`);
-  };
-
-  // Server-streamed export across every class in the school (the backend
-  // supports omitting class/section entirely) — distinct from "Export CSV"
-  // above, which is a quick client-side export of the one class/section
-  // currently loaded. Only admin/principal may omit class_name; a teacher's
-  // read access is always scoped to one assigned class (check_attendance_read_access).
-  const exportRosterMutation = useMutation({
-    mutationFn: () => attendanceApi.viewStudents({ ...schoolParam }),
-    onSuccess: (blob) => {
-      downloadBlob(blob, `${schoolName ? `${schoolName}-` : ""}full-roster.csv`);
-    },
-    onError: (err) => toast.error(getErrorMessage(err)),
-  });
-
-  const canLoad = !!className && !!section && (!isAdmin || !!schoolName);
-  const classLabel = `${className}${section ? `-${section}` : ""}`;
-  const classDeleteConfirmed = classDeleteConfirmText.trim() === classLabel;
 
   const missingFaceCount = useMemo(
     () => roster?.filter((s) => !s.has_face).length ?? 0,
@@ -338,7 +347,7 @@ export function ManageStudentsPage() {
     if (!roster) return [];
     let out = roster;
     if (missingFaceOnly) out = out.filter((s) => !s.has_face);
-    const q = search.trim().toLowerCase();
+    const q = state.q.trim().toLowerCase();
     if (!q) return out;
     return out.filter(
       (s) =>
@@ -346,217 +355,272 @@ export function ManageStudentsPage() {
         (s.class_roll_no ?? "").toLowerCase().includes(q) ||
         (s.name ?? "").toLowerCase().includes(q),
     );
-  }, [roster, search, missingFaceOnly]);
+  }, [roster, state.q, missingFaceOnly]);
+
+  const handleExportCSV = () => {
+    if (visible.length === 0) return;
+    const csvContent = jsonToCsv(visible, [
+      { header: "Admission No", getValue: (s) => String(s.roll_no) },
+      { header: "Class Roll No", getValue: (s) => String(s.class_roll_no ?? "") },
+      { header: "Name", getValue: (s) => String(s.name ?? "—") },
+      { header: "Has Face", getValue: (s) => (s.has_face ? "Yes" : "No") },
+    ]);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    downloadBlob(blob, `students-${classLabel || "class"}.csv`);
+  };
+
+  // Server-streamed export across every class in the school — distinct from
+  // "Export this class", which exports the loaded roster client-side. Only
+  // admin/principal may omit class_name (check_attendance_read_access).
+  const exportRosterMutation = useMutation({
+    mutationFn: () => attendanceApi.viewStudents({ ...schoolParam }),
+    onSuccess: (blob) => downloadBlob(blob, `${schoolName ? `${schoolName}-` : ""}full-roster.csv`),
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const changeClass = (value: string) => {
+    const options = value ? getSectionOptions(value) : [];
+    update(
+      { class: value, section: options.length === 1 ? options[0].value : "", face: "" },
+      { push: true },
+    );
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <ModuleHeaderActions>
-        {canImport && (
-          <Button asChild size="sm" variant="outline">
-            <Link to="/students/import">
-              <FileUp className="h-4 w-4" />
-              Import Students
-            </Link>
-          </Button>
-        )}
         <Button
           size="sm"
-          variant="outline"
           icon={<UserPlus className="h-4 w-4" />}
           disabled={!canLoad}
           onClick={() => setAddStudentOpen(true)}
         >
-          Add Student
+          Add<span className="hidden sm:inline">&nbsp;student</span>
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          icon={<Download className="h-4 w-4" />}
-          disabled={!schoolId || (isAdmin && !schoolName) || visible.length === 0}
-          onClick={handleExportCSV}
-        >
-          Export CSV
-        </Button>
-        {canImport && (
-          <Button
-            size="sm"
-            variant="outline"
-            icon={<Download className="h-4 w-4" />}
-            loading={exportRosterMutation.isPending}
-            disabled={!schoolId || (isAdmin && !schoolName)}
-            onClick={() => exportRosterMutation.mutate()}
-          >
-            Export Full Roster
-          </Button>
-        )}
+        <ActionMenu
+          label="More roster actions"
+          items={[
+            {
+              label: "Import students",
+              icon: <FileUp />,
+              onSelect: () => navigate("/students/import"),
+              hidden: !canImport,
+            },
+            {
+              label: "Export this class (CSV)",
+              icon: <Download />,
+              onSelect: handleExportCSV,
+              disabled: visible.length === 0,
+            },
+            {
+              label: exportRosterMutation.isPending
+                ? "Exporting full roster…"
+                : "Export full roster (CSV)",
+              icon: <Download />,
+              onSelect: () => exportRosterMutation.mutate(),
+              disabled:
+                exportRosterMutation.isPending || !schoolId || (isAdmin && !schoolName),
+              hidden: !canImport,
+            },
+          ]}
+        />
       </ModuleHeaderActions>
-      <FilterBar
-        title="Find a class"
-        icon={<Users className="h-4 w-4" />}
-        actions={
-          <Button
-            onClick={() => loadMutation.mutate()}
-            loading={loadMutation.isPending}
-            disabled={!canLoad}
-            icon={<Users className="h-4 w-4" />}
-          >
-            Load Students
-          </Button>
+
+      <FilterToolbar
+        hasFilters={!!state.q || missingFaceOnly}
+        onClear={() => {
+          setSearch("");
+          update({ q: "", face: "" });
+        }}
+        end={
+          roster ? (
+            <StatLine
+              items={[
+                { value: roster.length, label: roster.length === 1 ? "student" : "students" },
+                {
+                  value: missingFaceCount,
+                  label: missingFaceCount === 1 ? "missing a face" : "missing a face",
+                  tone: "warning",
+                  hidden: missingFaceCount === 0,
+                },
+              ]}
+            />
+          ) : undefined
         }
       >
-        <Alert variant="warning" title="Destructive actions">
-          Deletions are permanent and audit-logged. Double-check the roll number
-          before removing a student.
-        </Alert>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="w-[calc(50%-0.25rem)] sm:w-40">
           <Select
-            label="Class"
+            aria-label="Class"
             placeholder="Select class"
             options={classNameOptions}
             value={className}
             disabled={!schoolId}
-            onChange={(e) => {
-              setClassName(e.target.value);
-              setSection("");
-              setRoster(null);
-            }}
+            onChange={(e) => changeClass(e.target.value)}
           />
-          {sectionOptions.length > 0 ? (
+        </div>
+        <div className="w-[calc(50%-0.25rem)] sm:w-32">
+          {hasClassConfig ? (
             <Select
-              label="Section"
-              placeholder="Select section"
+              aria-label="Section"
+              placeholder="Section"
               options={sectionOptions}
               value={section}
-              onChange={(e) => setSection(e.target.value)}
+              disabled={!className}
+              onChange={(e) => update({ section: e.target.value, face: "" }, { push: true })}
             />
           ) : (
             <Input
-              label="Section"
-              placeholder="A"
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
+              aria-label="Section"
+              placeholder="Section"
+              value={sectionText}
+              onChange={(e) => setSectionText(e.target.value)}
             />
           )}
+        </div>
+        <div className="w-full sm:w-32">
           <Select
-            label="Session"
+            aria-label="Session"
             options={SESSION_OPTIONS}
             value={session}
-            onChange={(e) => setSession(e.target.value)}
+            onChange={(e) => update({ session: e.target.value })}
           />
         </div>
-      </FilterBar>
+        {roster && roster.length > 0 && (
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder="Search name or roll…"
+            aria-label="Search this class"
+            className="w-full sm:w-56"
+          />
+        )}
+        {missingFaceCount > 0 && (
+          <button
+            type="button"
+            aria-pressed={missingFaceOnly}
+            onClick={() => update({ face: missingFaceOnly ? "" : "missing" })}
+            className={cn(
+              "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              missingFaceOnly
+                ? "border-amber-500 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                : "border-border/70 bg-background text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <ScanFace className="h-3.5 w-3.5" />
+            {missingFaceCount} missing {missingFaceCount === 1 ? "a face" : "faces"}
+          </button>
+        )}
+      </FilterToolbar>
 
-      {roster && (
+      {!canLoad ? (
+        <EmptyState
+          icon={<Users className="h-10 w-10" />}
+          title={isAdmin && !schoolName ? "Pick a school first" : "Choose a class"}
+          description={
+            isAdmin && !schoolName
+              ? "Select the school you're working on from the dashboard, then pick a class and section."
+              : className
+                ? "Pick a section — the roster loads right away."
+                : "Pick a class and section — the roster loads right away."
+          }
+        />
+      ) : rosterQuery.isError ? (
+        <Alert variant="error">
+          {getErrorMessage(rosterQuery.error) || "Failed to load the roster."}
+        </Alert>
+      ) : (
         <Panel
           flush
           icon={<Users className="h-4 w-4" />}
-          title="Enrolled students"
-          description={
-            className && section ? `Class ${className}-${section}` : undefined
-          }
+          title={`Class ${classLabel}`}
+          description={session}
           actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="primary">{roster.length} enrolled</Badge>
-              {missingFaceCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setMissingFaceOnly((v) => !v)}
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-                    missingFaceOnly
-                      ? "border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                      : "border-border/70 bg-muted/40 text-muted-foreground hover:text-foreground",
-                  )}
-                  title="Toggle: show only students missing a face"
-                >
-                  <ScanFace className="h-3.5 w-3.5" />
-                  {missingFaceCount} missing face
-                </button>
-              )}
-              <SearchInput
-                value={search}
-                onChange={setSearch}
-                placeholder="Search roll or name…"
-                className="w-full sm:w-56"
+            roster && roster.length > 0 ? (
+              <ActionMenu
+                buttonLabel="Class actions"
+                label={`Actions for class ${classLabel}`}
+                items={[
+                  {
+                    label: "Enroll faces",
+                    icon: <SmilePlus />,
+                    onSelect: () => navigate("/attendance/enroll"),
+                    hidden: missingFaceCount === 0,
+                  },
+                  {
+                    label: "Promote this class",
+                    icon: <GraduationCap />,
+                    onSelect: () => {
+                      setClassPromoteTargetSession("");
+                      setClassPromoteOpen(true);
+                    },
+                  },
+                  {
+                    label: "Delete this class",
+                    icon: <AlertOctagon />,
+                    danger: true,
+                    onSelect: () => {
+                      setClassDeleteMode("full");
+                      setClassDeleteConfirmText("");
+                      setClassDeleteOpen(true);
+                    },
+                  },
+                ]}
               />
-              {missingFaceCount > 0 && (
-                <Button asChild size="sm" variant="outline" icon={<SmilePlus className="h-4 w-4" />}>
-                  <Link to="/attendance/enroll">Enroll Faces</Link>
-                </Button>
-              )}
-              {roster.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  icon={<GraduationCap className="h-4 w-4" />}
-                  onClick={() => {
-                    setClassPromoteTargetSession("");
-                    setClassPromoteOpen(true);
-                  }}
-                >
-                  Promote this class
-                </Button>
-              )}
-              {roster.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="danger-ghost"
-                  icon={<AlertOctagon className="h-4 w-4" />}
-                  onClick={() => {
-                    setClassDeleteMode("full");
-                    setClassDeleteConfirmText("");
-                    setClassDeleteOpen(true);
-                  }}
-                >
-                  Delete this class
-                </Button>
-              )}
-            </div>
+            ) : undefined
           }
         >
-          {visible.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                icon={<Users className="h-9 w-9" />}
-                title={
-                  roster.length === 0
-                    ? "No students in this class yet"
-                    : "No students match your search"
-                }
-                description={
-                  roster.length === 0
-                    ? canImport
-                      ? "Import a roster CSV or add students one at a time."
-                      : "Ask an admin to import this class's roster."
-                    : "Try a different roll number or name."
-                }
-                action={
-                  roster.length === 0 && canImport ? (
-                    <Button asChild size="sm" variant="outline" icon={<FileUp className="h-4 w-4" />}>
-                      <Link to="/students/import">Import Students</Link>
-                    </Button>
-                  ) : undefined
-                }
-              />
-            </div>
+          {rosterQuery.isLoading ? (
+            <ListSkeleton items={6} />
+          ) : visible.length === 0 ? (
+            <EmptyState
+              variant="plain"
+              icon={<Users className="h-9 w-9" />}
+              title={
+                (roster?.length ?? 0) === 0
+                  ? "No students in this class yet"
+                  : "No students match"
+              }
+              description={
+                (roster?.length ?? 0) === 0
+                  ? canImport
+                    ? "Import a roster CSV or add students one at a time."
+                    : "Ask an admin to import this class's roster."
+                  : "Try a different roll number or name."
+              }
+              action={
+                (roster?.length ?? 0) === 0 && canImport ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    icon={<FileUp className="h-4 w-4" />}
+                    onClick={() => navigate("/students/import")}
+                  >
+                    Import students
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             <ul className="divide-y divide-border/50">
               {visible.map((s) => (
                 <li
                   key={s.roll_no}
-                  className="group flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
+                  className="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40 md:px-5"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex min-w-0 items-center gap-3">
                     <Avatar name={s.name ?? s.roll_no} seed={s.roll_no} size="sm" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-foreground">
                         {s.name ?? s.roll_no}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="truncate text-xs text-muted-foreground">
                         {s.class_roll_no && (
-                          <span className="font-medium text-foreground">Roll {s.class_roll_no} · </span>
+                          <span className="font-medium text-foreground">
+                            Roll {s.class_roll_no} ·{" "}
+                          </span>
                         )}
-                        Admission No. {s.roll_no}
+                        Admission no. {s.roll_no}
                       </p>
                     </div>
                     {!s.has_face && (
@@ -566,63 +630,57 @@ export function ManageStudentsPage() {
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+                  <div className="flex shrink-0 items-center gap-1">
                     {!s.has_face && (
                       <Button
                         size="sm"
                         variant="outline"
+                        icon={<ScanFace className="h-4 w-4" />}
                         onClick={() => {
                           setAddFacePhotos([]);
                           setStudentToAddFace(s);
                         }}
-                        icon={<ScanFace className="h-4 w-4" />}
                       >
-                        Add Face
+                        Add face
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setRollNoInput(s.class_roll_no ?? "");
-                        setStudentToSetRollNo(s);
-                      }}
-                      icon={<Hash className="h-4 w-4" />}
-                    >
-                      Set Roll No.
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setPromoteTargetClass("");
-                        setPromoteTargetSection("");
-                        setPromoteTargetSession("");
-                        setStudentToPromote(s);
-                      }}
-                      icon={<GraduationCap className="h-4 w-4" />}
-                    >
-                      Promote
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => setStudentToResetPassword(s)}
-                      icon={<KeyRound className="h-4 w-4" />}
-                    >
-                      Reset Password
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="danger-ghost"
-                      onClick={() => {
-                        setStudentDeleteMode("full");
-                        setStudentToDelete(s);
-                      }}
-                      icon={<Trash2 className="h-4 w-4" />}
-                    >
-                      Delete
-                    </Button>
+                    <ActionMenu
+                      label={`More actions for ${s.name ?? s.roll_no}`}
+                      items={[
+                        {
+                          label: "Set class roll no.",
+                          icon: <Hash />,
+                          onSelect: () => {
+                            setRollNoInput(s.class_roll_no ?? "");
+                            setStudentToSetRollNo(s);
+                          },
+                        },
+                        {
+                          label: "Promote student",
+                          icon: <GraduationCap />,
+                          onSelect: () => {
+                            setPromoteTargetClass("");
+                            setPromoteTargetSection("");
+                            setPromoteTargetSession("");
+                            setStudentToPromote(s);
+                          },
+                        },
+                        {
+                          label: "Reset password",
+                          icon: <KeyRound />,
+                          onSelect: () => setStudentToResetPassword(s),
+                        },
+                        {
+                          label: "Delete student",
+                          icon: <Trash2 />,
+                          danger: true,
+                          onSelect: () => {
+                            setStudentDeleteMode("full");
+                            setStudentToDelete(s);
+                          },
+                        },
+                      ]}
+                    />
                   </div>
                 </li>
               ))}
@@ -664,7 +722,8 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToDelete?.name ?? studentToDelete?.roll_no}
             </span>{" "}
-            (Admission #{studentToDelete?.roll_no}). This cannot be undone.
+            (Admission #{studentToDelete?.roll_no}). It can't be undone, and the deletion is
+            recorded in the change log.
           </p>
           <Select
             label="What to delete"
@@ -690,7 +749,7 @@ export function ManageStudentsPage() {
               loading={resetPasswordMutation.isPending}
               onClick={() => resetPasswordMutation.mutate()}
             >
-              Reset Password
+              Reset password
             </Button>
           </>
         }
@@ -700,9 +759,9 @@ export function ManageStudentsPage() {
           <span className="font-medium text-foreground">
             {studentToResetPassword?.name ?? studentToResetPassword?.roll_no}
           </span>{" "}
-          (Admission #{studentToResetPassword?.roll_no}) to their date of birth
-          (DDMMYYYY) and signs them out everywhere. Requires a date of birth on
-          file — add one via the roster import if this fails.
+          (Admission #{studentToResetPassword?.roll_no}) to their date of birth (DDMMYYYY) and
+          signs them out everywhere. Requires a date of birth on file — add one via the roster
+          import if this fails.
         </p>
       </Modal>
 
@@ -731,7 +790,7 @@ export function ManageStudentsPage() {
               disabled={addFacePhotos.length === 0}
               onClick={() => addFaceMutation.mutate()}
             >
-              Attach Face
+              Attach face
             </Button>
           </>
         }
@@ -742,8 +801,8 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToAddFace?.name ?? studentToAddFace?.roll_no}
             </span>{" "}
-            (Admission #{studentToAddFace?.roll_no}). Any filenames are fine —
-            matching is by roll number, not the photo name.
+            (Admission #{studentToAddFace?.roll_no}). Any filenames are fine — matching is by roll
+            number, not the photo name.
           </p>
           <FileUpload
             accept="image/jpeg,image/png,.jpg,.jpeg,.png"
@@ -766,10 +825,7 @@ export function ManageStudentsPage() {
             <Button variant="outline" onClick={() => setStudentToSetRollNo(null)}>
               Cancel
             </Button>
-            <Button
-              loading={setRollNoMutation.isPending}
-              onClick={() => setRollNoMutation.mutate()}
-            >
+            <Button loading={setRollNoMutation.isPending} onClick={() => setRollNoMutation.mutate()}>
               Save
             </Button>
           </>
@@ -781,13 +837,12 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToSetRollNo?.name ?? studentToSetRollNo?.roll_no}
             </span>{" "}
-            (Admission #{studentToSetRollNo?.roll_no}) — the number you call
-            out for roll-call. Separate from their admission number, and not
-            checked for uniqueness — double-check the class list yourself.
-            Leave blank to clear it.
+            (Admission #{studentToSetRollNo?.roll_no}) — the number you call out for roll-call.
+            Separate from their admission number, and not checked for uniqueness — double-check
+            the class list yourself. Leave blank to clear it.
           </p>
           <Input
-            label="Class Roll No."
+            label="Class roll no."
             placeholder="22"
             value={rollNoInput}
             onChange={(e) => setRollNoInput(e.target.value)}
@@ -825,7 +880,7 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               Class {classLabel} · {session}
             </span>
-            . This cannot be undone.
+            . It can't be undone, and the deletion is recorded in the change log.
           </p>
           <Select
             label="What to delete"
@@ -845,7 +900,7 @@ export function ManageStudentsPage() {
       <Modal
         open={addStudentOpen}
         onClose={() => setAddStudentOpen(false)}
-        title="Add Student"
+        title="Add student"
         icon={<UserPlus className="h-4 w-4" />}
         size="lg"
         footer={
@@ -858,7 +913,7 @@ export function ManageStudentsPage() {
               disabled={!newRollNo.trim()}
               onClick={() => addStudentMutation.mutate()}
             >
-              Create Account
+              Create account
             </Button>
           </>
         }
@@ -867,29 +922,29 @@ export function ManageStudentsPage() {
           <p className="text-sm text-muted-foreground">
             Creates a login account for{" "}
             <span className="font-medium text-foreground">
-              Class {className}{section ? `-${section}` : ""} · {session}
+              Class {className}
+              {section ? `-${section}` : ""} · {session}
             </span>{" "}
-            and links it to a roll number in one step — no email needed. The
-            student's default password is their date of birth (DDMMYYYY); a
-            guardian mobile, if given, is linked as an approved parent account
-            automatically.
+            and links it to a roll number in one step — no email needed. The student's default
+            password is their date of birth (DDMMYYYY); a guardian mobile, if given, is linked as
+            an approved parent account automatically.
           </p>
           <Input
-            label="Full Name"
+            label="Full name"
             placeholder="Student's name"
             value={newFullName}
             onChange={(e) => setNewFullName(e.target.value)}
           />
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Admission Number"
+              label="Admission number"
               hint="Permanent — used for login, never changes"
               placeholder="2026-10A-001"
               value={newRollNo}
               onChange={(e) => setNewRollNo(e.target.value)}
             />
             <Input
-              label="Class Roll No. (optional)"
+              label="Class roll no. (optional)"
               hint="This year's roll number"
               placeholder="22"
               value={newClassRollNo}
@@ -897,7 +952,7 @@ export function ManageStudentsPage() {
             />
           </div>
           <Input
-            label="Date of Birth"
+            label="Date of birth"
             type="date"
             hint="Sets the initial password"
             value={newDob}
@@ -910,14 +965,14 @@ export function ManageStudentsPage() {
             </p>
             <div className="space-y-4">
               <Input
-                label="Guardian Name"
+                label="Guardian name"
                 placeholder="Parent's name"
                 value={newGuardianName}
                 onChange={(e) => setNewGuardianName(e.target.value)}
               />
               <div className="grid grid-cols-2 gap-4">
                 <Input
-                  label="Guardian Mobile"
+                  label="Guardian mobile"
                   type="tel"
                   placeholder="9876543210"
                   hint="Becomes the parent's login"
@@ -966,25 +1021,25 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               {studentToPromote?.name ?? studentToPromote?.roll_no}
             </span>{" "}
-            (Admission #{studentToPromote?.roll_no}) to the next class and session.
-            Leave the fields below empty to use the auto-suggested class/section/session,
-            or override them explicitly. If this is the school's terminal class, the
-            student is marked passed out instead.
+            (Admission #{studentToPromote?.roll_no}) to the next class and session. Leave the
+            fields below empty to use the auto-suggested class/section/session, or override them
+            explicitly. If this is the school's terminal class, the student is marked passed out
+            instead.
           </p>
           <Input
-            label="Target Class (optional)"
+            label="Target class (optional)"
             placeholder="Auto-suggested"
             value={promoteTargetClass}
             onChange={(e) => setPromoteTargetClass(e.target.value)}
           />
           <Input
-            label="Target Section (optional)"
+            label="Target section (optional)"
             placeholder="Auto-suggested"
             value={promoteTargetSection}
             onChange={(e) => setPromoteTargetSection(e.target.value)}
           />
           <Input
-            label="Target Session (optional)"
+            label="Target session (optional)"
             placeholder="Auto-suggested"
             value={promoteTargetSession}
             onChange={(e) => setPromoteTargetSession(e.target.value)}
@@ -1018,11 +1073,11 @@ export function ManageStudentsPage() {
             <span className="font-medium text-foreground">
               Class {classLabel} · {session}
             </span>{" "}
-            to the next class/session. Students in the school's terminal class are
-            marked passed out instead.
+            to the next class/session. Students in the school's terminal class are marked passed
+            out instead.
           </p>
           <Input
-            label="Target Session (optional)"
+            label="Target session (optional)"
             placeholder="Auto-suggested"
             value={classPromoteTargetSession}
             onChange={(e) => setClassPromoteTargetSession(e.target.value)}

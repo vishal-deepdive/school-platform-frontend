@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Layers, Sparkles, Trash2, Check, AlertTriangle } from "lucide-react";
+import { Check, Layers, Plus, Sparkles, Trash2 } from "lucide-react";
 import toast from "@/shared/lib/toast";
-import { Button } from "@/shared/components/ui/Button";
-import { Badge } from "@/shared/components/ui/Badge";
-import { Select } from "@/shared/components/ui/Select";
-import { Modal } from "@/shared/components/ui/Modal";
-import { FilterBar } from "@/shared/components/ui/FilterBar";
-import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Alert } from "@/shared/components/ui/Alert";
-import { PageSkeleton } from "@/shared/components/ui/Skeleton";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
+import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { Modal } from "@/shared/components/ui/Modal";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
+import { Select } from "@/shared/components/ui/Select";
+import { CardSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
 import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
 import { useAuthStore } from "@/features/auth/store/auth";
@@ -48,48 +51,27 @@ export function FlashcardsPage() {
 
   const { data, isLoading, isError, error, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useFlashcardDecks();
-  const { mutate: generate, isPending: isGenerating } = useGenerateFlashcards();
-  const { mutate: removeDeck } = useDeleteFlashcardDeck();
+  const { mutate: removeDeck, isPending: deleting } = useDeleteFlashcardDeck();
 
-  const [filters, setFilters] = useState<RagFilters>({});
-  const [numCards, setNumCards] = useState(12);
+  const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [toDelete, setToDelete] = useState<FlashcardDeckSummary | null>(null);
 
   const { data: activeDeck, isLoading: loadingDeck } = useFlashcardDeck(activeId);
 
-  const canGenerate = !!filters.class_level && !!filters.subject;
-
   const refresh = () => queryClient.invalidateQueries({ queryKey: ragKeys.flashcards() });
 
-  const handleGenerate = () => {
-    generate(
-      { filters, num_cards: numCards },
-      {
-        onSuccess: (deck) => {
-          toast.success(`Created a ${deck.card_count}-card deck.`);
-          refresh();
-          setActiveId(deck.id);
-        },
-        onError: (err) => toast.error(getErrorMessage(err)),
-      },
-    );
-  };
-
   const handleDelete = () => {
-    if (!confirmId) return;
-    const id = confirmId;
-    setConfirmId(null);
-    removeDeck(id, {
+    if (!toDelete) return;
+    removeDeck(toDelete.id, {
       onSuccess: () => {
         toast.success("Deck deleted.");
+        setToDelete(null);
         refresh();
       },
       onError: (err) => toast.error(getErrorMessage(err)),
     });
   };
-
-  const decks = data?.pages.flatMap((p) => p.items) ?? [];
 
   // Ungranted teachers/students: clean access message instead of a raw error.
   if (isError && isForbiddenError(error)) {
@@ -101,60 +83,55 @@ export function FlashcardsPage() {
     );
   }
 
+  const decks = data?.pages.flatMap((p) => p.items) ?? [];
+  const total = data?.pages[0]?.total ?? 0;
+  const mastered = decks.reduce((n, d) => n + (d.mastered_count ?? 0), 0);
+
+  const newDeckButton = (
+    <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
+      New deck
+    </Button>
+  );
+
   return (
-    <div className="space-y-6">
-      <FilterBar
-        title="Create a deck"
-        icon={<Sparkles className="h-4 w-4" />}
-        actions={
-          <Button
-            onClick={handleGenerate}
-            loading={isGenerating}
-            disabled={!canGenerate}
-            icon={<Sparkles className="h-4 w-4" />}
-          >
-            {isGenerating ? "Generating…" : "Generate deck"}
-          </Button>
-        }
-      >
-        <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="lg:col-span-3 items-start">
-            <RagFilterPanel
-              filters={filters}
-              onChange={setFilters}
-              showTitle
-              className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-start"
-            />
-          </div>
-          <Select
-            label="Cards"
-            options={COUNT_OPTIONS}
-            value={String(numCards)}
-            onChange={(e) => setNumCards(Number(e.target.value))}
-          />
-        </div>
-        {!canGenerate && (
-          <p className="text-xs text-muted-foreground">
-            Select at least a class and subject to generate flashcards.
-          </p>
-        )}
-      </FilterBar>
+    <div className="space-y-4">
+      <ModuleHeaderActions>{newDeckButton}</ModuleHeaderActions>
 
       {/* Non-403 failures (500/timeout): the forbidden case returned above, so a
-          surviving error here is a genuine load failure — surface it rather than
-          masking it behind the empty state. */}
+          surviving error here is a genuine load failure. */}
       {isError && <Alert variant="error">{getErrorMessage(error)}</Alert>}
 
       {isLoading ? (
-        <PageSkeleton showStats={false} content="card" />
+        <>
+          <Skeleton className="h-4 w-48" />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CardSkeleton key={i} lines={3} />
+            ))}
+          </div>
+        </>
       ) : decks.length === 0 ? (
-        <EmptyState
-          icon={<Layers className="h-12 w-12" />}
-          title="No flashcard decks yet"
-          description="Generate your first deck from a chapter above — great for quick revision before a test."
-        />
+        !isError && (
+          <EmptyState
+            icon={<Layers className="h-12 w-12" />}
+            title="No flashcard decks yet"
+            description="Turn any chapter into a deck of revision cards — great for a quick recap before a test."
+            action={newDeckButton}
+          />
+        )
       ) : (
         <>
+          <StatLine
+            items={[
+              { value: total, label: total === 1 ? "deck" : "decks" },
+              {
+                value: mastered,
+                label: mastered === 1 ? "card mastered" : "cards mastered",
+                tone: "success",
+                hidden: mastered === 0,
+              },
+            ]}
+          />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {decks.map((deck) => (
               <DeckCard
@@ -162,7 +139,7 @@ export function FlashcardsPage() {
                 deck={deck}
                 canDelete={canDeleteDeck(deck, role, userId)}
                 onOpen={() => setActiveId(deck.id)}
-                onDelete={() => setConfirmId(deck.id)}
+                onDelete={() => setToDelete(deck)}
               />
             ))}
           </div>
@@ -170,6 +147,7 @@ export function FlashcardsPage() {
             <div className="flex justify-center">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => fetchNextPage()}
                 loading={isFetchingNextPage}
               >
@@ -179,6 +157,16 @@ export function FlashcardsPage() {
           )}
         </>
       )}
+
+      <CreateDeckModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(deckId) => {
+          setCreateOpen(false);
+          refresh();
+          setActiveId(deckId);
+        }}
+      />
 
       {/* Review modal */}
       <Modal
@@ -194,35 +182,108 @@ export function FlashcardsPage() {
         size="xl"
       >
         {loadingDeck || !activeDeck ? (
-          <div className="h-64 animate-pulse rounded-xl bg-muted/60" />
+          <Skeleton className="h-64 w-full rounded-xl" />
         ) : (
           <FlashcardReview deck={activeDeck} />
         )}
       </Modal>
 
-      {/* Delete confirm */}
-      <Modal
-        open={!!confirmId}
-        onClose={() => setConfirmId(null)}
+      <ConfirmDialog
+        open={toDelete !== null}
         title="Delete this deck?"
-        icon={<AlertTriangle className="h-5 w-5" />}
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setConfirmId(null)}>
-              Cancel
-            </Button>
-            <Button variant="danger" icon={<Trash2 className="h-4 w-4" />} onClick={handleDelete}>
-              Delete
-            </Button>
-          </>
+        description={
+          toDelete && (
+            <>
+              <span className="font-medium text-foreground">{toDelete.title}</span> will be removed
+              for everyone who can see it, along with their progress. This can't be undone.
+            </>
+          )
         }
-      >
-        <p className="text-sm text-muted-foreground">
-          This permanently removes the deck for everyone who can see it.
-        </p>
-      </Modal>
+        confirmLabel="Delete deck"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onClose={() => setToDelete(null)}
+      />
     </div>
+  );
+}
+
+function CreateDeckModal({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (deckId: string) => void;
+}) {
+  const [filters, setFilters] = useState<RagFilters>({});
+  const [numCards, setNumCards] = useState(12);
+  const { mutate: generate, isPending } = useGenerateFlashcards();
+
+  const canGenerate = !!filters.class_level && !!filters.subject;
+
+  const submit = () => {
+    generate(
+      { filters, num_cards: numCards },
+      {
+        onSuccess: (deck) => {
+          toast.success(`Created a ${deck.card_count}-card deck.`);
+          setFilters({});
+          onCreated(deck.id);
+        },
+        onError: (err) => toast.error(getErrorMessage(err)),
+      },
+    );
+  };
+
+  return (
+    <Modal
+      open={open}
+      // Generation takes a while; don't drop the request on a stray backdrop click.
+      onClose={isPending ? () => {} : onClose}
+      title="New flashcard deck"
+      description="Pick a class, subject and chapter to turn into revision cards."
+      icon={<Sparkles className="h-5 w-5" />}
+      size="xl"
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button
+            onClick={submit}
+            loading={isPending}
+            disabled={!canGenerate}
+            icon={<Sparkles className="h-4 w-4" />}
+          >
+            {isPending ? "Generating…" : "Generate deck"}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <RagFilterPanel
+          filters={filters}
+          onChange={setFilters}
+          showTitle
+          className="grid grid-cols-1 items-start gap-4 sm:grid-cols-3"
+        />
+        <div className="sm:w-48">
+          <Select
+            label="Cards"
+            options={COUNT_OPTIONS}
+            value={String(numCards)}
+            onChange={(e) => setNumCards(Number(e.target.value))}
+          />
+        </div>
+        {!canGenerate && (
+          <p className="text-xs text-muted-foreground">
+            Select at least a class and subject to generate flashcards.
+          </p>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -241,18 +302,24 @@ function DeckCard({
   const pct = deck.card_count ? Math.round((masteredCount / deck.card_count) * 100) : 0;
 
   return (
-    <div className="group relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm">
+    <div className="group relative flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card-hover">
       {canDelete && (
-        <button
-          type="button"
-          onClick={onDelete}
-          aria-label="Delete deck"
-          className="absolute right-3 top-3 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <Tooltip content="Delete deck" side="left">
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`Delete ${deck.title}`}
+            className="absolute right-3 top-3 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </Tooltip>
       )}
-      <button type="button" onClick={onOpen} className="flex flex-1 flex-col gap-3 text-left">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex flex-1 flex-col gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
         <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
           <Layers className="h-5 w-5" />
         </span>
@@ -276,12 +343,11 @@ function DeckCard({
           </div>
         </div>
       </button>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge variant="info">Revise</Badge>
-        {deck.medium && (
+      {deck.medium && (
+        <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant={deck.medium === "Hindi" ? "purple" : "default"}>{deck.medium}</Badge>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -17,6 +17,7 @@ import type {
   DocumentListResponse,
   DocumentSummaryResponse,
   DocumentChunksResponse,
+  DocumentMarkdownResponse,
   ClassLevelsResponse,
   MediumsResponse,
   RagAnalyticsResponse,
@@ -138,6 +139,25 @@ export const ragApi = {
   getDocumentChunks: (documentId: string) =>
     apiClient
       .get<DocumentChunksResponse>(`${BASE}/documents/${documentId}/chunks`)
+      .then((r) => r.data),
+
+  /** Readable text split by source page, for the side-by-side chapter preview. */
+  getDocumentMarkdown: (documentId: string) =>
+    apiClient
+      .get<DocumentMarkdownResponse>(`${BASE}/documents/${documentId}/markdown`)
+      .then((r) => r.data),
+
+  /**
+   * The original upload's bytes (usually the chapter PDF). Fetched through
+   * apiClient so the auth header is attached, then handed to pdf.js — which is
+   * why this returns a buffer rather than a URL.
+   */
+  getDocumentSource: (documentId: string, signal?: AbortSignal) =>
+    apiClient
+      .get<ArrayBuffer>(`${BASE}/documents/${documentId}/source`, {
+        responseType: "arraybuffer",
+        signal,
+      })
       .then((r) => r.data),
 
   /** Live ingest status for many documents in one request (list polling). */

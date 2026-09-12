@@ -55,6 +55,7 @@ export const ragKeys = {
     ["rag", "documentsSummary", params] as const,
   documentStatuses: (ids: string[]) => ["rag", "documentStatuses", ids] as const,
   documentChunks: (id: string) => ["rag", "documentChunks", id] as const,
+  documentMarkdown: (id: string) => ["rag", "documentMarkdown", id] as const,
   analytics: (schoolId?: string) =>
     ["rag", "analytics", schoolId ?? "platform"] as const,
   assignments: (scope: string, classLevel?: string) =>
@@ -201,6 +202,16 @@ export function useDocumentChunks(documentId: string | null) {
   });
 }
 
+/** Page-split readable text for the preview. Immutable per ingest run. */
+export function useDocumentMarkdown(documentId: string | null) {
+  return useQuery({
+    queryKey: ragKeys.documentMarkdown(documentId ?? ""),
+    queryFn: () => ragApi.getDocumentMarkdown(documentId as string),
+    enabled: !!documentId,
+    staleTime: 10 * 60_000,
+  });
+}
+
 export function useSubmitRagFeedback() {
   return useMutation({
     mutationFn: (data: Parameters<typeof ragApi.submitFeedback>[0]) =>
@@ -336,6 +347,8 @@ export function useContentRequests(status?: ContentRequestStatus) {
     queryKey: ragKeys.contentRequests(status),
     queryFn: () => ragApi.listContentRequests({ status, limit: 100 }),
     staleTime: 30_000,
+    // Tab switches keep the previous list (dimmed) instead of flashing a skeleton.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -360,6 +373,7 @@ export function useFeedbackReview(rating?: number) {
     queryKey: ragKeys.feedback(rating),
     queryFn: () => ragApi.listFeedback({ rating, limit: 50 }),
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 

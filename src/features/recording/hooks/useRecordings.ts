@@ -41,6 +41,8 @@ export function useRecordingsList(query: RecordingListQuery) {
     queryKey: recordingKeys.list(query),
     queryFn: () => recordingApi.listRecordings(toParams(query)),
     staleTime: 60_000,
+    // Keep the current page on screen while a filter/page change loads.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -49,6 +51,7 @@ export function useRecordingAuditLogs(limit: number, offset: number) {
     queryKey: recordingKeys.audit(limit, offset),
     queryFn: () => recordingApi.listAuditLogs({ limit, offset }),
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 

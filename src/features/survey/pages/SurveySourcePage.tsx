@@ -1,21 +1,21 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Plus,
-  RefreshCw,
-  Trash2,
-  CheckCircle2,
-  ExternalLink,
   AlertTriangle,
-  ArrowRight,
   ArrowLeft,
-  FileSpreadsheet,
-  Power,
-  PowerOff,
-  ShieldCheck,
+  ArrowRight,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
+  FileSpreadsheet,
   Inbox,
+  Plus,
+  Power,
+  PowerOff,
+  RefreshCw,
+  ShieldCheck,
+  Trash2,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
@@ -32,43 +32,32 @@ import type {
   SurveyType,
   DetachedGroup,
 } from "@/features/survey/types";
-import { Button } from "@/shared/components/ui/Button";
-import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
-import { Input } from "@/shared/components/ui/Input";
-import { Select } from "@/shared/components/ui/Select";
+import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
-import { Modal } from "@/shared/components/ui/Modal";
-import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
-
-function SurveySourceSkeleton() {
-  return (
-    <div className="space-y-6" aria-hidden="true">
-      <div className="rounded-xl border border-border/60 bg-card">
-        <div className="flex items-center justify-between gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-5 w-20 rounded-full" />
-        </div>
-        <ListSkeleton items={4} />
-      </div>
-    </div>
-  );
-}
+import { Button } from "@/shared/components/ui/Button";
+import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { Input } from "@/shared/components/ui/Input";
+import { Modal } from "@/shared/components/ui/Modal";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Panel } from "@/shared/components/ui/Panel";
+import { Select } from "@/shared/components/ui/Select";
+import { ListSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
 
 const SURVEY_TYPE_OPTIONS = [
   { value: "general", label: "General" },
-  { value: "academic", label: "Academic Feedback" },
-  { value: "facility", label: "Facility Survey" },
-  { value: "teacher_evaluation", label: "Teacher Evaluation" },
+  { value: "academic", label: "Academic feedback" },
+  { value: "facility", label: "Facility survey" },
+  { value: "teacher_evaluation", label: "Teacher evaluation" },
 ];
 
 const SURVEY_TYPE_LABELS: Record<string, string> = {
   general: "General",
   academic: "Academic",
   facility: "Facility",
-  teacher_evaluation: "Teacher Eval",
+  teacher_evaluation: "Teacher eval",
 };
 
 // ── Source health ─────────────────────────────────────────────────────────
@@ -89,9 +78,7 @@ function getSourceHealth(source: SourceItem): SourceHealth {
 
 function SourceHealthBadge({ source }: { source: SourceItem }) {
   const health = getSourceHealth(source);
-  if (health === "never_synced") {
-    return <Badge variant="default">Never synced</Badge>;
-  }
+  if (health === "never_synced") return <Badge variant="default">Never synced</Badge>;
   if (health === "no_data") {
     return (
       <Badge variant="warning">
@@ -108,7 +95,7 @@ function SourceHealthBadge({ source }: { source: SourceItem }) {
   );
 }
 
-// ── Column Mapping Table ─────────────────────────────────────────────────────
+// ── Column mapping table ─────────────────────────────────────────────────────
 
 function ColumnMappingTable({
   preview,
@@ -123,9 +110,7 @@ function ColumnMappingTable({
     ...Object.values(preview.auto_mapped),
     ...Object.values(customMap),
   ]);
-  const availableCanonical = preview.canonical_columns.filter(
-    (c) => !usedCanonical.has(c),
-  );
+  const availableCanonical = preview.canonical_columns.filter((c) => !usedCanonical.has(c));
 
   return (
     <div className="space-y-4">
@@ -134,46 +119,41 @@ function ColumnMappingTable({
       {preview.parse_warnings.length > 0 && (
         <Alert variant="warning" title="Some columns didn't parse cleanly">
           <p className="mb-1">
-            In the first rows sampled, these columns had values that couldn't
-            be read as expected. They'll still import — those specific values
-            will just be blank — but worth checking the sheet:
+            In the first rows sampled, these columns had values that couldn't be read as expected.
+            They'll still import — those specific values will just be blank — but worth checking
+            the sheet:
           </p>
-          <ul className="list-disc pl-5 space-y-0.5">
+          <ul className="list-disc space-y-0.5 pl-5">
             {preview.parse_warnings.map((w) => (
               <li key={w.column}>
-                <span className="font-mono text-xs">{w.column}</span> —{" "}
-                {w.unparsed_sample_rows} row(s) in the sample
+                <span className="font-mono text-xs">{w.column}</span> — {w.unparsed_sample_rows}{" "}
+                row(s) in the sample
               </li>
             ))}
           </ul>
         </Alert>
       )}
 
-      {/* Auto-mapped */}
       {Object.keys(preview.auto_mapped).length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
             <CheckCircle2 className="h-4 w-4 text-emerald-500" />
             Auto-matched ({Object.keys(preview.auto_mapped).length} columns)
           </h4>
-          <div className="rounded-lg border border-border overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[20rem] text-sm">
               <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
-                    Sheet Column
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                    Sheet column
                   </th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
-                    Maps To
-                  </th>
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">Maps to</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {Object.entries(preview.auto_mapped).map(([header, dbCol]) => (
                   <tr key={header} className="hover:bg-muted/30">
-                    <td className="px-4 py-2 text-foreground truncate max-w-[300px]">
-                      {header}
-                    </td>
+                    <td className="max-w-[300px] truncate px-4 py-2 text-foreground">{header}</td>
                     <td className="px-4 py-2">
                       <Badge variant="success">{dbCol}</Badge>
                     </td>
@@ -185,38 +165,33 @@ function ColumnMappingTable({
         </div>
       )}
 
-      {/* Unmapped */}
       {preview.unmapped.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+          <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
             <AlertTriangle className="h-4 w-4 text-amber-500" />
             Unmapped ({preview.unmapped.length} columns)
           </h4>
-          <p className="text-xs text-muted-foreground mb-3">
-            These columns don't match the standard template. Map them to a
-            canonical field, or leave them unmapped — they'll be saved but
-            excluded from AI analytics.
+          <p className="mb-3 text-xs text-muted-foreground">
+            These columns don't match the standard template. Map them to a canonical field, or
+            leave them unmapped — they'll be saved but excluded from AI analytics.
           </p>
-          <div className="rounded-lg border border-border overflow-x-auto">
+          <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[20rem] text-sm">
               <thead>
-                <tr className="bg-muted/50 border-b border-border">
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
-                    Sheet Column
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">
+                    Sheet column
                   </th>
-                  <th className="text-left px-4 py-2 font-medium text-muted-foreground">
-                    Map To
-                  </th>
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">Map to</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {preview.unmapped.map((header) => (
                   <tr key={header} className="hover:bg-muted/30">
-                    <td className="px-4 py-2 text-foreground truncate max-w-[300px]">
-                      {header}
-                    </td>
+                    <td className="max-w-[300px] truncate px-4 py-2 text-foreground">{header}</td>
                     <td className="px-4 py-2">
                       <Select
+                        aria-label={`Map ${header}`}
                         options={[
                           { value: "", label: "— skip (save to extra) —" },
                           ...availableCanonical.map((col) => ({ value: col, label: col })),
@@ -227,11 +202,8 @@ function ColumnMappingTable({
                         value={customMap[header] ?? ""}
                         onChange={(e) => {
                           const next = { ...customMap };
-                          if (e.target.value) {
-                            next[header] = e.target.value;
-                          } else {
-                            delete next[header];
-                          }
+                          if (e.target.value) next[header] = e.target.value;
+                          else delete next[header];
                           onMapChange(next);
                         }}
                       />
@@ -247,7 +219,7 @@ function ColumnMappingTable({
   );
 }
 
-// ── Validate Sheet Modal ─────────────────────────────────────────────────────
+// ── Validate sheet modal ─────────────────────────────────────────────────────
 // Re-runs the same pre-flight check the Add Source wizard does, for a sheet
 // that's already registered — lets an admin re-check a sheet's health (e.g.
 // after the source owner edited the form) without re-registering it.
@@ -265,11 +237,8 @@ function ValidateSheetModal({
   });
 
   useEffect(() => {
-    if (source?.sheet_url) {
-      validate(source.sheet_url);
-    } else {
-      reset();
-    }
+    if (source?.sheet_url) validate(source.sheet_url);
+    else reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source?.id]);
 
@@ -282,24 +251,31 @@ function ValidateSheetModal({
     <Modal
       open={!!source}
       onClose={handleClose}
-      title={`Validate Sheet${source?.label ? `: ${source.label}` : ""}`}
+      title="Validate sheet"
+      description={source?.label ?? undefined}
+      icon={<ShieldCheck className="h-5 w-5" />}
       size="lg"
+      footer={
+        <Button variant="outline" onClick={handleClose}>
+          Close
+        </Button>
+      }
     >
       {isPending && !data ? (
-        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
-          <RefreshCw className="h-4 w-4 animate-spin" />
-          Fetching and checking the sheet…
+        <div className="space-y-3" aria-hidden="true">
+          <Skeleton className="h-4 w-56" />
+          <Skeleton className="h-20 w-full rounded-lg" />
         </div>
       ) : data ? (
         <div className="space-y-4">
           {data.parse_warnings.length === 0 ? (
             <Alert variant="success" title="Looks good">
-              All {Object.keys(data.auto_mapped).length} mapped columns parsed
-              cleanly in the sample checked.
+              All {Object.keys(data.auto_mapped).length} mapped columns parsed cleanly in the
+              sample checked.
             </Alert>
           ) : (
             <Alert variant="warning" title="Some columns didn't parse cleanly">
-              <ul className="list-disc pl-5 space-y-0.5">
+              <ul className="list-disc space-y-0.5 pl-5">
                 {data.parse_warnings.map((w) => (
                   <li key={w.column}>
                     <span className="font-mono text-xs">{w.column}</span> —{" "}
@@ -311,22 +287,17 @@ function ValidateSheetModal({
           )}
           {data.unmapped.length > 0 && (
             <Alert variant="info" title={`${data.unmapped.length} unmapped column(s)`}>
-              These aren't mapped to a canonical field and won't be used in AI
-              analytics: {data.unmapped.join(", ")}
+              These aren't mapped to a canonical field and won't be used in AI analytics:{" "}
+              {data.unmapped.join(", ")}
             </Alert>
           )}
         </div>
       ) : null}
-      <div className="mt-4 flex justify-end">
-        <Button variant="outline" onClick={handleClose}>
-          Close
-        </Button>
-      </div>
     </Modal>
   );
 }
 
-// ── Source Card ──────────────────────────────────────────────────────────────
+// ── Source row ───────────────────────────────────────────────────────────────
 
 interface SyncWarning {
   outcome: string;
@@ -334,12 +305,12 @@ interface SyncWarning {
   failedCount: number;
 }
 
-function SourceCard({
+function SourceRow({
   source,
   onSync,
-  onDelete,
   onToggleActive,
   onValidate,
+  onConfirm,
   syncing,
   canManage,
   warning,
@@ -347,280 +318,169 @@ function SourceCard({
 }: {
   source: SourceItem;
   onSync: (id: string, mode: SyncMode) => void;
-  onDelete: (id: string) => void;
   onToggleActive: (id: string, active: boolean) => void;
   onValidate: (source: SourceItem) => void;
+  onConfirm: (source: SourceItem, action: "replace" | "delete") => void;
   syncing: boolean;
   canManage: boolean;
   warning?: SyncWarning;
   onDismissWarning: (id: string) => void;
 }) {
-  const [confirmReplace, setConfirmReplace] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [showReasons, setShowReasons] = useState(false);
+  const label = source.label || source.sheet_url || "Sheet";
 
   return (
-    <>
-      <li
-        className={`flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-muted/40 ${
-          source.is_active ? "" : "opacity-60"
-        }`}
-      >
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
-              <FileSpreadsheet className="h-5 w-5" />
-            </span>
-            <div className="min-w-0 space-y-1.5">
-              {/* Title + status badges */}
-              <div className="flex flex-wrap items-center gap-2">
-                {source.label && (
-                  <span className="text-sm font-medium text-foreground">
-                    {source.label}
-                  </span>
+    <li className={`flex flex-col gap-3 px-4 py-3.5 md:px-5 ${source.is_active ? "" : "opacity-60"}`}>
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
+            <FileSpreadsheet className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              {source.label && (
+                <span className="text-sm font-medium text-foreground">{source.label}</span>
+              )}
+              <Badge variant={source.is_active ? "success" : "default"}>
+                {source.is_active ? (
+                  <CheckCircle2 className="mr-1 h-3 w-3" />
+                ) : (
+                  <PowerOff className="mr-1 h-3 w-3" />
                 )}
-                <Badge variant={source.is_active ? "success" : "default"}>
-                  {source.is_active ? (
-                    <CheckCircle2 className="mr-1 h-3 w-3" />
-                  ) : (
-                    <PowerOff className="mr-1 h-3 w-3" />
-                  )}
-                  {source.is_active ? "Active" : "Inactive"}
-                </Badge>
-                <SourceHealthBadge source={source} />
-                <Badge variant="info">
-                  {SURVEY_TYPE_LABELS[source.survey_type] ?? source.survey_type}
-                </Badge>
-                {source.cycle && source.cycle !== "default" && (
-                  <Badge variant="default">Term: {source.cycle}</Badge>
-                )}
-              </div>
+                {source.is_active ? "Active" : "Inactive"}
+              </Badge>
+              <SourceHealthBadge source={source} />
+              <Badge variant="info">
+                {SURVEY_TYPE_LABELS[source.survey_type] ?? source.survey_type}
+              </Badge>
+              {source.cycle && source.cycle !== "default" && (
+                <Badge variant="default">Term: {source.cycle}</Badge>
+              )}
+            </div>
 
-              {/* URL */}
-              <a
-                href={source.sheet_url ?? "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-              >
-                <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="truncate max-w-md">
-                  {source.sheet_url ?? "—"}
-                </span>
-              </a>
+            <a
+              href={source.sheet_url ?? "#"}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 flex-shrink-0" />
+              <span className="max-w-md truncate">{source.sheet_url ?? "—"}</span>
+            </a>
 
-              {/* Meta info */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {source.row_count.toLocaleString()} response
-                  {source.row_count === 1 ? "" : "s"} imported
-                </span>
-                <span>
-                  Last synced:{" "}
-                  {source.last_synced_at
-                    ? formatDateTime(source.last_synced_at)
-                    : "never"}
-                </span>
-                {source.headers_snapshot && (
-                  <span>{source.headers_snapshot.length} columns</span>
-                )}
-                {source.column_map &&
-                  Object.keys(source.column_map).length > 0 && (
-                    <span>
-                      {Object.keys(source.column_map).length} custom mappings
-                    </span>
-                  )}
-              </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">
+                {source.row_count.toLocaleString()} response
+                {source.row_count === 1 ? "" : "s"} imported
+              </span>
+              <span>
+                Last synced:{" "}
+                {source.last_synced_at ? formatDateTime(source.last_synced_at) : "never"}
+              </span>
+              {source.headers_snapshot && <span>{source.headers_snapshot.length} columns</span>}
+              {source.column_map && Object.keys(source.column_map).length > 0 && (
+                <span>{Object.keys(source.column_map).length} custom mappings</span>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Actions — sync/replace/deactivate/remove are admin+principal only
-              server-side; teachers get the read-only status above. */}
-          {canManage && (
-            <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
+        {/* Sync/replace/deactivate/remove are admin+principal only server-side;
+            teachers get the read-only status above. */}
+        {canManage && (
+          <div className="flex shrink-0 items-center gap-1 md:justify-end">
+            {source.is_active ? (
               <Button
                 size="sm"
-                variant="ghost"
-                onClick={() => onValidate(source)}
-                icon={<ShieldCheck className="h-3.5 w-3.5" />}
+                onClick={() => onSync(source.id, "append")}
+                loading={syncing}
+                icon={<RefreshCw className="h-3.5 w-3.5" />}
               >
-                Validate
+                Sync
               </Button>
-              {source.is_active ? (
-                <>
-                  <Button
-                    size="sm"
-                    onClick={() => onSync(source.id, "append")}
-                    loading={syncing}
-                    icon={<RefreshCw className="h-3.5 w-3.5" />}
-                  >
-                    Sync
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setConfirmReplace(true)}
-                    disabled={syncing}
-                    icon={<AlertTriangle className="h-3.5 w-3.5" />}
-                  >
-                    Replace
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onToggleActive(source.id, false)}
-                    icon={<PowerOff className="h-3.5 w-3.5" />}
-                  >
-                    Deactivate
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger-ghost"
-                    onClick={() => setConfirmDelete(true)}
-                    icon={<Trash2 className="h-3.5 w-3.5" />}
-                  >
-                    Remove
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onToggleActive(source.id, true)}
-                    icon={<Power className="h-3.5 w-3.5" />}
-                  >
-                    Reactivate
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="danger-ghost"
-                    onClick={() => setConfirmDelete(true)}
-                    icon={<Trash2 className="h-3.5 w-3.5" />}
-                  >
-                    Remove
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Sync failure/partial-failure — a persistent alert, not just a toast
-            that disappears. A "partial" sync (some rows failed) must never
-            read the same as a plain success. */}
-        {warning && (
-          <Alert
-            variant="warning"
-            title={`Last sync: ${warning.failedCount} row(s) failed to import`}
-            onClose={() => onDismissWarning(source.id)}
-          >
-            <button
-              type="button"
-              onClick={() => setShowReasons((v) => !v)}
-              className="inline-flex items-center gap-1 text-xs font-medium hover:underline"
-            >
-              {showReasons ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-              {showReasons ? "Hide" : "Show"} error reason
-              {warning.reasons.length === 1 ? "" : "s"}
-            </button>
-            {showReasons && (
-              <ul className="mt-2 list-disc pl-5 space-y-0.5 font-mono text-xs">
-                {warning.reasons.map((r, i) => (
-                  <li key={i}>{r}</li>
-                ))}
-              </ul>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onToggleActive(source.id, true)}
+                icon={<Power className="h-3.5 w-3.5" />}
+              >
+                Reactivate
+              </Button>
             )}
-          </Alert>
+            <ActionMenu
+              label={`More actions for ${label}`}
+              items={[
+                {
+                  label: "Validate sheet",
+                  icon: <ShieldCheck />,
+                  onSelect: () => onValidate(source),
+                },
+                {
+                  label: "Replace all data",
+                  icon: <AlertTriangle />,
+                  disabled: syncing,
+                  hidden: !source.is_active,
+                  onSelect: () => onConfirm(source, "replace"),
+                },
+                {
+                  label: "Deactivate",
+                  icon: <PowerOff />,
+                  hidden: !source.is_active,
+                  onSelect: () => onToggleActive(source.id, false),
+                },
+                {
+                  label: "Remove sheet",
+                  icon: <Trash2 />,
+                  danger: true,
+                  onSelect: () => onConfirm(source, "delete"),
+                },
+              ]}
+            />
+          </div>
         )}
-      </li>
+      </div>
 
-      {/* Replace confirmation */}
-      <Modal
-        open={confirmReplace}
-        onClose={() => setConfirmReplace(false)}
-        title="Replace All Data"
-        size="md"
-      >
-        <Alert variant="error" title="Destructive action">
-          This will DELETE all imported responses for &quot;
-          {source.school_name}&quot; in term &quot;
-          {source.cycle || "default"}&quot;, then re-import the entire sheet.
-          This cannot be undone.
+      {/* Sync failure/partial-failure — a persistent alert, not just a toast
+          that disappears. A "partial" sync (some rows failed) must never
+          read the same as a plain success. */}
+      {warning && (
+        <Alert
+          variant="warning"
+          title={`Last sync: ${warning.failedCount} row(s) failed to import`}
+          onClose={() => onDismissWarning(source.id)}
+        >
+          <button
+            type="button"
+            onClick={() => setShowReasons((v) => !v)}
+            aria-expanded={showReasons}
+            className="inline-flex items-center gap-1 text-xs font-medium hover:underline"
+          >
+            {showReasons ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {showReasons ? "Hide" : "Show"} error reason
+            {warning.reasons.length === 1 ? "" : "s"}
+          </button>
+          {showReasons && (
+            <ul className="mt-2 list-disc space-y-0.5 pl-5 font-mono text-xs">
+              {warning.reasons.map((r, i) => (
+                <li key={i}>{r}</li>
+              ))}
+            </ul>
+          )}
         </Alert>
-        <div className="mt-4 flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setConfirmReplace(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              setConfirmReplace(false);
-              onSync(source.id, "replace");
-            }}
-          >
-            Replace All Data
-          </Button>
-        </div>
-      </Modal>
-
-      {/* Delete confirmation — shows the EXACT row count so the impact is
-          never a surprise (deleting a source now deletes its rows too, see
-          migration 048 / DELETE /source/{id}). */}
-      <Modal
-        open={confirmDelete}
-        onClose={() => setConfirmDelete(false)}
-        title="Remove Data Source"
-        size="md"
-      >
-        {source.row_count > 0 ? (
-          <Alert variant="error" title="This will delete imported data">
-            This permanently deletes{" "}
-            <strong>
-              {source.row_count.toLocaleString()} imported response
-              {source.row_count === 1 ? "" : "s"}
-            </strong>{" "}
-            along with the source registration. This cannot be undone.
-          </Alert>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Remove this sheet registration? It has no imported responses yet.
-          </p>
-        )}
-        <div className="mt-4 flex justify-end gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setConfirmDelete(false)}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            onClick={() => {
-              setConfirmDelete(false);
-              onDelete(source.id);
-            }}
-          >
-            {source.row_count > 0
-              ? `Delete Source & ${source.row_count.toLocaleString()} Response${source.row_count === 1 ? "" : "s"}`
-              : "Remove"}
-          </Button>
-        </div>
-      </Modal>
-    </>
+      )}
+    </li>
   );
 }
 
-// ── Add Source Wizard ────────────────────────────────────────────────────────
+// ── Add source wizard ────────────────────────────────────────────────────────
 
 type WizardStep = "url" | "mapping" | "details";
+const STEPS: { id: WizardStep; label: string }[] = [
+  { id: "url", label: "Sheet URL" },
+  { id: "mapping", label: "Column mapping" },
+  { id: "details", label: "Details" },
+];
 
 function AddSourceWizard({
   open,
@@ -673,8 +533,7 @@ function AddSourceWizard({
 
   const { mutate: register, isPending: registering } = useMutation({
     mutationFn: () => {
-      const columnMap =
-        Object.keys(customMap).length > 0 ? customMap : undefined;
+      const columnMap = Object.keys(customMap).length > 0 ? customMap : undefined;
       // The backend registers AND auto-syncs the source in one call, returning
       // the sync outcome in `res.sync` — no separate sync request needed.
       return surveyApi.registerSource({
@@ -690,9 +549,9 @@ function AddSourceWizard({
       const sync = res.sync;
       if (sync?.ok && sync.sync_outcome === "partial") {
         toast.warning(
-          `Source added: +${sync.records_added} rows imported, but ${sync.records_failed} row(s) failed` +
+          `Sheet added: +${sync.records_added} rows imported, but ${sync.records_failed} row(s) failed` +
             (sync.error_reasons[0] ? ` (${sync.error_reasons[0]})` : "") +
-            ". Check the source card for details.",
+            ". Check the sheet for details.",
           { duration: 8000 },
         );
       } else if (sync?.ok && sync.records_added === 0) {
@@ -701,26 +560,24 @@ function AddSourceWizard({
         // once everything is already imported) — surface it as a warning, not
         // a plain success, so it isn't mistaken for "added and ready to use."
         toast.warning(
-          "Source registered, but the first sync imported 0 rows" +
+          "Sheet registered, but the first sync imported 0 rows" +
             (sync.records_skipped ? ` (${sync.records_skipped} skipped as duplicates)` : "") +
-            ". Open the source and click Sync again, or check the sheet has data " +
-            "under the header row.",
+            ". Sync it again, or check the sheet has data under the header row.",
           { duration: 8000 },
         );
       } else if (sync?.ok) {
         toast.success(
-          `Source added & synced: +${sync.records_added} rows imported` +
+          `Sheet added & synced: +${sync.records_added} rows imported` +
             (sync.records_skipped ? `, ${sync.records_skipped} skipped` : ""),
         );
       } else if (sync && !sync.ok) {
-        toast.success("Source registered.");
+        toast.success("Sheet registered.");
         toast.error(
-          `Auto-sync failed: ${sync.error ?? "unknown error"}. ` +
-            "Use “Sync” on the source to retry.",
+          `Auto-sync failed: ${sync.error ?? "unknown error"}. Use “Sync” on the sheet to retry.`,
           { duration: 7000 },
         );
       } else {
-        toast.success("Source registered.");
+        toast.success("Sheet registered.");
       }
       qc.invalidateQueries({ queryKey: surveyKeys.all });
       onSynced(sync?.job_id);
@@ -733,185 +590,166 @@ function AddSourceWizard({
     ? Object.keys(preview.auto_mapped).length + Object.keys(customMap).length
     : 0;
   const totalHeaders = preview?.headers.length ?? 0;
+  const stepIndex = STEPS.findIndex((s) => s.id === step);
+
+  const footer =
+    step === "url" ? (
+      <>
+        <Button variant="ghost" onClick={handleClose}>
+          Cancel
+        </Button>
+        <Button
+          onClick={() => fetchPreview()}
+          loading={loadingPreview}
+          disabled={!sheetUrl.trim()}
+          icon={<ArrowRight className="h-4 w-4" />}
+        >
+          Fetch &amp; preview columns
+        </Button>
+      </>
+    ) : step === "mapping" ? (
+      <>
+        <Button variant="outline" onClick={() => setStep("url")} icon={<ArrowLeft className="h-4 w-4" />}>
+          Back
+        </Button>
+        <Button onClick={() => setStep("details")} icon={<ArrowRight className="h-4 w-4" />}>
+          Continue
+        </Button>
+      </>
+    ) : (
+      <>
+        <Button
+          variant="outline"
+          onClick={() => setStep("mapping")}
+          icon={<ArrowLeft className="h-4 w-4" />}
+        >
+          Back
+        </Button>
+        <Button onClick={() => register()} loading={registering} icon={<Plus className="h-4 w-4" />}>
+          {registering ? "Adding & syncing…" : "Add & sync sheet"}
+        </Button>
+      </>
+    );
 
   return (
-    <Modal open={open} onClose={handleClose} title="Add Data Source" size="xl">
+    <Modal
+      open={open}
+      onClose={handleClose}
+      title="Connect a Google Sheet"
+      description="Responses are imported from a published sheet and kept in sync."
+      icon={<FileSpreadsheet className="h-5 w-5" />}
+      size="xl"
+      footer={footer}
+    >
       {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-6">
-        {(["url", "mapping", "details"] as WizardStep[]).map((s, i) => (
-          <div key={s} className="flex items-center gap-2">
-            {i > 0 && (
+      <ol className="mb-6 flex items-center gap-2">
+        {STEPS.map((s, i) => {
+          const active = s.id === step;
+          const done = i < stepIndex;
+          return (
+            <li key={s.id} className="flex items-center gap-2">
+              {i > 0 && <div className={`h-px w-8 ${done || active ? "bg-primary" : "bg-border"}`} />}
               <div
-                className={`h-px w-8 ${step === s || (i === 1 && step === "details") || (i === 2 && step === "details") ? "bg-primary" : "bg-border"}`}
-              />
-            )}
-            <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                step === s
-                  ? "bg-primary text-primary-foreground"
-                  : i < ["url", "mapping", "details"].indexOf(step)
-                    ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {i + 1}
-            </div>
-            <span
-              className={`text-sm font-medium ${step === s ? "text-foreground" : "text-muted-foreground"}`}
-            >
-              {s === "url"
-                ? "Sheet URL"
-                : s === "mapping"
-                  ? "Column Mapping"
-                  : "Details"}
-            </span>
-          </div>
-        ))}
-      </div>
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : done
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                }`}
+                aria-current={active ? "step" : undefined}
+              >
+                {i + 1}
+              </div>
+              <span
+                className={`text-sm font-medium ${active ? "text-foreground" : "text-muted-foreground"}`}
+              >
+                {s.label}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
 
-      {/* Step 1: URL */}
       {step === "url" && (
-        <div className="space-y-4">
-          <Input
-            label="Google Sheet URL"
-            placeholder="https://docs.google.com/spreadsheets/d/.../edit"
-            value={sheetUrl}
-            onChange={(e) => setSheetUrl(e.target.value)}
-            hint="Paste the share URL. The sheet must be public (Anyone with the link can view)."
-            required
-          />
-          <div className="flex justify-end">
-            <Button
-              onClick={() => fetchPreview()}
-              loading={loadingPreview}
-              disabled={!sheetUrl.trim()}
-              icon={<ArrowRight className="h-4 w-4" />}
-            >
-              Fetch & Preview Columns
-            </Button>
-          </div>
-        </div>
+        <Input
+          label="Google Sheet URL"
+          placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+          value={sheetUrl}
+          onChange={(e) => setSheetUrl(e.target.value)}
+          hint="Paste the share URL. The sheet must be public (anyone with the link can view)."
+          required
+        />
       )}
 
-      {/* Step 2: Column Mapping */}
       {step === "mapping" && preview && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">
-                {totalMapped}
-              </span>{" "}
-              of{" "}
-              <span className="font-semibold text-foreground">
-                {totalHeaders}
-              </span>{" "}
-              columns mapped to canonical fields
+              <span className="font-semibold text-foreground">{totalMapped}</span> of{" "}
+              <span className="font-semibold text-foreground">{totalHeaders}</span> columns mapped
+              to canonical fields
             </p>
-            <Badge
-              variant={
-                preview.unmapped.length === 0 ? "success" : "warning"
-              }
-            >
-              {preview.unmapped.length === 0
-                ? "All mapped"
-                : `${preview.unmapped.length} unmapped`}
+            <Badge variant={preview.unmapped.length === 0 ? "success" : "warning"}>
+              {preview.unmapped.length === 0 ? "All mapped" : `${preview.unmapped.length} unmapped`}
             </Badge>
           </div>
-
-          <div className="max-h-[400px] overflow-y-auto rounded-lg">
-            <ColumnMappingTable
-              preview={preview}
-              customMap={customMap}
-              onMapChange={setCustomMap}
-            />
-          </div>
-
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={() => setStep("url")}
-              icon={<ArrowLeft className="h-4 w-4" />}
-            >
-              Back
-            </Button>
-            <Button
-              onClick={() => setStep("details")}
-              icon={<ArrowRight className="h-4 w-4" />}
-            >
-              Continue
-            </Button>
-          </div>
+          <ColumnMappingTable
+            preview={preview}
+            customMap={customMap}
+            onMapChange={setCustomMap}
+          />
         </div>
       )}
 
-      {/* Step 3: Details */}
       {step === "details" && (
         <div className="space-y-4">
           <Input
             label="Label"
-            placeholder="e.g. Academic Feedback Term 1 2025-26"
+            placeholder="e.g. Academic feedback Term 1 2025-26"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            hint="A descriptive name for this data source."
+            hint="A descriptive name for this sheet."
           />
           <Input
-            label="Term / Cycle"
+            label="Term / cycle"
             placeholder="e.g. 2025-T1 (defaults to 'default')"
             value={cycle}
             onChange={(e) => setCycle(e.target.value)}
             hint="Use a new value each term so the same students aren't skipped as duplicates."
           />
           <Select
-            label="Survey Type"
+            label="Survey type"
             options={SURVEY_TYPE_OPTIONS}
             value={surveyType}
-            onChange={(e) =>
-              setSurveyType(
-                (e.target as HTMLSelectElement).value as SurveyType,
-              )
-            }
+            onChange={(e) => setSurveyType((e.target as HTMLSelectElement).value as SurveyType)}
           />
 
           {preview && (
-            <div className="rounded-lg bg-muted/30 border border-border p-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Summary
               </p>
-              <div className="text-sm text-foreground space-y-0.5">
+              <div className="space-y-0.5 text-sm text-foreground">
                 <p>
-                  {totalMapped} columns mapped, {preview.unmapped.length - Object.keys(customMap).length > 0 ? preview.unmapped.length - Object.keys(customMap).length : 0} saved
-                  to extra
+                  {totalMapped} columns mapped,{" "}
+                  {Math.max(0, preview.unmapped.length - Object.keys(customMap).length)} saved to
+                  extra
                 </p>
-                <p className="text-muted-foreground truncate">
-                  Sheet: {sheetUrl.split("/d/")[1]?.split("/")[0]?.slice(0, 20) ?? sheetUrl.slice(0, 40)}...
+                <p className="truncate text-muted-foreground">
+                  Sheet:{" "}
+                  {sheetUrl.split("/d/")[1]?.split("/")[0]?.slice(0, 20) ?? sheetUrl.slice(0, 40)}…
                 </p>
               </div>
             </div>
           )}
-
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={() => setStep("mapping")}
-              icon={<ArrowLeft className="h-4 w-4" />}
-            >
-              Back
-            </Button>
-            <Button
-              onClick={() => register()}
-              loading={registering}
-              icon={<Plus className="h-4 w-4" />}
-            >
-              {registering ? "Adding & syncing…" : "Add & Sync Source"}
-            </Button>
-          </div>
         </div>
       )}
     </Modal>
   );
 }
 
-// ── Detached Responses Panel (admin cleanup) ────────────────────────────────
+// ── Detached responses (admin cleanup) ──────────────────────────────────────
 // Rows with no source attached (source_id IS NULL) — legacy imports, or rows
 // a source deletion left behind under the pre-migration-048 semantics.
 // Nothing here is ever auto-purged; this is a deliberate, reviewed action.
@@ -942,9 +780,9 @@ function DetachedResponsesPanel() {
     <>
       <Panel
         flush
-        title="Detached Responses"
+        title="Detached responses"
         icon={<Inbox className="h-4 w-4" />}
-        description="Survey rows with no data source attached — legacy imports, or left behind by an old source removal"
+        description="Rows with no sheet attached — legacy imports, or left behind by an old removal"
         actions={<Badge variant="warning">{data.total_detached.toLocaleString()} rows</Badge>}
       >
         <ul className="divide-y divide-border/50">
@@ -954,57 +792,55 @@ function DetachedResponsesPanel() {
               className="flex items-center justify-between gap-3 px-4 py-3 md:px-5"
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="truncate text-sm font-medium text-foreground">
                   {g.school_name ?? "Unknown / unassigned school"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {g.count.toLocaleString()} response{g.count === 1 ? "" : "s"}
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="danger-ghost"
-                onClick={() => setConfirmGroup(g)}
-                icon={<Trash2 className="h-3.5 w-3.5" />}
-              >
-                Purge
-              </Button>
+              <ActionMenu
+                label={`Actions for ${g.school_name ?? "unassigned responses"}`}
+                items={[
+                  {
+                    label: "Purge responses",
+                    icon: <Trash2 />,
+                    danger: true,
+                    onSelect: () => setConfirmGroup(g),
+                  },
+                ]}
+              />
             </li>
           ))}
         </ul>
       </Panel>
 
-      <Modal
+      <ConfirmDialog
         open={!!confirmGroup}
+        title="Purge detached responses?"
+        description={
+          confirmGroup && (
+            <>
+              This permanently deletes{" "}
+              <span className="font-medium text-foreground">
+                {confirmGroup.count.toLocaleString()}
+              </span>{" "}
+              survey response{confirmGroup.count === 1 ? "" : "s"} for “
+              {confirmGroup.school_name ?? "this group"}” that have no sheet attached. This can't
+              be undone.
+            </>
+          )
+        }
+        confirmLabel="Permanently delete"
+        loading={purging}
+        onConfirm={() => purge(confirmGroup?.school_id ?? undefined)}
         onClose={() => setConfirmGroup(null)}
-        title="Purge Detached Responses"
-        size="md"
-      >
-        <Alert variant="error" title="Destructive action">
-          This permanently deletes{" "}
-          <strong>{confirmGroup?.count.toLocaleString()}</strong> survey
-          response{confirmGroup?.count === 1 ? "" : "s"} for &quot;
-          {confirmGroup?.school_name ?? "this group"}&quot; that have no data
-          source attached. This cannot be undone.
-        </Alert>
-        <div className="mt-4 flex justify-end gap-3">
-          <Button variant="outline" onClick={() => setConfirmGroup(null)}>
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            loading={purging}
-            onClick={() => purge(confirmGroup?.school_id ?? undefined)}
-          >
-            Permanently Delete
-          </Button>
-        </div>
-      </Modal>
+      />
     </>
   );
 }
 
-// ── Main Page ───────────────────────────────────────────────────────────────
+// ── Page ────────────────────────────────────────────────────────────────────
 
 export function SurveySourcePage() {
   const qc = useQueryClient();
@@ -1013,12 +849,16 @@ export function SurveySourcePage() {
   const { schoolId, schoolName, ready } = useActiveSchool();
   const schoolParam = schoolName || undefined;
   const role = useAuthStore((s) => s.user?.role);
-  // Registering/syncing/deleting sources is admin+principal only server-side;
+  // Registering/syncing/deleting sheets is admin+principal only server-side;
   // a teacher gets a read-only list of connected sheets.
   const canManage = isSchoolAdmin(role);
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [validateTarget, setValidateTarget] = useState<SourceItem | null>(null);
+  const [confirm, setConfirm] = useState<{
+    source: SourceItem;
+    action: "replace" | "delete";
+  } | null>(null);
   const [syncWarnings, setSyncWarnings] = useState<Record<string, SyncWarning>>({});
   const { track: trackSyncJob } = useSyncJobPolling();
 
@@ -1031,14 +871,14 @@ export function SurveySourcePage() {
   const sources = sourcesData?.sources ?? [];
   const activeSources = sources.filter((s) => s.is_active);
   const inactiveSources = sources.filter((s) => !s.is_active);
+  const importedRows = sources.reduce((n, s) => n + s.row_count, 0);
+  const needAttention = activeSources.filter((s) => getSourceHealth(s) !== "healthy").length;
 
   // Per-source, not a single shared boolean — otherwise clicking Sync on one
-  // source disabled/loading-spun every source's Sync/Replace buttons, not
-  // just the one actually being synced.
+  // source disabled/loading-spun every source's buttons, not just that one.
   const syncPending = usePendingKeys();
   const { mutate: syncSource } = useMutation({
-    mutationFn: ({ id, mode }: { id: string; mode: SyncMode }) =>
-      surveyApi.syncSource(id, mode),
+    mutationFn: ({ id, mode }: { id: string; mode: SyncMode }) => surveyApi.syncSource(id, mode),
     onMutate: ({ id }) => syncPending.start(id),
     onSettled: (_data, _err, { id }) => syncPending.finish(id),
     onSuccess: (res, { id }) => {
@@ -1055,7 +895,7 @@ export function SurveySourcePage() {
         }));
         toast.warning(
           `Sync (${res.mode}): +${res.summary.records_added} added, ` +
-            `${res.summary.records_failed} row(s) failed — see the source for details.`,
+            `${res.summary.records_failed} row(s) failed — see the sheet for details.`,
         );
       } else {
         setSyncWarnings((prev) => {
@@ -1083,15 +923,16 @@ export function SurveySourcePage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const { mutate: deleteSource } = useMutation({
+  const { mutate: deleteSource, isPending: deleting } = useMutation({
     mutationFn: (id: string) => surveyApi.deleteSourceById(id),
     onSuccess: (res) => {
       toast.success(
         res.deleted_rows
-          ? `Source removed — ${res.deleted_rows.toLocaleString()} imported response(s) deleted.`
-          : "Source removed.",
+          ? `Sheet removed — ${res.deleted_rows.toLocaleString()} imported response(s) deleted.`
+          : "Sheet removed.",
       );
       qc.invalidateQueries({ queryKey: surveyKeys.all });
+      setConfirm(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -1100,147 +941,144 @@ export function SurveySourcePage() {
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
       surveyApi.updateSource(id, { is_active: active }),
     onSuccess: (_res, { active }) => {
-      toast.success(active ? "Source reactivated." : "Source deactivated.");
+      toast.success(active ? "Sheet reactivated." : "Sheet deactivated.");
       qc.invalidateQueries({ queryKey: surveyKeys.all });
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  if (isLoading && ready) return <SurveySourceSkeleton />;
+  const dismissWarning = (id: string) =>
+    setSyncWarnings((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
+  const rowProps = {
+    onSync: (id: string, mode: SyncMode) => syncSource({ id, mode }),
+    onToggleActive: (id: string, active: boolean) => toggleActive({ id, active }),
+    onValidate: setValidateTarget,
+    onConfirm: (source: SourceItem, action: "replace" | "delete") => setConfirm({ source, action }),
+    canManage,
+    onDismissWarning: dismissWarning,
+  };
+
+  const runConfirmed = () => {
+    if (!confirm) return;
+    if (confirm.action === "delete") deleteSource(confirm.source.id);
+    else {
+      syncSource({ id: confirm.source.id, mode: "replace" });
+      setConfirm(null);
+    }
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {canManage && ready && (
+        <ModuleHeaderActions>
+          <Button size="sm" onClick={() => setWizardOpen(true)} icon={<Plus className="h-4 w-4" />}>
+            Connect<span className="hidden sm:inline">&nbsp;a sheet</span>
+          </Button>
+        </ModuleHeaderActions>
+      )}
+
       {ready && (
         <>
-          {canManage && (
-            <ModuleHeaderActions>
-              <Button
-                size="sm"
-                onClick={() => setWizardOpen(true)}
-                icon={<Plus className="h-4 w-4" />}
-              >
-                Add Source
-              </Button>
-            </ModuleHeaderActions>
-          )}
-
-          {/* Empty state */}
-          {sources.length === 0 ? (
+          {isLoading ? (
+            <>
+              <Skeleton className="h-4 w-64" />
+              <Panel flush>
+                <ListSkeleton items={3} />
+              </Panel>
+            </>
+          ) : sources.length === 0 ? (
             <EmptyState
               icon={<FileSpreadsheet className="h-12 w-12" />}
-              title="No data sources"
+              title="No sheets connected"
               description={
                 canManage
-                  ? "Connect a public Google Sheet to start importing survey responses. You can add multiple sheets for different terms or survey types."
+                  ? "Connect a public Google Sheet to start importing survey responses. You can add several — one per term or survey type."
                   : "No Google Sheets are connected for this school yet. Ask an admin or principal to add one."
               }
               action={
                 canManage ? (
-                  <Button
-                    onClick={() => setWizardOpen(true)}
-                    icon={<Plus className="h-4 w-4" />}
-                  >
-                    Add Source
+                  <Button size="sm" onClick={() => setWizardOpen(true)} icon={<Plus className="h-4 w-4" />}>
+                    Connect a sheet
                   </Button>
                 ) : undefined
               }
             />
           ) : (
             <>
-              {/* Active sources */}
+              <StatLine
+                items={[
+                  {
+                    value: activeSources.length,
+                    label: activeSources.length === 1 ? "active sheet" : "active sheets",
+                  },
+                  {
+                    value: importedRows,
+                    label: importedRows === 1 ? "response imported" : "responses imported",
+                  },
+                  {
+                    value: needAttention,
+                    label: "need attention",
+                    tone: "warning",
+                    hidden: needAttention === 0,
+                  },
+                  {
+                    value: inactiveSources.length,
+                    label: "inactive",
+                    hidden: inactiveSources.length === 0,
+                  },
+                ]}
+              />
+
               {activeSources.length > 0 && (
-                <Panel
-                  flush
-                  title="Connected Sheets"
-                  icon={<FileSpreadsheet className="h-4 w-4" />}
-                  description="Google Sheets feeding survey responses"
-                  actions={
-                    <Badge variant="primary">
-                      {activeSources.length} active
-                    </Badge>
-                  }
-                >
+                <Panel flush>
                   <ul className="divide-y divide-border/50">
                     {activeSources.map((source) => (
-                      <SourceCard
+                      <SourceRow
                         key={source.id}
                         source={source}
-                        onSync={(id, mode) => syncSource({ id, mode })}
-                        onDelete={(id) => deleteSource(id)}
-                        onToggleActive={(id, active) =>
-                          toggleActive({ id, active })
-                        }
-                        onValidate={setValidateTarget}
                         syncing={syncPending.has(source.id)}
-                        canManage={canManage}
                         warning={syncWarnings[source.id]}
-                        onDismissWarning={(id) =>
-                          setSyncWarnings((prev) => {
-                            const next = { ...prev };
-                            delete next[id];
-                            return next;
-                          })
-                        }
+                        {...rowProps}
                       />
                     ))}
                   </ul>
                 </Panel>
               )}
 
-              {/* Inactive sources */}
               {inactiveSources.length > 0 && (
                 <Panel
                   flush
-                  title="Inactive Sources"
-                  actions={
-                    <Badge variant="default">{inactiveSources.length}</Badge>
-                  }
+                  title="Inactive"
+                  description="Kept for their imported data, but no longer synced"
                 >
                   <ul className="divide-y divide-border/50">
                     {inactiveSources.map((source) => (
-                      <SourceCard
+                      <SourceRow
                         key={source.id}
                         source={source}
-                        onSync={(id, mode) => syncSource({ id, mode })}
-                        onDelete={(id) => deleteSource(id)}
-                        onToggleActive={(id, active) =>
-                          toggleActive({ id, active })
-                        }
-                        onValidate={setValidateTarget}
                         syncing={syncPending.has(source.id)}
-                        canManage={canManage}
                         warning={syncWarnings[source.id]}
-                        onDismissWarning={(id) =>
-                          setSyncWarnings((prev) => {
-                            const next = { ...prev };
-                            delete next[id];
-                            return next;
-                          })
-                        }
+                        {...rowProps}
                       />
                     ))}
                   </ul>
                 </Panel>
               )}
-
-              {/* Info alert */}
-              <Alert variant="info" title="Multiple sources">
-                Each source can have its own term/cycle and survey type. Students
-                are deduplicated within the same (name, roll, school, cycle) —
-                use a new cycle value each term so the same students aren't
-                skipped.
-              </Alert>
             </>
           )}
 
-          {/* Detached responses cleanup — same gate as source management
+          {/* Detached-response cleanup — same gate as sheet management
               (admin+principal); the backend scopes a principal to their own
               school automatically (see controller.get_detached_responses). */}
           {canManage && <DetachedResponsesPanel />}
         </>
       )}
 
-      {/* Add Source Wizard */}
       <AddSourceWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
@@ -1248,8 +1086,45 @@ export function SurveySourcePage() {
         onSynced={trackSyncJob}
       />
 
-      {/* Validate Sheet */}
       <ValidateSheetModal source={validateTarget} onClose={() => setValidateTarget(null)} />
+
+      <ConfirmDialog
+        open={!!confirm}
+        title={confirm?.action === "delete" ? "Remove this sheet?" : "Replace all imported data?"}
+        description={
+          confirm &&
+          (confirm.action === "delete" ? (
+            confirm.source.row_count > 0 ? (
+              <>
+                This permanently deletes{" "}
+                <span className="font-medium text-foreground">
+                  {confirm.source.row_count.toLocaleString()} imported response
+                  {confirm.source.row_count === 1 ? "" : "s"}
+                </span>{" "}
+                along with the sheet registration. This can't be undone.
+              </>
+            ) : (
+              <>Remove this sheet registration? It has no imported responses yet.</>
+            )
+          ) : (
+            <>
+              This deletes every imported response for “{confirm.source.school_name}” in term “
+              {confirm.source.cycle || "default"}”, then re-imports the entire sheet. This can't be
+              undone.
+            </>
+          ))
+        }
+        confirmLabel={
+          confirm?.action === "delete"
+            ? confirm.source.row_count > 0
+              ? `Delete sheet & ${confirm.source.row_count.toLocaleString()} response${confirm.source.row_count === 1 ? "" : "s"}`
+              : "Remove sheet"
+            : "Replace all data"
+        }
+        loading={deleting}
+        onConfirm={runConfirmed}
+        onClose={() => setConfirm(null)}
+      />
     </div>
   );
 }
