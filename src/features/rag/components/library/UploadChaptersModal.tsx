@@ -20,7 +20,9 @@ import {
   type SearchableSelectOption,
 } from "@/shared/components/ui/SearchableSelect";
 import { Select } from "@/shared/components/ui/Select";
-import { cn, formatFileSize, getErrorMessage, sortClassesDescending } from "@/shared/lib/utils";
+import { cn, formatFileSize, getErrorMessage } from "@/shared/lib/utils";
+import { ALL_CLASS_LEVELS } from "@/shared/lib/classes";
+import { useSchoolClasses } from "@/shared/hooks/useSchoolClasses";
 import { adminApi } from "@/features/admin/api/admin";
 import { ragApi } from "@/features/rag/api/rag";
 import {
@@ -28,11 +30,7 @@ import {
   SUBJECT_OPTIONS,
   UPLOAD_BOARD_OPTIONS,
 } from "@/features/rag/constants";
-import {
-  invalidateRagLibrary,
-  useRagClassLevels,
-  useRagMediums,
-} from "@/features/rag/hooks/useRag";
+import { invalidateRagLibrary, useRagMediums } from "@/features/rag/hooks/useRag";
 import { guessChapterFromFilename } from "@/features/rag/lib/chapterFilename";
 
 /** Pre-fill for the book details, taken from where the user is browsing. */
@@ -134,7 +132,6 @@ export function UploadChaptersModal({
 }: UploadChaptersModalProps) {
   const formId = useId();
   const queryClient = useQueryClient();
-  const { data: classData } = useRagClassLevels();
   const { data: mediumData, isLoading: mediumsLoading } = useRagMediums();
   const mediums = useMemo(() => mediumData?.mediums ?? [], [mediumData]);
 
@@ -155,13 +152,28 @@ export function UploadChaptersModal({
   const resolvedSubject =
     details.subject === RAG_OTHER_SUBJECT ? details.subjectOther.trim() : details.subject;
 
+  // The class list follows the school this upload is FOR, not the school the user
+  // happens to be viewing: an admin uploading for one school sees that school's
+  // roster. A global upload (every school) has no single roster, so it falls back
+  // to the full canonical vocabulary — the one place that fallback is correct.
+  const targetSchoolId = isAdmin
+    ? details.forAllSchools
+      ? undefined
+      : details.schoolId || undefined
+    : ownSchoolId;
+  const { classes: rosterClasses } = useSchoolClasses({ schoolId: targetSchoolId });
+
   const classOptions = useMemo(() => {
-    const levels = [...sortClassesDescending(classData?.class_levels ?? [])];
+    const levels = targetSchoolId
+      ? rosterClasses.map((c) => c.class_name)
+      : [...ALL_CLASS_LEVELS];
+    // Keep a value the form already holds selectable even if it isn't on the
+    // roster (editing an older chapter, or a school that since dropped the class).
     if (details.classLevel && !levels.includes(details.classLevel)) {
       levels.unshift(details.classLevel);
     }
     return [{ value: "", label: "Select class" }, ...levels.map((c) => ({ value: c, label: c }))];
-  }, [classData, details.classLevel]);
+  }, [rosterClasses, targetSchoolId, details.classLevel]);
 
   const mediumOptions = mediumsLoading
     ? [{ value: "", label: "Loading…" }]
@@ -266,12 +278,7 @@ export function UploadChaptersModal({
     payload.append("chapter_name", row.chapterName.trim());
     payload.append("board", details.board);
     payload.append("medium", medium);
-    const schoolId = isAdmin
-      ? details.forAllSchools
-        ? undefined
-        : details.schoolId
-      : ownSchoolId;
-    if (schoolId) payload.append("school_id", schoolId);
+    if (targetSchoolId) payload.append("school_id", targetSchoolId);
     if (replace) payload.append("replace", "true");
 
     let lastProgress = -1;

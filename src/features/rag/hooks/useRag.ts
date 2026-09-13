@@ -48,7 +48,6 @@ export interface DocumentSummaryParams {
 export const ragKeys = {
   all: ["rag"] as const,
   metadata: (medium?: string) => ["rag", "metadata", medium ?? "__all__"] as const,
-  classLevels: () => ["rag", "classLevels"] as const,
   mediums: () => ["rag", "mediums"] as const,
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
   documentsSummary: (params?: DocumentSummaryParams) =>
@@ -86,14 +85,6 @@ export function useRagMetadata(medium?: string) {
     // Keep the previous medium's hierarchy on screen while the new one loads,
     // instead of the Subject/Chapter dropdowns flashing empty on every switch.
     placeholderData: (prev) => prev,
-  });
-}
-
-export function useRagClassLevels() {
-  return useQuery({
-    queryKey: ragKeys.classLevels(),
-    queryFn: () => ragApi.getClassLevels(),
-    staleTime: 30 * 60_000,
   });
 }
 

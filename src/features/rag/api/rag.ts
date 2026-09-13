@@ -18,7 +18,6 @@ import type {
   DocumentSummaryResponse,
   DocumentChunksResponse,
   DocumentMarkdownResponse,
-  ClassLevelsResponse,
   MediumsResponse,
   RagAnalyticsResponse,
   FeedbackRequest,
@@ -52,11 +51,6 @@ export const ragApi = {
   getMetadata: (medium?: string) =>
     apiClient
       .get<RagMetadata>(`${BASE}/metadata`, { params: medium ? { medium } : undefined })
-      .then((r) => r.data),
-
-  getClassLevels: () =>
-    apiClient
-      .get<ClassLevelsResponse>(`${BASE}/classes`)
       .then((r) => r.data),
 
   /** Book medium(s) the caller may select for uploads and filters. */

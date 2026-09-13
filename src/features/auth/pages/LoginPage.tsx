@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Briefcase, Users, GraduationCap } from "lucide-react";
 import toast from "@/shared/lib/toast";
@@ -39,6 +39,22 @@ export function LoginPage() {
     );
   }, [incompleteProfile, logout]);
 
+  // All three panels stay mounted so typing survives a tab switch, which means
+  // nothing moves focus when the visible one changes. Put the cursor in the new
+  // panel's first field instead of leaving it on the tab.
+  const panelsRef = useRef<HTMLDivElement>(null);
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return; // the staff form already autofocuses on load
+    }
+    const field = Array.from(
+      panelsRef.current?.querySelectorAll<HTMLInputElement>("input") ?? [],
+    ).find((el) => el.offsetParent !== null && !el.disabled);
+    field?.focus({ preventScroll: true });
+  }, [activeTab]);
+
   return (
     <div className="mx-auto grid w-full max-w-[400px] gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <AuthPageHeader
@@ -65,7 +81,7 @@ export function LoginPage() {
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-2 text-sm font-semibold rounded-lg transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                 isActive
                   ? "text-primary bg-background shadow-sm border border-border/50"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                  : "text-foreground/70 hover:text-foreground hover:bg-background/50"
               }`}
             >
               <Icon
@@ -80,7 +96,7 @@ export function LoginPage() {
       </div>
 
       {/* All panels always mounted — CSS toggles visibility to preserve entered data */}
-      <div className="relative">
+      <div className="relative" ref={panelsRef}>
         <div
           id="tabpanel-login-staff"
           role="tabpanel"

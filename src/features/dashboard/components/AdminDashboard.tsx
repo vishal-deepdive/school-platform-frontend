@@ -29,7 +29,7 @@ import { Card, CardHeader, StatCard } from "@/shared/components/ui/Card";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
 import { StatCardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
-import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
 import { shortDate } from "@/features/dashboard/lib/chartTheme";
 
 const ROLE_COLORS: Record<string, string> = {

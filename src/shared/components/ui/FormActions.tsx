@@ -5,6 +5,12 @@ interface FormActionsProps {
   children: React.ReactNode;
   /** Left-side context: what will happen, what's still missing, live counts. */
   info?: React.ReactNode;
+  /**
+   * How much of the form is filled in, as a fraction of its steps. Draws a
+   * hairline fill across the top of the bar so progress is visible without
+   * scrolling back up. Pair with `FormSection`'s `step`/`complete`.
+   */
+  progress?: { done: number; total: number };
   className?: string;
 }
 
@@ -16,7 +22,12 @@ interface FormActionsProps {
  * content (`overflow-hidden`), which makes it the sticky positioning container
  * and pins the bar to the card's own bottom edge instead of the screen.
  */
-export function FormActions({ children, info, className }: FormActionsProps) {
+export function FormActions({ children, info, progress, className }: FormActionsProps) {
+  const pct =
+    progress && progress.total > 0
+      ? Math.round((Math.min(progress.done, progress.total) / progress.total) * 100)
+      : null;
+
   return (
     <div
       className={cn(
@@ -24,6 +35,21 @@ export function FormActions({ children, info, className }: FormActionsProps) {
         className,
       )}
     >
+      {pct !== null && (
+        <div
+          className="absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-xl bg-border/60"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Form completion"
+        >
+          <div
+            className="h-full rounded-r-full bg-primary transition-[width] duration-300 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      )}
       <div className="min-w-0 text-xs text-muted-foreground">{info}</div>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>

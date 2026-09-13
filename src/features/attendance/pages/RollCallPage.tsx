@@ -5,7 +5,8 @@ import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { ClassSelect, SectionSelect } from "@/shared/components/ui/ClassSelect";
+import { useSchoolClasses } from "@/shared/hooks/useSchoolClasses";
 import { usePersistedState } from "@/shared/hooks/usePersistedState";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import { isHolidayDate } from "@/features/attendance/lib/holidays";
@@ -117,8 +118,9 @@ export function RollCallPage() {
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [search, setSearch] = useState("");
 
-  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
-  const sectionOptions = className ? getSectionOptions(className) : [];
+  // Only needed to auto-pick a lone section below; the pickers themselves read
+  // the roster through ClassSelect / SectionSelect.
+  const { getSectionOptions } = useSchoolClasses();
 
   const holidays = useHolidayDates({
     session,
@@ -258,30 +260,13 @@ export function RollCallPage() {
 
       <FilterBar title="Class & date" icon={<CalendarDays className="h-4 w-4" />}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-          <Select
-            label="Class"
-            placeholder="Select class"
-            options={classNameOptions}
-            value={className}
-            disabled={!schoolId}
-            onChange={(e) => changeClass(e.target.value)}
+          <ClassSelect value={className} onChange={changeClass} disabled={!schoolId} />
+          <SectionSelect
+            className_={className}
+            value={section}
+            onChange={setSection}
+            allowFreeText
           />
-          {sectionOptions.length > 0 ? (
-            <Select
-              label="Section"
-              placeholder="Select section"
-              options={sectionOptions}
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
-            />
-          ) : (
-            <Input
-              label="Section"
-              placeholder="A"
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
-            />
-          )}
           <Input
             label="Subject (optional)"
             placeholder="Mathematics"

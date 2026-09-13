@@ -126,8 +126,10 @@ export function RolesSection() {
                     <role.icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0">
+                    {/* Wraps rather than truncates: at the 2-up phone layout
+                        "Administrators" is wider than the cell. */}
                     <span
-                      className={`block truncate text-sm font-semibold ${
+                      className={`block text-sm font-semibold leading-tight ${
                         selected ? "text-primary" : "text-foreground"
                       }`}
                     >

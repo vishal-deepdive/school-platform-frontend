@@ -28,9 +28,8 @@ import { FormSection } from "@/shared/components/ui/FormSection";
 import { Input } from "@/shared/components/ui/Input";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { Panel } from "@/shared/components/ui/Panel";
-import { Select } from "@/shared/components/ui/Select";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { ClassSelect, SectionSelect } from "@/shared/components/ui/ClassSelect";
 import type { JobStatus, JobStatusResponse } from "@/features/recording/types";
 
 const statusConfig: Record<
@@ -156,8 +155,6 @@ export function UploadRecordingPage() {
     recording_subject: "",
   });
 
-  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
-  const sectionOptions = params.class_name ? getSectionOptions(params.class_name) : [];
 
   // Clear the class picker when the active school changes (its classes differ).
   useEffect(() => {
@@ -319,6 +316,7 @@ export function UploadRecordingPage() {
 
   const showStatus = !!jobId && (!!jobStatus || deduplicated);
   const selected = file[0];
+  const classStepDone = Boolean(params.class_name);
 
   return (
     <div className="space-y-4">
@@ -326,34 +324,24 @@ export function UploadRecordingPage() {
         <Panel>
           <div className="flex flex-col gap-5">
             <FormSection
+              step={1}
+              complete={classStepDone}
               title="Which class is this for?"
               description="Used to file the notes so the right students can find them."
             >
               <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
-                <Select
-                  label="Class"
-                  placeholder="Select class"
-                  options={classNameOptions}
+                <ClassSelect
                   value={params.class_name}
+                  onChange={handleClassChange}
                   disabled={!schoolId}
-                  onChange={(e) => handleClassChange(e.target.value)}
                 />
-                {sectionOptions.length > 0 ? (
-                  <Select
-                    label="Section (optional)"
-                    placeholder="Select section"
-                    options={sectionOptions}
-                    value={params.section}
-                    onChange={(e) => setParams((p) => ({ ...p, section: e.target.value }))}
-                  />
-                ) : (
-                  <Input
-                    label="Section (optional)"
-                    placeholder="A"
-                    value={params.section}
-                    onChange={(e) => setParams((p) => ({ ...p, section: e.target.value }))}
-                  />
-                )}
+                <SectionSelect
+                  className_={params.class_name}
+                  label="Section (optional)"
+                  value={params.section}
+                  onChange={(section) => setParams((p) => ({ ...p, section }))}
+                  allowFreeText
+                />
                 <Input
                   label="Subject (optional)"
                   placeholder="Mathematics"
@@ -373,6 +361,8 @@ export function UploadRecordingPage() {
             </FormSection>
 
             <FormSection
+              step={2}
+              complete={Boolean(selected)}
               title="The recording"
               description="Large files are down-converted in your browser first, so the upload stays small."
             >
@@ -436,12 +426,19 @@ export function UploadRecordingPage() {
       </div>
 
       <FormActions
+        progress={
+          isComplete
+            ? undefined
+            : { done: (classStepDone ? 1 : 0) + (selected ? 1 : 0), total: 2 }
+        }
         info={
           isComplete
             ? "Study materials are ready below."
-            : selected
-              ? `${selected.name} · ${formatFileSize(selected.size)}`
-              : "Choose a class and a recording to get started."
+            : !classStepDone
+              ? "Step 1 — pick the class this lecture belongs to."
+              : selected
+                ? `Ready: ${selected.name} · ${formatFileSize(selected.size)}`
+                : "Step 2 — choose the recording."
         }
       >
         {isComplete && (

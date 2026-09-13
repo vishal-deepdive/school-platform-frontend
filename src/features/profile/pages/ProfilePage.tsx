@@ -1,23 +1,25 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  CheckCircle2,
-  XCircle,
+  BadgeCheck,
+  Building2,
+  CircleAlert,
+  IdCard,
+  Info,
   KeyRound,
   Mail,
+  ShieldCheck,
   Smartphone,
-  Building2,
-  Info,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { authApi } from "@/features/auth/api/auth";
-import { Card, CardHeader } from "@/shared/components/ui/Card";
-import { Button } from "@/shared/components/ui/Button";
-import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
-import { Skeleton, CardSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
+import { Panel } from "@/shared/components/ui/Panel";
+import { Skeleton, CardSkeleton } from "@/shared/components/ui/Skeleton";
+import { cn, getErrorMessage } from "@/shared/lib/utils";
 import type { UserRole } from "@/features/auth/types";
 
 const ROLE_BADGE: Record<UserRole, BadgeVariant> = {
@@ -63,11 +65,10 @@ export function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-2xl space-y-6 animate-fade-in">
-        {/* Identity card — avatar + text lines */}
+      <div className="max-w-2xl animate-fade-in space-y-5">
         <div className="rounded-xl border border-border/60 bg-card p-4 sm:p-6">
           <div className="flex items-start gap-5">
-            <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
+            <Skeleton className="h-16 w-16 shrink-0 rounded-2xl" />
             <div className="flex-1 space-y-2.5 pt-1">
               <Skeleton className="h-5 w-40" />
               <Skeleton className="h-4 w-52" />
@@ -75,9 +76,7 @@ export function ProfilePage() {
             </div>
           </div>
         </div>
-        {/* Account status card */}
         <CardSkeleton lines={4} />
-        {/* Security card */}
         <CardSkeleton lines={2} />
       </div>
     );
@@ -91,200 +90,177 @@ export function ProfilePage() {
     );
   }
 
+  // How this account signs in — shown as the first fact, because it decides
+  // what the Security card below can offer.
+  const signInMethod = user?.email
+    ? { icon: <Mail className="h-4 w-4" />, label: "Email", value: user.email }
+    : user?.mobile
+      ? { icon: <Smartphone className="h-4 w-4" />, label: "Mobile", value: user.mobile }
+      : { icon: <IdCard className="h-4 w-4" />, label: "Roll number", value: "Set by your school" };
+
   return (
-    <div className="max-w-2xl space-y-6">
-      {/* Identity */}
-      <Card padding="md">
-        <div className="flex items-start gap-5">
+    <div className="max-w-2xl space-y-5">
+      {/* Identity band */}
+      <section className="relative overflow-hidden rounded-xl border border-border/60 bg-card shadow-card">
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-20 bg-gradient-to-br from-primary/12 via-primary/5 to-transparent"
+        />
+        <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-5">
           {user?.avatar_url ? (
             <img
               src={user.avatar_url}
               alt={user.full_name ?? "User"}
-              className="h-16 w-16 shrink-0 rounded-xl object-cover ring-2 ring-border"
+              className="h-16 w-16 shrink-0 rounded-2xl object-cover ring-2 ring-background"
             />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary text-2xl font-bold ring-2 ring-border">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-2xl font-bold text-primary ring-2 ring-background">
               {avatarChar}
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2 mb-1">
-              <h2 className="text-xl font-semibold text-foreground truncate">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex flex-wrap items-center gap-2">
+              <h2 className="truncate font-display text-xl font-semibold tracking-tight text-foreground">
                 {user?.full_name ?? "—"}
               </h2>
-              {user?.role && (
-                <Badge variant={ROLE_BADGE[user.role]}>
-                  {user.role}
-                </Badge>
-              )}
+              {user?.role && <Badge variant={ROLE_BADGE[user.role]}>{user.role}</Badge>}
             </div>
-            {user?.email ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{user.email}</span>
-              </p>
-            ) : user?.mobile ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-                <Smartphone className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{user.mobile}</span>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground/70 italic">
-                No email or mobile on file
-              </p>
-            )}
-            {user?.school_id && (
-              <p className="mt-1 text-sm text-muted-foreground flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5 shrink-0" />
-                <span className="font-mono text-xs truncate">{user.school_id}</span>
-              </p>
-            )}
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <span className="shrink-0 [&_svg]:h-3.5 [&_svg]:w-3.5">
+                {signInMethod.icon}
+              </span>
+              <span className="truncate">{signInMethod.value}</span>
+            </p>
           </div>
         </div>
-      </Card>
+      </section>
 
-      {/* Account status */}
-      <Card padding="md">
-        <CardHeader title="Account Status" />
-        <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-          {user?.email ? (
-            <StatusRow
-              label="Email"
-              ok={!!user?.is_email_verified}
-              okText="Verified"
-              failText="Not verified"
+      {/* Account */}
+      <Panel
+        icon={<ShieldCheck className="h-4 w-4" />}
+        title="Account"
+        description="What this login can do, and whether it is confirmed."
+      >
+        <dl className="divide-y divide-border/50">
+          <Fact label={`${signInMethod.label} sign-in`} value={signInMethod.value} />
+          {user?.email && (
+            <Fact
+              label="Email verified"
+              value={
+                <StatusValue
+                  ok={!!user.is_email_verified}
+                  okText="Verified"
+                  failText="Not verified — check your inbox"
+                />
+              }
             />
-          ) : user?.mobile ? (
-            <StatusRow label="Mobile" ok okText="OTP verified" failText="—" />
-          ) : (
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Login
-              </p>
-              <div className="flex items-center gap-1.5">
-                <Info className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">
-                  Roll number
-                </span>
-              </div>
-            </div>
           )}
-          <StatusRow
-            label="Account"
-            ok={!!user?.is_active}
-            okText="Active"
-            failText="Suspended"
+          <Fact
+            label="Status"
+            value={
+              <StatusValue
+                ok={!!user?.is_active}
+                okText="Active"
+                failText="Suspended — contact your school"
+              />
+            }
           />
           {profile?.account_status && (
-            <div className="col-span-2 pt-1 border-t border-border/40">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                State
-              </span>
-              <p className="mt-1 text-sm text-foreground capitalize">
-                {profile.account_status.replace(/_/g, " ")}
-              </p>
-            </div>
+            <Fact
+              label="State"
+              value={<span className="capitalize">{profile.account_status.replace(/_/g, " ")}</span>}
+            />
           )}
-        </div>
-      </Card>
+          {user?.school_id && (
+            <Fact
+              label="School"
+              value={
+                <span className="flex items-center gap-1.5">
+                  <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="truncate font-mono text-xs">{user.school_id}</span>
+                </span>
+              }
+            />
+          )}
+        </dl>
+      </Panel>
 
       {/* Security */}
-      <Card padding="md">
+      <Panel icon={<KeyRound className="h-4 w-4" />} title="Security">
         {user?.email ? (
-          <>
-            <CardHeader
-              title="Security"
-              description="We'll email you a one-time code to set a new password."
-            />
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-                <KeyRound className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">Password</p>
-                {resetSent ? (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
-                    Reset instructions sent — check your inbox.
-                  </p>
-                ) : (
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    A reset link will be sent to {user.email}.
-                  </p>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">Password</p>
+              <p
+                className={cn(
+                  "mt-0.5 text-xs",
+                  resetSent
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-muted-foreground",
                 )}
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                loading={sendingReset}
-                disabled={resetSent}
-                onClick={handleChangePassword}
               >
-                {resetSent ? "Email sent" : "Change Password"}
-              </Button>
-            </div>
-          </>
-        ) : user?.role === "parent" ? (
-          <>
-            <CardHeader title="Security" />
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-                <Smartphone className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                You sign in with a one-time code sent to your mobile number —
-                there's no password to manage.
+                {resetSent
+                  ? "Reset instructions sent — check your inbox."
+                  : `We'll email a one-time code to ${user.email}.`}
               </p>
             </div>
-          </>
+            <Button
+              variant="outline"
+              size="sm"
+              loading={sendingReset}
+              disabled={resetSent}
+              onClick={handleChangePassword}
+            >
+              {resetSent ? "Email sent" : "Change password"}
+            </Button>
+          </div>
         ) : (
-          <>
-            <CardHeader title="Security" />
-            <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted">
-                <KeyRound className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Your password is set by your school. Ask your teacher or the
-                school office to reset it if you've forgotten it.
-              </p>
-            </div>
-          </>
+          <p className="flex items-start gap-2.5 text-sm text-muted-foreground">
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+            {user?.role === "parent"
+              ? "You sign in with a one-time code sent to your mobile number — there's no password to manage."
+              : "Your password is set by your school. Ask your teacher or the school office to reset it if you've forgotten it."}
+          </p>
         )}
-      </Card>
+      </Panel>
     </div>
   );
 }
 
-function StatusRow({
-  label,
+/** One label/value row in the account list. */
+function Fact({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 py-2.5 first:pt-0 last:pb-0">
+      <dt className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
+      <dd className="min-w-0 text-sm text-foreground">{value}</dd>
+    </div>
+  );
+}
+
+function StatusValue({
   ok,
   okText,
   failText,
 }: {
-  label: string;
   ok: boolean;
   okText: string;
   failText: string;
 }) {
   return (
-    <div className="space-y-1">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        {label}
-      </p>
-      <div className="flex items-center gap-1.5">
-        {ok ? (
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500" />
-        ) : (
-          <XCircle className="h-4 w-4 shrink-0 text-destructive" />
-        )}
-        <span
-          className={`text-sm font-medium ${
-            ok ? "text-green-600 dark:text-green-400" : "text-destructive"
-          }`}
-        >
-          {ok ? okText : failText}
-        </span>
-      </div>
-    </div>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 font-medium",
+        ok ? "text-emerald-600 dark:text-emerald-400" : "text-destructive",
+      )}
+    >
+      {ok ? (
+        <BadgeCheck className="h-4 w-4 shrink-0" />
+      ) : (
+        <CircleAlert className="h-4 w-4 shrink-0" />
+      )}
+      {ok ? okText : failText}
+    </span>
   );
 }

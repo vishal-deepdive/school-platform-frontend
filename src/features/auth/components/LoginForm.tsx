@@ -89,7 +89,7 @@ export function LoginForm({
             />
             <Link
               to="/forgot-password"
-              className="self-end text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
+              className="inline-flex min-h-9 items-center self-end rounded px-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               Forgot password?
             </Link>

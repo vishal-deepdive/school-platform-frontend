@@ -1,14 +1,14 @@
 import { useRef } from "react";
 import { cn } from "@/shared/lib/utils";
 
-export interface SegmentOption<T extends string> {
+export interface SegmentOption<T extends string | number> {
   value: T;
   label: string;
   icon?: React.ReactNode;
   count?: number;
 }
 
-interface SegmentedControlProps<T extends string> {
+interface SegmentedControlProps<T extends string | number> {
   options: SegmentOption<T>[];
   value: T;
   onChange: (value: T) => void;
@@ -20,9 +20,10 @@ interface SegmentedControlProps<T extends string> {
 
 /**
  * Small pill switch for flipping between views of the same data (e.g.
- * Browse / All chapters). Sized to sit in the module header's leading slot.
+ * Browse / All chapters, or a chart's 14d/30d window). Sized to sit in the
+ * module header's leading slot, a panel header, or a filter toolbar.
  */
-export function SegmentedControl<T extends string>({
+export function SegmentedControl<T extends string | number>({
   options,
   value,
   onChange,
@@ -56,7 +57,7 @@ export function SegmentedControl<T extends string>({
         const active = option.value === value;
         return (
           <button
-            key={option.value}
+            key={String(option.value)}
             ref={(el) => {
               refs.current[i] = el;
             }}

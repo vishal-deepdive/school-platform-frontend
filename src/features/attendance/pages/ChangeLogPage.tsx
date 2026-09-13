@@ -4,7 +4,7 @@ import { Download, History } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { ClassSelect, SectionSelect } from "@/shared/components/ui/ClassSelect";
 import { useUrlSearch, useUrlState } from "@/shared/hooks/useUrlState";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
@@ -12,7 +12,6 @@ import { Button } from "@/shared/components/ui/Button";
 import { DatePicker } from "@/shared/components/ui/DatePicker";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { FilterToolbar } from "@/shared/components/ui/FilterToolbar";
-import { Input } from "@/shared/components/ui/Input";
 import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { Panel } from "@/shared/components/ui/Panel";
@@ -60,19 +59,12 @@ const URL_DEFAULTS: {
 } = { class: "", section: "", roll: "", type: "", from: "", to: "", page: 1 };
 
 export function ChangeLogPage() {
-  const { schoolId, schoolName, isAdmin, schoolParam } = useActiveSchool();
-  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
-
+  const { schoolName, isAdmin, schoolParam } = useActiveSchool();
   const [state, update] = useUrlState(URL_DEFAULTS);
   const page = Math.max(1, state.page);
   const [roll, setRoll] = useUrlSearch(state.roll, (v) => update({ roll: v }));
-  const [classText, setClassText] = useUrlSearch(state.class, (v) =>
-    update({ class: v, section: "" }),
-  );
   const [sectionText, setSectionText] = useUrlSearch(state.section, (v) => update({ section: v }));
 
-  const sectionOptions = state.class ? getSectionOptions(state.class) : [];
-  const hasClassConfig = classNameOptions.length > 0;
   const canSearch = !isAdmin || !!schoolName;
 
   const params: Record<string, string> = {
@@ -114,7 +106,6 @@ export function ChangeLogPage() {
   );
   const clearFilters = () => {
     setRoll("");
-    setClassText("");
     setSectionText("");
     update({ class: "", section: "", roll: "", type: "", from: "", to: "" });
   };
@@ -177,39 +168,22 @@ export function ChangeLogPage() {
           className="w-full sm:w-44"
         />
         <div className="w-[calc(50%-0.25rem)] sm:w-36">
-          {hasClassConfig ? (
-            <Select
-              aria-label="Class"
-              options={[{ value: "", label: "All classes" }, ...classNameOptions]}
-              value={state.class}
-              onChange={(e) => update({ class: e.target.value, section: "" })}
-            />
-          ) : (
-            <Input
-              aria-label="Class"
-              placeholder="Class"
-              value={classText}
-              onChange={(e) => setClassText(e.target.value)}
-            />
-          )}
+          <ClassSelect
+            label={undefined}
+            allOptionLabel="All classes"
+            value={state.class}
+            onChange={(value) => update({ class: value, section: "" })}
+          />
         </div>
         <div className="w-[calc(50%-0.25rem)] sm:w-32">
-          {hasClassConfig ? (
-            <Select
-              aria-label="Section"
-              options={[{ value: "", label: "All sections" }, ...sectionOptions]}
-              value={state.section}
-              disabled={!state.class}
-              onChange={(e) => update({ section: e.target.value })}
-            />
-          ) : (
-            <Input
-              aria-label="Section"
-              placeholder="Section"
-              value={sectionText}
-              onChange={(e) => setSectionText(e.target.value)}
-            />
-          )}
+          <SectionSelect
+            className_={state.class}
+            label={undefined}
+            allOptionLabel="All sections"
+            value={sectionText}
+            onChange={setSectionText}
+            allowFreeText
+          />
         </div>
         <div className="w-full sm:w-44">
           <Select

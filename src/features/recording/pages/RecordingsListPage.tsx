@@ -19,7 +19,7 @@ import { Select } from "@/shared/components/ui/Select";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
 import { StatLine } from "@/shared/components/ui/StatLine";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { ClassSelect, SectionSelect } from "@/shared/components/ui/ClassSelect";
 import { useUrlSearch, useUrlState } from "@/shared/hooks/useUrlState";
 import { useMyChildren } from "@/features/attendance/hooks/useMyChildren";
 import { ChildSelector } from "@/features/attendance/components/ChildSelector";
@@ -74,9 +74,6 @@ export function RecordingsListPage() {
   // Free-text filters are typed locally and committed to the URL once typing pauses.
   const [topic, setTopic] = useUrlSearch(state.topic, (v) => update({ topic: v }));
   const [subject, setSubject] = useUrlSearch(state.subject, (v) => update({ subject: v }));
-  const [classText, setClassText] = useUrlSearch(state.class, (v) =>
-    update({ class: v, section: "" }),
-  );
   const [sectionText, setSectionText] = useUrlSearch(state.section, (v) =>
     update({ section: v }),
   );
@@ -85,9 +82,6 @@ export function RecordingsListPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
 
-  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
-  const sectionOptions = state.class ? getSectionOptions(state.class) : [];
-  const hasClassConfig = classNameOptions.length > 0;
 
   // Class/section belong to the previously active school.
   const lastSchool = useRef(schoolId);
@@ -168,7 +162,6 @@ export function RecordingsListPage() {
   const clearFilters = () => {
     setTopic("");
     setSubject("");
-    setClassText("");
     setSectionText("");
     update({ class: "", section: "", subject: "", topic: "", date: "", sort: DEFAULT_SORT });
   };
@@ -233,39 +226,22 @@ export function RecordingsListPage() {
           className="w-full sm:w-60"
         />
         <div className="w-[calc(50%-0.25rem)] sm:w-36">
-          {hasClassConfig ? (
-            <Select
-              aria-label="Class"
-              options={[{ value: "", label: "All classes" }, ...classNameOptions]}
-              value={state.class}
-              onChange={(e) => update({ class: e.target.value, section: "" })}
-            />
-          ) : (
-            <Input
-              aria-label="Class"
-              placeholder="Class"
-              value={classText}
-              onChange={(e) => setClassText(e.target.value)}
-            />
-          )}
+          <ClassSelect
+            label={undefined}
+            allOptionLabel="All classes"
+            value={state.class}
+            onChange={(value) => update({ class: value, section: "" })}
+          />
         </div>
         <div className="w-[calc(50%-0.25rem)] sm:w-32">
-          {hasClassConfig ? (
-            <Select
-              aria-label="Section"
-              options={[{ value: "", label: "All sections" }, ...sectionOptions]}
-              value={state.section}
-              disabled={!state.class}
-              onChange={(e) => update({ section: e.target.value })}
-            />
-          ) : (
-            <Input
-              aria-label="Section"
-              placeholder="Section"
-              value={sectionText}
-              onChange={(e) => setSectionText(e.target.value)}
-            />
-          )}
+          <SectionSelect
+            className_={state.class}
+            label={undefined}
+            allOptionLabel="All sections"
+            value={sectionText}
+            onChange={setSectionText}
+            allowFreeText
+          />
         </div>
         <div className="w-full sm:w-48">
           <Select

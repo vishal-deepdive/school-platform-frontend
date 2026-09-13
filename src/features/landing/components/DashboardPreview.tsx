@@ -100,6 +100,7 @@ const KPIS = [
   {
     icon: Users,
     label: "Total Students",
+    shortLabel: "Students",
     value: 1248,
     suffix: "",
     decimals: 0,
@@ -108,6 +109,7 @@ const KPIS = [
   {
     icon: CalendarCheck2,
     label: "Attendance Today",
+    shortLabel: "Attendance",
     value: 96.4,
     suffix: "%",
     decimals: 1,
@@ -116,6 +118,7 @@ const KPIS = [
   {
     icon: Video,
     label: "Lectures Recorded",
+    shortLabel: "Lectures",
     value: 312,
     suffix: "",
     decimals: 0,
@@ -263,7 +266,10 @@ export function DashboardPreview() {
               >
                 <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground sm:text-xs">
                   <kpi.icon className="hidden h-3.5 w-3.5 sm:block" />
-                  <span className="truncate">{kpi.label}</span>
+                  {/* Three cards across a phone leave ~70px per label, which
+                      ellipsised every one of them ("Attendanc…"). */}
+                  <span className="truncate sm:hidden">{kpi.shortLabel}</span>
+                  <span className="hidden truncate sm:inline">{kpi.label}</span>
                 </div>
                 <div className="mt-1.5 text-lg font-semibold tracking-tight text-card-foreground sm:text-2xl">
                   <CountUp
@@ -272,7 +278,8 @@ export function DashboardPreview() {
                     decimals={kpi.decimals}
                   />
                 </div>
-                <div className="mt-0.5 truncate text-[10px] font-medium text-emerald-600 sm:text-[11px]">
+                {/* The delta never fits beside two siblings on a phone. */}
+                <div className="mt-0.5 hidden truncate text-[10px] font-medium text-emerald-700 dark:text-emerald-400 sm:block sm:text-[11px]">
                   {kpi.delta}
                 </div>
               </div>
@@ -286,7 +293,7 @@ export function DashboardPreview() {
                 <span className="text-xs font-semibold text-card-foreground">
                   Attendance — last 7 days
                 </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
                   <ArrowUpRight className="h-3 w-3" />
                   2.1%
                 </span>

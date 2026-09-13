@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { cn } from "@/shared/lib/utils";
 import type { StatCardColor } from "./Card";
 import { Skeleton } from "./Skeleton";
@@ -10,6 +11,8 @@ export interface KpiItem {
   icon?: React.ReactNode;
   /** Tints the icon only; hue is reserved for status meaning. */
   tone?: StatCardColor;
+  /** Makes the cell a link to the page that explains the number. */
+  to?: string;
 }
 
 const TONE: Record<StatCardColor, string> = {
@@ -51,44 +54,56 @@ export function KpiStrip({ items, loading, className }: KpiStripProps) {
         className,
       )}
     >
-      {items.map((item, i) => (
-        <div
-          key={item.label}
-          className={cn(
-            "min-w-0 bg-card px-4 py-3 md:px-5",
-            oddOnPhones && i === items.length - 1 && "col-span-2 sm:col-span-1",
-          )}
-        >
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            {item.icon && (
-              <span
-                className={cn(
-                  "flex [&_svg]:h-3.5 [&_svg]:w-3.5",
-                  TONE[item.tone ?? "primary"],
-                )}
-              >
-                {item.icon}
-              </span>
-            )}
-            <span className="truncate">{item.label}</span>
-          </div>
-          {loading ? (
-            <>
-              <Skeleton className="mt-2 h-7 w-16" />
-              {item.hint !== undefined && <Skeleton className="mt-1.5 h-3 w-24" />}
-            </>
-          ) : (
-            <>
-              <p className="mt-1 font-display text-2xl font-semibold tracking-tight tabular-nums text-foreground">
-                {item.value}
-              </p>
-              {item.hint && (
-                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{item.hint}</p>
+      {items.map((item, i) => {
+        const cellClass = cn(
+          "min-w-0 bg-card px-4 py-3 md:px-5",
+          oddOnPhones && i === items.length - 1 && "col-span-2 sm:col-span-1",
+          item.to &&
+            "transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
+        );
+        const body = (
+          <>
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              {item.icon && (
+                <span
+                  className={cn(
+                    "flex [&_svg]:h-3.5 [&_svg]:w-3.5",
+                    TONE[item.tone ?? "primary"],
+                  )}
+                >
+                  {item.icon}
+                </span>
               )}
-            </>
-          )}
-        </div>
-      ))}
+              <span className="truncate">{item.label}</span>
+            </div>
+            {loading ? (
+              <>
+                <Skeleton className="mt-2 h-7 w-16" />
+                {item.hint !== undefined && <Skeleton className="mt-1.5 h-3 w-24" />}
+              </>
+            ) : (
+              <>
+                <p className="mt-1 font-display text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                  {item.value}
+                </p>
+                {item.hint && (
+                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{item.hint}</p>
+                )}
+              </>
+            )}
+          </>
+        );
+
+        return item.to ? (
+          <Link key={item.label} to={item.to} className={cn("block", cellClass)}>
+            {body}
+          </Link>
+        ) : (
+          <div key={item.label} className={cellClass}>
+            {body}
+          </div>
+        );
+      })}
     </div>
   );
 }

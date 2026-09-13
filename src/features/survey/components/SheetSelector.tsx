@@ -106,14 +106,21 @@ export function SheetSelector({
         Sheets to search
       </label>
 
-      <div
+      <button
+        type="button"
+        disabled={disabled}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
         onClick={() => !disabled && setIsOpen((o) => !o)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setIsOpen(false);
+        }}
         className={cn(
-          "flex min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-1.5 cursor-pointer",
-          "text-sm text-foreground shadow-sm transition-all duration-200 select-none",
-          "hover:border-primary/50",
-          isOpen && "ring-2 ring-primary/20 border-primary",
-          disabled && "opacity-50 cursor-not-allowed hover:border-input",
+          "flex min-h-10 w-full cursor-pointer items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-1.5 text-left",
+          "select-none text-sm text-foreground shadow-sm transition-all duration-200",
+          "hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+          isOpen && "border-primary ring-2 ring-primary/20",
+          disabled && "cursor-not-allowed opacity-50 hover:border-input",
         )}
       >
         <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1 py-0.5">
@@ -140,7 +147,7 @@ export function SheetSelector({
             isOpen && "rotate-180",
           )}
         />
-      </div>
+      </button>
 
       {isOpen && (
         <div className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 flex flex-col max-h-72 overflow-hidden">
@@ -202,7 +209,8 @@ function OptionRow({
   emphasized?: boolean;
 }) {
   return (
-    <div
+    <button
+      type="button"
       role="checkbox"
       aria-checked={checked}
       onClick={(e) => {
@@ -210,8 +218,8 @@ function OptionRow({
         onClick();
       }}
       className={cn(
-        "relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-sm py-2 px-2.5 text-sm outline-none transition-colors",
-        "hover:bg-accent hover:text-accent-foreground",
+        "relative flex w-full cursor-pointer select-none items-center gap-2.5 rounded-sm px-2.5 py-2 text-left text-sm outline-none transition-colors",
+        "hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground",
       )}
     >
       <span
@@ -229,11 +237,9 @@ function OptionRow({
           {label}
         </span>
         {sublabel && (
-          <span className="text-xs text-muted-foreground truncate">
-            {sublabel}
-          </span>
+          <span className="truncate text-xs text-muted-foreground">{sublabel}</span>
         )}
       </span>
-    </div>
+    </button>
   );
 }

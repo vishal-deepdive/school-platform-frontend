@@ -1,13 +1,18 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   BarChart2,
+  BookOpen,
   Database,
   Download,
   FileSpreadsheet,
   Inbox,
   Layers,
   Loader2,
+  MessagesSquare,
+  Smile,
+  ThumbsUp,
   Users,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
@@ -15,11 +20,23 @@ import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { useUrlState } from "@/shared/hooks/useUrlState";
 import { surveyApi, surveyKeys } from "@/features/survey/api/survey";
 import { useSyncJobPolling } from "@/features/survey/hooks/useSyncJobPolling";
-import type { SourceItem } from "@/features/survey/types";
+import {
+  CountBarChart,
+  RecommendationSpread,
+  SatisfactionByArea,
+  SatisfactionByClass,
+  SuppressedNote,
+  ToughestSubjects,
+  TrendDelta,
+} from "@/features/survey/components/analytics";
+import { TopThemesPanel } from "@/features/survey/components/TopThemesPanel";
+import type { SourceItem, SurveyStatusResponse } from "@/features/survey/types";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Button } from "@/shared/components/ui/Button";
+import { CollapsibleSection } from "@/shared/components/ui/CollapsibleSection";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { KpiStrip, type KpiItem } from "@/shared/components/ui/KpiStrip";
 import {
@@ -28,80 +45,61 @@ import {
 } from "@/shared/components/ui/ModuleHeaderActions";
 import { Panel } from "@/shared/components/ui/Panel";
 import { RefreshButton } from "@/shared/components/ui/RefreshButton";
-import { CardSkeleton } from "@/shared/components/ui/Skeleton";
-
-interface RankedRow {
-  label: string;
-  count: number;
-}
-
-/**
- * Ranked horizontal proportion bars — reads a list of {label, count} rows as a
- * magnitude comparison rather than a flat badge list, so the biggest
- * contributors stand out at a glance. Bars are normalized to the largest row.
- */
-function ResponseBars({ rows, limit = 8 }: { rows: RankedRow[]; limit?: number }) {
-  const sorted = [...rows].sort((a, b) => b.count - a.count);
-  const shown = sorted.slice(0, limit);
-  const hidden = sorted.length - shown.length;
-  const max = Math.max(1, ...shown.map((r) => r.count));
-
-  return (
-    <div className="px-4 py-4 md:px-5">
-      <ul className="space-y-3">
-        {shown.map((r) => (
-          <li key={r.label}>
-            <div className="mb-1 flex items-center justify-between gap-3">
-              <p className="min-w-0 truncate text-sm text-foreground">{r.label}</p>
-              <span className="shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">
-                {r.count.toLocaleString()}
-              </span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-[width] duration-500 ease-out"
-                style={{ width: `${Math.round((r.count / max) * 100)}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-      {hidden > 0 && <p className="mt-3 text-xs text-muted-foreground">+{hidden} more not shown</p>}
-    </div>
-  );
-}
+import { Select } from "@/shared/components/ui/Select";
+import { CardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
 
 const KPI_PLACEHOLDERS: KpiItem[] = [
   { label: "Responses", value: null, icon: <Users /> },
-  { label: "Schools", value: null, icon: <BarChart2 /> },
-  { label: "Classes", value: null, icon: <Layers /> },
-  { label: "Active sheets", value: null, icon: <FileSpreadsheet /> },
+  { label: "Overall satisfied", value: null, icon: <Smile /> },
+  { label: "Would recommend", value: null, icon: <ThumbsUp /> },
+  { label: "Avg. recommendation", value: null, icon: <ThumbsUp /> },
 ];
 
+const URL_DEFAULTS = { cycle: "all" };
+
+/**
+ * Feedback Insights — what students actually said.
+ *
+ * This page used to report only plumbing (row counts, sheet counts, indexing
+ * coverage) while the satisfaction analytics lived in a collapsed section of
+ * the main dashboard. The feedback is the headline here; the pipeline health
+ * moved to a fold-away section at the bottom, where it belongs.
+ */
 export function SurveyDashboardPage() {
   const qc = useQueryClient();
   const role = useAuthStore((s) => s.user?.role);
   // Admins scope to the active school; with none selected they see the
   // cross-school aggregate. Staff are scoped to their own school server-side.
-  const { schoolId, schoolParam } = useActiveSchool();
+  const { schoolId, schoolName, schoolParam } = useActiveSchool();
   const canSync = isSchoolAdmin(role);
   const { job: syncJob, isGenerating: embeddingsGenerating, track: trackSyncJob } =
     useSyncJobPolling();
 
+  const [urlState, updateUrl] = useUrlState(URL_DEFAULTS);
+  const cycle = urlState.cycle;
+
   const {
-    data,
+    data: analytics,
     isLoading,
     isError,
-    error: statusError,
+    error: analyticsError,
     refetch,
     isFetching,
   } = useQuery({
+    queryKey: ["survey", "analytics", schoolId ?? "platform", cycle],
+    queryFn: () =>
+      surveyApi.getAnalytics(schoolParam.school_name, cycle === "all" ? undefined : cycle),
+    staleTime: 5 * 60_000,
+  });
+
+  // Pipeline health — secondary on this page, so it never blocks the headline.
+  const { data: status } = useQuery({
     queryKey: surveyKeys.status(schoolId),
     queryFn: () => surveyApi.getStatus(schoolParam.school_name),
     staleTime: 2 * 60_000,
   });
 
-  // Fetch sources list for the sync-all button (admin/principal only).
   const { data: sourcesData } = useQuery({
     queryKey: surveyKeys.sources(schoolId),
     queryFn: () => surveyApi.getSources(schoolParam.school_name),
@@ -175,20 +173,48 @@ export function SurveyDashboardPage() {
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
+  // Only offer the cycle filter when there is more than one term to compare.
+  const cycleOptions = useMemo(() => {
+    const cycles = analytics?.cycles ?? [];
+    if (cycles.length < 2) return null;
+    return [
+      { value: "all", label: "All cycles" },
+      ...cycles
+        .slice()
+        .reverse()
+        .map((c) => ({
+          value: c.cycle,
+          label: c.cycle === "default" ? "Default" : c.cycle,
+        })),
+    ];
+  }, [analytics?.cycles]);
+
   const header = (
     <>
-      {data?.timestamp && (
-        <ModuleHeaderLeading>
-          <span className="hidden truncate text-xs text-muted-foreground md:inline">
-            Updated {formatDateTime(data.timestamp)}
-          </span>
-        </ModuleHeaderLeading>
-      )}
+      <ModuleHeaderLeading>
+        <div className="flex items-center gap-3">
+          {cycleOptions && (
+            <div className="w-36 sm:w-44">
+              <Select
+                options={cycleOptions}
+                value={cycle}
+                onChange={(e) => updateUrl({ cycle: e.target.value }, { push: true })}
+                aria-label="Survey cycle"
+              />
+            </div>
+          )}
+          {status?.timestamp && (
+            <span className="hidden truncate text-xs text-muted-foreground lg:inline">
+              Updated {formatDateTime(status.timestamp)}
+            </span>
+          )}
+        </div>
+      </ModuleHeaderLeading>
       <ModuleHeaderActions>
         <RefreshButton
           onClick={() => void refetch()}
           refreshing={isFetching && !isLoading}
-          label="Refresh overview"
+          label="Refresh insights"
         />
         {canSync && (
           <Button
@@ -207,9 +233,13 @@ export function SurveyDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6" aria-hidden="true">
+      <div className="space-y-6">
         {header}
-        <KpiStrip loading items={canSync ? KPI_PLACEHOLDERS : KPI_PLACEHOLDERS.slice(0, 3)} />
+        <KpiStrip loading items={KPI_PLACEHOLDERS} />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <ChartSkeleton className="lg:col-span-2" />
+          <ChartSkeleton />
+        </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <CardSkeleton lines={6} />
           <CardSkeleton lines={6} />
@@ -217,49 +247,114 @@ export function SurveyDashboardPage() {
       </div>
     );
   }
-  if (isError) {
+
+  if (isError || !analytics) {
     return (
       <div className="space-y-6">
         {header}
-        <Alert variant="error">{getErrorMessage(statusError) || "Failed to load survey status."}</Alert>
+        <Alert variant="error">
+          {getErrorMessage(analyticsError) || "Failed to load feedback insights."}
+        </Alert>
       </div>
     );
   }
 
-  const totalRecords = data?.total_records ?? 0;
-  const embeddingFields = Object.entries(data?.embeddings ?? {});
-  const hasData = totalRecords > 0;
-  const bySchool = (data?.by_school ?? []).map((s) => {
-    const school = s as Record<string, unknown>;
-    return { label: String(school.school_name ?? "—"), count: Number(school.count ?? 0) };
-  });
-  const byClass = (data?.by_class ?? []).map((c) => {
-    const cls = c as Record<string, unknown>;
-    return {
-      label: String(cls.class ?? cls.class_name ?? "").trim() || "Unknown class",
-      count: Number(cls.count ?? 0),
-    };
-  });
-  // One school's bar is just the total again — only compare when there are several.
-  const showSchools = bySchool.length > 1;
+  const rec = analytics.recommendation;
+  const overall = analytics.overall_satisfaction;
+  const overallRated = overall.positive + overall.neutral + overall.negative;
+  const overallPct =
+    !overall.suppressed && overallRated > 0
+      ? Math.round((overall.positive / overallRated) * 100)
+      : null;
+  const trend = analytics.trend;
+
+  const dimensions = analytics.dimensions.filter((d) => d.total > 0 && !d.suppressed);
+  const suppressedDimensions = analytics.dimensions.filter((d) => d.suppressed);
+  const dimTrendByKey = new Map((trend?.dimensions ?? []).map((d) => [d.key, d]));
+  const visibleClasses = analytics.by_class.filter((c) => !c.suppressed);
+  const suppressedClassCount = analytics.by_class.length - visibleClasses.length;
 
   const kpis: KpiItem[] = [
-    { label: "Responses", value: totalRecords.toLocaleString(), icon: <Users /> },
-    { label: "Schools", value: bySchool.length, icon: <BarChart2 /> },
-    { label: "Classes", value: byClass.length, icon: <Layers /> },
-  ];
-  if (canSync) {
-    kpis.push({
-      label: "Active sheets",
-      value: activeSources.length,
-      icon: <FileSpreadsheet />,
+    {
+      label: "Responses",
+      value: analytics.total_responses.toLocaleString(),
+      icon: <Users />,
       hint: (
-        <Link to="/survey/source" className="hover:text-foreground hover:underline">
-          Manage connections
-        </Link>
+        <span className="inline-flex items-center gap-1.5">
+          {`from ${analytics.responded_classes} ${analytics.responded_classes === 1 ? "class" : "classes"}`}
+          {trend && (
+            <TrendDelta
+              delta={trend.total_responses_current - trend.total_responses_previous}
+              suffix=""
+              title={`vs ${trend.previous_cycle}`}
+            />
+          )}
+        </span>
       ),
-    });
-  }
+    },
+    {
+      label: "Overall satisfied",
+      value: overallPct != null ? `${overallPct}%` : "—",
+      icon: <Smile />,
+      tone:
+        overallPct == null
+          ? "primary"
+          : overallPct >= 75
+            ? "success"
+            : overallPct >= 50
+              ? "warning"
+              : "danger",
+      hint: (
+        <span className="inline-flex items-center gap-1.5">
+          rate teaching positively
+          {trend &&
+            trend.overall_positive_pct_current != null &&
+            trend.overall_positive_pct_previous != null && (
+              <TrendDelta
+                delta={
+                  trend.overall_positive_pct_current - trend.overall_positive_pct_previous
+                }
+                title={`vs ${trend.previous_cycle}`}
+              />
+            )}
+        </span>
+      ),
+    },
+    {
+      label: "Would recommend",
+      value: rec.promoters_pct != null ? `${rec.promoters_pct}%` : "—",
+      icon: <ThumbsUp />,
+      tone: "success",
+      hint: rec.detractors_pct != null ? `${rec.detractors_pct}% would not` : undefined,
+    },
+    {
+      label: "Avg. recommendation",
+      value: rec.average != null ? rec.average.toFixed(1) : "—",
+      icon: <ThumbsUp />,
+      tone: "info",
+      hint: (
+        <span className="inline-flex items-center gap-1.5">
+          out of 5
+          {trend &&
+            trend.recommendation_avg_current != null &&
+            trend.recommendation_avg_previous != null && (
+              <TrendDelta
+                delta={
+                  Math.round(
+                    (trend.recommendation_avg_current - trend.recommendation_avg_previous) *
+                      10,
+                  ) / 10
+                }
+                suffix=""
+                title={`vs ${trend.previous_cycle}`}
+              />
+            )}
+        </span>
+      ),
+    },
+  ];
+
+  const hasResponses = analytics.total_responses > 0;
 
   return (
     <div className="space-y-6">
@@ -277,9 +372,7 @@ export function SurveyDashboardPage() {
         </Alert>
       )}
 
-      <KpiStrip items={kpis} />
-
-      {!hasData && (
+      {!hasResponses ? (
         <EmptyState
           icon={<Inbox className="h-12 w-12" />}
           title="No survey responses yet"
@@ -309,53 +402,182 @@ export function SurveyDashboardPage() {
             ) : undefined
           }
         />
+      ) : (
+        <>
+          {trend && (
+            <StatLine
+              items={[
+                { label: `Comparing ${trend.current_cycle} to ${trend.previous_cycle}` },
+                {
+                  value: `${trend.total_responses_previous} → ${trend.total_responses_current}`,
+                  label: "responses",
+                },
+              ]}
+            />
+          )}
+
+          <KpiStrip items={kpis} />
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <Panel
+              className="lg:col-span-2"
+              icon={<BarChart2 className="h-4 w-4" />}
+              title="Satisfaction by area"
+              description="Share of positive responses per topic"
+            >
+              <SatisfactionByArea dimensions={dimensions} trendByKey={dimTrendByKey} />
+              <SuppressedNote
+                count={suppressedDimensions.length}
+                noun="area"
+                names={suppressedDimensions.map((d) => d.label)}
+              />
+            </Panel>
+
+            <Panel
+              icon={<ThumbsUp className="h-4 w-4" />}
+              title="Recommendation spread"
+              description="Responses by score (1–5)"
+            >
+              <RecommendationSpread recommendation={rec} />
+            </Panel>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <Panel
+              icon={<Layers className="h-4 w-4" />}
+              title="Satisfaction by class"
+              description="% rating teaching positively"
+            >
+              <SatisfactionByClass classes={visibleClasses} />
+              <SuppressedNote count={suppressedClassCount} noun="class" />
+            </Panel>
+
+            <Panel
+              icon={<BookOpen className="h-4 w-4" />}
+              title="Toughest subjects"
+              description="Most-cited by students"
+            >
+              <ToughestSubjects subjects={analytics.toughest_subjects} />
+            </Panel>
+          </div>
+
+          <TopThemesPanel schoolName={schoolName} />
+        </>
       )}
 
-      {(showSchools || byClass.length > 0) && (
-        <div className={showSchools ? "grid grid-cols-1 gap-6 lg:grid-cols-2" : undefined}>
-          {showSchools && (
-            <Panel flush title="Responses by school" icon={<BarChart2 className="h-4 w-4" />}>
-              <ResponseBars rows={bySchool} />
-            </Panel>
-          )}
-          {byClass.length > 0 && (
-            <Panel flush title="Responses by class" icon={<Layers className="h-4 w-4" />}>
-              <ResponseBars rows={byClass} limit={showSchools ? 8 : 12} />
-            </Panel>
-          )}
-        </div>
-      )}
-
-      {embeddingFields.length > 0 && hasData && (
-        <Panel
-          flush
-          title="AI search coverage"
-          description="Responses indexed for Ask Insights"
-          icon={<Database className="h-4 w-4" />}
-        >
-          <ul className="divide-y divide-border/50">
-            {embeddingFields.map(([field, count]) => {
-              const n = Number(count) || 0;
-              const pct = Math.min(100, Math.round((n / Math.max(1, totalRecords)) * 100));
-              return (
-                <li key={field} className="px-4 py-3 md:px-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-sm capitalize text-foreground">
-                      {field.replace(/_/g, " ")}
-                    </p>
-                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                      {n.toLocaleString()} · {pct}%
-                    </span>
-                  </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </Panel>
-      )}
+      <DataHealthSection
+        status={status}
+        activeSourceCount={canSync ? activeSources.length : null}
+      />
     </div>
+  );
+}
+
+/**
+ * Pipeline health: how much raw data is loaded and how much of it the AI search
+ * can actually see. Useful when something looks wrong, irrelevant the rest of
+ * the time — hence folded away under the feedback itself.
+ */
+function DataHealthSection({
+  status,
+  activeSourceCount,
+}: {
+  status: SurveyStatusResponse | undefined;
+  activeSourceCount: number | null;
+}) {
+  if (!status) return null;
+
+  const totalRecords = status.total_records ?? 0;
+  const embeddingFields = Object.entries(status.embeddings ?? {});
+  const bySchool = (status.by_school ?? []).map((s) => {
+    const school = s as Record<string, unknown>;
+    return { label: String(school.school_name ?? "—"), count: Number(school.count ?? 0) };
+  });
+
+  return (
+    <CollapsibleSection
+      id="survey-data-health"
+      title="Data health"
+      description="Stored responses and AI-search coverage"
+      defaultOpen={false}
+    >
+      <div className="space-y-4">
+        <StatLine
+          items={[
+            { value: totalRecords, label: "stored responses" },
+            { value: bySchool.length, label: "schools", hidden: bySchool.length < 2 },
+            {
+              value: activeSourceCount ?? 0,
+              label: "active sheets",
+              hidden: activeSourceCount === null,
+            },
+          ]}
+        />
+
+        {/* Only meaningful cross-school: one school's bar is the total again. */}
+        {bySchool.length > 1 && (
+          <Panel
+            icon={<BarChart2 className="h-4 w-4" />}
+            title="Responses by school"
+            description="Where the stored feedback came from"
+          >
+            <CountBarChart rows={bySchool} unit="Responses" />
+          </Panel>
+        )}
+
+        {embeddingFields.length > 0 && totalRecords > 0 && (
+          <Panel
+            flush
+            icon={<Database className="h-4 w-4" />}
+            title="AI search coverage"
+            description="Responses indexed for Ask Insights"
+          >
+            <ul className="divide-y divide-border/50">
+              {embeddingFields.map(([field, count]) => {
+                const n = Number(count) || 0;
+                const pct = Math.min(100, Math.round((n / Math.max(1, totalRecords)) * 100));
+                return (
+                  <li key={field} className="px-4 py-3 md:px-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="truncate text-sm capitalize text-foreground">
+                        {field.replace(/_/g, " ")}
+                      </p>
+                      <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                        {n.toLocaleString()} · {pct}%
+                      </span>
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </Panel>
+        )}
+
+        {activeSourceCount !== null && (
+          <p className="text-xs text-muted-foreground">
+            <Link
+              to="/survey/source"
+              className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+            >
+              <FileSpreadsheet className="h-3 w-3" />
+              Manage sheet connections
+            </Link>
+          </p>
+        )}
+
+        {totalRecords === 0 && (
+          <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <MessagesSquare className="h-3.5 w-3.5" />
+            Nothing stored yet.
+          </p>
+        )}
+      </div>
+    </CollapsibleSection>
   );
 }

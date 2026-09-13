@@ -42,6 +42,7 @@ import { Input } from "@/shared/components/ui/Input";
 import { Modal } from "@/shared/components/ui/Modal";
 import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Panel } from "@/shared/components/ui/Panel";
+import { RefreshButton } from "@/shared/components/ui/RefreshButton";
 import { Select } from "@/shared/components/ui/Select";
 import { ListSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
 import { StatLine } from "@/shared/components/ui/StatLine";
@@ -862,7 +863,12 @@ export function SurveySourcePage() {
   const [syncWarnings, setSyncWarnings] = useState<Record<string, SyncWarning>>({});
   const { track: trackSyncJob } = useSyncJobPolling();
 
-  const { data: sourcesData, isLoading } = useQuery({
+  const {
+    data: sourcesData,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
     queryKey: surveyKeys.sources(schoolId),
     queryFn: () => surveyApi.getSources(schoolParam),
     enabled: ready,
@@ -974,11 +980,22 @@ export function SurveySourcePage() {
 
   return (
     <div className="space-y-4">
-      {canManage && ready && (
+      {ready && (
         <ModuleHeaderActions>
-          <Button size="sm" onClick={() => setWizardOpen(true)} icon={<Plus className="h-4 w-4" />}>
-            Connect<span className="hidden sm:inline">&nbsp;a sheet</span>
-          </Button>
+          <RefreshButton
+            onClick={() => void refetch()}
+            refreshing={isFetching && !isLoading}
+            label="Refresh sheets"
+          />
+          {canManage && (
+            <Button
+              size="sm"
+              onClick={() => setWizardOpen(true)}
+              icon={<Plus className="h-4 w-4" />}
+            >
+              Connect<span className="hidden sm:inline">&nbsp;a sheet</span>
+            </Button>
+          )}
         </ModuleHeaderActions>
       )}
 
@@ -1035,7 +1052,12 @@ export function SurveySourcePage() {
               />
 
               {activeSources.length > 0 && (
-                <Panel flush>
+                <Panel
+                  flush
+                  icon={<FileSpreadsheet className="h-4 w-4" />}
+                  title="Connected sheets"
+                  description="Synced into student feedback"
+                >
                   <ul className="divide-y divide-border/50">
                     {activeSources.map((source) => (
                       <SourceRow

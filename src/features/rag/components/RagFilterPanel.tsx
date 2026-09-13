@@ -1,10 +1,6 @@
 import { Select } from "@/shared/components/ui/Select";
-import { sortClassesDescending } from "@/shared/lib/utils";
-import {
-  useRagClassLevels,
-  useRagMediums,
-  useRagMetadata,
-} from "@/features/rag/hooks/useRag";
+import { useSchoolClasses } from "@/shared/hooks/useSchoolClasses";
+import { useRagMediums, useRagMetadata } from "@/features/rag/hooks/useRag";
 import {
   subjectsForClass,
   chaptersForClassSubject,
@@ -43,8 +39,9 @@ const toOptions = (values: string[], allLabel: string): SelectOption[] => [
  * Cascading Class → Subject → Chapter filter selector shared by the Q&A,
  * Questions, and Notes pages.
  *
- * - Class options come from `/rag/classes` (the school's onboarding grades, or
- *   the full Nursery–12 list for admins).
+ * - Class options come from the school's class roster (`useSchoolClasses`), the
+ *   same source attendance and recording use — so a class offered here is one the
+ *   school actually teaches, for admins as much as for teachers.
  * - Subject / Chapter options cascade from the `/rag/metadata` hierarchy, so
  *   they only ever offer values that actually have indexed content.
  *
@@ -58,7 +55,7 @@ export function RagFilterPanel({
   showTitle = false,
   className = DEFAULT_LAYOUT,
 }: RagFilterPanelProps) {
-  const { data: classData, isLoading: classesLoading } = useRagClassLevels();
+  const { classOptions, isLoading: classesLoading } = useSchoolClasses();
   const { data: mediumData } = useRagMediums();
   // Re-fetches whenever the selected medium changes, so Subject/Chapter/Topic
   // only ever offer that medium's chapters (a Bilingual school picking
@@ -70,7 +67,9 @@ export function RagFilterPanel({
   const mediumValues = mediumData?.mediums ?? [];
   const showMedium = mediumValues.length > 1;
 
-  const classValues = sortClassesDescending(classData?.class_levels ?? []);
+  // Roster order (Nursery / KG -> Class 12); no local re-sorting, so this panel
+  // can't disagree with the order every other class picker shows.
+  const classValues = classOptions.map((o) => o.value);
   const subjectValues = subjectsForClass(meta, filters.class_level);
   const chapterValues = chaptersForClassSubject(
     meta,

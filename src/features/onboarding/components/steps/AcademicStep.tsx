@@ -6,15 +6,10 @@ import { InfoHint } from "@/shared/components/ui/InfoHint";
 import { onboardingApi } from "@/features/onboarding/api/onboarding";
 import { useOnboardingCapabilities } from "@/features/onboarding/hooks";
 import { MEDIUM_OPTIONS } from "@/features/admin/constants";
+// The canonical grade vocabulary, shared with the backend and the class roster —
+// this step *defines* a school's grade range, which is what seeds that roster.
+import { GRADE_OPTIONS } from "@/shared/lib/classes";
 import type { StepPropsExtra } from "./types";
-
-const CLASS_OPTIONS = Array.from({ length: 13 }, (_, i) => {
-  const val = 12 - i;
-  return {
-    value: String(val),
-    label: val === 0 ? "Nursery / KG" : `Class ${val}`,
-  };
-});
 
 export function AcademicStep({
   register,
@@ -96,7 +91,7 @@ export function AcademicStep({
           {...register("classes_from")}
         >
           <option value="">— From —</option>
-          {CLASS_OPTIONS.map((c) => (
+          {GRADE_OPTIONS.map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
             </option>
@@ -109,7 +104,7 @@ export function AcademicStep({
           {...register("classes_to")}
         >
           <option value="">— To —</option>
-          {CLASS_OPTIONS.filter((c) => c.value !== "0").map((c) => (
+          {GRADE_OPTIONS.filter((c) => c.value !== "0").map((c) => (
             <option key={c.value} value={c.value}>
               {c.label}
             </option>

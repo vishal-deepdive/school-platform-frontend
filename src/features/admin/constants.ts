@@ -52,29 +52,9 @@ export const MEDIUM_OPTIONS = [
   { value: "Bilingual", label: "Bilingual (English + Hindi)" },
 ] as const;
 
-/**
- * Grade options for the classes-from/to range and bulk class-code generation.
- * `value` is the token stored on the school (matches the onboarding scheme:
- * "0" = Nursery/KG, "1".."12"); `className` is the human-readable class label
- * used when generating class codes for a whole grade range.
- */
-export const GRADE_OPTIONS = Array.from({ length: 13 }, (_, i) => {
-  const n = i; // 0..12
-  return {
-    value: String(n),
-    label: n === 0 ? "Nursery / KG" : `Class ${n}`,
-    className: n === 0 ? "Nursery/KG" : `Class ${n}`,
-  };
-}) as ReadonlyArray<{ value: string; label: string; className: string }>;
-
-/** Expand an inclusive grade range (by GRADE_OPTIONS value) into class names. */
-export function gradeRangeToClassNames(from: string, to: string): string[] {
-  const lo = Number(from);
-  const hi = Number(to);
-  if (Number.isNaN(lo) || Number.isNaN(hi) || hi < lo) return [];
-  return GRADE_OPTIONS.filter((g) => {
-    const n = Number(g.value);
-    return n >= lo && n <= hi;
-  }).map((g) => g.className);
-}
-
+// Grade range options for the school-creation / onboarding forms live in
+// shared/lib/classes.ts alongside the canonical vocabulary they come from, and are
+// re-exported here so existing admin imports keep working. Note these are for
+// *defining a grade range* only — a school's actual classes come from its roster
+// (see useSchoolClasses / ClassSelect), never from this list.
+export { GRADE_OPTIONS, gradeRangeToClassNames } from "@/shared/lib/classes";

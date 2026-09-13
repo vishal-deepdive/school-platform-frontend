@@ -19,7 +19,8 @@ import { attendanceApi } from "@/features/attendance/api/attendance";
 import { adminApi } from "@/features/admin/api/admin";
 import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { ClassSelect, SectionSelect } from "@/shared/components/ui/ClassSelect";
+import { useSchoolClasses } from "@/shared/hooks/useSchoolClasses";
 import { useUrlSearch, useUrlState } from "@/shared/hooks/useUrlState";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isSchoolAdmin } from "@/shared/lib/permissions";
@@ -129,9 +130,9 @@ export function ManageStudentsPage() {
   const [studentToAddFace, setStudentToAddFace] = useState<RosterStudent | null>(null);
   const [addFacePhotos, setAddFacePhotos] = useState<File[]>([]);
 
-  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
-  const sectionOptions = className ? getSectionOptions(className) : [];
-  const hasClassConfig = classNameOptions.length > 0;
+  // Only for the single-section auto-pick in changeClass — the pickers below read
+  // the roster themselves through ClassSelect / SectionSelect.
+  const { getSectionOptions } = useSchoolClasses();
 
   // The class picker belongs to the previously active school.
   const lastSchool = useRef(schoolId);
@@ -449,33 +450,25 @@ export function ManageStudentsPage() {
         }
       >
         <div className="w-[calc(50%-0.25rem)] sm:w-40">
-          <Select
-            aria-label="Class"
+          <ClassSelect
+            label={undefined}
             placeholder="Select class"
-            options={classNameOptions}
             value={className}
             disabled={!schoolId}
-            onChange={(e) => changeClass(e.target.value)}
+            onChange={changeClass}
           />
         </div>
         <div className="w-[calc(50%-0.25rem)] sm:w-32">
-          {hasClassConfig ? (
-            <Select
-              aria-label="Section"
-              placeholder="Section"
-              options={sectionOptions}
-              value={section}
-              disabled={!className}
-              onChange={(e) => update({ section: e.target.value, face: "" }, { push: true })}
-            />
-          ) : (
-            <Input
-              aria-label="Section"
-              placeholder="Section"
-              value={sectionText}
-              onChange={(e) => setSectionText(e.target.value)}
-            />
-          )}
+          <SectionSelect
+            className_={className}
+            label={undefined}
+            placeholder="Section"
+            // Debounced through useUrlSearch so typing a section in the free-text
+            // fallback doesn't push a URL entry per keystroke.
+            value={sectionText}
+            onChange={setSectionText}
+            allowFreeText
+          />
         </div>
         <div className="w-full sm:w-32">
           <Select

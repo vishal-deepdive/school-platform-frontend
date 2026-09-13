@@ -119,11 +119,6 @@ export interface RagMetadata {
   hierarchy: RagHierarchy;
 }
 
-/** Selectable class levels for the current user (school-scoped or admin full list). */
-export interface ClassLevelsResponse {
-  class_levels: string[];
-}
-
 /** Selectable book mediums for the current user (derived from their school's
  * medium of instruction; admin gets both unconditionally). */
 export interface MediumsResponse {

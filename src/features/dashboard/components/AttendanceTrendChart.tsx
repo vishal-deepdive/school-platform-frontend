@@ -16,7 +16,7 @@ import { Card } from "@/shared/components/ui/Card";
 import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { cn } from "@/shared/lib/utils";
 import type { AnalyticsTrendPoint } from "@/features/attendance/types";
-import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
 import { STATUS_META, shortDate } from "@/features/dashboard/lib/chartTheme";
 
 type TrendMode = "percentage" | "composition";

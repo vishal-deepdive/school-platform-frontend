@@ -45,7 +45,11 @@
     --foreground: 0.985 0 0;
     /* Lighter brand blue (was hsl(212 100% 60%)) for dark surfaces. */
     --primary: 0.661 0.184 254.5;
-    --primary-foreground: 1 0 0;
+    /* Deep navy, NOT white: this blue is light (L .661), so white text on it
+       measured 3.14:1 — below AA's 4.5 for every primary button. Darkening the
+       blue instead would change the brand colour, which is deliberately frozen
+       in dark mode, so the text flips rather than the fill. */
+    --primary-foreground: 0.18 0.035 255.6;
     --secondary: 0.26 0.02 260;
     --secondary-foreground: 0.985 0 0;
     --muted: 0.26 0.02 260;

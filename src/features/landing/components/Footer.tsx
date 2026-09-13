@@ -62,7 +62,7 @@ export function Footer() {
                   key={social.label}
                   href={social.href}
                   aria-label={social.label}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-card text-muted-foreground ring-1 ring-border transition-all hover:text-primary hover:shadow-md hover:ring-primary/30"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-card text-muted-foreground ring-1 ring-border transition-all hover:text-primary hover:shadow-md hover:ring-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <social.icon className="h-4 w-4" />
                 </a>
@@ -75,20 +75,20 @@ export function Footer() {
               <h4 className="mb-4 font-semibold text-foreground">
                 {group.heading}
               </h4>
-              <ul className="space-y-2.5 text-sm text-muted-foreground">
+              <ul className="-my-1.5 text-sm text-muted-foreground">
                 {group.links.map((link) => (
                   <li key={link.label}>
                     {link.href.includes("#") ? (
                       <a
                         href={link.href}
-                        className="transition hover:text-primary"
+                        className="inline-flex min-h-9 items-center rounded transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                       >
                         {link.label}
                       </a>
                     ) : (
                       <Link
                         to={link.href}
-                        className="transition hover:text-primary"
+                        className="inline-flex min-h-9 items-center rounded transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                       >
                         {link.label}
                       </Link>
@@ -107,7 +107,7 @@ export function Footer() {
           </div>
           <Link
             to="/onboarding/apply"
-            className="group inline-flex items-center gap-1 text-sm font-medium text-primary"
+            className="group inline-flex min-h-11 items-center gap-1 rounded text-sm font-medium text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             <span className="underline-offset-4 group-hover:underline">
               Register your school
