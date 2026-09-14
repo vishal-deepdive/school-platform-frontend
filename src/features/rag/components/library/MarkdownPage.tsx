@@ -150,7 +150,11 @@ export const MarkdownPage = memo(function MarkdownPage({
     const span = built.byEl.get(block);
     if (!span || !block.dataset.blockId) return;
 
-    onHoverBlock(page.page, block.dataset.blockId, built.index.text.slice(span.start, span.end));
+    onHoverBlock(
+      page.page,
+      block.dataset.blockId,
+      built.index.index.text.slice(span.start, span.end),
+    );
   };
 
   return (
