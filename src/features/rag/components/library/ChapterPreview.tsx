@@ -1,52 +1,66 @@
 import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
-import { Columns2, FileSearch, FileText, Layers, SearchX } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Columns2,
+  FileSearch,
+  FileText,
+  Layers,
+  SearchX,
+  Sparkles,
+} from "lucide-react";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import {
   SegmentedControl,
   type SegmentOption,
 } from "@/shared/components/ui/SegmentedControl";
 import { Skeleton, SkeletonText } from "@/shared/components/ui/Skeleton";
 import { StatLine } from "@/shared/components/ui/StatLine";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { cn, getErrorMessage } from "@/shared/lib/utils";
 import { useDocumentMarkdown } from "@/features/rag/hooks/useRag";
 import { DocumentChunksPreview } from "./DocumentChunksPreview";
+import { MarkdownPage } from "./MarkdownPage";
 import { useDominantPage } from "./useDominantPage";
+import type { BoundingBox, HoverState } from "./hoverSyncUtils";
+import type { ScrollProgress } from "./PdfPane";
 
 // pdf.js is heavy and only needed once someone opens a preview with a PDF.
 const PdfPane = lazy(() => import("./PdfPane").then((m) => ({ default: m.PdfPane })));
 
 type Mode = "text" | "split" | "pdf" | "passages";
 
-/** While we scroll one pane to follow the other, ignore that pane's scroll events. */
-const FOLLOW_QUIET_MS = 450;
-
 interface ChapterPreviewProps {
   documentId: string;
 }
 
 /**
- * Chapter preview: the parsed text and the original PDF side by side, kept in
- * step as either side scrolls. Falls back to text-only when the original file
- * is no longer stored, and offers the indexed passages for staff who need to
- * see exactly what the retriever can cite.
+ * Chapter preview: the parsed text and original PDF side by side, kept in
+ * fluid continuous step as either side scrolls. Features LlamaParse-style
+ * bidirectional hover reflection and virtualization for instant loading.
  */
 export function ChapterPreview({ documentId }: ChapterPreviewProps) {
   const { data, isLoading, isError, error } = useDocumentMarkdown(documentId);
   const [mode, setMode] = useState<Mode>("text");
   const [syncScroll, setSyncScroll] = useState(true);
+  const [hoverSync, setHoverSync] = useState(true);
 
-  // Which pane the reader last touched — only that one leads.
+  // Leader tracks which pane the user is actively interacting with.
   const leader = useRef<"text" | "pdf" | null>(null);
-  const quietUntil = useRef(0);
-  const [pdfTarget, setPdfTarget] = useState<{ page: number; nonce: number } | null>(null);
-  const [textTarget, setTextTarget] = useState<{ page: number; nonce: number } | null>(null);
+  const isProgrammaticScroll = useRef(false);
+  const [pdfScrollTarget, setPdfScrollTarget] = useState<ScrollProgress | null>(null);
+
+  // Hover synchronization state (LlamaParse-style reflection)
+  const [activeHover, setActiveHover] = useState<HoverState | null>(null);
+  const hoverTimeoutRef = useRef<number | null>(null);
 
   const textRef = useRef<HTMLDivElement>(null);
   const pages = data?.pages ?? [];
   const hasNumberedPages = pages.some((p) => p.page > 0);
+  const totalPages = pages.length;
   const canPdf = !!data?.has_source && data.source_media_type === "application/pdf";
   const splitting = mode === "split";
 
@@ -59,39 +73,113 @@ export function ChapterPreview({ documentId }: ChapterPreviewProps) {
     if (!canPdf && (mode === "split" || mode === "pdf")) setMode("text");
   }, [canPdf, mode]);
 
-  const noteScroll = useCallback((pane: "text" | "pdf") => {
-    if (Date.now() < quietUntil.current) return; // our own follow-scroll
-    leader.current = pane;
-  }, []);
+  const { range: textRange } = useDominantPage(textRef, totalPages, undefined, mode);
 
-  const handleTextPage = useCallback(
-    (page: number) => {
-      if (!syncScroll || !splitting || leader.current !== "text" || page < 1) return;
-      quietUntil.current = Date.now() + FOLLOW_QUIET_MS;
-      setPdfTarget({ page, nonce: Date.now() });
-    },
-    [syncScroll, splitting],
-  );
+  // ── Continuous Proportional Scroll Sync ──────────────────────────────────
+  const handleTextScroll = () => {
+    if (isProgrammaticScroll.current) return;
+    if (!syncScroll || !splitting || leader.current !== "text") return;
 
-  const handlePdfPage = useCallback(
-    (page: number) => {
-      if (!syncScroll || !splitting || leader.current !== "pdf" || page < 1) return;
-      quietUntil.current = Date.now() + FOLLOW_QUIET_MS;
-      setTextTarget({ page, nonce: Date.now() });
-    },
-    [syncScroll, splitting],
-  );
-
-  const { range: textRange } = useDominantPage(textRef, pages.length, handleTextPage, mode);
-
-  // Follow the PDF pane.
-  useEffect(() => {
-    if (!textTarget) return;
     const root = textRef.current;
-    const el = root?.querySelector<HTMLElement>(`[data-page="${textTarget.page}"]`);
-    // scrollTo (not scrollIntoView) — the latter would also scroll the dialog.
-    if (root && el) root.scrollTo({ top: Math.max(0, el.offsetTop - 12) });
-  }, [textTarget]);
+    if (!root) return;
+    const scrollTop = root.scrollTop;
+    const pageEls = root.querySelectorAll<HTMLElement>("[data-page]");
+
+    for (let i = 0; i < pageEls.length; i++) {
+      const el = pageEls[i];
+      const top = el.offsetTop;
+      const bottom = top + el.offsetHeight;
+      if (scrollTop >= top && scrollTop < bottom) {
+        const page = Number(el.dataset.page);
+        if (page > 0) {
+          const progress = (scrollTop - top) / Math.max(1, el.offsetHeight);
+          setPdfScrollTarget({ page, progress, nonce: Date.now() });
+        }
+        break;
+      }
+    }
+  };
+
+  const handlePdfScrollProgress = useCallback(
+    (prog: { page: number; progress: number }) => {
+      if (isProgrammaticScroll.current) return;
+      if (!syncScroll || !splitting || leader.current !== "pdf") return;
+
+      const root = textRef.current;
+      if (!root) return;
+      const el = root.querySelector<HTMLElement>(`[data-page="${prog.page}"]`);
+      if (el) {
+        isProgrammaticScroll.current = true;
+        const targetTop = el.offsetTop + prog.progress * el.offsetHeight;
+        root.scrollTop = Math.max(0, targetTop);
+        requestAnimationFrame(() => {
+          isProgrammaticScroll.current = false;
+        });
+      }
+    },
+    [syncScroll, splitting],
+  );
+
+  // ── Jump to Page ─────────────────────────────────────────────────────────
+  const goToPage = useCallback(
+    (targetPage: number) => {
+      if (targetPage < 1 || targetPage > totalPages) return;
+      setPdfScrollTarget({ page: targetPage, progress: 0, nonce: Date.now() });
+
+      const root = textRef.current;
+      if (root) {
+        const el = root.querySelector<HTMLElement>(`[data-page="${targetPage}"]`);
+        if (el) {
+          isProgrammaticScroll.current = true;
+          root.scrollTo({ top: Math.max(0, el.offsetTop - 12), behavior: "smooth" });
+          setTimeout(() => {
+            isProgrammaticScroll.current = false;
+          }, 300);
+        }
+      }
+    },
+    [totalPages],
+  );
+
+  // Keyboard navigation for page jumping: Left / Right arrows
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === "PageDown" || (e.altKey && e.key === "ArrowRight")) {
+        goToPage(Math.min(totalPages, textRange.first + 1));
+      } else if (e.key === "PageUp" || (e.altKey && e.key === "ArrowLeft")) {
+        goToPage(Math.max(1, textRange.first - 1));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [goToPage, textRange.first, totalPages]);
+
+  // ── Bidirectional Hover Reflection ───────────────────────────────────────
+  const handleHoverBlock = useCallback(
+    (page: number, blockId: string, text: string) => {
+      if (!hoverSync) return;
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      setActiveHover({ source: "markdown", page, blockId, text });
+    },
+    [hoverSync],
+  );
+
+  const handleHoverPdfTarget = useCallback(
+    (target: { source: "pdf"; page: number; text: string; rect?: BoundingBox }) => {
+      if (!hoverSync) return;
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      setActiveHover(target);
+    },
+    [hoverSync],
+  );
+
+  const handleLeaveHover = useCallback(() => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+    hoverTimeoutRef.current = window.setTimeout(() => {
+      setActiveHover(null);
+    }, 90);
+  }, []);
 
   const pickMode = (next: Mode) => {
     userPicked.current = true;
@@ -113,28 +201,91 @@ export function ChapterPreview({ documentId }: ChapterPreviewProps) {
     return <Alert variant="error">{getErrorMessage(error) || "Failed to load this chapter."}</Alert>;
   }
 
+  const currentPageNum = Math.max(1, Math.min(totalPages, textRange.first));
+
   return (
-    <div className="flex h-[72vh] min-h-0 flex-col gap-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <SegmentedControl
-          aria-label="Preview layout"
-          compact
-          options={modeOptions}
-          value={mode}
-          onChange={pickMode}
-        />
+    <div className="flex h-[82vh] min-h-[560px] min-w-0 flex-col gap-3">
+      {/* Top Header & Interactive Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentedControl
+            aria-label="Preview layout"
+            compact
+            options={modeOptions}
+            value={mode}
+            onChange={pickMode}
+          />
+
+          {hasNumberedPages && totalPages > 1 && (
+            <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 px-1.5 py-0.5">
+              <Tooltip content="Previous page (Alt + Left)">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded"
+                  disabled={currentPageNum <= 1}
+                  onClick={() => goToPage(currentPageNum - 1)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </Button>
+              </Tooltip>
+
+              <span className="px-1 text-xs font-medium tabular-nums text-foreground">
+                Page <span className="font-semibold text-primary">{currentPageNum}</span> of {totalPages}
+              </span>
+
+              <Tooltip content="Next page (Alt + Right)">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 rounded"
+                  disabled={currentPageNum >= totalPages}
+                  onClick={() => goToPage(currentPageNum + 1)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </Tooltip>
+            </div>
+          )}
+        </div>
+
         <div className="flex flex-wrap items-center gap-3">
           {splitting && (
-            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={syncScroll}
-                onChange={(e) => setSyncScroll(e.target.checked)}
-                className="h-3.5 w-3.5 cursor-pointer rounded border-border accent-primary"
-              />
-              Sync scrolling
-            </label>
+            <div className="flex items-center gap-2">
+              <Tooltip content="Synchronize scrolling between Text and PDF">
+                <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border/60 bg-card px-2 py-1 text-xs font-medium text-foreground transition-colors hover:bg-muted/50">
+                  <input
+                    type="checkbox"
+                    checked={syncScroll}
+                    onChange={(e) => setSyncScroll(e.target.checked)}
+                    className="h-3.5 w-3.5 cursor-pointer rounded border-border accent-primary"
+                  />
+                  Sync scrolling
+                </label>
+              </Tooltip>
+
+              <Tooltip content="Highlight matching text across both panes on hover (LlamaParse-style)">
+                <label className={cn(
+                  "flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium transition-colors",
+                  hoverSync
+                    ? "border-primary/40 bg-primary/10 text-primary"
+                    : "border-border/60 bg-card text-muted-foreground hover:bg-muted/50",
+                )}>
+                  <input
+                    type="checkbox"
+                    checked={hoverSync}
+                    onChange={(e) => setHoverSync(e.target.checked)}
+                    className="h-3.5 w-3.5 cursor-pointer rounded border-border accent-primary"
+                  />
+                  <Sparkles className="h-3 w-3" />
+                  Hover sync
+                </label>
+              </Tooltip>
+            </div>
           )}
+
           <StatLine
             loading={isLoading}
             items={[
@@ -182,15 +333,15 @@ export function ChapterPreview({ documentId }: ChapterPreviewProps) {
         <div className={cn("grid min-h-0 flex-1 gap-3", splitting && "lg:grid-cols-2")}>
           {(mode === "text" || splitting) && (
             <PaneShell>
-              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5">
+              <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5 bg-card">
                 <p className="truncate text-xs text-muted-foreground">
                   {hasNumberedPages ? (
                     <>
                       Parsed text · page{" "}
                       <span className="font-semibold tabular-nums text-foreground">
-                        {textRange.first}
+                        {currentPageNum}
                       </span>{" "}
-                      of <span className="tabular-nums">{pages.length}</span>
+                      of <span className="tabular-nums">{totalPages}</span>
                     </>
                   ) : (
                     "Parsed text"
@@ -202,24 +353,36 @@ export function ChapterPreview({ documentId }: ChapterPreviewProps) {
                   </Badge>
                 )}
               </div>
+
               <div
                 ref={textRef}
-                onScroll={() => noteScroll("text")}
+                onScroll={handleTextScroll}
+                onPointerEnter={() => {
+                  leader.current = "text";
+                }}
                 className="relative min-h-0 flex-1 space-y-5 overflow-y-auto p-4 scrollbar-thin"
               >
-                {pages.map((page, i) => (
-                  <section
-                    key={`${page.page}-${i}`}
-                    // Page 0 is text we couldn't place — nothing to sync to.
-                    data-page={page.page > 0 ? page.page : undefined}
-                    className="border-t border-border/40 pt-5 first:border-t-0 first:pt-0"
-                  >
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {page.page > 0 ? `Page ${page.page}` : "Unplaced text"}
-                    </p>
-                    <MarkdownRenderer content={page.markdown} />
-                  </section>
-                ))}
+                {pages.map((page, i) => {
+                  // Windowed rendering: pages close to the viewport get rich markdown,
+                  // offscreen pages stay lightweight placeholders.
+                  const isVisible =
+                    mode !== "split" ||
+                    totalPages <= 10 ||
+                    (page.page >= textRange.first - 2 && page.page <= textRange.last + 2);
+
+                  return (
+                    <MarkdownPage
+                      key={`${page.page}-${i}`}
+                      page={page}
+                      pageIndex={i}
+                      isVisible={isVisible}
+                      hoverSyncEnabled={hoverSync}
+                      activeHover={activeHover}
+                      onHoverBlock={handleHoverBlock}
+                      onLeaveBlock={handleLeaveHover}
+                    />
+                  );
+                })}
               </div>
             </PaneShell>
           )}
@@ -233,13 +396,26 @@ export function ChapterPreview({ documentId }: ChapterPreviewProps) {
                   </div>
                 }
               >
-                <PdfPane
-                  documentId={documentId}
-                  targetPage={splitting && syncScroll ? pdfTarget?.page : undefined}
-                  targetNonce={pdfTarget?.nonce}
-                  onVisiblePageChange={handlePdfPage}
-                  onUserScroll={() => noteScroll("pdf")}
-                />
+                <div
+                  className="h-full min-h-0 flex-1 flex flex-col"
+                  onPointerEnter={() => {
+                    leader.current = "pdf";
+                  }}
+                >
+                  <PdfPane
+                    documentId={documentId}
+                    targetProgress={splitting && syncScroll ? pdfScrollTarget : null}
+                    targetNonce={pdfScrollTarget?.nonce}
+                    onScrollProgress={handlePdfScrollProgress}
+                    onUserScroll={() => {
+                      leader.current = "pdf";
+                    }}
+                    hoverSyncEnabled={hoverSync}
+                    activeHover={activeHover}
+                    onHoverTarget={handleHoverPdfTarget}
+                    onLeaveHover={handleLeaveHover}
+                  />
+                </div>
               </Suspense>
             </PaneShell>
           )}
@@ -262,7 +438,7 @@ function PaneShell({ children, className }: { children: React.ReactNode; classNa
   return (
     <div
       className={cn(
-        "flex min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card",
+        "flex min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm",
         className,
       )}
     >
