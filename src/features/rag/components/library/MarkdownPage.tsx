@@ -1,190 +1,168 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
 import { cn } from "@/shared/lib/utils";
 import type { DocumentPage } from "@/features/rag/types";
-import { findBestMatchingMarkdownBlock } from "./hoverSyncUtils";
+import type { HoverBus } from "./preview/hoverBus";
+import type { PreviewScrollSync } from "./preview/scrollSync";
+import { buildBlockIndex, type BlockIndex, type BlockSpan } from "./preview/textAlign";
 
 interface MarkdownPageProps {
   page: DocumentPage;
   pageIndex: number;
+  /** False while the page is outside the render window (placeholder only). */
   isVisible: boolean;
   hoverSyncEnabled: boolean;
-  activeHover: {
-    source: "markdown" | "pdf" | null;
-    page: number;
-    text?: string;
-    blockId?: string;
-  } | null;
-  onHoverBlock?: (page: number, blockId: string, text: string) => void;
-  onLeaveBlock?: () => void;
+  bus: HoverBus;
+  sync: PreviewScrollSync;
+  onHoverBlock: (page: number, blockId: string, query: string) => void;
+  onLeave: () => void;
 }
 
 /**
- * Renders a single page of extracted Markdown with:
- * 1. Virtualization: unrendered placeholder when far from viewport.
- * 2. Block-level tagging for bidirectional hover sync with PDF.
- * 3. Smooth active highlight reflection when matching text is hovered.
+ * Highlight for the hovered / reflected block. `outline` rather than a border
+ * so nothing reflows when it appears — a border would nudge every line below
+ * it and fight the scroll sync.
+ */
+const HIGHLIGHT = [
+  "bg-primary/10",
+  "outline",
+  "outline-2",
+  "outline-primary/40",
+  "outline-offset-2",
+  "rounded",
+];
+
+/**
+ * One page of parsed markdown.
+ *
+ * Pages outside the render window collapse to a placeholder holding the height
+ * they last measured (or an estimate, before they have ever rendered), so
+ * scrolling a 200-page chapter stays cheap without the scrollbar lurching.
+ *
+ * Hover state deliberately never enters React here: the component subscribes to
+ * the bus and toggles a class on the matched block. Re-rendering instead would
+ * mean re-running react-markdown (KaTeX, GFM tables, syntax highlighting) on
+ * every pointer move.
  */
 export const MarkdownPage = memo(function MarkdownPage({
   page,
   pageIndex,
   isVisible,
   hoverSyncEnabled,
-  activeHover,
+  bus,
+  sync,
   onHoverBlock,
-  onLeaveBlock,
+  onLeave,
 }: MarkdownPageProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [cachedHeight, setCachedHeight] = useState<number>(0);
-  const [activeElement, setActiveElement] = useState<HTMLElement | null>(null);
+  const rootRef = useRef<HTMLElement>(null);
+  const indexRef = useRef<{ index: BlockIndex; byEl: Map<HTMLElement, BlockSpan> } | null>(null);
+  const [measuredHeight, setMeasuredHeight] = useState(0);
 
-  // Measure and cache real rendered height so placeholder preserves exact scroll space.
-  useEffect(() => {
-    if (containerRef.current && isVisible) {
-      const h = containerRef.current.offsetHeight;
-      if (h > 50) {
-        setCachedHeight(h);
-      }
-    }
-  }, [isVisible]);
+  // Before a page has ever rendered there is nothing to measure, and a
+  // zero-height placeholder would make the scrollbar lurch the first time the
+  // reader reaches it. Prose height tracks character count closely enough for
+  // the estimate to hold the right amount of space.
+  const estimatedHeight = useMemo(
+    () => Math.min(2400, Math.max(220, Math.round(page.markdown.length * 0.42))),
+    [page.markdown],
+  );
+  const placeholderHeight = measuredHeight || estimatedHeight;
 
-  // Tag top-level blocks inside markdown for quick lookup and matching.
+  // ── Index the rendered blocks ─────────────────────────────────────────────
   useEffect(() => {
-    if (!isVisible || !containerRef.current) return;
-    const blocks = containerRef.current.querySelectorAll<HTMLElement>(
-      ".prose > p, .prose > h1, .prose > h2, .prose > h3, .prose > h4, .prose > h5, .prose > h6, .prose > ul > li, .prose > ol > li, .prose > blockquote, .prose > table, .prose > div",
-    );
-    blocks.forEach((el, i) => {
-      if (!el.dataset.blockId) {
-        el.dataset.blockId = `p${page.page}-b${i}`;
-        el.dataset.page = String(page.page);
-        el.classList.add("transition-all", "duration-150", "rounded", "relative");
-      }
-    });
-  }, [isVisible, page.page, page.markdown]);
-
-  // Handle hover targeting from PDF.
-  useEffect(() => {
-    if (!hoverSyncEnabled || !containerRef.current) {
-      if (activeElement) {
-        activeElement.classList.remove(
-          "bg-primary/10",
-          "ring-2",
-          "ring-primary/60",
-          "border-l-4",
-          "border-primary",
-          "px-1.5",
-          "-mx-1.5",
-        );
-        setActiveElement(null);
-      }
+    const root = rootRef.current;
+    const pageNumber = page.page;
+    if (!root || !isVisible || pageNumber < 1) {
+      indexRef.current = null;
       return;
     }
 
-    if (activeHover && activeHover.source === "pdf" && activeHover.page === page.page && activeHover.text) {
-      const match = findBestMatchingMarkdownBlock(containerRef.current, activeHover.text);
-      if (match && match !== activeElement) {
-        if (activeElement) {
-          activeElement.classList.remove(
-            "bg-primary/10",
-            "ring-2",
-            "ring-primary/60",
-            "border-l-4",
-            "border-primary",
-            "px-1.5",
-            "-mx-1.5",
-          );
-        }
-        match.classList.add(
-          "bg-primary/10",
-          "ring-2",
-          "ring-primary/60",
-          "border-l-4",
-          "border-primary",
-          "px-1.5",
-          "-mx-1.5",
-        );
-        setActiveElement(match);
+    const index = buildBlockIndex(root);
+    const byEl = new Map<HTMLElement, BlockSpan>();
+    index.blocks.forEach((block, i) => {
+      block.el.dataset.blockId = `p${pageNumber}-b${i}`;
+      byEl.set(block.el, block);
+    });
+    indexRef.current = { index, byEl };
+    bus.registerPage(pageNumber, index);
+
+    // The page just changed height; the sync controller must re-measure.
+    sync.invalidate("text");
+    const height = root.offsetHeight;
+    if (height > 40) setMeasuredHeight(height);
+
+    return () => {
+      bus.unregisterPage(pageNumber);
+      indexRef.current = null;
+    };
+  }, [bus, sync, isVisible, page.page, page.markdown]);
+
+  // Collapsing back to a placeholder also moves everything below it.
+  useEffect(() => {
+    if (!isVisible) sync.invalidate("text");
+  }, [isVisible, sync]);
+
+  // ── Reflected highlight, applied straight to the DOM ──────────────────────
+  useEffect(() => {
+    const pageNumber = page.page;
+    let highlighted: HTMLElement | null = null;
+
+    const clear = () => {
+      highlighted?.classList.remove(...HIGHLIGHT);
+      highlighted = null;
+    };
+
+    const apply = () => {
+      const target = bus.target.get();
+      if (!hoverSyncEnabled || !target || target.page !== pageNumber || !target.blockId) {
+        clear();
+        return;
       }
-    } else if (activeElement && (!activeHover || activeHover.page !== page.page)) {
-      activeElement.classList.remove(
-        "bg-primary/10",
-        "ring-2",
-        "ring-primary/60",
-        "border-l-4",
-        "border-primary",
-        "px-1.5",
-        "-mx-1.5",
+      const next = rootRef.current?.querySelector<HTMLElement>(
+        `[data-block-id="${CSS.escape(target.blockId)}"]`,
       );
-      setActiveElement(null);
-    }
-  }, [activeHover, hoverSyncEnabled, page.page, activeElement]);
+      if (next === highlighted) return;
+      clear();
+      if (next) {
+        next.classList.add(...HIGHLIGHT);
+        highlighted = next;
+      }
+    };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!hoverSyncEnabled || !onHoverBlock) return;
-    const target = e.target as HTMLElement | null;
-    if (!target) return;
+    apply();
+    const unsubscribe = bus.target.subscribe(apply);
+    return () => {
+      unsubscribe();
+      clear();
+    };
+  }, [bus, hoverSyncEnabled, page.page, isVisible]);
 
-    const block = target.closest<HTMLElement>("[data-block-id]");
-    if (!block || !block.dataset.blockId) return;
+  // ── Pointer tracking ──────────────────────────────────────────────────────
+  // `pointerover` fires once per element entered, so this is already change
+  // driven — no throttling of a per-pixel `mousemove` stream needed.
+  const handlePointerOver = (event: React.PointerEvent<HTMLElement>) => {
+    if (!hoverSyncEnabled || page.page < 1 || sync.isScrolling()) return;
+    const built = indexRef.current;
+    if (!built) return;
 
-    if (block === activeElement && activeHover?.source === "markdown") return;
+    const block = (event.target as HTMLElement | null)?.closest<HTMLElement>("[data-block-id]");
+    if (!block) return;
+    const span = built.byEl.get(block);
+    if (!span || !block.dataset.blockId) return;
 
-    if (activeElement && activeElement !== block) {
-      activeElement.classList.remove(
-        "bg-primary/10",
-        "ring-2",
-        "ring-primary/60",
-        "border-l-4",
-        "border-primary",
-        "px-1.5",
-        "-mx-1.5",
-      );
-    }
-
-    block.classList.add(
-      "bg-primary/10",
-      "ring-2",
-      "ring-primary/60",
-      "border-l-4",
-      "border-primary",
-      "px-1.5",
-      "-mx-1.5",
-    );
-    setActiveElement(block);
-
-    const text = block.textContent?.trim() ?? "";
-    if (text) {
-      onHoverBlock(page.page, block.dataset.blockId, text);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (activeElement) {
-      activeElement.classList.remove(
-        "bg-primary/10",
-        "ring-2",
-        "ring-primary/60",
-        "border-l-4",
-        "border-primary",
-        "px-1.5",
-        "-mx-1.5",
-      );
-      setActiveElement(null);
-    }
-    onLeaveBlock?.();
+    onHoverBlock(page.page, block.dataset.blockId, built.index.text.slice(span.start, span.end));
   };
 
   return (
     <section
-      ref={containerRef}
+      ref={rootRef}
       data-page={page.page > 0 ? page.page : undefined}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={!isVisible && cachedHeight ? { minHeight: cachedHeight } : undefined}
+      onPointerOver={handlePointerOver}
+      onPointerLeave={onLeave}
+      style={!isVisible ? { height: placeholderHeight } : undefined}
       className={cn(
-        "border-t border-border/40 pt-5 first:border-t-0 first:pt-0 transition-opacity duration-200",
-        !isVisible && "opacity-60",
+        "border-t border-border/40 pt-5 first:border-t-0 first:pt-0",
+        !isVisible && "overflow-hidden",
       )}
     >
       <div className="mb-2 flex items-center justify-between">
@@ -192,17 +170,18 @@ export const MarkdownPage = memo(function MarkdownPage({
           {page.page > 0 ? `Page ${page.page}` : "Unplaced text"}
         </p>
         <span className="text-[10px] tabular-nums text-muted-foreground/60">
-          Section #{pageIndex + 1}
+          Section {pageIndex + 1}
         </span>
       </div>
 
       {isVisible ? (
         <MarkdownRenderer content={page.markdown} />
       ) : (
-        <div className="flex flex-col gap-2 py-4">
-          <div className="h-4 w-3/4 rounded bg-muted/60 animate-pulse" />
-          <div className="h-4 w-5/6 rounded bg-muted/50 animate-pulse" />
-          <div className="h-4 w-1/2 rounded bg-muted/40 animate-pulse" />
+        <div className="space-y-2.5 py-1" aria-hidden>
+          <div className="h-3 w-11/12 rounded bg-muted/70" />
+          <div className="h-3 w-full rounded bg-muted/50" />
+          <div className="h-3 w-4/5 rounded bg-muted/40" />
+          <div className="h-3 w-2/3 rounded bg-muted/30" />
         </div>
       )}
     </section>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { PDFDocumentProxy } from "pdfjs-dist";
@@ -9,13 +9,18 @@ import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { cn } from "@/shared/lib/utils";
 import { ragApi } from "@/features/rag/api/rag";
-import { useDominantPage } from "./useDominantPage";
+import { usePageTarget, type HoverBus } from "./preview/hoverBus";
+import { usePaneView, type PreviewScrollSync } from "./preview/scrollSync";
 import {
-  extractKeywords,
-  getUnionBoundingBox,
+  boxesForRange,
+  buildIndex,
+  findBestMatch,
+  rangeOfElement,
+  unionBox,
+  MIN_MATCH_SCORE,
   type BoundingBox,
-  type HoverState,
-} from "./hoverSyncUtils";
+  type CompactIndex,
+} from "./preview/textAlign";
 
 // pdf.js renders in a worker; this module is lazy-loaded, so the worker chunk
 // only ships to people who actually open a preview.
@@ -28,44 +33,30 @@ const MAX_ZOOM = 3;
 const RENDER_WINDOW = 1;
 /** A full-page canvas at 3x would be ~25 MP — 2x is already retina-sharp. */
 const MAX_PIXEL_RATIO = 2;
-
-export interface ScrollProgress {
-  page: number;
-  progress: number;
-  nonce?: number;
-}
+/** Context around the hovered span handed to the matcher, in characters. */
+const HOVER_LOOKBEHIND = 90;
+const HOVER_LOOKAHEAD = 160;
+/** Let the pointer settle before chasing the match with a smooth scroll. */
+const AUTO_SCROLL_DELAY = 130;
 
 interface PdfPaneProps {
   documentId: string;
-  /** Proportional sub-page scroll target from the text pane */
-  targetProgress?: ScrollProgress | null;
-  /** Page the text pane wants shown (1-based); 0 means "don't steer". */
-  targetPage?: number;
-  /** Changes whenever the text pane asks again, even for the same page. */
-  targetNonce?: number;
-  onVisiblePageChange?: (page: number) => void;
-  onScrollProgress?: (progress: { page: number; progress: number }) => void;
-  /** Called on real user scrolling, so the parent knows which pane leads. */
-  onUserScroll?: () => void;
-  hoverSyncEnabled?: boolean;
-  activeHover?: HoverState | null;
-  onHoverTarget?: (target: { source: "pdf"; page: number; text: string; rect?: BoundingBox }) => void;
-  onLeaveHover?: () => void;
+  sync: PreviewScrollSync;
+  bus: HoverBus;
+  hoverSyncEnabled: boolean;
+  /** Hovered PDF text, already widened to a matchable window. */
+  onHoverText: (page: number, query: string) => void;
+  onLeaveHover: () => void;
   className?: string;
 }
 
 /** The original chapter PDF, rendered page by page beside the parsed text. */
 export function PdfPane({
   documentId,
-  targetProgress,
-  targetPage,
-  targetNonce,
-  onVisiblePageChange,
-  onScrollProgress,
-  onUserScroll,
-  hoverSyncEnabled = true,
-  activeHover,
-  onHoverTarget,
+  sync,
+  bus,
+  hoverSyncEnabled,
+  onHoverText,
   onLeaveHover,
   className,
 }: PdfPaneProps) {
@@ -76,9 +67,9 @@ export function PdfPane({
   const [zoom, setZoom] = useState(1);
   const [paneWidth, setPaneWidth] = useState(0);
 
-  const { observer, range } = useDominantPage(scrollRef, sizes.length, onVisiblePageChange);
+  const view = usePaneView(sync, "pdf");
 
-  // ── Load the file and measure every page once ─────────────────────────────
+  // ── Load the file, then measure every page ────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     let loaded: PDFDocumentProxy | null = null;
@@ -99,15 +90,29 @@ export function PdfPane({
         }
         setPdf(loaded);
 
-        const measured: { width: number; height: number }[] = [];
-        for (let n = 1; n <= loaded.numPages; n++) {
+        // Page one decides the initial layout for the whole file, so the first
+        // page paints immediately instead of after N round-trips to the worker.
+        const first = await loaded.getPage(1);
+        const base = first.getViewport({ scale: 1 });
+        first.cleanup();
+        if (cancelled) return;
+        const provisional = { width: base.width, height: base.height };
+        setSizes(new Array(loaded.numPages).fill(provisional));
+
+        if (loaded.numPages === 1) return;
+        const measured: { width: number; height: number }[] = [provisional];
+        let mixed = false;
+        for (let n = 2; n <= loaded.numPages; n++) {
           const page = await loaded.getPage(n);
-          const viewport = page.getViewport({ scale: 1 });
-          measured.push({ width: viewport.width, height: viewport.height });
-          page.cleanup();
           if (cancelled) return;
+          const viewport = page.getViewport({ scale: 1 });
+          page.cleanup();
+          measured.push({ width: viewport.width, height: viewport.height });
+          if (viewport.width !== base.width || viewport.height !== base.height) mixed = true;
         }
-        setSizes(measured);
+        // Uniform page sizes are the norm; only pay for a re-layout when they
+        // actually differ.
+        if (mixed) setSizes(measured);
       } catch {
         // Aborting on unmount lands here too — only a live pane shows the error.
         if (!cancelled) setFailed(true);
@@ -121,7 +126,19 @@ export function PdfPane({
     };
   }, [documentId]);
 
-  // ── Fit to the pane, times the user's zoom ────────────────────────────────
+  // ── Register with the scroll controller ───────────────────────────────────
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    return sync.attach("pdf", el);
+  }, [sync]);
+
+  // Page geometry changes with the zoom level and the measured page sizes.
+  useEffect(() => {
+    sync.invalidate("pdf");
+  }, [sync, zoom, paneWidth, sizes]);
+
+  // ── Fit to the pane, times the reader's zoom ──────────────────────────────
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -131,59 +148,19 @@ export function PdfPane({
     return () => ro.disconnect();
   }, []);
 
-  // ── Follow continuous scroll progress from text pane ─────────────────────
-  useEffect(() => {
-    if (!targetProgress || targetProgress.page < 1 || sizes.length === 0) return;
-    const root = scrollRef.current;
-    if (!root) return;
-    const el = root.querySelector<HTMLElement>(`[data-page="${targetProgress.page}"]`);
-    if (el) {
-      const top = el.offsetTop + targetProgress.progress * el.offsetHeight;
-      root.scrollTop = Math.max(0, top);
-    }
-  }, [targetProgress, sizes.length]);
-
-  // ── Follow discrete page jump target ─────────────────────────────────────
-  useEffect(() => {
-    if (!targetPage || targetPage < 1 || sizes.length === 0) return;
-    const root = scrollRef.current;
-    const el = root?.querySelector<HTMLElement>(`[data-page="${targetPage}"]`);
-    if (root && el) root.scrollTo({ top: Math.max(0, el.offsetTop - 12) });
-  }, [targetPage, targetNonce, sizes.length]);
-
-  // ── Report scroll progress on user-driven scrolling ──────────────────────
-  const handleScroll = useCallback(() => {
-    onUserScroll?.();
-    if (!onScrollProgress) return;
-    const root = scrollRef.current;
-    if (!root || sizes.length === 0) return;
-
-    const scrollTop = root.scrollTop;
-    const pageEls = root.querySelectorAll<HTMLElement>("[data-page]");
-    for (let i = 0; i < pageEls.length; i++) {
-      const el = pageEls[i];
-      const top = el.offsetTop;
-      const bottom = top + el.offsetHeight;
-      if (scrollTop >= top && scrollTop < bottom) {
-        const page = Number(el.dataset.page);
-        const progress = (scrollTop - top) / Math.max(1, el.offsetHeight);
-        onScrollProgress({ page, progress });
-        return;
-      }
-    }
-  }, [onUserScroll, onScrollProgress, sizes.length]);
-
   const pageWidth = Math.max(220, Math.round((paneWidth - 28) * zoom));
   const totalPages = pdf?.numPages ?? 0;
 
+  const handleLeave = useCallback(() => onLeaveHover(), [onLeaveHover]);
+
   return (
     <div className={cn("flex h-full min-h-0 flex-col overflow-hidden", className)}>
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 px-3 py-1.5 bg-card">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/60 bg-card px-3 py-1.5">
         <p className="truncate text-xs text-muted-foreground">
           {totalPages > 0 ? (
             <>
               Original file · page{" "}
-              <span className="font-semibold tabular-nums text-foreground">{range.first}</span> of{" "}
+              <span className="font-semibold tabular-nums text-foreground">{view.page}</span> of{" "}
               <span className="tabular-nums">{totalPages}</span>
             </>
           ) : failed ? (
@@ -238,7 +215,7 @@ export function PdfPane({
 
       <div
         ref={scrollRef}
-        onScroll={handleScroll}
+        onPointerLeave={handleLeave}
         className="relative min-h-0 flex-1 overflow-auto bg-muted/40 p-3 scrollbar-thin"
       >
         {failed ? (
@@ -267,14 +244,13 @@ export function PdfPane({
                   width={pageWidth}
                   aspect={size.height / size.width}
                   active={
-                    pageNumber >= range.first - RENDER_WINDOW &&
-                    pageNumber <= range.last + RENDER_WINDOW
+                    pageNumber >= view.first - RENDER_WINDOW &&
+                    pageNumber <= view.last + RENDER_WINDOW
                   }
-                  observer={observer}
+                  sync={sync}
+                  bus={bus}
                   hoverSyncEnabled={hoverSyncEnabled}
-                  activeHover={activeHover}
-                  onHoverTarget={onHoverTarget}
-                  onLeaveHover={onLeaveHover}
+                  onHoverText={onHoverText}
                 />
               );
             })}
@@ -286,7 +262,12 @@ export function PdfPane({
 }
 
 /**
- * One page: Canvas for bitmap rendering + TextLayer for selection & hover sync.
+ * One page: a canvas for the bitmap, plus pdf.js's real text layer on top for
+ * selection and hover alignment.
+ *
+ * The text layer is indexed once per render into compact form; every hover then
+ * costs one string search and one `Range.getClientRects()`, which is what makes
+ * the highlight land on the exact words rather than on whole spans.
  */
 function PdfPageView({
   pdf,
@@ -294,37 +275,31 @@ function PdfPageView({
   width,
   aspect,
   active,
-  observer,
+  sync,
+  bus,
   hoverSyncEnabled,
-  activeHover,
-  onHoverTarget,
-  onLeaveHover,
+  onHoverText,
 }: {
   pdf: PDFDocumentProxy | null;
   pageNumber: number;
   width: number;
   aspect: number;
   active: boolean;
-  observer: IntersectionObserver | null;
+  sync: PreviewScrollSync;
+  bus: HoverBus;
   hoverSyncEnabled: boolean;
-  activeHover?: HoverState | null;
-  onHoverTarget?: (target: { source: "pdf"; page: number; text: string; rect?: BoundingBox }) => void;
-  onLeaveHover?: () => void;
+  onHoverText: (page: number, query: string) => void;
 }) {
   const holderRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
-  const [highlightBox, setHighlightBox] = useState<BoundingBox | null>(null);
+  const indexRef = useRef<CompactIndex | null>(null);
+  /** Bumped whenever the text layer is rebuilt, to re-run the match. */
+  const [layerVersion, setLayerVersion] = useState(0);
+
   const height = Math.round(width * aspect);
 
-  useEffect(() => {
-    const el = holderRef.current;
-    if (!el || !observer) return;
-    observer.observe(el);
-    return () => observer.unobserve(el);
-  }, [observer]);
-
-  // ── Render Canvas + PDF.js TextLayer ──────────────────────────────────────
+  // ── Render canvas + text layer ────────────────────────────────────────────
   useEffect(() => {
     if (!active || !pdf) return;
     let cancelled = false;
@@ -355,26 +330,27 @@ function PdfPageView({
         await renderTask.promise;
         if (cancelled) return;
 
-        // Render real DOM text layer over canvas for hover & selection
         if (textLayerDiv) {
-          textLayerDiv.innerHTML = "";
+          textLayerDiv.replaceChildren();
           textLayerDiv.style.setProperty("--scale-factor", String(scaleFactor));
           try {
-            const textSource = page.streamTextContent();
             textLayerInstance = new pdfjs.TextLayer({
-              textContentSource: textSource,
+              textContentSource: page.streamTextContent(),
               container: textLayerDiv,
               viewport: cssViewport,
             });
             await textLayerInstance.render();
+            if (cancelled) return;
+            indexRef.current = buildIndex(textLayerDiv);
+            setLayerVersion((v) => v + 1);
           } catch {
-            // Cancelled or worker aborted
+            // Cancelled, or the worker aborted mid-stream.
           }
         }
 
         page.cleanup();
       } catch {
-        // Cancelled by unmount or re-render
+        // Cancelled by unmount or a re-render at a different width.
       }
     })();
 
@@ -385,100 +361,57 @@ function PdfPageView({
     };
   }, [active, pdf, pageNumber, width]);
 
-  // ── Hover reflection: When Markdown is hovered, find matching spans on PDF ──
+  // Freed pages keep no index.
   useEffect(() => {
-    if (!hoverSyncEnabled || !holderRef.current || !textLayerRef.current) {
-      setHighlightBox(null);
-      return;
-    }
+    if (!active) indexRef.current = null;
+  }, [active]);
 
-    if (activeHover && activeHover.source === "markdown" && activeHover.page === pageNumber && activeHover.text) {
-      const textLayerDiv = textLayerRef.current;
-      const spans = Array.from(textLayerDiv.querySelectorAll<HTMLSpanElement>("span"));
-      if (spans.length === 0) {
-        setHighlightBox(null);
-        return;
-      }
+  // ── Pointer tracking over the text layer ──────────────────────────────────
+  const handlePointerOver = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!hoverSyncEnabled || sync.isScrolling()) return;
+    const index = indexRef.current;
+    if (!index) return;
 
-      const keywords = extractKeywords(activeHover.text, 3);
-      if (keywords.length === 0) {
-        setHighlightBox(null);
-        return;
-      }
-
-      const matchedSpans: HTMLElement[] = [];
-      for (const span of spans) {
-        const spanText = span.textContent?.toLowerCase() || "";
-        if (keywords.some((kw) => spanText.includes(kw))) {
-          matchedSpans.push(span);
-        }
-      }
-
-      if (matchedSpans.length > 0) {
-        const box = getUnionBoundingBox(matchedSpans, holderRef.current);
-        setHighlightBox(box);
-      } else {
-        setHighlightBox(null);
-      }
-    } else {
-      setHighlightBox(null);
-    }
-  }, [activeHover, hoverSyncEnabled, pageNumber]);
-
-  // ── Handle hovering over PDF text layer spans ─────────────────────────────
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!hoverSyncEnabled || !onHoverTarget) return;
-    const target = e.target as HTMLElement | null;
-    if (!target) return;
-
-    const span = target.closest<HTMLSpanElement>("span");
+    const span = (event.target as HTMLElement | null)?.closest<HTMLElement>("span");
     if (!span || !span.textContent?.trim()) return;
 
-    const text = span.textContent.trim();
-    if (text.length >= 2) {
-      const box = holderRef.current ? getUnionBoundingBox([span], holderRef.current) : null;
-      onHoverTarget({
-        source: "pdf",
-        page: pageNumber,
-        text,
-        rect: box ?? undefined,
-      });
-    }
+    const range = rangeOfElement(index, span);
+    if (!range) return;
+
+    // A span is often a handful of characters; widen it to a readable window so
+    // the matcher has enough signal to find the right paragraph.
+    const query = index.text.slice(
+      Math.max(0, range.start - HOVER_LOOKBEHIND),
+      Math.min(index.text.length, range.end + HOVER_LOOKAHEAD),
+    );
+    if (query.length >= 12) onHoverText(pageNumber, query);
   };
 
   return (
     <div
       ref={holderRef}
       data-page={pageNumber}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={() => onLeaveHover?.()}
+      onPointerOver={handlePointerOver}
       style={{ width, height }}
-      className="relative shrink-0 overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/10 select-text"
+      className="relative shrink-0 select-text overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/10"
     >
       {active ? (
         <>
-          <canvas ref={canvasRef} style={{ width, height }} className="block pointer-events-none" />
+          <canvas ref={canvasRef} style={{ width, height }} className="pointer-events-none block" />
           <div
             ref={textLayerRef}
             className="textLayer"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width,
-              height,
-              overflow: "hidden",
-            }}
+            style={{ position: "absolute", inset: 0, width, height, overflow: "hidden" }}
           />
-          {highlightBox && (
-            <div
-              style={{
-                position: "absolute",
-                top: Math.max(0, highlightBox.top - 2),
-                left: Math.max(0, highlightBox.left - 4),
-                width: Math.min(width, highlightBox.width + 8),
-                height: Math.min(height, highlightBox.height + 4),
-              }}
-              className="pointer-events-none z-10 rounded border-2 border-primary bg-primary/20 shadow-md ring-2 ring-primary/40 transition-all duration-150 animate-in fade-in"
+
+          {hoverSyncEnabled && (
+            <PageHighlight
+              key={layerVersion}
+              bus={bus}
+              sync={sync}
+              pageNumber={pageNumber}
+              indexRef={indexRef}
+              holderRef={holderRef}
             />
           )}
         </>
@@ -488,5 +421,99 @@ function PdfPageView({
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * The highlight overlay for one rendered page.
+ *
+ * Split out from `PdfPageView` on purpose: this is the only component that
+ * subscribes to the hover bus, so a pointer move re-renders a handful of
+ * absolutely-positioned divs and nothing else — not the canvas, not the text
+ * layer, and not the page shells of the rest of the chapter.
+ */
+function PageHighlight({
+  bus,
+  sync,
+  pageNumber,
+  indexRef,
+  holderRef,
+}: {
+  bus: HoverBus;
+  sync: PreviewScrollSync;
+  pageNumber: number;
+  indexRef: React.MutableRefObject<CompactIndex | null>;
+  holderRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [boxes, setBoxes] = useState<BoundingBox[]>([]);
+  /** Where the last match landed, so repeated boilerplate resolves forwards. */
+  const hintRef = useRef(0);
+  const revealTimer = useRef<number | null>(null);
+  const target = usePageTarget(bus, pageNumber);
+
+  useEffect(() => {
+    if (revealTimer.current) {
+      clearTimeout(revealTimer.current);
+      revealTimer.current = null;
+    }
+
+    const index = indexRef.current;
+    const holder = holderRef.current;
+    if (!target?.query || !index || !holder) {
+      setBoxes([]);
+      return;
+    }
+
+    const match = findBestMatch(index.text, target.query, hintRef.current);
+    if (!match || match.score < MIN_MATCH_SCORE) {
+      hintRef.current = 0;
+      setBoxes([]);
+      bus.setStatus("unmatched");
+      return;
+    }
+
+    hintRef.current = match.start;
+    const lines = boxesForRange(index, match.start, match.end, holder);
+    setBoxes(lines);
+    bus.setStatus(lines.length > 0 ? "matched" : "unmatched");
+
+    // Follow the highlight only when the reader is pointing at the other pane.
+    if (target.source !== "text" || lines.length === 0) return;
+    const union = unionBox(lines);
+    const pageTop = sync.pageTop("pdf", pageNumber);
+    if (!union || pageTop === null) return;
+    revealTimer.current = window.setTimeout(() => {
+      sync.reveal("pdf", pageTop + union.top, union.height);
+    }, AUTO_SCROLL_DELAY);
+  }, [target, bus, sync, pageNumber, indexRef, holderRef]);
+
+  useEffect(
+    () => () => {
+      if (revealTimer.current) clearTimeout(revealTimer.current);
+    },
+    [],
+  );
+
+  return (
+    <>
+      {boxes.map((box, i) => (
+        <div
+          key={i}
+          style={{
+            top: box.top - 1.5,
+            left: box.left - 1.5,
+            width: box.width + 3,
+            height: box.height + 3,
+          }}
+          className={cn(
+            "pointer-events-none absolute z-[2] rounded-[2px]",
+            // Multiply keeps the glyphs underneath legible instead of washing
+            // them out the way an opaque overlay would.
+            "bg-primary/30 ring-1 ring-inset ring-primary/50 mix-blend-multiply",
+            "animate-in fade-in duration-100",
+          )}
+        />
+      ))}
+    </>
   );
 }
