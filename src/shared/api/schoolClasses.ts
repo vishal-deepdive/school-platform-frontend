@@ -1,6 +1,7 @@
 import { apiClient } from "@/shared/api/client";
+import { API_V1 } from "@/shared/config/apiVersion";
 
-const BASE = "/school";
+const BASE = `${API_V1}/school`;
 
 /** One class on a school's roster, with the sections it runs. */
 export interface SchoolClass {

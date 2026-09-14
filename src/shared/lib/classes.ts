@@ -25,11 +25,12 @@ export interface GradeOption {
 }
 
 /**
- * Grade options for a classes-from/to range, in ascending order
- * (Nursery / KG → Class 12).
- *
- * Ascending deliberately: the onboarding wizard used to list 12 → 1 while every
- * other class picker counted up, which is part of the inconsistency this replaces.
+ * Grade options for a classes-from/to RANGE (Nursery / KG → Class 12,
+ * ascending) — the onboarding wizard's "Classes From"/"Classes To" fields and
+ * the admin school-edit form, where the natural reading is a span with a low
+ * and a high end. Deliberately distinct from every other class picker, which
+ * lists a school's actual classes highest-first (Class 12 → Nursery / KG) —
+ * see `sortClassesCanonical` and `school.repository.list_classes`.
  */
 export const GRADE_OPTIONS: readonly GradeOption[] = ALL_CLASS_LEVELS.map(
   (label, index) => ({ value: String(index), label }),
@@ -57,14 +58,21 @@ export function classSortOrder(label: string | undefined | null): number {
 }
 
 /**
- * Order class labels the way every class picker does: Nursery / KG → Class 12,
+ * Order class labels the way every class picker does: Class 12 → Nursery / KG,
  * with anything outside the vocabulary (a stream, a legacy spelling) after them,
- * alphabetically. Use this anywhere classes are listed from data rather than from
- * the roster, so a table can't disagree with the dropdown above it.
+ * alphabetically among themselves. Use this anywhere classes are listed from data
+ * rather than from the roster (which already comes back in this order — see
+ * `school.repository.list_classes`), so a table can't disagree with the dropdown
+ * above it.
  */
 export function sortClassesCanonical(classes: string[]): string[] {
   return [...classes].sort((a, b) => {
-    const diff = classSortOrder(a) - classSortOrder(b);
-    return diff !== 0 ? diff : a.localeCompare(b);
+    const orderA = classSortOrder(a);
+    const orderB = classSortOrder(b);
+    const unknownA = orderA >= ALL_CLASS_LEVELS.length;
+    const unknownB = orderB >= ALL_CLASS_LEVELS.length;
+    if (unknownA !== unknownB) return unknownA ? 1 : -1;
+    if (unknownA && unknownB) return a.localeCompare(b);
+    return orderB - orderA;
   });
 }

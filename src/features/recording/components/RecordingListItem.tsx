@@ -1,8 +1,8 @@
 import { Clock, Download, Eye, RotateCcw, Trash2, User } from "lucide-react";
 import { formatDate, formatFileSize } from "@/shared/lib/utils";
-import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import type { Recording } from "@/features/recording/types";
 
 interface RecordingListItemProps {
@@ -117,40 +117,56 @@ export function RecordingListItem({
           {rec.file_size_bytes ? <span>{formatFileSize(rec.file_size_bytes)}</span> : null}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1.5">
         <Button
           variant="outline"
           size="sm"
           icon={<Eye className="h-4 w-4" />}
           onClick={() => onPreview(rec.id)}
+          className="h-8 text-xs font-medium"
         >
           View<span className="sr-only"> notes for {displayName}</span>
         </Button>
-        <ActionMenu
-          label={`More actions for ${displayName}`}
-          items={[
-            {
-              label: "Download notes",
-              icon: <Download />,
-              onSelect: () => onDownload(rec),
-              hidden: !rec.job_id,
-            },
-            {
-              label: "Retry processing",
-              icon: <RotateCcw />,
-              onSelect: () => onRetry(rec.id),
-              disabled: retrying,
-              hidden: !canManage,
-            },
-            {
-              label: "Delete recording",
-              icon: <Trash2 />,
-              danger: true,
-              onSelect: () => onDelete(rec.id),
-              hidden: !canManage,
-            },
-          ]}
-        />
+        {rec.job_id && (
+          <Tooltip content="Download notes" side="top">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 border-border/70 text-foreground/80 transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+              onClick={() => onDownload(rec)}
+              aria-label={`Download notes for ${displayName}`}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+        )}
+        {canManage && (
+          <>
+            <Tooltip content="Retry processing" side="top">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 border-border/70 text-foreground/80 transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                loading={retrying}
+                onClick={() => onRetry(rec.id)}
+                aria-label={`Retry processing for ${displayName}`}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Delete recording" side="top">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 border-border/70 text-destructive/80 transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => onDelete(rec.id)}
+                aria-label={`Delete ${displayName}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+          </>
+        )}
       </div>
     </li>
   );

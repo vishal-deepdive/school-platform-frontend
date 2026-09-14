@@ -11,6 +11,16 @@ export interface RagFilters {
   medium?: "English" | "Hindi";
 }
 
+/**
+ * One prior turn sent with a question so the backend can resolve a follow-up
+ * ("why?", "what about the second one?") into a standalone query before it is
+ * embedded. Mirrors `ChatTurn` in the backend request schema.
+ */
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface QARequest {
   query: string;
   filters?: RagFilters;
@@ -18,6 +28,11 @@ export interface QARequest {
   explain_mode?: "simpler";
   /** Answer in this language (e.g. "Hindi"). Defaults to English. */
   language?: string;
+  /**
+   * Recent conversation turns, oldest first — omitted on the first question.
+   * The backend reads only the last few and caps the list at 8.
+   */
+  history?: ChatTurn[];
 }
 
 export interface QASource {

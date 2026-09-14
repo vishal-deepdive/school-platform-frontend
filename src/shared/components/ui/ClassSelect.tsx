@@ -1,10 +1,12 @@
 import { Link } from "react-router-dom";
+import { RefreshCw } from "lucide-react";
 import { Select } from "@/shared/components/ui/Select";
 import { Input } from "@/shared/components/ui/Input";
 import { Skeleton } from "@/shared/components/ui/Skeleton";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { isSchoolAdmin } from "@/shared/lib/permissions";
 import { useSchoolClasses } from "@/shared/hooks/useSchoolClasses";
+import { getErrorMessage } from "@/shared/lib/utils";
 
 interface ClassSelectProps {
   value: string;
@@ -51,13 +53,43 @@ export function ClassSelect({
   schoolId,
 }: ClassSelectProps) {
   const role = useAuthStore((s) => s.user?.role);
-  const { classOptions, isLoading, isEmpty, needsSchool } = useSchoolClasses({ schoolId });
+  const { classOptions, isLoading, isEmpty, needsSchool, isError, error: fetchError, refetch } =
+    useSchoolClasses({ schoolId });
 
   if (isLoading) {
     return (
       <div className="grid w-full gap-1.5">
         {label && <Skeleton className="h-4 w-16" />}
         <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
+    );
+  }
+
+  // A failed fetch must never look like an empty-but-valid dropdown — that's
+  // indistinguishable from "this school genuinely has no classes" and hides a
+  // real backend problem behind what looks like a data-entry gap.
+  if (isError) {
+    return (
+      <div className="grid w-full gap-1.5">
+        <Select
+          label={label}
+          options={[]}
+          placeholder="Couldn't load classes"
+          disabled
+        />
+        <p className="flex items-center gap-1.5 text-xs text-destructive">
+          <span className="min-w-0 truncate" title={getErrorMessage(fetchError)}>
+            {getErrorMessage(fetchError)}
+          </span>
+          <button
+            type="button"
+            onClick={refetch}
+            className="inline-flex shrink-0 items-center gap-1 font-medium hover:underline"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Retry
+          </button>
+        </p>
       </div>
     );
   }
@@ -152,8 +184,32 @@ export function SectionSelect({
   wrapperClassName,
   schoolId,
 }: SectionSelectProps) {
-  const { getSectionOptions } = useSchoolClasses({ schoolId });
+  const { getSectionOptions, isError, error: fetchError, refetch } = useSchoolClasses({ schoolId });
   const sectionOptions = className_ ? getSectionOptions(className_) : [];
+
+  // Same roster fetch as ClassSelect — surface its failure the same way instead
+  // of quietly falling back to the free-text/disabled paths below, which would
+  // read as "this class has no sections" rather than "the request failed".
+  if (isError) {
+    return (
+      <div className="grid w-full gap-1.5">
+        <Select label={label} options={[]} placeholder="Couldn't load sections" disabled />
+        <p className="flex items-center gap-1.5 text-xs text-destructive">
+          <span className="min-w-0 truncate" title={getErrorMessage(fetchError)}>
+            {getErrorMessage(fetchError)}
+          </span>
+          <button
+            type="button"
+            onClick={refetch}
+            className="inline-flex shrink-0 items-center gap-1 font-medium hover:underline"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Retry
+          </button>
+        </p>
+      </div>
+    );
+  }
 
   if (className_ && sectionOptions.length === 0 && allowFreeText) {
     return (

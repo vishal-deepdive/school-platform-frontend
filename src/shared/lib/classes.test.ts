@@ -5,6 +5,7 @@ import {
   PRE_PRIMARY_LABEL,
   classSortOrder,
   gradeRangeToClassNames,
+  sortClassesCanonical,
 } from "./classes";
 
 /**
@@ -26,7 +27,7 @@ describe("canonical class vocabulary", () => {
     expect(GRADE_OPTIONS[10]).toEqual({ value: "10", label: "Class 10" });
   });
 
-  it("orders grades ascending, like every class picker in the app", () => {
+  it("orders grades ascending — for the classes-from/to range selector only, not class pickers", () => {
     expect(GRADE_OPTIONS.map((g) => g.label).slice(0, 3)).toEqual([
       PRE_PRIMARY_LABEL,
       "Class 1",
@@ -64,5 +65,28 @@ describe("classSortOrder", () => {
   it("sorts a custom class (a stream the vocabulary can't model) last", () => {
     expect(classSortOrder("Class 11 Commerce")).toBe(ALL_CLASS_LEVELS.length);
     expect(classSortOrder(undefined)).toBe(ALL_CLASS_LEVELS.length);
+  });
+});
+
+describe("sortClassesCanonical", () => {
+  it("orders descending — Class 12 down to Nursery / KG — matching the roster", () => {
+    expect(sortClassesCanonical(["Class 3", "Class 12", PRE_PRIMARY_LABEL, "Class 1"])).toEqual([
+      "Class 12",
+      "Class 3",
+      "Class 1",
+      PRE_PRIMARY_LABEL,
+    ]);
+  });
+
+  it("groups stream/legacy classes after every canonical grade, alphabetically", () => {
+    expect(
+      sortClassesCanonical(["Class 11 Commerce", "Class 2", "Class 11 Science", "Class 12"]),
+    ).toEqual(["Class 12", "Class 2", "Class 11 Commerce", "Class 11 Science"]);
+  });
+
+  it("does not mutate the input array", () => {
+    const input = ["Class 1", "Class 2"];
+    sortClassesCanonical(input);
+    expect(input).toEqual(["Class 1", "Class 2"]);
   });
 });

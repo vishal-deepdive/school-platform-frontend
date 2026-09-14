@@ -61,8 +61,8 @@ export function ChapterTable({
             <th scope="col" className={cn(TH, "hidden lg:table-cell")}>Availability</th>
             <th scope="col" className={TH}>Status</th>
             {canManage && (
-              <th scope="col" className={TH}>
-                <span className="sr-only">Actions</span>
+              <th scope="col" className={cn(TH, "text-right")}>
+                Actions
               </th>
             )}
           </tr>
@@ -176,7 +176,7 @@ const ChapterRow = memo(function ChapterRow({
       </td>
       {canManage && (
         <td className="whitespace-nowrap px-3 py-3 text-right">
-          <div className="flex items-center justify-end gap-1">
+          <div className="flex items-center justify-end gap-1.5">
             {status.status === "failed" && (
               <Button
                 variant="outline"
@@ -184,36 +184,43 @@ const ChapterRow = memo(function ChapterRow({
                 icon={<RotateCcw className="h-3.5 w-3.5" />}
                 loading={pendingAction === "retry"}
                 onClick={() => onRetry(doc)}
+                className="h-8 text-xs"
               >
                 Retry
               </Button>
             )}
-            {/* Secondary actions surface on row hover/focus (pointer devices only). */}
-            <div
-              className={cn(
-                "flex items-center gap-1 transition-opacity",
-                !pendingAction &&
-                  "[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100",
-              )}
-            >
-              {canPreview && (
-                <Tooltip content="Preview passages" side="top">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={() => onPreview(doc)}
-                    aria-label={`Preview ${doc.chapter_name}`}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                </Tooltip>
-              )}
+            <div className="flex items-center gap-1.5">
+              <Tooltip
+                content={
+                  status.status === "completed"
+                    ? "Preview passages"
+                    : status.status === "failed"
+                      ? "Preview unavailable (indexing failed)"
+                      : "Preview available once indexed"
+                }
+                side="top"
+              >
+                <Button
+                  variant="outline"
+                  size="icon"
+                  disabled={!canPreview}
+                  className={cn(
+                    "h-8 w-8 border-border/70 text-foreground/80 transition-colors",
+                    canPreview
+                      ? "hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                      : "cursor-not-allowed opacity-40",
+                  )}
+                  onClick={() => canPreview && onPreview(doc)}
+                  aria-label={`Preview ${doc.chapter_name}`}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </Tooltip>
               <Tooltip content="Delete chapter" side="top">
                 <Button
-                  variant="danger-ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 border-border/70 text-destructive/80 transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                   loading={pendingAction === "delete"}
                   onClick={() => onDelete(doc)}
                   aria-label={`Delete ${doc.chapter_name}`}

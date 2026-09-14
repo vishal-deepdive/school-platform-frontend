@@ -11,7 +11,10 @@ import {
 } from "recharts";
 import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { SCORE_COLORS, pctColor } from "@/features/survey/components/analyticsTokens";
+import {
+  SCORE_COLORS,
+  pctColor,
+} from "@/features/survey/components/analyticsTokens";
 import type {
   SurveyClassStat,
   SurveyDimensionStat,
@@ -88,7 +91,10 @@ function Tip({ title, rows }: { title: string; rows: TipRow[] }) {
       <div className="mt-1 space-y-0.5">
         {rows.map((r) => (
           <p key={r.name} className="text-muted-foreground">
-            {r.name}: <span className="font-medium text-popover-foreground">{r.value}</span>
+            {r.name}:{" "}
+            <span className="font-medium text-popover-foreground">
+              {r.value}
+            </span>
           </p>
         ))}
       </div>
@@ -99,7 +105,11 @@ function Tip({ title, rows }: { title: string; rows: TipRow[] }) {
 // ── Empty / suppressed states ────────────────────────────────────────────────
 
 function ChartNote({ children }: { children: React.ReactNode }) {
-  return <p className="py-10 text-center text-sm text-muted-foreground">{children}</p>;
+  return (
+    <p className="py-10 text-center text-sm text-muted-foreground">
+      {children}
+    </p>
+  );
 }
 
 /** Footnote for slices withheld because the cohort is too small to anonymise. */
@@ -113,7 +123,9 @@ export function SuppressedNote({
   names?: string[];
 }) {
   if (count <= 0) return null;
-  const subject = names?.length ? names.join(", ") : `${count} ${noun}${count === 1 ? "" : "es"}`;
+  const subject = names?.length
+    ? names.join(", ")
+    : `${count} ${noun}${count === 1 ? "" : "es"}`;
   return (
     <p className="mt-3 text-[11px] text-muted-foreground">
       {subject} {count === 1 ? "has" : "have"} too few responses to show safely.
@@ -121,7 +133,7 @@ export function SuppressedNote({
   );
 }
 
-// ── Horizontal % bar chart ───────────────────────────────────────────────────
+// ── Vertical % column chart ──────────────────────────────────────────────────
 
 export interface RatedRow {
   label: string;
@@ -133,96 +145,126 @@ export interface RatedRow {
   delta?: number | null;
 }
 
+/** Minimum pixel width per column so category labels never overlap — a wide
+ *  chart scrolls horizontally inside its card rather than cramming. */
+const COLUMN_WIDTH = 88;
+
 /**
- * Satisfaction as a real charted magnitude: a fixed 0–100 axis, so a 40% bar
- * looks like 40% of the way to "everyone is happy" rather than 40% of whatever
- * the best row happens to be. Bars carry the traffic-light colour and their own
- * value label, which keeps the y-axis to category names only.
+ * Satisfaction as a real charted magnitude: a fixed 0–100 axis, so a 40%
+ * column looks like 40% of the way to "everyone is happy" rather than 40% of
+ * whatever the best row happens to be. One brand colour throughout — the
+ * traffic-light-per-bar rainbow this used to be made every chart the busiest
+ * thing on the page; a single hue reads calmer and the number is what
+ * actually carries the "is this good" judgement.
  */
 export function RatedBarChart({
   rows,
-  height,
+  height = 260,
   emptyLabel = "No rated responses yet.",
 }: {
   rows: RatedRow[];
-  /** Defaults to a height that fits every row without cramping. */
   height?: number;
   emptyLabel?: string;
 }) {
   if (rows.length === 0) return <ChartNote>{emptyLabel}</ChartNote>;
-  const h = height ?? Math.max(140, rows.length * 34 + 24);
+  const minWidth = rows.length * COLUMN_WIDTH;
 
   return (
-    <div style={{ height: h }} className="w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={rows}
-          layout="vertical"
-          margin={{ top: 4, right: 44, bottom: 4, left: 4 }}
-          barCategoryGap="22%"
-        >
-          <CartesianGrid
-            horizontal={false}
-            strokeDasharray="3 3"
-            stroke={GRID_STROKE}
-            opacity={0.6}
-          />
-          <XAxis
-            type="number"
-            domain={[0, 100]}
-            ticks={[0, 25, 50, 75, 100]}
-            tickFormatter={(v: number) => `${v}%`}
-            tickLine={false}
-            axisLine={false}
-            tick={AXIS_TICK}
-          />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={116}
-            tickLine={false}
-            axisLine={false}
-            tick={AXIS_TICK}
-          />
-          <Tooltip
-            cursor={CURSOR}
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null;
-              const row = payload[0].payload as RatedRow;
-              return (
-                <Tip
-                  title={row.label}
-                  rows={[
-                    { name: "Positive", value: `${row.pct}%` },
-                    ...(row.count !== undefined
-                      ? [{ name: "Responses", value: row.count.toLocaleString() }]
-                      : []),
-                    ...(row.delta != null
-                      ? [
-                          {
-                            name: "vs previous",
-                            value: `${row.delta > 0 ? "+" : ""}${row.delta}pts`,
-                          },
-                        ]
-                      : []),
-                  ]}
-                />
-              );
-            }}
-          />
-          <Bar dataKey="pct" radius={[0, 4, 4, 0]} maxBarSize={22} animationDuration={250}>
-            {rows.map((r) => (
-              <Cell key={r.label} fill={pctColor(r.pct)} />
-            ))}
-            <LabelList
-              dataKey="pct"
-              position="right"
-              formatter={(v: number) => `${v}%`}
-              style={{ fontSize: 11, fontWeight: 600, fill: "oklch(var(--foreground))" }}
+    <div className="w-full overflow-x-auto scrollbar-thin">
+      <div style={{ height, minWidth }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={rows}
+            margin={{ top: 20, right: 8, bottom: 8, left: -20 }}
+            barCategoryGap="30%"
+          >
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="3 3"
+              stroke={GRID_STROKE}
+              opacity={0.6}
             />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              interval={0}
+              tick={AXIS_TICK}
+            />
+            <YAxis
+              domain={[0, 100]}
+              ticks={[0, 25, 50, 75, 100]}
+              tickFormatter={(v: number) => `${v}%`}
+              tickLine={false}
+              axisLine={false}
+              width={36}
+              tick={AXIS_TICK}
+            />
+            <Tooltip
+              cursor={CURSOR}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as RatedRow;
+                return (
+                  <Tip
+                    title={row.label}
+                    rows={[
+                      { name: "Positive", value: `${row.pct}%` },
+                      ...(row.count !== undefined
+                        ? [
+                            {
+                              name: "Responses",
+                              value: row.count.toLocaleString(),
+                            },
+                          ]
+                        : []),
+                      ...(row.delta != null
+                        ? [
+                            {
+                              name: "vs previous",
+                              value: `${row.delta > 0 ? "+" : ""}${row.delta}pts`,
+                            },
+                          ]
+                        : []),
+                    ]}
+                  />
+                );
+              }}
+            />
+            <Bar
+              dataKey="pct"
+              fill="oklch(var(--primary))"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={40}
+              animationDuration={250}
+            >
+              <LabelList
+                dataKey="pct"
+                position="top"
+                content={(props) => {
+                  const { x, y, width, value } = props;
+                  const v = Number(value);
+                  if (!Number.isFinite(v)) return null;
+                  // The bars are one calm brand colour; this small number is
+                  // the only place the traffic-light judgement still shows.
+                  return (
+                    <text
+                      x={Number(x) + Number(width) / 2}
+                      y={Number(y) - 6}
+                      textAnchor="middle"
+                      fontSize={11}
+                      fontWeight={600}
+                      fill={pctColor(v)}
+                    >
+                      {v}%
+                    </text>
+                  );
+                }}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
@@ -248,7 +290,11 @@ export function SatisfactionByArea({
 }
 
 /** Satisfaction by class. */
-export function SatisfactionByClass({ classes }: { classes: SurveyClassStat[] }) {
+export function SatisfactionByClass({
+  classes,
+}: {
+  classes: SurveyClassStat[];
+}) {
   return (
     <RatedBarChart
       rows={classes.map((c) => ({
@@ -279,71 +325,83 @@ export function CountBarChart({
   emptyLabel?: string;
 }) {
   if (rows.length === 0) return <ChartNote>{emptyLabel}</ChartNote>;
-  const h = height ?? Math.max(140, rows.length * 34 + 24);
+  const h = height ?? 260;
+  const minWidth = rows.length * COLUMN_WIDTH;
 
   return (
-    <div style={{ height: h }} className="w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={rows}
-          layout="vertical"
-          margin={{ top: 4, right: 40, bottom: 4, left: 4 }}
-          barCategoryGap="22%"
-        >
-          <CartesianGrid
-            horizontal={false}
-            strokeDasharray="3 3"
-            stroke={GRID_STROKE}
-            opacity={0.6}
-          />
-          <XAxis
-            type="number"
-            allowDecimals={false}
-            tickLine={false}
-            axisLine={false}
-            tick={AXIS_TICK}
-          />
-          <YAxis
-            type="category"
-            dataKey="label"
-            width={116}
-            tickLine={false}
-            axisLine={false}
-            tick={AXIS_TICK}
-          />
-          <Tooltip
-            cursor={CURSOR}
-            content={({ active, payload }) => {
-              if (!active || !payload?.length) return null;
-              const row = payload[0].payload as { label: string; count: number };
-              return (
-                <Tip
-                  title={row.label}
-                  rows={[{ name: unit, value: row.count.toLocaleString() }]}
-                />
-              );
-            }}
-          />
-          <Bar
-            dataKey="count"
-            radius={[0, 4, 4, 0]}
-            maxBarSize={22}
-            fill="oklch(var(--primary))"
-            animationDuration={250}
+    <div className="w-full overflow-x-auto scrollbar-thin">
+      <div style={{ height: h, minWidth }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={rows}
+            margin={{ top: 20, right: 8, bottom: 8, left: -20 }}
+            barCategoryGap="30%"
           >
-            <LabelList
-              dataKey="count"
-              position="right"
-              style={{ fontSize: 11, fontWeight: 600, fill: "oklch(var(--foreground))" }}
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="3 3"
+              stroke={GRID_STROKE}
+              opacity={0.6}
             />
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              interval={0}
+              tick={AXIS_TICK}
+            />
+            <YAxis
+              allowDecimals={false}
+              tickLine={false}
+              axisLine={false}
+              width={36}
+              tick={AXIS_TICK}
+            />
+            <Tooltip
+              cursor={CURSOR}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const row = payload[0].payload as {
+                  label: string;
+                  count: number;
+                };
+                return (
+                  <Tip
+                    title={row.label}
+                    rows={[{ name: unit, value: row.count.toLocaleString() }]}
+                  />
+                );
+              }}
+            />
+            <Bar
+              dataKey="count"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={40}
+              fill="oklch(var(--primary))"
+              animationDuration={250}
+            >
+              <LabelList
+                dataKey="count"
+                position="top"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  fill: "oklch(var(--foreground))",
+                }}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
 
-export function ToughestSubjects({ subjects }: { subjects: SurveySubjectStat[] }) {
+export function ToughestSubjects({
+  subjects,
+}: {
+  subjects: SurveySubjectStat[];
+}) {
   return (
     <CountBarChart
       rows={subjects.map((s) => ({ label: s.subject, count: s.count }))}
@@ -364,9 +422,13 @@ export function RecommendationSpread({
 }) {
   if (recommendation.suppressed)
     return <ChartNote>Too few responses to show safely.</ChartNote>;
-  if (recommendation.responses === 0) return <ChartNote>No scores yet.</ChartNote>;
+  if (recommendation.responses === 0)
+    return <ChartNote>No scores yet.</ChartNote>;
 
-  const total = recommendation.distribution.reduce((sum, d) => sum + d.count, 0);
+  const total = recommendation.distribution.reduce(
+    (sum, d) => sum + d.count,
+    0,
+  );
 
   return (
     <div style={{ height }} className="w-full">
@@ -381,7 +443,12 @@ export function RecommendationSpread({
             stroke={GRID_STROKE}
             opacity={0.6}
           />
-          <XAxis dataKey="score" tickLine={false} axisLine={false} tick={AXIS_TICK} />
+          <XAxis
+            dataKey="score"
+            tickLine={false}
+            axisLine={false}
+            tick={AXIS_TICK}
+          />
           <YAxis
             allowDecimals={false}
             tickLine={false}
@@ -408,9 +475,17 @@ export function RecommendationSpread({
               );
             }}
           />
-          <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={36} animationDuration={250}>
+          <Bar
+            dataKey="count"
+            radius={[4, 4, 0, 0]}
+            maxBarSize={36}
+            animationDuration={250}
+          >
             {recommendation.distribution.map((d) => (
-              <Cell key={d.score} fill={SCORE_COLORS[d.score - 1] ?? "#94a3b8"} />
+              <Cell
+                key={d.score}
+                fill={SCORE_COLORS[d.score - 1] ?? "#94a3b8"}
+              />
             ))}
           </Bar>
         </BarChart>

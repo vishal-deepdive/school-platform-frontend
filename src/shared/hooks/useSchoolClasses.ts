@@ -30,7 +30,16 @@ export interface UseSchoolClassesResult {
   isEmpty: boolean;
   /** True while an admin has not picked a school yet — not an error state. */
   needsSchool: boolean;
+  /**
+   * True when the roster request itself failed (network/5xx/permissions) —
+   * distinct from `isEmpty`. Callers must show this as an error, never render it
+   * as a normal empty dropdown: a school with real classes must never look
+   * unconfigured just because a request failed.
+   */
+  isError: boolean;
   error: unknown;
+  /** Retry the roster fetch in place (no page reload). */
+  refetch: () => void;
 }
 
 /**
@@ -55,13 +64,16 @@ export function useSchoolClasses(
   const active = useActiveSchool();
   const schoolId = schoolIdOverride ?? active.schoolId;
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: schoolClassesKeys.roster(schoolId, includeInactive),
     queryFn: () => schoolClassesApi.getRoster(schoolId, includeInactive),
     enabled: !!schoolId,
     staleTime: REFERENCE_DATA_STALE_TIME,
     gcTime: REFERENCE_DATA_GC_TIME,
     meta: referenceDataMeta,
+    // A failed roster fetch must surface as an error (see `isError` above), not
+    // retry silently for so long that a picker looks broken with no feedback.
+    retry: 1,
   });
 
   const classes = useMemo(() => data?.classes ?? [], [data]);
@@ -92,9 +104,11 @@ export function useSchoolClasses(
     classOptions,
     getSectionOptions,
     isLoading: !!schoolId && isLoading,
-    isEmpty: !!schoolId && !isLoading && !error && classes.length === 0,
+    isEmpty: !!schoolId && !isLoading && !isError && classes.length === 0,
     needsSchool: !schoolId,
+    isError: !!schoolId && isError,
     error,
+    refetch: () => void refetch(),
   };
 }
 

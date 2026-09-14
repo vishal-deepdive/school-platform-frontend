@@ -129,7 +129,10 @@ export function ClassesTab({ school }: { school: SchoolDetail }) {
   });
 
   const takenNames = new Set(classes.map((c) => c.class_name));
-  const availableGrades = ALL_CLASS_LEVELS.filter((label) => !takenNames.has(label));
+  // Descending (Class 12 → Nursery / KG), matching the roster list above it.
+  const availableGrades = [...ALL_CLASS_LEVELS]
+    .reverse()
+    .filter((label) => !takenNames.has(label));
 
   return (
     <Panel
@@ -231,7 +234,7 @@ export function ClassesTab({ school }: { school: SchoolDetail }) {
                   loading={removePending.has(row.class_name)}
                   icon={<Trash2 className="h-4 w-4 text-destructive" />}
                   onClick={() => setRemoving(row)}
-                  className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                 >
                   Remove
                 </Button>

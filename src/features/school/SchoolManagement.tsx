@@ -57,7 +57,7 @@ import { MEDIUM_OPTIONS } from "@/features/admin/constants";
 import { gradeRangeToClassNames } from "@/shared/lib/classes";
 import { useSchoolClasses } from "@/shared/hooks/useSchoolClasses";
 import { ClassesTab } from "@/features/school/components/ClassesTab";
-import type { SchoolDetail, AdminUserListItem } from "@/features/admin/types";
+import type { SchoolDetail, AdminUserListItem, ClassCode } from "@/features/admin/types";
 import type { PendingParentItem } from "@/features/auth/types";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
@@ -320,6 +320,7 @@ function ClassCodesTab({
   const [className, setClassName] = useState("");
   const [section, setSection] = useState("");
   const [session, setSession] = useState("");
+  const [deactivating, setDeactivating] = useState<ClassCode | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "class-codes", schoolId],
@@ -357,6 +358,7 @@ function ClassCodesTab({
     onSuccess: () => {
       toast.success("Class code deactivated");
       queryClient.invalidateQueries({ queryKey: ["admin", "class-codes", schoolId] });
+      setDeactivating(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -437,8 +439,8 @@ function ClassCodesTab({
                     variant="ghost"
                     loading={deactivatePending.has(c.code)}
                     icon={<Power className="h-4 w-4 text-destructive" />}
-                    onClick={() => deactivate.mutate(c.code)}
-                    className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                    onClick={() => setDeactivating(c)}
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     Deactivate
                   </Button>
@@ -491,6 +493,17 @@ function ClassCodesTab({
           </Button>
         </ModalFooter>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deactivating}
+        variant="danger"
+        title={`Deactivate ${deactivating?.code ?? "this code"}?`}
+        description="Students will no longer be able to self-register with this code. Existing students it already enrolled are unaffected, and you can generate a new code for this class at any time."
+        confirmLabel="Deactivate"
+        loading={!!deactivating && deactivatePending.has(deactivating.code)}
+        onConfirm={() => deactivating && deactivate.mutate(deactivating.code)}
+        onClose={() => setDeactivating(null)}
+      />
     </Panel>
   );
 }
@@ -609,7 +622,7 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
                     section: a.section,
                   })
                 }
-                className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 Revoke
               </Button>
@@ -768,7 +781,7 @@ function RagAccessTab({ schoolId }: { schoolId: string }) {
                 loading={revokePending.has(r.user_id)}
                 icon={<Trash2 className="h-4 w-4 text-destructive" />}
                 onClick={() => revoke.mutate(r.user_id)}
-                className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 Revoke
               </Button>

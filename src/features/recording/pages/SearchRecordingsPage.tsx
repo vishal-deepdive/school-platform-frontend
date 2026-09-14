@@ -3,6 +3,7 @@ import { AlertTriangle, Eye, Search, SearchX } from "lucide-react";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Input } from "@/shared/components/ui/Input";
 import { Panel } from "@/shared/components/ui/Panel";
 import { ListSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
@@ -53,8 +54,20 @@ export function SearchRecordingsPage() {
         />
       )}
 
-      <form role="search" onSubmit={handleSearch} className="flex flex-col gap-2 sm:flex-row">
-        <div className="flex-1">
+      <form role="search" onSubmit={handleSearch}>
+        <FilterBar
+          hideHeader
+          actions={
+            <Button
+              type="submit"
+              disabled={query.trim().length < MIN_QUERY}
+              loading={isFetching}
+              icon={<Search className="h-4 w-4" />}
+            >
+              Search
+            </Button>
+          }
+        >
           <Input
             type="search"
             value={query}
@@ -63,16 +76,7 @@ export function SearchRecordingsPage() {
             aria-label="Search lecture notes"
             leftIcon={<Search className="h-4 w-4 text-muted-foreground" />}
           />
-        </div>
-        <Button
-          type="submit"
-          disabled={query.trim().length < MIN_QUERY}
-          loading={isFetching}
-          icon={<Search className="h-4 w-4" />}
-          className="self-start sm:self-auto"
-        >
-          Search
-        </Button>
+        </FilterBar>
       </form>
 
       {!submitted ? (
