@@ -67,7 +67,7 @@ export function LeavePage() {
     isLoading: childrenLoading,
     showSelector,
   } = useMyChildren();
-  const { schoolParam, ready } = useActiveSchool();
+  const { schoolParam, schoolName, ready } = useActiveSchool();
 
   // Staff land on the queue that needs them; everyone else sees their history.
   const defaults = useMemo(
@@ -99,20 +99,35 @@ export function LeavePage() {
   });
 
   const reviewPending = usePendingKeys();
+
   const reviewMutation = useMutation({
     mutationFn: (v: { id: number; decision: "approved" | "rejected" }) =>
-      attendanceApi.reviewLeave(v.id, { decision: v.decision }),
+      attendanceApi.reviewLeave(v.id, {
+        decision: v.decision,
+        ...(schoolName ? { school_name: schoolName } : {}),
+      }),
+
     onMutate: (v) => reviewPending.start(String(v.id)),
-    onSettled: (_data, _err, v) => reviewPending.finish(String(v.id)),
+
+    onSettled: (_data, _err, v) =>
+      reviewPending.finish(String(v.id)),
+
     onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ["attendance", "leave"] });
-      queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      queryClient.invalidateQueries({
+        queryKey: ["attendance", "leave"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["attendance"],
+      });
+
       toast.success(
         res.status === "approved"
           ? `Approved · ${res.days_marked_excused} day(s) marked excused`
           : "Request rejected",
       );
     },
+
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 

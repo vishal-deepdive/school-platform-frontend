@@ -301,6 +301,14 @@ export function SurveySearchView() {
 
   const runSearch = useCallback(
     async (formData: SurveySearchFormData) => {
+      
+      const query = formData.query.trim();
+
+      if (!query) {
+        toast.error("Please enter a question.");
+        return;
+      }
+
       if (streamingRef.current) return;
       streamingRef.current = true;
       updateUrl({ q: formData.query }, { push: true });
@@ -322,7 +330,7 @@ export function SurveySearchView() {
       try {
         for await (const event of surveyApi.searchStream(
           {
-            query: formData.query,
+            query,
             // Empty selection = "All sheets" → omit the filter entirely so the
             // backend searches every accessible row (including legacy rows that
             // predate sheet-sources and have a NULL source_id).
