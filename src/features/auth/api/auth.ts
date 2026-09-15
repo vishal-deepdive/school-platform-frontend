@@ -18,7 +18,6 @@ import type {
   GoogleCompleteResponse,
   UserResponse,
   SchoolSearchItem,
-  ClassCodeItem,
   PendingParentsResponse,
   MobileOtpRequestRequest,
   MobileOtpLoginVerifyRequest,
@@ -222,11 +221,6 @@ export const authApi = {
   searchSchools: (q: string) =>
     apiClient
       .get<SchoolSearchItem[]>(`${BASE}/schools/search`, { params: { q } })
-      .then((r) => r.data),
-
-  getSchoolClasses: (school_id: string) =>
-    apiClient
-      .get<ClassCodeItem[]>(`${BASE}/schools/${school_id}/classes`)
       .then((r) => r.data),
 
   // ── Parent approval (principal / admin) ──────────────────────────────────

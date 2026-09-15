@@ -118,7 +118,7 @@ export function MobileSidebarItem({
                       "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-all",
                       isActive
                         ? "text-primary bg-primary/10 dark:bg-primary/20 dark:text-blue-300 font-semibold"
-                        : "text-slate-800 dark:text-slate-200 hover:bg-muted/70 hover:text-foreground",
+                        : "text-slate-800 dark:text-slate-200 hover:bg-primary/[0.07] dark:hover:bg-muted/70 hover:text-foreground",
                     )
                   }
                 >

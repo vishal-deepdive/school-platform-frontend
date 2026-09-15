@@ -52,7 +52,7 @@ export function OnboardingSection() {
               </Link>
               <Link
                 to="/onboarding/status"
-                className="text-sm font-medium text-slate-300 underline-offset-4 transition hover:text-white hover:underline"
+                className="inline-flex min-h-11 items-center rounded text-sm font-medium text-slate-300 underline-offset-4 transition hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
               >
                 Track your application →
               </Link>

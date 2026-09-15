@@ -84,9 +84,13 @@ export function DatePicker({
     selected ?? new Date(),
   );
 
-  // Hide the "next" button when the calendar is already showing the current
-  // real-world month — navigating forward would only show future months.
-  const atCurrentMonth = isSameMonth(displayMonth, new Date());
+  // Hide the "next" button once the calendar reaches the latest selectable
+  // month, so past-only pickers (which pass `max`) can't wander into fully
+  // disabled months. Pickers WITHOUT a max — holidays, leave requests — must
+  // be able to page forward to plan ahead.
+  const atLastMonth = maxDate
+    ? isSameMonth(displayMonth, maxDate) || displayMonth > maxDate
+    : false;
 
   const handleSelect = (day: Date | undefined) => {
     onChange?.(dateToIso(day));
@@ -181,9 +185,7 @@ export function DatePicker({
             ]}
             modifiers={modifiers}
             modifiersClassNames={modifiersClassNames}
-            classNames={
-              atCurrentMonth ? { button_next: "invisible pointer-events-none" } : {}
-            }
+            classNames={atLastMonth ? { button_next: "invisible pointer-events-none" } : {}}
             initialFocus
           />
         </PopoverContent>

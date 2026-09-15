@@ -53,12 +53,11 @@ import {
 } from "@/features/auth/api/auth";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { getErrorMessage, formatDate, cn } from "@/shared/lib/utils";
-import {
-  GRADE_OPTIONS,
-  gradeRangeToClassNames,
-  MEDIUM_OPTIONS,
-} from "@/features/admin/constants";
-import type { SchoolDetail, AdminUserListItem } from "@/features/admin/types";
+import { MEDIUM_OPTIONS } from "@/features/admin/constants";
+import { gradeRangeToClassNames } from "@/shared/lib/classes";
+import { useSchoolClasses } from "@/shared/hooks/useSchoolClasses";
+import { ClassesTab } from "@/features/school/components/ClassesTab";
+import type { SchoolDetail, AdminUserListItem, ClassCode } from "@/features/admin/types";
 import type { PendingParentItem } from "@/features/auth/types";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
@@ -68,6 +67,7 @@ import { Panel } from "@/shared/components/ui/Panel";
 import { Modal, ModalFooter } from "@/shared/components/ui/Modal";
 import { Input } from "@/shared/components/ui/Input";
 import { Select } from "@/shared/components/ui/Select";
+import { ClassSelect, SectionSelect } from "@/shared/components/ui/ClassSelect";
 import { StatCard } from "@/shared/components/ui/Card";
 import { Tabs } from "@/shared/components/ui/Tabs";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
@@ -320,6 +320,7 @@ function ClassCodesTab({
   const [className, setClassName] = useState("");
   const [section, setSection] = useState("");
   const [session, setSession] = useState("");
+  const [deactivating, setDeactivating] = useState<ClassCode | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "class-codes", schoolId],
@@ -357,6 +358,7 @@ function ClassCodesTab({
     onSuccess: () => {
       toast.success("Class code deactivated");
       queryClient.invalidateQueries({ queryKey: ["admin", "class-codes", schoolId] });
+      setDeactivating(null);
     },
     onError: (err) => toast.error(getErrorMessage(err)),
   });
@@ -437,8 +439,8 @@ function ClassCodesTab({
                     variant="ghost"
                     loading={deactivatePending.has(c.code)}
                     icon={<Power className="h-4 w-4 text-destructive" />}
-                    onClick={() => deactivate.mutate(c.code)}
-                    className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                    onClick={() => setDeactivating(c)}
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   >
                     Deactivate
                   </Button>
@@ -451,18 +453,24 @@ function ClassCodesTab({
 
       <Modal open={open} onClose={() => setOpen(false)} title="Create Class Code" size="md">
         <div className="space-y-4">
-          <Input
-            label="Class / Subject"
-            placeholder="Mathematics Grade 7"
+          {/* Picked from the school's class roster, not typed: a code whose class
+              label doesn't match the roster produces students no class filter
+              can find. */}
+          <ClassSelect
+            schoolId={schoolId}
             value={className}
-            onChange={(e) => setClassName(e.target.value)}
+            onChange={(value) => {
+              setClassName(value);
+              setSection("");
+            }}
           />
-          <Input
-            label="Section"
+          <SectionSelect
+            schoolId={schoolId}
+            className_={className}
             hint="Optional"
-            placeholder="A"
             value={section}
-            onChange={(e) => setSection(e.target.value)}
+            onChange={setSection}
+            allowFreeText
           />
           <Input
             label="Session"
@@ -485,6 +493,17 @@ function ClassCodesTab({
           </Button>
         </ModalFooter>
       </Modal>
+
+      <ConfirmDialog
+        open={!!deactivating}
+        variant="danger"
+        title={`Deactivate ${deactivating?.code ?? "this code"}?`}
+        description="Students will no longer be able to self-register with this code. Existing students it already enrolled are unaffected, and you can generate a new code for this class at any time."
+        confirmLabel="Deactivate"
+        loading={!!deactivating && deactivatePending.has(deactivating.code)}
+        onConfirm={() => deactivating && deactivate.mutate(deactivating.code)}
+        onClose={() => setDeactivating(null)}
+      />
     </Panel>
   );
 }
@@ -603,7 +622,7 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
                     section: a.section,
                   })
                 }
-                className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 Revoke
               </Button>
@@ -626,18 +645,23 @@ function TeachersTab({ schoolId }: { schoolId: string }) {
               This school has no active teachers yet. Invite one first.
             </Alert>
           )}
-          <Input
-            label="Class"
-            placeholder="Grade 10"
+          {/* From the roster: this assignment is what scopes a teacher's attendance
+              and recording access, so a typo'd class label locks them out. */}
+          <ClassSelect
+            schoolId={schoolId}
             value={className}
-            onChange={(e) => setClassName(e.target.value)}
+            onChange={(value) => {
+              setClassName(value);
+              setSection("");
+            }}
           />
-          <Input
-            label="Section"
+          <SectionSelect
+            schoolId={schoolId}
+            className_={className}
             hint="Optional"
-            placeholder="A"
             value={section}
-            onChange={(e) => setSection(e.target.value)}
+            onChange={setSection}
+            allowFreeText
           />
         </div>
         <ModalFooter>
@@ -757,7 +781,7 @@ function RagAccessTab({ schoolId }: { schoolId: string }) {
                 loading={revokePending.has(r.user_id)}
                 icon={<Trash2 className="h-4 w-4 text-destructive" />}
                 onClick={() => revoke.mutate(r.user_id)}
-                className="text-destructive opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
                 Revoke
               </Button>
@@ -1102,17 +1126,37 @@ function BulkClassCodeModal({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [from, setFrom] = useState(initialFrom);
-  const [to, setTo] = useState(initialTo);
+  // Codes are generated for classes ON THE ROSTER, not for a grade range typed
+  // here: a code whose class label doesn't exist on the roster produces students
+  // no class dropdown can filter to.
+  const { classes: rosterClasses, isLoading: rosterLoading } = useSchoolClasses({ schoolId });
+  const [selected, setSelected] = useState<string[]>([]);
   const [sectionsRaw, setSectionsRaw] = useState("");
   const [session, setSession] = useState(defaultSession);
+  const [seeded, setSeeded] = useState(false);
 
-  const classNames = gradeRangeToClassNames(from, to);
+  // Pre-select the range the school was just created with, intersected with the
+  // roster that range seeded — so "create school → generate codes" stays one flow.
+  if (!seeded && rosterClasses.length > 0) {
+    const fromRange = new Set(gradeRangeToClassNames(initialFrom, initialTo));
+    const preselect = rosterClasses
+      .map((c) => c.class_name)
+      .filter((name) => fromRange.size === 0 || fromRange.has(name));
+    setSelected(preselect.length ? preselect : rosterClasses.map((c) => c.class_name));
+    setSeeded(true);
+  }
+
+  const classNames = selected;
   const sections = sectionsRaw
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
   const total = classNames.length * Math.max(1, sections.length);
+
+  const toggleClass = (name: string) =>
+    setSelected((prev) =>
+      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name],
+    );
 
   const create = useMutation({
     mutationFn: () =>
@@ -1130,39 +1174,61 @@ function BulkClassCodeModal({
     onError: (err) => toast.error(getErrorMessage(err)),
   });
 
-  const gradeFrom = [
-    { value: "", label: "— From —" },
-    ...GRADE_OPTIONS.map((g) => ({ value: g.value, label: g.label })),
-  ];
-  const gradeTo = [
-    { value: "", label: "— To —" },
-    ...GRADE_OPTIONS.filter((g) => g.value !== "0").map((g) => ({
-      value: g.value,
-      label: g.label,
-    })),
-  ];
-
   return (
     <Modal open onClose={onClose} title="Bulk Generate Class Codes" size="lg">
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Generate a class code for every grade in the range (optionally split by
+          Generate a class code for each selected class (optionally split by
           section). Students use these codes to self-register.
         </p>
-        <div className="grid grid-cols-2 gap-4">
-          <Select
-            label="Classes From"
-            options={gradeFrom}
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-          <Select
-            label="Classes To"
-            options={gradeTo}
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </div>
+        {rosterLoading ? (
+          <ListSkeleton items={2} />
+        ) : rosterClasses.length === 0 ? (
+          <Alert variant="warning">
+            This school has no classes on its roster yet — add them on the Classes
+            tab first, so the generated codes match the classes staff can pick.
+          </Alert>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Classes</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  setSelected(
+                    selected.length === rosterClasses.length
+                      ? []
+                      : rosterClasses.map((c) => c.class_name),
+                  )
+                }
+              >
+                {selected.length === rosterClasses.length ? "Clear all" : "Select all"}
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {rosterClasses.map((c) => {
+                const active = selected.includes(c.class_name);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleClass(c.class_name)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                      active
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50",
+                    )}
+                  >
+                    {c.class_name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
         <Input
           label="Sections"
           hint="Comma-separated, optional — e.g. A, B, C"
@@ -1182,10 +1248,10 @@ function BulkClassCodeModal({
             Will create <span className="font-semibold">{total}</span> codes —{" "}
             {classNames.length} classes
             {sections.length ? ` × ${sections.length} sections` : ""}.
-            {total > 200 && " Reduce the range or sections (limit is 200)."}
+            {total > 200 && " Select fewer classes or sections (limit is 200)."}
           </Alert>
         ) : (
-          <Alert variant="warning">Pick a valid grade range to continue.</Alert>
+          <Alert variant="warning">Select at least one class to continue.</Alert>
         )}
       </div>
       <ModalFooter>
@@ -1818,6 +1884,7 @@ type TabId =
   | "codes"
   | "teachers"
   | "rag"
+  | "classes"
   | "roster"
   | "staff"
   | "approvals";
@@ -1825,6 +1892,7 @@ type TabId =
 const ALL_TABS: { id: TabId; label: string; icon: React.ReactNode; cap?: keyof SchoolCaps }[] = [
   { id: "overview", label: "Overview", icon: <Building2 className="h-4 w-4" /> },
   { id: "principal", label: "Principal", icon: <UserCircle className="h-4 w-4" />, cap: "principalTab" },
+  { id: "classes", label: "Classes", icon: <GraduationCap className="h-4 w-4" /> },
   { id: "codes", label: "Class Codes", icon: <KeyRound className="h-4 w-4" /> },
   { id: "teachers", label: "Teachers", icon: <UsersIcon className="h-4 w-4" /> },
   { id: "staff", label: "Staff", icon: <UserPlus className="h-4 w-4" />, cap: "inviteStaff" },
@@ -2022,6 +2090,7 @@ export function SchoolManagement({
       )}
 
       {tab === "principal" && caps.principalTab && <PrincipalTab school={school} />}
+      {tab === "classes" && <ClassesTab school={school} />}
       {tab === "codes" && (
         <ClassCodesTab
           schoolId={school.id}

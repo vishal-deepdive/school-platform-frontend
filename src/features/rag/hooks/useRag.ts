@@ -2,7 +2,9 @@ import {
   useInfiniteQuery,
   useMutation,
   useQuery,
+  useQueryClient,
   type Query,
+  type QueryClient,
 } from "@tanstack/react-query";
 import { ragApi } from "@/features/rag/api/rag";
 import type {
@@ -20,25 +22,39 @@ function loadedCount(pages: { items: unknown[] }[]): number {
   return pages.reduce((n, p) => n + p.items.length, 0);
 }
 
-interface DocumentParams {
+export interface DocumentParams {
   limit?: number;
   offset?: number;
   status?: string;
   search?: string;
+  class_level?: string;
+  subject?: string;
+  board?: string;
+  scope?: string;
   /** Admin only: scope the listing to one school's uploads + global content. */
   school_id?: string;
   /** Narrow to one book medium within what the caller can see. */
   medium?: string;
 }
 
+export interface DocumentSummaryParams {
+  school_id?: string;
+  medium?: string;
+  board?: string;
+  scope?: string;
+  search?: string;
+}
+
 export const ragKeys = {
   all: ["rag"] as const,
   metadata: (medium?: string) => ["rag", "metadata", medium ?? "__all__"] as const,
-  classLevels: () => ["rag", "classLevels"] as const,
   mediums: () => ["rag", "mediums"] as const,
   documents: (params?: DocumentParams) => ["rag", "documents", params] as const,
-  documentStatus: (id: string) => ["rag", "documentStatus", id] as const,
+  documentsSummary: (params?: DocumentSummaryParams) =>
+    ["rag", "documentsSummary", params] as const,
+  documentStatuses: (ids: string[]) => ["rag", "documentStatuses", ids] as const,
   documentChunks: (id: string) => ["rag", "documentChunks", id] as const,
+  documentMarkdown: (id: string) => ["rag", "documentMarkdown", id] as const,
   analytics: (schoolId?: string) =>
     ["rag", "analytics", schoolId ?? "platform"] as const,
   assignments: (scope: string, classLevel?: string) =>
@@ -72,14 +88,6 @@ export function useRagMetadata(medium?: string) {
   });
 }
 
-export function useRagClassLevels() {
-  return useQuery({
-    queryKey: ragKeys.classLevels(),
-    queryFn: () => ragApi.getClassLevels(),
-    staleTime: 30 * 60_000,
-  });
-}
-
 /** Book medium(s) the caller may select — one entry for an English/Hindi-only
  * school, two for a Bilingual school or an admin. */
 export function useRagMediums() {
@@ -101,45 +109,78 @@ export function useRagAnalytics(schoolId?: string) {
 export function useRagDocuments(
   params: DocumentParams,
   options?: {
+    enabled?: boolean;
     refetchInterval?:
       | number
       | false
       | ((query: Query<DocumentListResponse>) => number | false);
+    /** Keep the previous result on screen while a new filter combination loads. */
+    keepPrevious?: boolean;
   },
 ) {
+  const { keepPrevious, ...queryOptions } = options ?? {};
   return useQuery({
     queryKey: ragKeys.documents(params),
     queryFn: () => ragApi.listDocuments(params),
-    ...options,
+    placeholderData: keepPrevious ? (prev) => prev : undefined,
+    ...queryOptions,
   });
 }
 
-export function useRagDocumentStatus(
-  documentId: string,
-  options?: { enabled?: boolean; refetchInterval?: number },
-) {
+export function useRagDocumentsSummary(params?: DocumentSummaryParams) {
   return useQuery({
-    queryKey: ragKeys.documentStatus(documentId),
-    queryFn: () => ragApi.getDocumentStatus(documentId),
-    ...options,
+    queryKey: ragKeys.documentsSummary(params),
+    queryFn: () => ragApi.getDocumentsSummary(params),
+    staleTime: 5 * 60_000,
+    // Filter changes keep the class list on screen instead of flashing a skeleton.
+    placeholderData: (prev) => prev,
   });
 }
 
-export function useUploadRagDocument() {
-  return useMutation({
-    mutationFn: (data: FormData) => ragApi.uploadDocument(data),
+/**
+ * Refetch everything that reflects the library's contents after a document is
+ * added, removed, re-indexed, or finishes indexing. Prefix keys, so every
+ * filter combination is covered — and nothing unrelated (assignments, decks…).
+ */
+export function invalidateRagLibrary(queryClient: QueryClient) {
+  return Promise.all(
+    [
+      ["rag", "documents"],
+      ["rag", "documentsSummary"],
+      ["rag", "metadata"],
+      ["rag", "analytics"],
+    ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  );
+}
+
+/**
+ * Live ingest status for a batch of documents: one request per tick however
+ * many rows are processing. Idle when there's nothing to watch.
+ */
+export function useRagDocumentStatuses(documentIds: string[], refetchInterval: number) {
+  return useQuery({
+    queryKey: ragKeys.documentStatuses(documentIds),
+    queryFn: () => ragApi.getDocumentStatuses(documentIds),
+    enabled: documentIds.length > 0,
+    refetchInterval,
+    // Samples only matter while they're being watched.
+    gcTime: 0,
   });
 }
 
 export function useDeleteRagDocument() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (documentId: string) => ragApi.deleteDocument(documentId),
+    onSuccess: () => invalidateRagLibrary(queryClient),
   });
 }
 
 export function useRetryRagIngest() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (documentId: string) => ragApi.retryIngest(documentId),
+    onSuccess: () => invalidateRagLibrary(queryClient),
   });
 }
 
@@ -149,6 +190,16 @@ export function useDocumentChunks(documentId: string | null) {
     queryFn: () => ragApi.getDocumentChunks(documentId as string),
     enabled: !!documentId,
     staleTime: 5 * 60_000,
+  });
+}
+
+/** Page-split readable text for the preview. Immutable per ingest run. */
+export function useDocumentMarkdown(documentId: string | null) {
+  return useQuery({
+    queryKey: ragKeys.documentMarkdown(documentId ?? ""),
+    queryFn: () => ragApi.getDocumentMarkdown(documentId as string),
+    enabled: !!documentId,
+    staleTime: 10 * 60_000,
   });
 }
 
@@ -287,6 +338,8 @@ export function useContentRequests(status?: ContentRequestStatus) {
     queryKey: ragKeys.contentRequests(status),
     queryFn: () => ragApi.listContentRequests({ status, limit: 100 }),
     staleTime: 30_000,
+    // Tab switches keep the previous list (dimmed) instead of flashing a skeleton.
+    placeholderData: (prev) => prev,
   });
 }
 
@@ -311,6 +364,7 @@ export function useFeedbackReview(rating?: number) {
     queryKey: ragKeys.feedback(rating),
     queryFn: () => ragApi.listFeedback({ rating, limit: 50 }),
     staleTime: 30_000,
+    placeholderData: (prev) => prev,
   });
 }
 

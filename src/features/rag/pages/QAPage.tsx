@@ -34,6 +34,7 @@ import { Modal } from "@/shared/components/ui/Modal";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Tooltip } from "@/shared/components/ui/Tooltip";
 import { useRagUiStore } from "@/features/rag/store/ragUiStore";
+import { buildChatHistory } from "@/features/rag/lib/chatHistory";
 import type { QASource, RagFilters } from "@/features/rag/types";
 
 const MemoizedChatMessageBubble = memo(ChatMessageBubble);
@@ -153,6 +154,13 @@ export function QAPage() {
     if (streamingRef.current) return;
     streamingRef.current = true;
 
+    // Read the transcript from the store rather than the closed-over `chat`:
+    // runQuery is reached through useCallback'd handlers that do not list it as
+    // a dependency, so the captured value can lag a turn behind — and a history
+    // missing the most recent exchange is exactly the one a follow-up needs.
+    // Captured BEFORE the new bubbles are appended.
+    const history = buildChatHistory(useRagUiStore.getState().qa.chat, query);
+
     // Drain any tokens still queued from the previous answer to their own
     // message before repointing the shared batcher at the new one.
     flushPending();
@@ -170,7 +178,10 @@ export function QAPage() {
     const controller = begin();
 
     try {
-      for await (const event of ragApi.qaStream({ query, filters, ...opts }, controller.signal)) {
+      for await (const event of ragApi.qaStream(
+        { query, filters, ...opts, ...(history.length ? { history } : {}) },
+        controller.signal,
+      )) {
         if (event.type === "token") {
           queueToken(event.content);
         } else if (event.type === "done") {

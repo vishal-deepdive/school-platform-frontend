@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Grid3x3 } from "lucide-react";
 import { Panel } from "@/shared/components/ui/Panel";
-import { cn, sortClassesDescending } from "@/shared/lib/utils";
+import { cn } from "@/shared/lib/utils";
+import { sortClassesCanonical } from "@/shared/lib/classes";
 import { useRagMetadata } from "@/features/rag/hooks/useRag";
 import {
   subjectsForClass,
@@ -20,7 +21,7 @@ export function CoverageMatrix() {
 
   const { classes, subjects, counts } = useMemo(() => {
     const hierarchy = meta?.hierarchy ?? {};
-    const classList = sortClassesDescending(Object.keys(hierarchy));
+    const classList = sortClassesCanonical(Object.keys(hierarchy));
     const subjectSet = new Set<string>();
     for (const cls of classList) {
       for (const subj of subjectsForClass(meta, cls)) subjectSet.add(subj);

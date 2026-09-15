@@ -138,7 +138,7 @@ export function HowItWorksSection() {
           </Link>
           <Link
             to="/onboarding/status"
-            className="text-sm font-medium text-muted-foreground underline-offset-4 transition hover:text-primary hover:underline"
+            className="inline-flex min-h-11 items-center rounded text-sm font-medium text-muted-foreground underline-offset-4 transition hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
           >
             Already applied? Track your application
           </Link>

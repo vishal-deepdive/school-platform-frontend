@@ -1,13 +1,16 @@
-import { Trash2, Eye, FileText, Download, RotateCcw, User, Clock } from "lucide-react";
+import { Clock, Download, Eye, RotateCcw, Trash2, User } from "lucide-react";
 import { formatDate, formatFileSize } from "@/shared/lib/utils";
-import { Button } from "@/shared/components/ui/Button";
 import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
+import { Tooltip } from "@/shared/components/ui/Tooltip";
 import type { Recording } from "@/features/recording/types";
 
 interface RecordingListItemProps {
   recording: Recording;
   /** Retry + delete are principal/admin only; hidden when false. */
   canManage: boolean;
+  /** Show the school name — only useful when the list spans several schools. */
+  showSchool?: boolean;
   onPreview: (id: string) => void;
   onDownload: (rec: Recording) => void;
   onRetry: (id: string) => void;
@@ -29,10 +32,11 @@ function formatDuration(total?: number): string | null {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-/** A single row in the recordings list, with its per-recording actions. */
+/** A single row in the recordings list: View up front, the rest in a ⋯ menu. */
 export function RecordingListItem({
   recording: rec,
   canManage,
+  showSchool = false,
   onPreview,
   onDownload,
   onRetry,
@@ -57,99 +61,111 @@ export function RecordingListItem({
   const duration = formatDuration(rec.duration_seconds);
   // Only surface a visibility chip when it's NOT the default 'published' state.
   const showVisibility = rec.visibility && rec.visibility !== "published";
+  const location = [
+    showSchool ? rec.school_name : null,
+    `Class ${rec.class}${rec.section ? `-${rec.section}` : ""}`,
+    rec.subject,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <li className="group flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-muted/40 sm:flex-row sm:items-center sm:gap-4 md:px-5">
-      <div className="flex min-w-0 flex-1 items-center gap-4">
-        {selectable && (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelect?.(rec.id)}
-            aria-label={`Select ${displayName}`}
-            className="h-4 w-4 flex-shrink-0 cursor-pointer rounded border-border accent-primary"
-          />
-        )}
-        <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
-          <FileText className="h-5 w-5" />
-        </span>
-        <div className="flex-1 min-w-0">
+    <li className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5">
+      {selectable && (
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect?.(rec.id)}
+          aria-label={`Select ${displayName}`}
+          className="h-4 w-4 flex-shrink-0 cursor-pointer rounded border-border accent-primary"
+        />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
           <p className="truncate text-sm font-medium text-foreground" title={rec.audio_filename}>
             {displayName}
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <Badge>{rec.school_name}</Badge>
-            <Badge variant="info">Class {rec.class}</Badge>
-            {rec.section && <Badge>{rec.section}</Badge>}
-            {rec.subject && <Badge variant="default">{rec.subject}</Badge>}
-            {rec.recording_subject && (
-              <Badge variant="purple">{rec.recording_subject}</Badge>
-            )}
-            {showVisibility && (
-              <Badge variant="warning">{rec.visibility}</Badge>
-            )}
-            <span className="text-xs text-muted-foreground">{formatDate(rec.date)}</span>
-            {rec.uploader_name && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <User className="h-3 w-3" />
-                {rec.uploader_name}
-              </span>
-            )}
-            {duration && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />
-                {duration}
-              </span>
-            )}
-            {rec.file_size_bytes ? (
-              <span className="text-xs text-muted-foreground">
-                {formatFileSize(rec.file_size_bytes)}
-              </span>
-            ) : null}
-          </div>
+          {showVisibility && (
+            <Badge variant="warning" className="shrink-0 capitalize">
+              {rec.visibility}
+            </Badge>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {location}
+          {rec.recording_subject && (
+            <>
+              {" · "}
+              <span className="text-foreground/80">{rec.recording_subject}</span>
+            </>
+          )}
+        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+          <span>{formatDate(rec.date)}</span>
+          {rec.uploader_name && (
+            <span className="inline-flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {rec.uploader_name}
+            </span>
+          )}
+          {duration && (
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {duration}
+            </span>
+          )}
+          {rec.file_size_bytes ? <span>{formatFileSize(rec.file_size_bytes)}</span> : null}
         </div>
       </div>
-      <div className="flex flex-shrink-0 flex-wrap items-center gap-1 opacity-100 transition-opacity sm:opacity-0 sm:focus-within:opacity-100 sm:group-hover:opacity-100">
-        {rec.job_id && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<Download className="h-4 w-4" />}
-            onClick={() => onDownload(rec)}
-            title="Download Notes"
-          >
-            Download
-          </Button>
-        )}
-        {canManage && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<RotateCcw className="h-4 w-4" />}
-            onClick={() => onRetry(rec.id)}
-            disabled={retrying}
-            title="Retry Processing"
-          >
-            Retry
-          </Button>
-        )}
+      <div className="flex shrink-0 items-center gap-1.5">
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           icon={<Eye className="h-4 w-4" />}
           onClick={() => onPreview(rec.id)}
+          className="h-8 text-xs font-medium"
         >
-          View
+          View<span className="sr-only"> notes for {displayName}</span>
         </Button>
+        {rec.job_id && (
+          <Tooltip content="Download notes" side="top">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 border-border/70 text-foreground/80 transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+              onClick={() => onDownload(rec)}
+              aria-label={`Download notes for ${displayName}`}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          </Tooltip>
+        )}
         {canManage && (
-          <Button
-            variant="danger-ghost"
-            size="sm"
-            icon={<Trash2 className="h-4 w-4" />}
-            onClick={() => onDelete(rec.id)}
-          >
-            Delete
-          </Button>
+          <>
+            <Tooltip content="Retry processing" side="top">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 border-border/70 text-foreground/80 transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                loading={retrying}
+                onClick={() => onRetry(rec.id)}
+                aria-label={`Retry processing for ${displayName}`}
+              >
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+            <Tooltip content="Delete recording" side="top">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 border-border/70 text-destructive/80 transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                onClick={() => onDelete(rec.id)}
+                aria-label={`Delete ${displayName}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </Tooltip>
+          </>
         )}
       </div>
     </li>

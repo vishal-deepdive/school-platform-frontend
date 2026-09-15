@@ -1,36 +1,32 @@
 import { useState, useRef, useMemo } from "react";
 import { CalendarDays, CalendarRange, CalendarX } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/features/auth/store/auth";
-import { cn, isoToIndianDate, getErrorMessage } from "@/shared/lib/utils";
+import { isoToIndianDate, getErrorMessage } from "@/shared/lib/utils";
 import {
   AttendanceRangeView,
   ClassAttendanceCalendar,
   SelfAttendanceView,
 } from "@/features/attendance/components";
 import { isStaff } from "@/shared/lib/permissions";
-import { useQuery } from "@tanstack/react-query";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
+import { useUrlState } from "@/shared/hooks/useUrlState";
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { AttendanceResults } from "@/features/attendance/components/AttendanceResults";
+import { ModuleHeaderLeading } from "@/shared/components/ui/ModuleHeaderActions";
+import { SegmentedControl, type SegmentOption } from "@/shared/components/ui/SegmentedControl";
 import { TableSkeleton } from "@/shared/components/ui/Skeleton";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import type { ScopeValue } from "@/features/attendance/components/AttendanceScopeFilters";
 
-const viewTabs = [
-  {
-    id: "calendar",
-    label: "Calendar",
-    hint: "Monthly %",
-    icon: <CalendarDays className="h-4 w-4" />,
-  },
-  {
-    id: "range",
-    label: "Date Range",
-    hint: "Span of days",
-    icon: <CalendarRange className="h-4 w-4" />,
-  },
+type View = "calendar" | "range";
+
+const VIEWS: SegmentOption<View>[] = [
+  { value: "calendar", label: "Calendar", icon: <CalendarDays className="h-3.5 w-3.5" /> },
+  { value: "range", label: "Date range", icon: <CalendarRange className="h-3.5 w-3.5" /> },
 ];
+const URL_DEFAULTS: { view: string } = { view: "calendar" };
 
 export function ViewAttendancePage() {
   const { schoolName } = useActiveSchool();
@@ -39,7 +35,8 @@ export function ViewAttendancePage() {
     scope: ScopeValue;
   } | null>(null);
   const role = useAuthStore((s) => s.user?.role);
-  const [tab, setTab] = useState("calendar");
+  const [state, update] = useUrlState(URL_DEFAULTS);
+  const view: View = state.view === "range" ? "range" : "calendar";
 
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -76,35 +73,19 @@ export function ViewAttendancePage() {
 
   return (
     <div className="space-y-6">
-      {/* Modern segmented control */}
-      <div className="inline-flex w-full gap-1 rounded-2xl border border-border/60 bg-gray-100 dark:bg-muted p-1 sm:w-auto">
-        {viewTabs.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all sm:flex-none",
-                active
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span className={active ? "text-primary" : ""}>{t.icon}</span>
-              {t.label}
-              <span className="hidden text-xs font-normal text-muted-foreground/70 md:inline">
-                · {t.hint}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <ModuleHeaderLeading>
+        <SegmentedControl
+          aria-label="Attendance view"
+          compact
+          options={VIEWS}
+          value={view}
+          onChange={(next) => update({ view: next }, { push: true })}
+        />
+      </ModuleHeaderLeading>
 
-      {tab === "range" && <AttendanceRangeView />}
+      {view === "range" && <AttendanceRangeView />}
 
-      {tab === "calendar" && (
+      {view === "calendar" && (
         <>
           <ClassAttendanceCalendar
             selectedDate={attendanceFilter?.date ?? null}
@@ -129,11 +110,7 @@ export function ViewAttendancePage() {
             )}
 
             {data && rows.length > 0 && (
-              <AttendanceResults
-                rows={rows}
-                date={data.date}
-                totalRecords={data.total_records}
-              />
+              <AttendanceResults rows={rows} date={data.date} totalRecords={data.total_records} />
             )}
           </div>
         </>
@@ -141,4 +118,3 @@ export function ViewAttendancePage() {
     </div>
   );
 }
-

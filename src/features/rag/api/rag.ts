@@ -1,4 +1,5 @@
-import { apiClient } from "@/shared/api/client";
+import type { AxiosProgressEvent } from "axios";
+import { apiClient, multipartClient } from "@/shared/api/client";
 import { streamSSE } from "@/shared/api/streaming";
 import { API_V1 } from "@/shared/config/apiVersion";
 import type {
@@ -12,10 +13,11 @@ import type {
   RagDeleteResponse,
   RagFilters,
   IngestJobResponse,
-  DocumentStatusResponse,
+  DocumentStatusesResponse,
   DocumentListResponse,
+  DocumentSummaryResponse,
   DocumentChunksResponse,
-  ClassLevelsResponse,
+  DocumentMarkdownResponse,
   MediumsResponse,
   RagAnalyticsResponse,
   FeedbackRequest,
@@ -49,11 +51,6 @@ export const ragApi = {
   getMetadata: (medium?: string) =>
     apiClient
       .get<RagMetadata>(`${BASE}/metadata`, { params: medium ? { medium } : undefined })
-      .then((r) => r.data),
-
-  getClassLevels: () =>
-    apiClient
-      .get<ClassLevelsResponse>(`${BASE}/classes`)
       .then((r) => r.data),
 
   /** Book medium(s) the caller may select for uploads and filters. */
@@ -93,10 +90,14 @@ export const ragApi = {
   getAudit: () =>
     apiClient.get<RagAuditResponse>(`${BASE}/audit`).then((r) => r.data),
 
-  uploadDocument: (data: FormData) =>
-    apiClient
+  /** Multipart client: long timeout for large textbook PDFs, plus upload progress. */
+  uploadDocument: (
+    data: FormData,
+    options?: { onUploadProgress?: (event: AxiosProgressEvent) => void },
+  ) =>
+    multipartClient
       .post<IngestJobResponse>(`${BASE}/documents`, data, {
-        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: options?.onUploadProgress,
       })
       .then((r) => r.data),
 
@@ -105,6 +106,10 @@ export const ragApi = {
     offset?: number;
     status?: string;
     search?: string;
+    class_level?: string;
+    subject?: string;
+    board?: string;
+    scope?: string;
     /** Admin only: scope the listing to one school's uploads + global content. */
     school_id?: string;
     /** Narrow to one book medium within what the caller can see. */
@@ -114,14 +119,49 @@ export const ragApi = {
       .get<DocumentListResponse>(`${BASE}/documents`, { params })
       .then((r) => r.data),
 
+  getDocumentsSummary: (params?: {
+    school_id?: string;
+    medium?: string;
+    board?: string;
+    scope?: string;
+    search?: string;
+  }) =>
+    apiClient
+      .get<DocumentSummaryResponse>(`${BASE}/documents/summary`, { params })
+      .then((r) => r.data),
+
   getDocumentChunks: (documentId: string) =>
     apiClient
       .get<DocumentChunksResponse>(`${BASE}/documents/${documentId}/chunks`)
       .then((r) => r.data),
 
-  getDocumentStatus: (documentId: string) =>
+  /** Readable text split by source page, for the side-by-side chapter preview. */
+  getDocumentMarkdown: (documentId: string) =>
     apiClient
-      .get<DocumentStatusResponse>(`${BASE}/documents/${documentId}`)
+      .get<DocumentMarkdownResponse>(`${BASE}/documents/${documentId}/markdown`)
+      .then((r) => r.data),
+
+  /**
+   * The original upload's bytes (usually the chapter PDF). Fetched through
+   * apiClient so the auth header is attached, then handed to pdf.js — which is
+   * why this returns a buffer rather than a URL.
+   */
+  getDocumentSource: (documentId: string, signal?: AbortSignal) =>
+    apiClient
+      .get<ArrayBuffer>(`${BASE}/documents/${documentId}/source`, {
+        responseType: "arraybuffer",
+        signal,
+      })
+      .then((r) => r.data),
+
+  /** Live ingest status for many documents in one request (list polling). */
+  getDocumentStatuses: (documentIds: string[]) =>
+    apiClient
+      .get<DocumentStatusesResponse>(`${BASE}/documents/statuses`, {
+        params: { ids: documentIds },
+        // FastAPI reads repeated keys (ids=a&ids=b), not axios' default ids[]=a.
+        paramsSerializer: { indexes: null },
+      })
       .then((r) => r.data),
 
   deleteDocument: (documentId: string) =>

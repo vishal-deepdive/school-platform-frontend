@@ -200,28 +200,6 @@ export function formatClassName(name: string): string {
   return name.trim().replace(/(\d+)\s+(th|st|nd|rd)\b/i, "$1$2");
 }
 
-/** Returns a numeric weight for sorting class names. */
-export function getClassNameWeight(c: string): number {
-  const lower = c.toLowerCase();
-  if (lower.includes("nursery") || lower.includes("kg") || lower.includes("lkg") || lower.includes("ukg")) return 0;
-  const match = c.match(/\d+/);
-  if (match) return parseInt(match[0], 10);
-  return -1;
-}
-
-/**
- * Sorts class levels in descending order:
- * "Class 12" -> "Class 1" -> "Nursery"
- */
-export function sortClassesDescending(classes: string[]): string[] {
-  return [...classes].sort((a, b) => {
-    const weightDiff = getClassNameWeight(b) - getClassNameWeight(a);
-    if (weightDiff !== 0) return weightDiff;
-    // fallback to alphabetical if weights are the same
-    return a.localeCompare(b);
-  });
-}
-
 /**
  * Converts an array of objects to a CSV string.
  */

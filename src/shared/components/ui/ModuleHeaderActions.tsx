@@ -1,29 +1,37 @@
-import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useModuleHeaderSlots } from "./moduleHeaderSlots";
 
 /**
- * Teleports page-level actions (filters, primary CTAs, pickers) into the
- * fixed module header rendered by TabContainer, so they stay visible while
- * the page content scrolls underneath.
+ * Teleports page-level actions (primary CTAs, export buttons) into the right
+ * edge of the module toolbar rendered by TabContainer, so they stay visible
+ * while the page content scrolls underneath. The toolbar only takes up space
+ * when a page actually renders something into it.
  *
  * Usage inside any module page:
  *   <ModuleHeaderActions>
  *     <Button onClick={...}>New recording</Button>
  *   </ModuleHeaderActions>
  *
- * Renders nothing when no module header exists (e.g. full-screen pages).
+ * Renders nothing outside a TabContainer.
  */
 export function ModuleHeaderActions({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [target, setTarget] = useState<HTMLElement | null>(null);
+  const { trailing } = useModuleHeaderSlots();
+  return trailing ? createPortal(children, trailing) : null;
+}
 
-  useLayoutEffect(() => {
-    setTarget(document.getElementById("module-header-actions"));
-  }, []);
-
-  if (!target) return null;
-  return createPortal(children, target);
+/**
+ * The toolbar's left side, for page context such as a view switcher. Keep it
+ * compact — on phones it shares the row with the page title.
+ */
+export function ModuleHeaderLeading({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { leading } = useModuleHeaderSlots();
+  return leading ? createPortal(children, leading) : null;
 }

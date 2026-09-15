@@ -135,7 +135,7 @@ export function ContactPage() {
                   {channel.action.external ? (
                     <a
                       href={channel.action.href}
-                      className="group mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
+                      className="group mt-5 inline-flex min-h-11 items-center gap-1.5 rounded text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       <span className="underline-offset-4 group-hover:underline">
                         {channel.action.label}
@@ -145,7 +145,7 @@ export function ContactPage() {
                   ) : (
                     <Link
                       to={channel.action.href}
-                      className="group mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-primary"
+                      className="group mt-5 inline-flex min-h-11 items-center gap-1.5 rounded text-sm font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
                       <span className="underline-offset-4 group-hover:underline">
                         {channel.action.label}

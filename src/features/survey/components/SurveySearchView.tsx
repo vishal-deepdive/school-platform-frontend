@@ -4,7 +4,6 @@ import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Search,
   BarChart2,
   Sparkles,
   SearchX,
@@ -17,6 +16,7 @@ import {
   Bot,
   StopCircle,
   Users,
+  Download,
 } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import {
@@ -26,7 +26,7 @@ import {
 import { surveyApi, surveyKeys } from "@/features/survey/api/survey";
 import { useStreamBatcher } from "@/features/rag/hooks/useStreamBatcher";
 import { useStreamAbort, isAbortError } from "@/shared/hooks/useStreamAbort";
-import { getErrorMessage } from "@/shared/lib/utils";
+import { downloadBlob, getErrorMessage, jsonToCsv } from "@/shared/lib/utils";
 import { Card } from "@/shared/components/ui/Card";
 import { FilterBar } from "@/shared/components/ui/FilterBar";
 import { Panel } from "@/shared/components/ui/Panel";
@@ -35,7 +35,10 @@ import { Badge } from "@/shared/components/ui/Badge";
 import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { MarkdownRenderer } from "@/shared/components/ui/MarkdownRenderer";
+import { Textarea } from "@/shared/components/ui/Textarea";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import { Table, type Column } from "@/shared/components/ui/Table";
+import { useUrlState } from "@/shared/hooks/useUrlState";
 import { SurveyChart } from "./SurveyChart";
 import { SheetSelector } from "./SheetSelector";
 import type {
@@ -54,6 +57,8 @@ const intentConfig: Record<
   QUAL: { color: "success", label: "Qualitative" },
   MIXED: { color: "purple", label: "Mixed Analysis" },
 };
+
+const URL_DEFAULTS: { q: string } = { q: "" };
 
 const exampleQueries = [
   "How satisfied are students with teacher support?",
@@ -135,14 +140,33 @@ function buildTableColumns(rows: Record<string, unknown>[]): Column<Record<strin
   });
 }
 
-// ── Collapsible section ─────────────────────────────────────────────────────
+/** Three bouncing dots — the "the model is working" tell, used while streaming. */
+function ThinkingDots({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <span className="flex gap-1">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
+            style={{ animationDelay: `${i * 0.15}s` }}
+          />
+        ))}
+      </span>
+      {label}
+    </div>
+  );
+}
 
-function CollapsibleSection({
+// ── Collapsible result section ──────────────────────────────────────────────
+
+function ResultSection({
   title,
   icon,
   badge,
   open,
   onToggle,
+  action,
   children,
 }: {
   title: string;
@@ -150,31 +174,44 @@ function CollapsibleSection({
   badge?: string;
   open: boolean;
   onToggle: () => void;
+  /** Sits BESIDE the toggle, never inside it — a button within a button is
+   *  invalid markup and the inner click would also toggle the section. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const contentId = `${title.replace(/\s+/g, "-").toLowerCase()}-panel`;
   return (
     <Card padding="none">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-5 py-3.5 text-sm font-medium text-foreground hover:bg-accent/50 transition-colors rounded-xl"
-      >
-        <span className="flex items-center gap-2.5">
-          {icon}
-          {title}
-          {badge && (
-            <Badge variant="default" className="ml-1">
-              {badge}
-            </Badge>
+      <div className="flex items-center gap-2 pr-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-controls={contentId}
+          className="flex flex-1 items-center justify-between gap-2 rounded-xl px-5 py-3.5 text-sm font-medium text-foreground transition-colors hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        >
+          <span className="flex items-center gap-2.5">
+            {icon}
+            {title}
+            {badge && (
+              <Badge variant="default" className="ml-1">
+                {badge}
+              </Badge>
+            )}
+          </span>
+          {open ? (
+            <ChevronUp className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
-        </span>
-        {open ? (
-          <ChevronUp className="h-4 w-4 text-muted-foreground" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
-      </button>
-      {open && <div className="border-t border-border/50">{children}</div>}
+        </button>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+      {open && (
+        <div id={contentId} className="border-t border-border/50">
+          {children}
+        </div>
+      )}
     </Card>
   );
 }
@@ -219,6 +256,10 @@ export function SurveySearchView() {
     staleTime: 5 * 60000,
   });
 
+  // The asked question lives in the URL, so a refresh or a shared link brings
+  // it back. It is deliberately NOT re-run on load — an analysis costs an LLM
+  // call, so the reader presses Analyze.
+  const [urlState, updateUrl] = useUrlState(URL_DEFAULTS);
   const {
     register,
     handleSubmit,
@@ -226,6 +267,7 @@ export function SurveySearchView() {
     formState: { isSubmitting },
   } = useForm<SurveySearchFormData>({
     resolver: zodResolver(surveySearchSchema),
+    defaultValues: { query: urlState.q },
   });
 
   const appendInsight = useCallback(
@@ -268,7 +310,8 @@ export function SurveySearchView() {
       }
 
       if (streamingRef.current) return;
-        streamingRef.current = true;
+      streamingRef.current = true;
+      updateUrl({ q: formData.query }, { push: true });
 
       const controller = begin();
 
@@ -326,13 +369,42 @@ export function SurveySearchView() {
         end(controller);
       }
     },
-    [begin, end, queueToken, flushPending, selectedSourceIds, isAdmin, schoolParam.school_name],
+    [
+      begin,
+      end,
+      queueToken,
+      flushPending,
+      selectedSourceIds,
+      isAdmin,
+      schoolParam.school_name,
+      updateUrl,
+    ],
   );
 
   const hasResult = intent !== null;
   const dataRows = data ? getDataRows(data) : [];
   const sampleSize = data ? getSampleSize(data) : null;
   const columns = buildTableColumns(dataRows);
+
+  /** The analysed rows were previously view-only — no way to take them into a
+   *  staff meeting or a spreadsheet. Exports exactly what the table shows. */
+  const handleExportCsv = () => {
+    if (dataRows.length === 0) return;
+    const keys = Object.keys(dataRows[0]);
+    const csv = jsonToCsv(
+      dataRows,
+      keys.map((key) => ({
+        header: humanizeHeader(key),
+        getValue: (row: Record<string, unknown>) => {
+          const v = row[key];
+          return v === null || v === undefined ? "" : String(v);
+        },
+      })),
+    );
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), `feedback-${stamp}.csv`);
+    toast.success(`Exported ${dataRows.length} row${dataRows.length === 1 ? "" : "s"}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -370,29 +442,52 @@ export function SurveySearchView() {
             schoolName={isAdmin ? schoolParam.school_name : undefined}
           />
 
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
+          <div className="grid gap-1.5">
+            <Textarea
               {...register("query")}
-              placeholder="e.g. How satisfied are students with teacher support in class 10?"
+              aria-label="Ask a question about student feedback"
+              placeholder="e.g. How satisfied are students with teacher support in class 10, and how does that compare with last term?"
               disabled={streaming}
-              className="w-full rounded-lg border border-input bg-background text-foreground pl-10 pr-4 py-2.5 text-sm transition-colors hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:opacity-60 placeholder:text-muted-foreground/60"
+              rows={2}
+              // These questions run long; Enter would submit a half-written one,
+              // so the shortcut is the same ⌘/Ctrl+Enter the Q&A composer uses.
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void handleSubmit(runSearch)();
+                }
+              }}
+              className="min-h-[4.5rem]"
             />
+            <p className="text-[11px] text-muted-foreground">
+              <kbd className="rounded border border-border/60 px-1 py-px font-sans">
+                ⌘/Ctrl
+              </kbd>{" "}
+              +{" "}
+              <kbd className="rounded border border-border/60 px-1 py-px font-sans">
+                Enter
+              </kbd>{" "}
+              to analyse
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {exampleQueries.map((q) => (
-              <button
-                key={q}
-                type="button"
-                disabled={streaming || !adminReady}
-                onClick={() => setValue("query", q)}
-                className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/30 hover:bg-primary/5 hover:text-primary transition-colors disabled:opacity-40 disabled:pointer-events-none"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
+          {/* Starter prompts are onboarding scaffolding — once there is a result
+              on screen they are just clutter above it. */}
+          {!hasResult && !streaming && (
+            <div className="flex flex-wrap gap-1.5">
+              {exampleQueries.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  disabled={!adminReady}
+                  onClick={() => setValue("query", q)}
+                  className="rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/30 hover:bg-primary/5 hover:text-primary disabled:pointer-events-none disabled:opacity-40"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
         </FilterBar>
       </form>
 
@@ -414,38 +509,36 @@ export function SurveySearchView() {
 
       {/* ── Analyzing skeleton (query sent, nothing returned yet) ─── */}
       {streaming && !hasResult && (
-        <Panel title="AI Insight" icon={<Bot className="h-4 w-4" />}>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
-                  style={{ animationDelay: `${i * 0.15}s` }}
-                />
-              ))}
-            </span>
-            Analyzing your data…
-          </div>
+        <Panel title="AI insight" icon={<Bot className="h-4 w-4" />}>
+          <ThinkingDots label="Analysing your data…" />
         </Panel>
       )}
 
       {/* ── Results ───────────────────────────────────────────────── */}
       {hasResult && (
         <div className="space-y-4">
-          {/* Status bar */}
-          <div className="flex flex-wrap items-center gap-3 text-sm">
+          {/* What the analysis covered */}
+          <div className="flex flex-wrap items-center gap-3">
             {intent && (
               <Badge variant={intentConfig[intent].color}>
                 {intentConfig[intent].label}
               </Badge>
             )}
-            {sampleSize !== null && sampleSize > 0 && (
-              <Badge variant="default">
-                <Users className="h-3 w-3 mr-1" />
-                {sampleSize.toLocaleString()} responses
-              </Badge>
-            )}
+            <StatLine
+              items={[
+                {
+                  value: sampleSize ?? 0,
+                  label: sampleSize === 1 ? "response analysed" : "responses analysed",
+                  icon: <Users />,
+                  hidden: sampleSize === null || sampleSize <= 0,
+                },
+                {
+                  value: dataRows.length,
+                  label: dataRows.length === 1 ? "row returned" : "rows returned",
+                  hidden: dataRows.length === 0,
+                },
+              ]}
+            />
           </div>
 
           {/* ── Insight card (streamed narrative) ─────────────────── */}
@@ -479,18 +572,7 @@ export function SurveySearchView() {
                 className="text-sm"
               />
             ) : streaming ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span className="flex gap-1">
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
-                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary/60"
-                      style={{ animationDelay: `${i * 0.15}s` }}
-                    />
-                  ))}
-                </span>
-                Generating insight...
-              </div>
+              <ThinkingDots label="Writing the insight…" />
             ) : null}
           </Panel>
 
@@ -520,20 +602,31 @@ export function SurveySearchView() {
 
           {/* ── Raw data (collapsible) ────────────────────────────── */}
           {dataRows.length > 0 && (
-            <CollapsibleSection
+            <ResultSection
               title="Data"
               icon={<Database className="h-4 w-4 text-muted-foreground" />}
               badge={`${dataRows.length} rows`}
               open={showData}
               onToggle={() => setShowData((v) => !v)}
+              action={
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleExportCsv}
+                  icon={<Download className="h-3.5 w-3.5" />}
+                >
+                  CSV
+                </Button>
+              }
             >
               <Table columns={columns} data={dataRows} stickyHeader />
-            </CollapsibleSection>
+            </ResultSection>
           )}
 
           {/* ── SQL (collapsible, admin only) ─────────────────────── */}
           {sqlQuery && (
-            <CollapsibleSection
+            <ResultSection
               title="Generated SQL"
               icon={<Code className="h-4 w-4 text-muted-foreground" />}
               open={showSql}
@@ -561,7 +654,7 @@ export function SurveySearchView() {
                   </pre>
                 </div>
               </div>
-            </CollapsibleSection>
+            </ResultSection>
           )}
 
           {/* ── Empty state ───────────────────────────────────────── */}

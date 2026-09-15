@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { staggerContainer, fadeUp } from "@/features/landing/animations";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import {
@@ -24,8 +23,7 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/store/auth";
 import { attendanceApi } from "@/features/attendance/api/attendance";
-import { StatCard } from "@/shared/components/ui/Card";
-import { StatCardSkeleton } from "@/shared/components/ui/Skeleton";
+import { KpiStrip } from "@/shared/components/ui/KpiStrip";
 import { PageHeader } from "@/shared/components/ui/PageHeader";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { SetupChecklist } from "@/features/dashboard/components/SetupChecklist";
@@ -37,7 +35,7 @@ import { ClassBreakdownChart } from "@/features/dashboard/components/ClassBreakd
 import { WeekdayPatternChart } from "@/features/dashboard/components/WeekdayPatternChart";
 import { AttendanceHeatmap } from "@/features/dashboard/components/AttendanceHeatmap";
 import { AdminDashboard } from "@/features/dashboard/components/AdminDashboard";
-import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
 import { MyDashboard } from "@/features/dashboard/components/MyDashboard";
 import { RecordingAnalyticsSection } from "@/features/dashboard/components/RecordingAnalyticsSection";
 import { LibraryAnalyticsSection } from "@/features/dashboard/components/LibraryAnalyticsSection";
@@ -186,86 +184,57 @@ function StaffDashboard({
         </Link>
       )}
 
-      <motion.div
-        variants={staggerContainer}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
-      >
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <StatCardSkeleton key={i} />
-          ))
-        ) : (
-          <>
-            <motion.div variants={fadeUp} className="block h-full">
-              <Link to="/attendance/view" className="block h-full">
-              <StatCard
-                hoverable
-                label="Present Today"
-                value={analytics?.today.present ?? 0}
-                icon={<UserCheck className="h-5 w-5" />}
-                color="success"
-                description={
-                  analytics && analytics.today.total_marked > 0
-                    ? `of ${analytics.today.total_marked} marked`
-                    : "no attendance marked yet"
-                }
+      {/* Headline numbers — each cell links to the page that explains it. */}
+      <KpiStrip
+        loading={isLoading}
+        items={[
+          {
+            label: "Present today",
+            value: analytics?.today.present ?? 0,
+            icon: <UserCheck />,
+            tone: "success",
+            hint:
+              analytics && analytics.today.total_marked > 0
+                ? `of ${analytics.today.total_marked} marked`
+                : "nothing marked yet",
+            to: "/attendance/view",
+          },
+          {
+            label: "Absent today",
+            value: analytics?.today.absent ?? 0,
+            icon: <UserX />,
+            tone: "danger",
+            hint:
+              analytics && analytics.today.late > 0
+                ? `plus ${analytics.today.late} late`
+                : undefined,
+            to: "/attendance/view",
+          },
+          {
+            label: "Attendance today",
+            value:
+              analytics && analytics.today.total_marked > 0
+                ? `${Math.round(analytics.today.attendance_percentage)}%`
+                : "—",
+            icon: <Activity />,
+            hint: (
+              <WeekDelta
+                week={analytics?.week_percentage ?? null}
+                prev={analytics?.prev_week_percentage ?? null}
               />
-              </Link>
-            </motion.div>
-            <motion.div variants={fadeUp} className="block h-full">
-              <Link to="/attendance/view" className="block h-full">
-              <StatCard
-                hoverable
-                label="Absent Today"
-                value={analytics?.today.absent ?? 0}
-                icon={<UserX className="h-5 w-5" />}
-                color="danger"
-                description={
-                  analytics && analytics.today.late > 0
-                    ? `plus ${analytics.today.late} late`
-                    : undefined
-                }
-              />
-              </Link>
-            </motion.div>
-            <motion.div variants={fadeUp} className="block h-full">
-              <Link to="/attendance/stats" className="block h-full">
-              <StatCard
-                hoverable
-                label="Attendance Today"
-                value={
-                  analytics && analytics.today.total_marked > 0
-                    ? `${Math.round(analytics.today.attendance_percentage)}%`
-                    : "—"
-                }
-                icon={<Activity className="h-5 w-5" />}
-                color="primary"
-                description={
-                  <WeekDelta
-                    week={analytics?.week_percentage ?? null}
-                    prev={analytics?.prev_week_percentage ?? null}
-                  />
-                }
-              />
-              </Link>
-            </motion.div>
-            <motion.div variants={fadeUp} className="block h-full">
-              <Link to="/attendance/leave" className="block h-full">
-              <StatCard
-                hoverable
-                label="Pending Leaves"
-                value={analytics?.pending_leaves_total ?? 0}
-                icon={<CalendarClock className="h-5 w-5" />}
-                color="warning"
-                description="awaiting your review"
-              />
-              </Link>
-            </motion.div>
-          </>
-        )}
-      </motion.div>
+            ),
+            to: "/attendance/stats",
+          },
+          {
+            label: "Pending leaves",
+            value: analytics?.pending_leaves_total ?? 0,
+            icon: <CalendarClock />,
+            tone: "warning",
+            hint: "awaiting your review",
+            to: "/attendance/leave",
+          },
+        ]}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <AttendanceTrendChart

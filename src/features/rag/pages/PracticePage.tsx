@@ -1,42 +1,40 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  Dumbbell,
-  Plus,
+  CalendarClock,
   CheckCircle2,
   Clock,
-  CalendarClock,
-  User,
+  Dumbbell,
+  Plus,
   Timer,
+  User,
 } from "lucide-react";
-import { Button } from "@/shared/components/ui/Button";
+import { Alert } from "@/shared/components/ui/Alert";
 import { Badge } from "@/shared/components/ui/Badge";
-import { Modal } from "@/shared/components/ui/Modal";
+import { Button } from "@/shared/components/ui/Button";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
-import { Skeleton, CardSkeleton } from "@/shared/components/ui/Skeleton";
-import { Alert } from "@/shared/components/ui";
-import { cn, formatDate, getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
-import { useAssignment, useAssignments } from "../hooks/useRag";
+import { Modal } from "@/shared/components/ui/Modal";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
+import { CardSkeleton, Skeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import { ForbiddenState } from "@/shared/components/errors/ForbiddenState";
-import { PracticeBuilderModal } from "../components/PracticeBuilderModal";
-import { QuizRunner } from "../components/QuizRunner";
-import { AssignmentSummary } from "../types";
+import { useUrlState } from "@/shared/hooks/useUrlState";
+import { cn, formatDate, getErrorMessage, isForbiddenError } from "@/shared/lib/utils";
+import { useAssignment, useAssignments } from "@/features/rag/hooks/useRag";
+import { PracticeBuilderModal } from "@/features/rag/components/PracticeBuilderModal";
+import { QuizRunner } from "@/features/rag/components/QuizRunner";
+import type { AssignmentSummary } from "@/features/rag/types";
 
-function PracticeSkeleton() {
-  return (
-    <div className="space-y-6" aria-hidden="true">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Skeleton className="h-5 w-64" />
-        <Skeleton className="h-9 w-32 rounded-md" />
-      </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <CardSkeleton key={i} lines={3} className="h-44" />
-        ))}
-      </div>
-    </div>
-  );
-}
+type Show = "all" | "todo" | "done" | "self";
+
+const MATCHES: Record<Show, (a: AssignmentSummary) => boolean> = {
+  all: () => true,
+  todo: (a) => !a.submitted && a.status === "active",
+  done: (a) => !!a.submitted,
+  self: (a) => a.kind === "self_quiz",
+};
+const URL_DEFAULTS: { show: string } = { show: "all" };
 
 export function PracticePage() {
   const queryClient = useQueryClient();
@@ -44,15 +42,23 @@ export function PracticePage() {
     useAssignments("mine");
   const [builderOpen, setBuilderOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [state, update] = useUrlState(URL_DEFAULTS);
+  const show: Show = state.show in MATCHES ? (state.show as Show) : "all";
 
   const { data: activeAssignment, isLoading: loadingActive } = useAssignment(activeId);
 
-  const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["rag", "assignments"] });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["rag", "assignments"] });
 
-  const items = data?.pages.flatMap((p) => p.items) ?? [];
-
-  if (isLoading) return <PracticeSkeleton />;
+  const items = useMemo(() => data?.pages.flatMap((p) => p.items) ?? [], [data]);
+  const visible = useMemo(() => items.filter(MATCHES[show]), [items, show]);
+  const total = data?.pages[0]?.total ?? 0;
+  // Per-filter counts are only honest once every page has loaded.
+  const allLoaded = !hasNextPage;
+  const countFor = (key: Show) => (allLoaded ? items.filter(MATCHES[key]).length : undefined);
+  const scored = items.filter((a) => a.submitted && a.my_percentage != null);
+  const avgScore = scored.length
+    ? Math.round(scored.reduce((n, a) => n + (a.my_percentage ?? 0), 0) / scored.length)
+    : null;
 
   // Ungranted teachers/students land here from the nav; show a clean access
   // message instead of a raw error (matches the Textbook Library pattern).
@@ -65,43 +71,88 @@ export function PracticePage() {
     );
   }
 
+  const loadMore = hasNextPage ? (
+    <Button variant="outline" size="sm" onClick={() => fetchNextPage()} loading={isFetchingNextPage}>
+      Load more
+    </Button>
+  ) : undefined;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">
-          Practice sets assigned to you, plus quizzes you build for yourself.
-        </p>
-        <Button icon={<Plus className="h-4 w-4" />} onClick={() => setBuilderOpen(true)}>
+    <div className="space-y-4">
+      <ModuleHeaderActions>
+        <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setBuilderOpen(true)}>
           New self-quiz
         </Button>
-      </div>
+      </ModuleHeaderActions>
 
       {isError && <Alert variant="error">{getErrorMessage(error)}</Alert>}
 
-      {items.length === 0 ? (
-        <EmptyState
-          icon={<Dumbbell className="h-12 w-12" />}
-          title="No practice yet"
-          description="Build a self-quiz from any chapter to start practising — or wait for your teacher to assign one."
-          action={
-            <Button icon={<Plus className="h-4 w-4" />} onClick={() => setBuilderOpen(true)}>
-              New self-quiz
-            </Button>
-          }
-        />
-      ) : (
+      {isLoading ? (
         <>
+          <Skeleton className="h-8 w-72 rounded-lg" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((a) => (
-              <PracticeCard key={a.id} assignment={a} onOpen={() => setActiveId(a.id)} />
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CardSkeleton key={i} lines={3} className="h-44" />
             ))}
           </div>
-          {hasNextPage && (
-            <div className="flex justify-center">
-              <Button variant="outline" onClick={() => fetchNextPage()} loading={isFetchingNextPage}>
-                Load more
+        </>
+      ) : items.length === 0 ? (
+        !isError && (
+          <EmptyState
+            icon={<Dumbbell className="h-12 w-12" />}
+            title="No practice yet"
+            description="Build a self-quiz from any chapter to start practising — or wait for your teacher to assign one."
+            action={
+              <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setBuilderOpen(true)}>
+                New self-quiz
               </Button>
-            </div>
+            }
+          />
+        )
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <SegmentedControl
+              aria-label="Show practice"
+              value={show}
+              onChange={(value) => update({ show: value }, { push: true })}
+              options={[
+                { value: "all", label: "All", count: countFor("all") },
+                { value: "todo", label: "To do", count: countFor("todo") },
+                { value: "done", label: "Completed", count: countFor("done") },
+                { value: "self", label: "Self-quizzes", count: countFor("self") },
+              ]}
+            />
+            <StatLine
+              items={[
+                { value: total, label: total === 1 ? "practice set" : "practice sets" },
+                { value: `${avgScore}%`, label: "average score", hidden: avgScore === null },
+              ]}
+            />
+          </div>
+
+          {visible.length === 0 ? (
+            <EmptyState
+              icon={<CheckCircle2 className="h-10 w-10" />}
+              title={show === "todo" ? "You're all caught up" : "Nothing here"}
+              description={
+                hasNextPage
+                  ? "Load more to check older practice sets."
+                  : show === "todo"
+                    ? "No practice is waiting for you right now."
+                    : "Nothing matches this filter yet."
+              }
+              action={loadMore}
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {visible.map((a) => (
+                  <PracticeCard key={a.id} assignment={a} onOpen={() => setActiveId(a.id)} />
+                ))}
+              </div>
+              {loadMore && <div className="flex justify-center">{loadMore}</div>}
+            </>
           )}
         </>
       )}
@@ -131,9 +182,9 @@ export function PracticePage() {
         size="3xl"
       >
         {loadingActive || !activeAssignment ? (
-          <div className="space-y-3">
+          <div className="space-y-3" aria-hidden="true">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 animate-pulse rounded-xl bg-muted/60" />
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
             ))}
           </div>
         ) : (
@@ -158,13 +209,11 @@ function PracticeCard({
     <button
       type="button"
       onClick={onOpen}
-      className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm"
+      className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-left shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant={isSelf ? "purple" : "primary"}>
-            {isSelf ? "Self-quiz" : "Assigned"}
-          </Badge>
+          <Badge variant={isSelf ? "purple" : "primary"}>{isSelf ? "Self-quiz" : "Assigned"}</Badge>
           {a.medium && (
             <Badge variant={a.medium === "Hindi" ? "purple" : "info"}>{a.medium}</Badge>
           )}

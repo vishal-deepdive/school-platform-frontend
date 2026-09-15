@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { authApi } from "@/features/auth/api/auth";
 import { useDebounce } from "./useDebounce";
-import { useSchoolClassesQuery } from "./useSchoolClassesQuery";
-import { formatClassName, getClassNameWeight } from "@/shared/lib/utils";
 import type { SearchableSelectOption } from "@/shared/components/ui/SearchableSelect";
 import type { SchoolSearchItem } from "@/features/auth/types";
 
@@ -46,23 +44,4 @@ export function useSchoolSearch(debounceMs = 500) {
   }));
 
   return { query, setQuery, options, isSearching };
-}
-
-/** Loads class codes for a given school ID, backed by React Query for shared caching. */
-export function useSchoolClasses(schoolId: string | undefined) {
-  const { data: classes, isLoading } = useSchoolClassesQuery(schoolId);
-
-  const options: SearchableSelectOption[] = classes
-    .map((c) => ({
-      label: formatClassName(c.class_name),
-      value: c.code,
-      sublabel: c.section ? `Section ${c.section}` : undefined,
-    }))
-    .sort((a, b) => {
-      const weightDiff = getClassNameWeight(b.label) - getClassNameWeight(a.label);
-      if (weightDiff !== 0) return weightDiff;
-      return a.label.localeCompare(b.label);
-    });
-
-  return { options, isLoading };
 }

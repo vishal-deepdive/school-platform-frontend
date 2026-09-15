@@ -11,6 +11,16 @@ export interface RagFilters {
   medium?: "English" | "Hindi";
 }
 
+/**
+ * One prior turn sent with a question so the backend can resolve a follow-up
+ * ("why?", "what about the second one?") into a standalone query before it is
+ * embedded. Mirrors `ChatTurn` in the backend request schema.
+ */
+export interface ChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface QARequest {
   query: string;
   filters?: RagFilters;
@@ -18,6 +28,11 @@ export interface QARequest {
   explain_mode?: "simpler";
   /** Answer in this language (e.g. "Hindi"). Defaults to English. */
   language?: string;
+  /**
+   * Recent conversation turns, oldest first — omitted on the first question.
+   * The backend reads only the last few and caps the list at 8.
+   */
+  history?: ChatTurn[];
 }
 
 export interface QASource {
@@ -119,11 +134,6 @@ export interface RagMetadata {
   hierarchy: RagHierarchy;
 }
 
-/** Selectable class levels for the current user (school-scoped or admin full list). */
-export interface ClassLevelsResponse {
-  class_levels: string[];
-}
-
 /** Selectable book mediums for the current user (derived from their school's
  * medium of instruction; admin gets both unconditionally). */
 export interface MediumsResponse {
@@ -194,6 +204,9 @@ export interface DocumentStatusResponse {
 export interface DocumentItem {
   id: string;
   school_id?: string;
+  is_global?: boolean;
+  board?: string;
+  school_name?: string;
   class_level: string;
   subject: string;
   chapter_number: string;
@@ -217,6 +230,38 @@ export interface DocumentListResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+export interface DocumentStatusesResponse {
+  items: DocumentStatusResponse[];
+}
+
+export interface DocumentSubjectSummary {
+  subject: string;
+  doc_count: number;
+  completed_count: number;
+  failed_count?: number;
+  mediums: string[];
+  boards: string[];
+}
+
+export interface DocumentClassSummary {
+  class_level: string;
+  doc_count: number;
+  completed_count: number;
+  failed_count?: number;
+  subjects: DocumentSubjectSummary[];
+}
+
+export interface DocumentSummaryResponse {
+  classes: DocumentClassSummary[];
+  total_documents: number;
+  completed_count?: number;
+  failed_count?: number;
+  public_count: number;
+  private_count: number;
+  available_boards: string[];
+  available_mediums: string[];
 }
 
 // ── Library analytics (GET /rag/analytics) ──────────────────────────────────
@@ -298,6 +343,27 @@ export interface DocumentChunksResponse {
   document_id: string;
   total: number;
   chunks: DocumentChunk[];
+}
+
+// ── Readable preview (GET /rag/documents/{id}/markdown) ──────────────────────
+
+export interface DocumentPage {
+  /** 1-based source page, or 0 when the text couldn't be placed on a page. */
+  page: number;
+  markdown: string;
+}
+
+export interface DocumentMarkdownResponse {
+  document_id: string;
+  /** "parsed" = page-accurate parser output; "chunks" = rebuilt from passages. */
+  source: "parsed" | "chunks";
+  parser_name?: string | null;
+  total_pages: number;
+  pages: DocumentPage[];
+  /** Whether the original upload can still be fetched for the side-by-side pane. */
+  has_source: boolean;
+  source_filename?: string | null;
+  source_media_type?: string | null;
 }
 
 // ── Learning loop: practice / assignments ───────────────────────────────────

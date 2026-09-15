@@ -344,31 +344,58 @@ export function SchoolOnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftToken, isResubmit, submitted, currentStep]);
 
+  // Every step change goes through here. Two of the five call sites used to
+  // forget the scroll — ReviewSummary's "Edit" jumped to step 1 while leaving
+  // the applicant parked at the bottom of the page, looking at nothing.
+  const pendingFocusRef = useRef(false);
+  const stepPanelRef = useRef<HTMLFormElement>(null);
+
+  const goToStep = useCallback(
+    (next: StepIndex) => {
+      setCurrentStep(next);
+      pendingFocusRef.current = true;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [setCurrentStep],
+  );
+
+  // Put the cursor in the new step's first field, so a five-step form does not
+  // cost a click per step and screen readers land inside the new panel. Only on
+  // a step CHANGE — focusing on first paint would pop the keyboard open on a
+  // phone before the applicant has read anything.
+  useEffect(() => {
+    if (!pendingFocusRef.current) return;
+    pendingFocusRef.current = false;
+    const field = Array.from(
+      stepPanelRef.current?.querySelectorAll<HTMLElement>(
+        'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      ) ?? [],
+    ).find((el) => el.offsetParent !== null); // skip sr-only file inputs
+    field?.focus({ preventScroll: true });
+  }, [currentStep]);
+
   const handleNext = useCallback(
     async (e?: React.MouseEvent) => {
       if (e) e.preventDefault();
       if (currentStep === 4) {
         // Certificate is recommended but optional — admins can request it later.
         setCertError("");
-        setCurrentStep(5);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        goToStep(5);
         return;
       }
 
       const fields = STEP_FIELDS[currentStep];
       const valid = await trigger(fields);
       if (valid) {
-        setCurrentStep((s: StepIndex) => Math.min(s + 1, 5) as StepIndex);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        goToStep(Math.min(currentStep + 1, 5) as StepIndex);
       }
     },
-    [currentStep, trigger, setCurrentStep],
+    [currentStep, trigger, goToStep],
   );
 
   const handleBack = useCallback(() => {
-    setCurrentStep((s: StepIndex) => Math.max(s - 1, 1) as StepIndex);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [setCurrentStep]);
+    goToStep(Math.max(currentStep - 1, 1) as StepIndex);
+  }, [currentStep, goToStep]);
 
   const onSubmit = async (data: SchoolOnboardingFormData) => {
     // See handleSaveDraft: block until we know whether CAPTCHA is actually
@@ -458,8 +485,7 @@ export function SchoolOnboardingPage() {
     const errored = new Set(Object.keys(formErrors));
     for (const s of [1, 2, 3, 5] as StepIndex[]) {
       if (STEP_FIELDS[s].some((f) => errored.has(f))) {
-        setCurrentStep(s);
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        goToStep(s);
         toast.error("Please fix the highlighted fields.");
         return;
       }
@@ -535,10 +561,7 @@ export function SchoolOnboardingPage() {
         current={currentStep}
         total={5}
         labels={STEPS.map((s) => s.title)}
-        onStepClick={(s) => {
-          setCurrentStep(s);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
+        onStepClick={goToStep}
       />
 
       <div className="flex items-center gap-3">
@@ -556,7 +579,7 @@ export function SchoolOnboardingPage() {
         </span>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate>
+      <form ref={stepPanelRef} onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate>
         {currentStep === 1 && (
           <SchoolInfoStep
             register={register}
@@ -598,7 +621,7 @@ export function SchoolOnboardingPage() {
               watch={watch}
               setValue={setValue}
             />
-            <ReviewSummary values={reviewValues} onEdit={setCurrentStep} />
+            <ReviewSummary values={reviewValues} onEdit={goToStep} />
             {capabilities?.captcha_enabled && capabilities.captcha_site_key && (
               <div className="mt-4">
                 <CaptchaWidget

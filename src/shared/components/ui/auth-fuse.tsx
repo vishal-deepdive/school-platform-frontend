@@ -41,7 +41,7 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary-foreground/60 underline-offset-4 hover:underline",
+        link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-10 px-4 py-2",
@@ -195,12 +195,26 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
     const id = useId();
     const errorId = `${id}-error`;
     const hintId = `${id}-hint`;
+    const labelId = `${id}-label`;
+    const listboxId = `${id}-listbox`;
     const [isOpen, setIsOpen] = useState(false);
     const [displayValue, setDisplayValue] = useState("");
+    // Which option the keyboard is on. The trigger keeps DOM focus and points
+    // at this one through aria-activedescendant, as the listbox pattern wants.
+    const [activeIndex, setActiveIndex] = useState(-1);
+    const triggerRef = React.useRef<HTMLButtonElement | null>(null);
+    // Enter/Space on a focused <button> ALSO fires a click. Without this the
+    // keydown would select an option and the click right behind it would
+    // reopen the list.
+    const skipNextClickRef = React.useRef(false);
+    const typeaheadRef = React.useRef({ buffer: "", at: 0 });
     const internalRef = React.useRef<HTMLSelectElement | null>(null);
     const dropdownRef = React.useRef<HTMLDivElement | null>(null);
 
-    useClickOutside(dropdownRef, () => setIsOpen(false));
+    useClickOutside(dropdownRef, () => {
+      setIsOpen(false);
+      setActiveIndex(-1);
+    });
 
     const setRefs = React.useCallback(
       (node: HTMLSelectElement) => {
@@ -241,9 +255,112 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
       return () => el.removeEventListener("change", updateDisplay);
     }, [options]);
 
+    const currentIndex = () =>
+      options.findIndex((o) => o.value === internalRef.current?.value);
+
+    const openList = (index?: number) => {
+      setIsOpen(true);
+      if (index !== undefined) {
+        setActiveIndex(index);
+        return;
+      }
+      // Land on the current choice, or — when nothing is chosen yet — on the
+      // first REAL option. Starting on the empty "— Select … —" placeholder
+      // means one ArrowDown + Enter selects nothing, which no native select does.
+      const current = currentIndex();
+      const firstReal = options.findIndex((o) => o.value !== "");
+      setActiveIndex(
+        current > 0 ? current : firstReal >= 0 ? firstReal : 0,
+      );
+    };
+
+    const closeList = () => {
+      setIsOpen(false);
+      setActiveIndex(-1);
+    };
+
+    const move = (delta: number) => {
+      const from = activeIndex >= 0 ? activeIndex : currentIndex();
+      const next = Math.min(
+        Math.max((from < 0 ? 0 : from) + delta, 0),
+        options.length - 1,
+      );
+      setActiveIndex(next);
+    };
+
+    /** Native selects jump to an option when you type its first letters. */
+    const typeahead = (char: string) => {
+      const now = Date.now();
+      const t = typeaheadRef.current;
+      t.buffer = now - t.at > 700 ? char : t.buffer + char;
+      t.at = now;
+      const hit = options.findIndex((o) =>
+        o.label.toLowerCase().startsWith(t.buffer.toLowerCase()),
+      );
+      if (hit === -1) return;
+      if (isOpen) setActiveIndex(hit);
+      else handleSelect(options[hit].value, options[hit].label);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          if (isOpen) move(1);
+          else openList();
+          return;
+        case "ArrowUp":
+          e.preventDefault();
+          if (isOpen) move(-1);
+          else openList();
+          return;
+        case "Home":
+          if (!isOpen) return;
+          e.preventDefault();
+          setActiveIndex(0);
+          return;
+        case "End":
+          if (!isOpen) return;
+          e.preventDefault();
+          setActiveIndex(options.length - 1);
+          return;
+        case "Enter":
+        case " ":
+          e.preventDefault();
+          // The synthetic click arrives in the same task. Drop the guard right
+          // after, or a browser that honours preventDefault (no click at all)
+          // would leave it armed and swallow the user's NEXT real click.
+          skipNextClickRef.current = true;
+          setTimeout(() => {
+            skipNextClickRef.current = false;
+          }, 0);
+          if (isOpen && activeIndex >= 0) {
+            handleSelect(options[activeIndex].value, options[activeIndex].label);
+          } else {
+            openList();
+          }
+          return;
+        case "Escape":
+          if (!isOpen) return;
+          e.preventDefault();
+          closeList();
+          return;
+        case "Tab":
+          if (isOpen) closeList();
+          return;
+        default:
+          if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+            e.preventDefault();
+            typeahead(e.key);
+          }
+      }
+    };
+
     const handleSelect = (val: string, label: string) => {
       setDisplayValue(label);
       setIsOpen(false);
+      setActiveIndex(-1);
+      triggerRef.current?.focus();
       if (internalRef.current) {
         // Set the value on the hidden native select and fire a native change event.
         // React picks up the native 'change' event via its event delegation system,
@@ -259,6 +376,7 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
       <div className="grid gap-2 w-full relative" ref={dropdownRef}>
         {label && (
           <label
+            id={labelId}
             htmlFor={id}
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
@@ -278,18 +396,38 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
           {children}
         </select>
 
-        {/* Custom visual button */}
-        <div
+        {/* The real control. This was a plain <div> with only an onClick, and
+            the native <select> beside it is display:none — so every dropdown in
+            the onboarding application was unreachable by keyboard and unnamed
+            to screen readers. It has to be a focusable, labelled button. */}
+        <button
+          type="button"
+          ref={triggerRef}
           role="combobox"
           aria-expanded={isOpen}
           aria-haspopup="listbox"
+          aria-controls={isOpen ? listboxId : undefined}
+          aria-activedescendant={
+            isOpen && activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined
+          }
+          aria-labelledby={label ? labelId : undefined}
           aria-invalid={!!error}
           aria-describedby={error ? errorId : hint ? hintId : undefined}
-          onClick={() => setIsOpen((o) => !o)}
+          disabled={props.disabled}
+          onClick={() => {
+            if (skipNextClickRef.current) {
+              skipNextClickRef.current = false;
+              return;
+            }
+            if (isOpen) closeList();
+            else openList();
+          }}
+          onKeyDown={handleKeyDown}
           className={cn(
-            "flex min-w-0 h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer",
+            "flex min-w-0 h-10 w-full items-center justify-between rounded-lg border border-input dark:border-input/50 bg-background px-3 py-2 cursor-pointer text-left",
             "text-sm text-foreground shadow-sm shadow-black/5 transition-all duration-200",
-            "hover:border-primary/50 focus-visible:bg-accent focus-visible:outline-none",
+            "hover:border-primary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:border-primary",
+            "disabled:cursor-not-allowed disabled:opacity-50",
             isOpen && "ring-2 ring-primary/20 border-primary",
             error && "border-destructive ring-0",
             className,
@@ -309,7 +447,7 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
               isOpen && "rotate-180",
             )}
           />
-        </div>
+        </button>
 
         {/* Dropdown menu */}
         {isOpen && (
@@ -317,22 +455,35 @@ export const AuthSelect = React.forwardRef<HTMLSelectElement, AuthSelectProps>(
             role="listbox"
             className="absolute top-[calc(100%+4px)] z-50 w-full rounded-md border border-border bg-background text-foreground shadow-md animate-in fade-in-80 slide-in-from-top-1 py-1 max-h-60 overflow-y-auto scrollbar-thin"
           >
-            {options.map((opt) => (
-              <div
-                key={opt.value}
-                role="option"
-                aria-selected={internalRef.current?.value === opt.value}
-                className={cn(
-                  "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors",
-                  "hover:bg-accent hover:text-accent-foreground",
-                  internalRef.current?.value === opt.value &&
-                    "bg-primary/10 text-primary font-medium",
-                )}
-                onClick={() => handleSelect(opt.value, opt.label)}
-              >
-                <span className="truncate">{opt.label || " "}</span>
-              </div>
-            ))}
+            {options.map((opt, i) => {
+              const selected = internalRef.current?.value === opt.value;
+              const active = i === activeIndex;
+              return (
+                <div
+                  key={opt.value}
+                  id={`${listboxId}-${i}`}
+                  role="option"
+                  aria-selected={selected}
+                  // Keeps the keyboard-highlighted option in view while arrowing
+                  // through a long list (there are 8 curriculum boards).
+                  ref={
+                    active
+                      ? (el) => el?.scrollIntoView({ block: "nearest" })
+                      : undefined
+                  }
+                  className={cn(
+                    "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 px-3 text-sm outline-none transition-colors",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    active && "bg-accent text-accent-foreground",
+                    selected && "bg-primary/10 text-primary font-medium",
+                  )}
+                  onMouseEnter={() => setActiveIndex(i)}
+                  onClick={() => handleSelect(opt.value, opt.label)}
+                >
+                  <span className="truncate">{opt.label || " "}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 

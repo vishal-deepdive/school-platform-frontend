@@ -28,7 +28,7 @@ import { Card, StatCard } from "@/shared/components/ui/Card";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
 import { StatCardSkeleton, ChartSkeleton } from "@/shared/components/ui/Skeleton";
 import { StatusDonut } from "@/features/dashboard/components/StatusDonut";
-import { SegmentedControl } from "@/features/dashboard/components/SegmentedControl";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
 import { STATUS_META, shortDate } from "@/features/dashboard/lib/chartTheme";
 
 const LEAVE_BADGES: Record<string, BadgeVariant> = {

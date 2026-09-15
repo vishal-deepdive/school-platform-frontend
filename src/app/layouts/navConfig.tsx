@@ -310,7 +310,7 @@ export const adminNavItems: NavItem[] = [
     icon: <Shield className="h-5 w-5" />,
     children: [
       {
-        label: "School Applications",
+        label: "Applications",
         href: "/admin/onboarding",
         icon: <ClipboardList className="h-4 w-4" />,
         group: "Organizations",

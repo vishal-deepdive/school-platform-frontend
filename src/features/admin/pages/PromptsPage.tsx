@@ -1,12 +1,14 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { RefreshCw, CheckCircle2, AlertTriangle, WifiOff, ServerOff } from "lucide-react";
+import { AlertTriangle, CheckCircle2, RefreshCw, ServerOff, WifiOff } from "lucide-react";
 import { promptsApi } from "@/features/admin/api/prompts";
 import { Badge } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
 import { Alert } from "@/shared/components/ui/Alert";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Panel } from "@/shared/components/ui/Panel";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import { mapWithConcurrency } from "@/shared/lib/concurrency";
 import { getErrorMessage } from "@/shared/lib/utils";
 import type { PromptSummary, PromptRefreshResponse } from "@/features/admin/types";
@@ -28,11 +30,7 @@ function LiveBadge({ r }: { r: LiveResult }) {
       <span className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600 dark:text-green-400">
         <CheckCircle2 className="h-4 w-4 shrink-0" />
         v{r.version}
-        {r.label && (
-          <span className="text-xs text-muted-foreground font-normal">
-            · {r.label}
-          </span>
-        )}
+        {r.label && <span className="text-xs font-normal text-muted-foreground">· {r.label}</span>}
       </span>
     );
   }
@@ -83,32 +81,12 @@ function PromptRow({
   isChecking: boolean;
   onCheck: (name: string) => void;
 }) {
-  const moduleLabel = prompt.name.split(".")[0];
-
-  const moduleVariant = {
-    rag: "info",
-    survey: "success",
-    recording: "purple",
-    shared: "default",
-  }[moduleLabel] as "info" | "success" | "purple" | "default" | undefined;
-
   return (
-    <tr className="hover:bg-muted/30 transition-colors">
+    <tr className="transition-colors hover:bg-muted/30">
       {/* Prompt name */}
       <td className="px-5 py-3.5">
-        <p className="font-mono text-sm font-medium text-foreground leading-tight">
-          {prompt.name}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground capitalize">
-          {prompt.type} prompt
-        </p>
-      </td>
-
-      {/* Module */}
-      <td className="px-5 py-3.5">
-        <Badge variant={moduleVariant ?? "default"} className="capitalize">
-          {moduleLabel}
-        </Badge>
+        <p className="font-mono text-sm font-medium leading-tight text-foreground">{prompt.name}</p>
+        <p className="mt-0.5 text-xs capitalize text-muted-foreground">{prompt.type} prompt</p>
       </td>
 
       {/* Langfuse-stored version (from list endpoint, reflects label in Langfuse) */}
@@ -127,9 +105,7 @@ function PromptRow({
             >
               {prompt.is_fallback && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
               v{prompt.current_version}
-              {prompt.is_fallback && (
-                <span className="text-xs font-normal">(rejected)</span>
-              )}
+              {prompt.is_fallback && <span className="text-xs font-normal">(rejected)</span>}
             </span>
             {prompt.is_fallback && prompt.fallback_reason && (
               <p className="text-[11px] leading-snug text-amber-700/80 dark:text-amber-400/70">
@@ -138,20 +114,18 @@ function PromptRow({
             )}
           </div>
         ) : (
-          <span className="text-xs text-muted-foreground italic">
+          <span className="text-xs italic text-muted-foreground">
             {prompt.fallback_reason ?? "not in Langfuse"}
           </span>
         )}
       </td>
 
       {/* Live backend version (from refresh endpoint) */}
-      <td className="px-5 py-3.5 min-w-[180px]">
+      <td className="min-w-[180px] px-5 py-3.5">
         {liveResult ? (
           <div className="space-y-0.5">
             <LiveBadge r={liveResult} />
-            <p className="text-[10px] text-muted-foreground/60">
-              checked {liveResult.checked_at}
-            </p>
+            <p className="text-[10px] text-muted-foreground/60">checked {liveResult.checked_at}</p>
           </div>
         ) : (
           <span className="text-sm text-muted-foreground/50">—</span>
@@ -197,7 +171,11 @@ export function PromptsPage() {
   });
 
   const timestampNow = () =>
-    new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
 
   const handleCheck = useCallback(
     async (name: string) => {
@@ -281,15 +259,11 @@ export function PromptsPage() {
   const isCheckingAny = checkingNames.size > 0;
   const checkedCount = Object.keys(liveResults).length;
   const totalCount = prompts?.length ?? 0;
+  const onFallback = (prompts ?? []).filter((p) => p.is_fallback).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-4">
-        {checkedCount > 0 && (
-          <p className="text-sm text-muted-foreground">
-            {checkedCount} / {totalCount} checked
-          </p>
-        )}
+    <div className="space-y-4">
+      <ModuleHeaderActions>
         <Button
           variant="outline"
           size="sm"
@@ -298,19 +272,35 @@ export function PromptsPage() {
           onClick={handleCheckAll}
           disabled={!prompts || isCheckingAny}
         >
-          Check all live versions
+          Check all<span className="hidden sm:inline">&nbsp;live versions</span>
         </Button>
-      </div>
+      </ModuleHeaderActions>
 
-      {refreshAllError && (
-        <Alert variant="error">{refreshAllError}</Alert>
+      <StatLine
+        loading={isLoading}
+        items={[
+          { value: totalCount, label: totalCount === 1 ? "prompt" : "prompts" },
+          { value: checkedCount, label: "checked live", hidden: checkedCount === 0 },
+          {
+            value: onFallback,
+            label: "serving a local fallback",
+            tone: "warning",
+            hidden: onFallback === 0,
+          },
+        ]}
+      />
+
+      {refreshAllError && <Alert variant="error">{refreshAllError}</Alert>}
+      {promptsError && (
+        <Alert variant="error">
+          {getErrorMessage(promptsQueryError) || "Failed to load prompts."}
+        </Alert>
       )}
 
       {isLoading && <ListSkeleton items={4} />}
-      {promptsError && <Alert variant="error">{getErrorMessage(promptsQueryError) || "Failed to load prompts."}</Alert>}
 
       {!isLoading && !promptsError && prompts && (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {Object.entries(grouped).map(([module, rows]) => (
             <Panel
               key={module}
@@ -324,9 +314,6 @@ export function PromptsPage() {
                   <tr className="bg-muted/20">
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Prompt
-                    </th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Module
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Langfuse version

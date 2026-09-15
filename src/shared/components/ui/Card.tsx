@@ -1,8 +1,5 @@
 import { cn } from "@/shared/lib/utils";
 
-import { motion } from "framer-motion";
-import { cardHover } from "@/features/landing/animations";
-
 /**
  * Renders a stat value, easing the number up on mount/change. Animates only a
  * single, clean numeric core (e.g. `42`, `85%`, `1,234`) so prefix/suffix and
@@ -25,9 +22,9 @@ const paddingClasses = {
 };
 
 const variantClasses = {
-  default: "bg-card border-border/60 shadow-[0_1px_3px_0_rgba(0,0,0,0.03),0_1px_2px_-1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
-  glass: "bg-card/70 backdrop-blur-md border-border/40 dark:bg-card/45 shadow-[0_1px_3px_0_rgba(0,0,0,0.03)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
-  gradient: "bg-gradient-to-br from-card via-card to-muted/10 border-border/60 shadow-[0_1px_3px_0_rgba(0,0,0,0.03),0_1px_2px_-1px_rgba(0,0,0,0.02)] dark:shadow-[0_1px_2px_0_rgba(0,0,0,0.3)]",
+  default: "bg-card border-border/60 shadow-card",
+  glass: "bg-card/70 backdrop-blur-md border-border/40 dark:bg-card/45 shadow-card",
+  gradient: "bg-gradient-to-br from-card via-card to-muted/10 border-border/60 shadow-card",
 };
 
 export function Card({
@@ -37,25 +34,18 @@ export function Card({
   hoverable = false,
   variant = "default",
 }: CardProps) {
-  const Component = hoverable ? motion.div : ("div" as any);
   return (
-    <Component
+    <div
       className={cn(
-        "rounded-xl border",
-        !hoverable && "transition-all duration-300 ease-out",
+        "rounded-xl border transition-all duration-200 ease-out",
         variantClasses[variant],
-        hoverable && "cursor-pointer hover:border-primary/30 hover:shadow-md hover:shadow-primary/5 dark:hover:border-primary/35",
+        hoverable && "cursor-pointer hover:border-primary/30 hover:shadow-card-hover dark:hover:border-primary/35",
         paddingClasses[padding],
         className,
       )}
-      {...(hoverable ? {
-        variants: cardHover,
-        initial: "rest",
-        whileHover: "hover",
-      } : {})}
     >
       {children}
-    </Component>
+    </div>
   );
 }
 

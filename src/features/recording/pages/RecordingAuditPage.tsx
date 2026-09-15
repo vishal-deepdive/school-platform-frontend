@@ -1,126 +1,105 @@
-import { useState } from "react";
-import { Activity, RefreshCw } from "lucide-react";
-import { formatDateTime, getErrorMessage } from "@/shared/lib/utils";
+import { Activity } from "lucide-react";
+import { cn, formatDateTime, getErrorMessage } from "@/shared/lib/utils";
 import { useRecordingAuditLogs } from "@/features/recording/hooks/useRecordings";
-import { Button } from "@/shared/components/ui/Button";
-import { Badge } from "@/shared/components/ui/Badge";
+import { Alert } from "@/shared/components/ui/Alert";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
+import { ModuleHeaderActions } from "@/shared/components/ui/ModuleHeaderActions";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { Panel } from "@/shared/components/ui/Panel";
-import { Skeleton, ListSkeleton } from "@/shared/components/ui/Skeleton";
-import { Alert } from "@/shared/components/ui/Alert";
-
-function RecordingAuditSkeleton() {
-  return (
-    <div className="space-y-6" aria-hidden="true">
-      <div className="rounded-xl border border-border/60 bg-card">
-        <div className="flex items-center justify-end gap-2 border-b border-border/40 px-4 py-3 sm:px-6">
-          <Skeleton className="h-5 w-20 rounded-full" />
-          <Skeleton className="h-9 w-24 rounded-md" />
-        </div>
-        <ListSkeleton items={5} />
-      </div>
-    </div>
-  );
-}
+import { RefreshButton } from "@/shared/components/ui/RefreshButton";
+import { ListSkeleton } from "@/shared/components/ui/Skeleton";
+import { StatLine } from "@/shared/components/ui/StatLine";
+import { useUrlState } from "@/shared/hooks/useUrlState";
 
 const PAGE_SIZE = 20;
+const URL_DEFAULTS: { page: number } = { page: 1 };
 
 export function RecordingAuditPage() {
-  const [offset, setOffset] = useState(0);
+  const [state, update] = useUrlState(URL_DEFAULTS);
+  const page = Math.max(1, state.page);
 
-  const { data, isLoading, isError, error, refetch, isFetching } =
-    useRecordingAuditLogs(PAGE_SIZE, offset);
+  const { data, isLoading, isError, error, refetch, isFetching, isPlaceholderData } =
+    useRecordingAuditLogs(PAGE_SIZE, (page - 1) * PAGE_SIZE);
 
   const total = data?.total ?? 0;
-  const pagedLogs = data?.logs ?? [];
-
-  // Server-driven pagination: the API returns only the current page.
-  const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
-  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
-  const hasNext = offset + PAGE_SIZE < total;
-  const hasPrev = offset > 0;
-  const goNext = () => setOffset((o) => o + PAGE_SIZE);
-  const goPrev = () => setOffset((o) => Math.max(0, o - PAGE_SIZE));
-
-  if (isLoading) return <RecordingAuditSkeleton />;
-  if (isError) return <Alert variant="error">{getErrorMessage(error) || "Failed to load audit logs."}</Alert>;
+  const logs = data?.logs ?? [];
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-6">
-      <Panel
-        flush
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {total > 0 && <Badge variant="primary">{total} events</Badge>}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              loading={isFetching}
-              icon={<RefreshCw className="h-4 w-4" />}
-            >
-              Refresh
-            </Button>
-          </div>
-        }
-      >
-        {pagedLogs.length === 0 ? (
-          <div className="p-4">
+    <div className="space-y-4">
+      <ModuleHeaderActions>
+        <RefreshButton
+          onClick={() => void refetch()}
+          refreshing={isFetching && !isLoading}
+          label="Refresh activity"
+        />
+      </ModuleHeaderActions>
+
+      <StatLine loading={isLoading} items={[{ value: total, label: total === 1 ? "event" : "events" }]} />
+
+      {isError ? (
+        <Alert variant="error">{getErrorMessage(error) || "Failed to load activity."}</Alert>
+      ) : (
+        <Panel flush>
+          {isLoading ? (
+            <ListSkeleton items={6} />
+          ) : logs.length === 0 ? (
             <EmptyState
+              variant="plain"
               icon={<Activity className="h-10 w-10" />}
-              title="No audit logs yet"
-              description="Processing and management activity will appear here."
+              title="No activity yet"
+              description="Processing and management activity on recordings will appear here."
             />
-          </div>
-        ) : (
-          <ul className="divide-y divide-border/50">
-            {pagedLogs.map((log) => (
-              <li
-                key={log.id}
-                className="flex items-start gap-4 px-4 py-3 transition-colors hover:bg-muted/40 md:px-5"
-              >
-                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/10 text-primary">
-                  <Activity className="h-4 w-4" />
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-foreground">
-                      {log.activity}
+          ) : (
+            <ul
+              className={cn(
+                "divide-y divide-border/50 transition-opacity",
+                isPlaceholderData && "opacity-60",
+              )}
+              aria-busy={isPlaceholderData}
+            >
+              {logs.map((log) => (
+                <li
+                  key={log.id}
+                  className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 md:px-5"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{log.activity}</p>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                      {[
+                        log.school_name,
+                        `Class ${log.class_name}${log.section ? `-${log.section}` : ""}`,
+                        log.recording_subject,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
-                    <Badge variant="info">{log.school_name}</Badge>
-                    <Badge>Class {log.class_name}</Badge>
-                    {log.section && <Badge>{log.section}</Badge>}
+                    <p
+                      className="truncate text-[11px] text-muted-foreground/80"
+                      title={log.audio_filename}
+                    >
+                      {log.audio_filename}
+                    </p>
                   </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {log.audio_filename}
-                  </p>
-                  {log.recording_subject && (
-                    <p className="text-xs text-muted-foreground">
-                      {log.recording_subject}
-                    </p>
-                  )}
-                </div>
-                <p className="flex-shrink-0 whitespace-nowrap text-right text-xs text-muted-foreground">
-                  {formatDateTime(
-                    log.activity_timestamp ?? log.created_at ?? "",
-                  )}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Panel>
+                  <time className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                    {formatDateTime(log.activity_timestamp ?? log.created_at ?? "")}
+                  </time>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+      )}
 
       <Pagination
-        currentPage={currentPage}
+        currentPage={page}
         totalPages={totalPages}
         totalItems={total}
         itemsLabel="events"
-        hasNext={hasNext}
-        hasPrev={hasPrev}
-        onNext={goNext}
-        onPrev={goPrev}
+        hasNext={page < totalPages && !isPlaceholderData}
+        hasPrev={page > 1}
+        onNext={() => update({ page: page + 1 })}
+        onPrev={() => update({ page: page - 1 })}
       />
     </div>
   );

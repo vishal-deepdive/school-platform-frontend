@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm, Controller } from "react-hook-form";
-import { CheckSquare, Users, UserX, UserCog, Pencil, ListChecks } from "lucide-react";
+import { CheckSquare, ListChecks, Pencil, UserCog, UserX, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import toast from "@/shared/lib/toast";
@@ -12,7 +12,7 @@ import {
 import { attendanceApi } from "@/features/attendance/api/attendance";
 import { SESSION_OPTIONS, getCurrentSession } from "@/features/attendance/constants";
 import { useActiveSchool } from "@/shared/hooks/useActiveSchool";
-import { useClassOptions } from "@/shared/hooks/useClassOptions";
+import { ClassSelect, SectionSelect } from "@/shared/components/ui/ClassSelect";
 import { useHolidayDates } from "@/shared/hooks/useHolidayDates";
 import {
   STATUS_OPTIONS,
@@ -20,22 +20,21 @@ import {
   statusVariant,
 } from "@/features/attendance/lib/status";
 import { isHolidayDate } from "@/features/attendance/lib/holidays";
-import {
-  cn,
-  getErrorMessage,
-  isoToIndianDate,
-  isSunday,
-} from "@/shared/lib/utils";
-import { StatCard } from "@/shared/components/ui/Card";
-import { Input } from "@/shared/components/ui/Input";
-import { Select } from "@/shared/components/ui/Select";
-import { Button } from "@/shared/components/ui/Button";
-import { FileUpload } from "@/shared/components/ui/FileUpload";
+import { getErrorMessage, isoToIndianDate, isSunday } from "@/shared/lib/utils";
+import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Alert } from "@/shared/components/ui/Alert";
-import { Badge } from "@/shared/components/ui/Badge";
-import { DatePicker } from "@/shared/components/ui/DatePicker";
-import { Panel } from "@/shared/components/ui/Panel";
 import { Avatar } from "@/shared/components/ui/Avatar";
+import { Badge } from "@/shared/components/ui/Badge";
+import { Button } from "@/shared/components/ui/Button";
+import { DatePicker } from "@/shared/components/ui/DatePicker";
+import { FileUpload } from "@/shared/components/ui/FileUpload";
+import { FormActions } from "@/shared/components/ui/FormActions";
+import { FormSection } from "@/shared/components/ui/FormSection";
+import { Input } from "@/shared/components/ui/Input";
+import { KpiStrip, type KpiItem } from "@/shared/components/ui/KpiStrip";
+import { Panel } from "@/shared/components/ui/Panel";
+import { SegmentedControl } from "@/shared/components/ui/SegmentedControl";
+import { Select } from "@/shared/components/ui/Select";
 import type {
   MarkAttendanceResponse,
   AttendanceRecord,
@@ -49,18 +48,19 @@ function todayIso(): string {
   ).padStart(2, "0")}`;
 }
 
+type UploadMethod = "zip" | "photos";
+
 function updateRecordStatus(
   result: MarkAttendanceResponse,
   rollNo: string,
   status: AttendanceStatus,
 ): MarkAttendanceResponse {
-  // There are only two summary buckets (matches the backend's own bucketing:
+  // There are only two summary buckets (matching the backend's own bucketing:
   // face-matched -> present_students/"P", unmatched -> absent_students/"A").
   // A correction can set any of P/L/E/H, all of which count as "present" for
-  // this summary — only "A" belongs in the absent bucket. Previously this only
-  // patched the status in place without moving the record between arrays or
-  // recomputing the counts, so the StatCards/percentage badge went stale the
-  // moment a correction actually changed which bucket a student belonged in.
+  // this summary — only "A" belongs in the absent bucket. Patching the status
+  // in place without moving the record between arrays left the counts stale
+  // the moment a correction changed which bucket a student belonged in.
   const existing =
     result.present_students.find((r) => r.roll_no === rollNo) ??
     result.absent_students.find((r) => r.roll_no === rollNo);
@@ -72,11 +72,8 @@ function updateRecordStatus(
 
   const present_students = withoutRecord(result.present_students);
   const absent_students = withoutRecord(result.absent_students);
-  if (status === "A") {
-    absent_students.push(updated);
-  } else {
-    present_students.push(updated);
-  }
+  if (status === "A") absent_students.push(updated);
+  else present_students.push(updated);
 
   return {
     ...result,
@@ -91,12 +88,10 @@ export function MarkAttendanceForm() {
   const { schoolId, schoolName, isAdmin } = useActiveSchool();
   const queryClient = useQueryClient();
   const [file, setFile] = useState<File | null>(null);
-  const [uploadMethod, setUploadMethod] = useState<"zip" | "photos">("zip");
+  const [uploadMethod, setUploadMethod] = useState<UploadMethod>("zip");
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [result, setResult] = useState<MarkAttendanceResponse | null>(null);
   const [correctingRoll, setCorrectingRoll] = useState<string | null>(null);
-
-  const { classNameOptions, getSectionOptions } = useClassOptions(schoolId);
 
   const {
     register,
@@ -119,8 +114,8 @@ export function MarkAttendanceForm() {
 
   const selectedClass = watch("class_name");
   const attendanceDate = watch("attendance_date");
+  const watchedSection = watch("section");
   const watchedSession = watch("session");
-  const sectionOptions = selectedClass ? getSectionOptions(selectedClass) : [];
 
   const holidays = useHolidayDates({
     session: watchedSession || getCurrentSession(),
@@ -128,9 +123,7 @@ export function MarkAttendanceForm() {
     enabled: !isAdmin || !!schoolName,
   });
   const dateIsSunday = attendanceDate ? isSunday(attendanceDate) : false;
-  const dateIsHoliday = attendanceDate
-    ? isHolidayDate(attendanceDate, holidays)
-    : false;
+  const dateIsHoliday = attendanceDate ? isHolidayDate(attendanceDate, holidays) : false;
 
   // Reset class/section whenever the selected school changes
   useEffect(() => {
@@ -165,7 +158,7 @@ export function MarkAttendanceForm() {
       toast.success(
         `Attendance marked: ${data.present_count} present, ${data.absent_count} absent` +
           (data.not_enrolled_count
-            ? `, ${data.not_enrolled_count} not yet face-enrolled`
+            ? `, ${data.not_enrolled_count} with no face on file`
             : ""),
       );
     },
@@ -185,9 +178,7 @@ export function MarkAttendanceForm() {
         attendance_date: isoToIndianDate(result.date),
         ...(result.school_name && { school_name: result.school_name }),
         ...(result.subject && { subject: result.subject }),
-        ...(isHolidayDate(result.date, holidays) && {
-          allow_holiday: "true",
-        }),
+        ...(isHolidayDate(result.date, holidays) && { allow_holiday: "true" }),
       };
       return attendanceApi.correctAttendance(params);
     },
@@ -207,15 +198,15 @@ export function MarkAttendanceForm() {
   const onSubmit = (data: MarkAttendanceFormData) => {
     if (uploadMethod === "photos") {
       if (photoFiles.length === 0) {
-        toast.error("Please select at least one classroom photo");
+        toast.error("Choose at least one classroom photo");
         return;
       }
     } else if (!file) {
-      toast.error("Please upload a ZIP archive of classroom photos");
+      toast.error("Choose a ZIP archive of classroom photos");
       return;
     }
     if (isAdmin && !schoolName) {
-      toast.error("Please select a school");
+      toast.error("Select a school first");
       return;
     }
     const params: Record<string, string> = {
@@ -250,209 +241,195 @@ export function MarkAttendanceForm() {
       ? Math.round((result.present_count / result.total_enrolled) * 100)
       : 0;
 
+  const selectedCount = uploadMethod === "photos" ? photoFiles.length : file ? 1 : 0;
+  const formId = "mark-attendance-form";
+
+  // Step state drives the numbered badges and the bar's completion line.
+  const classStepDone = Boolean(selectedClass && watchedSection && attendanceDate);
+  const photoStepDone = selectedCount > 0;
+  const stepsDone = [classStepDone, photoStepDone].filter(Boolean).length;
+
+  const resultKpis: KpiItem[] = result
+    ? [
+        {
+          label: "Present",
+          value: result.present_count,
+          icon: <Users />,
+          tone: "success",
+          hint: `${attendancePct}% of ${result.total_enrolled} enrolled`,
+        },
+        { label: "Absent", value: result.absent_count, icon: <UserX />, tone: "danger" },
+        ...(result.not_enrolled_count > 0
+          ? [
+              {
+                label: "No face on file",
+                value: result.not_enrolled_count,
+                icon: <UserCog />,
+                tone: "warning" as const,
+                hint: "Not assessed — mark manually",
+              },
+            ]
+          : []),
+      ]
+    : [];
+
   return (
-    <div className="space-y-6">
-      <div className={`grid grid-cols-1 gap-6 ${result ? "lg:grid-cols-2" : ""}`}>
+    <div className="space-y-4">
+      <div className={result ? "grid gap-4 lg:grid-cols-2" : ""}>
         <Panel>
-          <form
-            onSubmit={handleSubmit(onSubmit)}
-            className="flex flex-col gap-5"
-          >
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Class &amp; session
-              </p>
-              <div className="grid grid-cols-2 gap-4 items-start">
-              <Select
-                label="Class"
-                placeholder="Select class"
-                options={classNameOptions}
-                error={errors.class_name?.message}
-                disabled={!schoolId}
-                {...register("class_name")}
-              />
-              {sectionOptions.length > 0 ? (
-                <Select
-                  label="Section"
-                  placeholder="Select section"
-                  options={sectionOptions}
+          <form id={formId} onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5">
+            <FormSection
+              step={1}
+              complete={classStepDone}
+              title="Which class and date?"
+              description="Face matches are recorded against this class, section and date."
+            >
+              <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2">
+                <ClassSelect
+                  value={selectedClass}
+                  onChange={(value) => {
+                    setValue("class_name", value, { shouldValidate: true });
+                    setValue("section", "", { shouldValidate: true });
+                  }}
+                  disabled={!schoolId}
+                  error={errors.class_name?.message}
+                />
+                <SectionSelect
+                  className_={selectedClass}
+                  value={watchedSection ?? ""}
+                  onChange={(value) => setValue("section", value, { shouldValidate: true })}
                   error={errors.section?.message}
-                  {...register("section")}
+                  allowFreeText
+                />
+                <Input
+                  label="Subject (optional)"
+                  placeholder="Mathematics"
+                  {...register("subject")}
+                />
+                <Select label="Session" options={SESSION_OPTIONS} {...register("session")} />
+                <Controller
+                  control={control}
+                  name="attendance_date"
+                  render={({ field }) => (
+                    <DatePicker
+                      label="Date"
+                      max={todayIso()}
+                      value={field.value}
+                      onChange={(iso) => field.onChange(iso ?? todayIso())}
+                      error={errors.attendance_date?.message}
+                      fadeSundays
+                      holidays={holidays}
+                    />
+                  )}
+                />
+              </div>
+
+              {dateIsHoliday && (
+                <Alert
+                  className="mt-4"
+                  variant="warning"
+                  title={
+                    dateIsSunday ? "This date is a Sunday" : "This date is a school holiday"
+                  }
+                >
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-input accent-primary"
+                      {...register("allow_holiday")}
+                    />
+                    Mark attendance anyway (holiday override)
+                  </label>
+                </Alert>
+              )}
+            </FormSection>
+
+            <FormSection
+              step={2}
+              complete={photoStepDone}
+              title="Classroom photos"
+              description="Everyone recognised is marked present; everyone else is marked absent for you to review."
+              action={
+                <SegmentedControl
+                  aria-label="Upload method"
+                  value={uploadMethod}
+                  onChange={setUploadMethod}
+                  options={[
+                    { value: "zip", label: "ZIP archive" },
+                    { value: "photos", label: "Photos" },
+                  ]}
+                />
+              }
+            >
+              {uploadMethod === "photos" ? (
+                <FileUpload
+                  key="photos"
+                  label="Classroom photos"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                  multiple
+                  maxSize={15 * 1024 * 1024}
+                  onChange={setPhotoFiles}
+                  hint="Any filenames are fine — students are matched by face, not name. Max 15 MB each."
                 />
               ) : (
-                <Input
-                  label="Section"
-                  placeholder="A"
-                  error={errors.section?.message}
-                  {...register("section")}
+                <FileUpload
+                  key="zip"
+                  label="Classroom photos (ZIP)"
+                  accept=".zip,application/zip,application/x-zip-compressed"
+                  maxSize={50 * 1024 * 1024}
+                  onChange={(files) => setFile(files[0] || null)}
+                  hint="One ZIP archive of the photos you took of the class. Max 50 MB."
                 />
               )}
-              <Input
-                label="Subject (optional)"
-                placeholder="Mathematics"
-                {...register("subject")}
-              />
-              <Select
-                label="Session"
-                options={SESSION_OPTIONS}
-                {...register("session")}
-              />
-              <Controller
-                control={control}
-                name="attendance_date"
-                render={({ field }) => (
-                  <DatePicker
-                    label="Date"
-                    max={todayIso()}
-                    value={field.value}
-                    onChange={(iso) => field.onChange(iso ?? todayIso())}
-                    error={errors.attendance_date?.message}
-                    fadeSundays
-                    holidays={holidays}
-                  />
-                )}
-              />
-              {/* Face-match threshold is an admin-only tuning knob. Non-admin
-                  staff run at the fixed platform default enforced by the server. */}
-              {isAdmin && (
-                <div className="col-span-2 flex flex-col gap-1 rounded-lg border border-border/60 bg-muted/30 p-3">
-                  <label className="text-sm font-medium text-foreground">
-                    Similarity Threshold
-                  </label>
-                  <Controller
-                    control={control}
-                    name="threshold"
-                    render={({ field }) => (
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="range"
-                          min={0.35}
-                          max={0.9}
-                          step={0.05}
-                          value={field.value}
-                          onChange={(e) =>
-                            field.onChange(parseFloat(e.target.value))
-                          }
-                          className="flex-1 accent-primary"
-                        />
-                        <span className="w-12 rounded-md bg-background px-2 py-0.5 text-center text-sm font-semibold text-foreground tabular-nums">
-                          {field.value.toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Higher = stricter matching. The server enforces a minimum of
-                    0.35 regardless of the value sent.
-                  </p>
-                </div>
-              )}
-              </div>
-            </div>
+            </FormSection>
 
-            {dateIsHoliday && (
-              <Alert
-                variant="warning"
-                title={
-                  dateIsSunday
-                    ? "This date is a Sunday"
-                    : "This date is a school holiday"
-                }
+            {/* Admin-only tuning knob; other staff run at the server default. */}
+            {isAdmin && (
+              <FormSection
+                step={3}
+                complete
+                title="Match threshold"
+                optional
+                description="Higher is stricter. The server enforces a minimum of 0.35 whatever is sent."
               >
-                <label className="mt-2 flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-input"
-                    {...register("allow_holiday")}
-                  />
-                  Mark attendance anyway (holiday override)
-                </label>
-              </Alert>
-            )}
-
-            <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Classroom photos
-              </p>
-              <div className="inline-flex w-fit rounded-lg border border-border/70 bg-muted/40 p-0.5">
-              {(
-                [
-                  { value: "zip", label: "ZIP Archive" },
-                  { value: "photos", label: "Direct Photos" },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setUploadMethod(opt.value)}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-all",
-                    uploadMethod === opt.value
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
+                <Controller
+                  control={control}
+                  name="threshold"
+                  render={({ field }) => (
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min={0.35}
+                        max={0.9}
+                        step={0.05}
+                        value={field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        className="flex-1 accent-primary"
+                        aria-label="Similarity threshold"
+                      />
+                      <span className="w-12 rounded-md border border-border/60 bg-background px-2 py-0.5 text-center text-sm font-semibold tabular-nums text-foreground">
+                        {field.value.toFixed(2)}
+                      </span>
+                    </div>
                   )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-
-            {uploadMethod === "photos" ? (
-              <FileUpload
-                key="photos"
-                label="Classroom Photos"
-                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                multiple
-                maxSize={15 * 1024 * 1024}
-                onChange={setPhotoFiles}
-                hint="Select multiple photos taken of the class. Any filenames are fine — matching is by face, not name. Max 15 MB each."
-              />
-            ) : (
-              <FileUpload
-                key="zip"
-                label="Classroom Photos ZIP"
-                accept=".zip,application/zip,application/x-zip-compressed"
-                maxSize={50 * 1024 * 1024}
-                onChange={(files) => setFile(files[0] || null)}
-                hint="Upload a single ZIP archive containing classroom photos (.zip format). Max 50 MB."
-              />
+                />
+              </FormSection>
             )}
-            </div>
-
-            <Button
-              type="submit"
-              loading={isPending}
-              className="self-start"
-              icon={<CheckSquare className="h-4 w-4" />}
-            >
-              {isPending ? "Processing…" : "Mark Attendance"}
-            </Button>
           </form>
         </Panel>
 
         {result && (
           <div className="space-y-4">
-            <div className={`grid gap-4 ${result.not_enrolled_count > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
-              <StatCard
-                label="Present"
-                value={result.present_count}
-                icon={<Users className="h-5 w-5" />}
-                color="success"
-              />
-              <StatCard
-                label="Absent"
-                value={result.absent_count}
-                icon={<UserX className="h-5 w-5" />}
-                color="danger"
-              />
-              {result.not_enrolled_count > 0 && (
-                <StatCard
-                  label="No Face on File"
-                  value={result.not_enrolled_count}
-                  icon={<UserCog className="h-5 w-5" />}
-                  color="warning"
-                />
-              )}
+            <KpiStrip items={resultKpis} />
+
+            <div className="flex flex-wrap items-center gap-2">
+              {result.school_name && <Badge variant="info">{result.school_name}</Badge>}
+              <Badge>
+                Class {result.class_name}-{result.section}
+              </Badge>
+              <Badge>
+                {result.date} · {result.time}
+              </Badge>
             </div>
 
             {result.not_enrolled_count > 0 && (
@@ -461,8 +438,7 @@ export function MarkAttendanceForm() {
                 title={`${result.not_enrolled_count} student(s) weren't assessed — no face on file`}
               >
                 <p className="text-xs">
-                  Face recognition can't tell if they're present. Mark them manually below,
-                  or{" "}
+                  Face recognition cannot tell whether they were there. Mark them below, or{" "}
                   <Link to="/attendance/enroll" className="font-medium underline">
                     enroll their face
                   </Link>{" "}
@@ -481,39 +457,52 @@ export function MarkAttendanceForm() {
             {result.ambiguous_count > 0 && (
               <Alert
                 variant="warning"
-                title={`${result.ambiguous_count} face(s) detected but too uncertain to mark`}
+                title={`${result.ambiguous_count} face(s) were too uncertain to mark`}
               >
                 <p className="text-xs">
-                  Two students looked similar enough that we couldn't safely tell them
-                  apart — neither was marked. Check manually below.
+                  Two students looked similar enough that we could not safely tell them apart —
+                  neither was marked. Check them below.
                 </p>
                 <ul className="mt-2 max-h-32 space-y-0.5 overflow-auto text-xs">
                   {result.ambiguous_faces.map((a, i) => (
                     <li key={i}>
                       {a.candidates
-                        .map((c) => `${c.name} (#${c.roll_no}, ${(c.similarity * 100).toFixed(0)}%)`)
+                        .map(
+                          (c) =>
+                            `${c.name} (#${c.roll_no}, ${(c.similarity * 100).toFixed(0)}%)`,
+                        )
                         .join(" vs. ")}
                     </li>
                   ))}
                 </ul>
               </Alert>
             )}
-
-            <div className="rounded-xl border border-border/60 bg-card p-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="info">{result.school_name}</Badge>
-                <Badge>
-                  Class {result.class_name}-{result.section}
-                </Badge>
-                <Badge>
-                  {result.date} · {result.time}
-                </Badge>
-                <Badge variant="primary">{attendancePct}% attendance</Badge>
-              </div>
-            </div>
           </div>
         )}
       </div>
+
+      <FormActions
+        progress={result ? undefined : { done: stepsDone, total: 2 }}
+        info={
+          result
+            ? "Marked. Correct any individual student in the record below."
+            : !classStepDone
+              ? "Step 1 — pick the class, section and date."
+              : !photoStepDone
+                ? "Step 2 — add the classroom photos."
+                : `Ready: ${selectedCount} ${uploadMethod === "photos" ? (selectedCount === 1 ? "photo" : "photos") : "archive"} for ${selectedClass}-${watchedSection}.`
+        }
+      >
+        <Button
+          type="submit"
+          form={formId}
+          loading={isPending}
+          disabled={selectedCount === 0}
+          icon={<CheckSquare className="h-4 w-4" />}
+        >
+          {isPending ? "Processing…" : "Mark attendance"}
+        </Button>
+      </FormActions>
 
       {result && (
         <Panel
@@ -522,29 +511,23 @@ export function MarkAttendanceForm() {
           title={`Attendance record · ${result.date}`}
           description={
             `${result.total_enrolled} enrolled · ${result.present_count} present · ${result.absent_count} absent` +
-            (result.not_enrolled_count ? ` · ${result.not_enrolled_count} not face-enrolled` : "") +
+            (result.not_enrolled_count ? ` · ${result.not_enrolled_count} no face on file` : "") +
             (result.ambiguous_count ? ` · ${result.ambiguous_count} uncertain` : "")
           }
         >
-          <div className="border-b border-border/50 px-4 py-3 md:px-5">
-            <p className="text-xs text-muted-foreground">
-              Counts reflect automatic face-recognition results. Use the dropdown
-              in each row to correct an individual student's status.
-            </p>
-          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border/50">
               <thead className="bg-muted/50">
                 <tr>
                   {(isAdmin
-                    ? ["Student", "Confidence", "Status"]
-                    : ["Student", "Status"]
-                  ).map((h) => (
+                    ? ["Student", "Confidence", "Status", ""]
+                    : ["Student", "Status", ""]
+                  ).map((h, i) => (
                     <th
-                      key={h}
+                      key={i}
                       className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                     >
-                      {h}
+                      {h || <span className="sr-only">Correct</span>}
                     </th>
                   ))}
                 </tr>
@@ -553,7 +536,7 @@ export function MarkAttendanceForm() {
                 {allRecords.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={isAdmin ? 3 : 2}
+                      colSpan={isAdmin ? 4 : 3}
                       className="px-4 py-10 text-center text-sm text-muted-foreground"
                     >
                       No attendance records found.
@@ -561,10 +544,7 @@ export function MarkAttendanceForm() {
                   </tr>
                 ) : (
                   allRecords.map((r) => (
-                    <tr
-                      key={r.roll_no}
-                      className="hover:bg-accent/50 transition-colors"
-                    >
+                    <tr key={r.roll_no} className="transition-colors hover:bg-accent/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar name={r.name ?? r.roll_no} seed={r.roll_no} size="sm" />
@@ -572,46 +552,38 @@ export function MarkAttendanceForm() {
                             <p className="truncate text-sm font-medium text-foreground">
                               {r.name}
                             </p>
-                            <p className="text-xs text-muted-foreground">
-                              Roll #{r.roll_no}
-                            </p>
+                            <p className="text-xs text-muted-foreground">Roll #{r.roll_no}</p>
                           </div>
                         </div>
                       </td>
                       {isAdmin && (
-                        <td className="px-4 py-3 text-sm text-foreground tabular-nums">
-                          {r.similarity != null
-                            ? `${(r.similarity * 100).toFixed(1)}%`
-                            : "—"}
+                        <td className="px-4 py-3 text-sm tabular-nums text-foreground">
+                          {r.similarity != null ? `${(r.similarity * 100).toFixed(1)}%` : "—"}
                         </td>
                       )}
                       <td className="px-4 py-3 text-sm text-foreground">
-                        <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-2">
                           <Badge variant={statusVariant(r.status)}>
                             {statusLabel(r.status)}
                           </Badge>
-                          <select
-                            value={r.status}
-                            disabled={correctingRoll === r.roll_no}
-                            onChange={(e) =>
-                              correctMutation.mutate({
-                                roll_no: r.roll_no,
-                                status: e.target.value as AttendanceStatus,
-                              })
-                            }
-                            className="rounded-md border border-input bg-background px-1.5 py-1 text-xs text-foreground disabled:opacity-50"
-                            aria-label={`Correct status for ${r.roll_no}`}
-                          >
-                            {STATUS_OPTIONS.map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
                           {correctingRoll === r.roll_no && (
                             <Pencil className="h-3 w-3 animate-pulse text-muted-foreground" />
                           )}
-                        </div>
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <ActionMenu
+                          label={`Correct status for ${r.name ?? r.roll_no}`}
+                          items={STATUS_OPTIONS.map((o) => ({
+                            label: `Mark ${o.label.toLowerCase()}`,
+                            disabled: correctingRoll === r.roll_no || o.value === r.status,
+                            onSelect: () =>
+                              correctMutation.mutate({
+                                roll_no: r.roll_no,
+                                status: o.value as AttendanceStatus,
+                              }),
+                          }))}
+                        />
                       </td>
                     </tr>
                   ))

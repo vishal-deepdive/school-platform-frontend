@@ -4,17 +4,18 @@
  * non-admin account or force-logout (revoke sessions). Admin accounts are
  * managed on the dedicated Manage Admins page.
  */
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users as UsersIcon, LogOut, UserX, UserCheck } from "lucide-react";
+import { LogOut, Users as UsersIcon, UserCheck, UserX } from "lucide-react";
 import toast from "@/shared/lib/toast";
 import { adminApi } from "@/features/admin/api/admin";
 import { getErrorMessage, formatDate } from "@/shared/lib/utils";
-import { useDebounce } from "@/shared/hooks/useDebounce";
 import { useSchoolSearch } from "@/shared/hooks/useSchoolSearch";
 import { usePendingKeys } from "@/shared/hooks/usePendingKeys";
+import { useUrlSearch, useUrlState } from "@/shared/hooks/useUrlState";
 import type { AdminUserListItem } from "@/features/admin/types";
+import { ActionMenu } from "@/shared/components/ui/ActionMenu";
 import { Alert } from "@/shared/components/ui/Alert";
 import { Badge, type BadgeVariant } from "@/shared/components/ui/Badge";
 import { Button } from "@/shared/components/ui/Button";
@@ -22,13 +23,13 @@ import { Avatar } from "@/shared/components/ui/Avatar";
 import { Panel } from "@/shared/components/ui/Panel";
 import { Select } from "@/shared/components/ui/Select";
 import { SearchableSelect } from "@/shared/components/ui/SearchableSelect";
-import { FilterBar } from "@/shared/components/ui/FilterBar";
+import { FilterToolbar } from "@/shared/components/ui/FilterToolbar";
 import { SearchInput } from "@/shared/components/ui/SearchInput";
+import { StatLine } from "@/shared/components/ui/StatLine";
 import { EmptyState } from "@/shared/components/ui/EmptyState";
 import { Pagination } from "@/shared/components/ui/Pagination";
 import { ConfirmDialog } from "@/shared/components/ui/ConfirmDialog";
 import { ListSkeleton } from "@/shared/components/ui/Skeleton";
-import { Tooltip } from "@/shared/components/ui/Tooltip";
 
 const ROLE_OPTIONS = [
   { value: "", label: "All roles" },
@@ -55,6 +56,17 @@ const ROLE_BADGE: Record<string, BadgeVariant> = {
 
 const PAGE_SIZE = 25;
 
+// `schoolName` rides along in the URL purely so the school filter can show its
+// label after a refresh, when the search-backed options list is empty.
+const URL_DEFAULTS: {
+  q: string;
+  role: string;
+  status: string;
+  school: string;
+  schoolName: string;
+  page: number;
+} = { q: "", role: "", status: "", school: "", schoolName: "", page: 1 };
+
 type PendingAction = {
   user: AdminUserListItem;
   action: "deactivate" | "revoke";
@@ -63,39 +75,33 @@ type PendingAction = {
 /** Best available label for a user — guardian (mobile-only) and managed
  * student (no contact on file) accounts can have a null email. */
 function userLabel(u: AdminUserListItem): string {
-  return u.full_name || u.email || u.mobile || (u.roll_number ? `Roll ${u.roll_number}` : "this user");
+  return (
+    u.full_name || u.email || u.mobile || (u.roll_number ? `Roll ${u.roll_number}` : "this user")
+  );
 }
 
 export function UsersPage() {
   const queryClient = useQueryClient();
-  const [role, setRole] = useState("");
-  const [status, setStatus] = useState("");
-  const [schoolId, setSchoolId] = useState("");
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
-  const [page, setPage] = useState(1);
+  const [state, update] = useUrlState(URL_DEFAULTS);
+  const page = Math.max(1, state.page);
+  const [search, setSearch] = useUrlSearch(state.q, (q) => update({ q }), 400);
   const [confirm, setConfirm] = useState<PendingAction>(null);
 
-  const {
-    setQuery: setSchoolQuery,
-    options: schoolOptions,
-    isSearching,
-  } = useSchoolSearch();
-
-  // Any filter change returns to the first page.
-  useEffect(() => {
-    setPage(1);
-  }, [role, status, schoolId, debouncedSearch]);
+  const { setQuery: setSchoolQuery, options: schoolOptions, isSearching } = useSchoolSearch();
 
   const offset = (page - 1) * PAGE_SIZE;
   const { data, isLoading, error, isPlaceholderData } = useQuery({
-    queryKey: ["admin", "users", { role, status, schoolId, debouncedSearch, offset }],
+    queryKey: [
+      "admin",
+      "users",
+      { role: state.role, status: state.status, schoolId: state.school, search: state.q, offset },
+    ],
     queryFn: () =>
       adminApi.listUsers({
-        role: role || undefined,
-        status: (status || undefined) as "active" | "inactive" | undefined,
-        school_id: schoolId || undefined,
-        search: debouncedSearch || undefined,
+        role: state.role || undefined,
+        status: (state.status || undefined) as "active" | "inactive" | undefined,
+        school_id: state.school || undefined,
+        search: state.q || undefined,
         limit: PAGE_SIZE,
         offset,
       }),
@@ -106,8 +112,7 @@ export function UsersPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const users = data?.items ?? [];
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
 
   // Shared across all three row actions so a row's buttons disable together
   // no matter which one is in flight for it, and clicking a different row
@@ -154,43 +159,70 @@ export function UsersPage() {
     setConfirm(null);
   };
 
-  const schoolFilterOptions = [
-    { label: "All schools", value: "" },
-    ...schoolOptions,
-  ];
+  const schoolFilterOptions = useMemo(() => {
+    const base = [{ label: "All schools", value: "" }, ...schoolOptions];
+    if (state.school && state.schoolName && !base.some((o) => o.value === state.school)) {
+      base.push({ label: state.schoolName, value: state.school });
+    }
+    return base;
+  }, [schoolOptions, state.school, state.schoolName]);
+
+  const hasFilters = Boolean(state.q || state.role || state.status || state.school);
+  const clearFilters = () => {
+    setSearch("");
+    update({ q: "", role: "", status: "", school: "", schoolName: "" });
+  };
 
   return (
-    <div className="space-y-6">
-      <FilterBar hideHeader>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder="Search name, email, roll…"
+    <div className="space-y-4">
+      <FilterToolbar
+        hasFilters={hasFilters}
+        onClear={clearFilters}
+        end={
+          <StatLine
+            loading={isLoading}
+            items={[{ value: total, label: total === 1 ? "user" : "users" }]}
           />
+        }
+      >
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search name, email, roll…"
+          aria-label="Search users"
+          className="w-full sm:w-64"
+        />
+        <div className="w-[calc(50%-0.25rem)] sm:w-36">
           <Select
             options={ROLE_OPTIONS}
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
+            value={state.role}
+            onChange={(e) => update({ role: e.target.value })}
             aria-label="Filter by role"
           />
+        </div>
+        <div className="w-[calc(50%-0.25rem)] sm:w-36">
           <Select
             options={STATUS_OPTIONS}
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
+            value={state.status}
+            onChange={(e) => update({ status: e.target.value })}
             aria-label="Filter by status"
           />
+        </div>
+        <div className="w-full sm:w-56">
           <SearchableSelect
             options={schoolFilterOptions}
-            value={schoolId}
-            onChange={setSchoolId}
+            value={state.school}
+            onChange={(value) => {
+              const option = schoolOptions.find((o) => o.value === value);
+              update({ school: value, schoolName: option?.label ?? "" });
+            }}
             onSearchChange={setSchoolQuery}
             isLoading={isSearching}
             placeholder="All schools"
             searchPlaceholder="Search schools…"
           />
         </div>
-      </FilterBar>
+      </FilterToolbar>
 
       {error && (
         <Alert variant="error">{getErrorMessage(error) || "Failed to load users."}</Alert>
@@ -199,22 +231,23 @@ export function UsersPage() {
       {isLoading ? (
         <ListSkeleton items={8} />
       ) : (
-        <Panel
-          flush
-          icon={<UsersIcon className="h-4 w-4" />}
-          title="Platform users"
-          actions={<Badge variant="primary">{total} total</Badge>}
-        >
+        <Panel flush>
           {users.length === 0 ? (
-            <div className="p-4">
-              <EmptyState
-                icon={<UsersIcon className="h-10 w-10" />}
-                title="No users found"
-                description="Adjust the filters to widen your search."
-              />
-            </div>
+            <EmptyState
+              variant="plain"
+              icon={<UsersIcon className="h-10 w-10" />}
+              title="No users found"
+              description="Adjust the filters to widen your search."
+              action={
+                hasFilters ? (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" aria-busy={isPlaceholderData}>
               <table className="min-w-full divide-y divide-border/50">
                 <thead className="bg-muted/50">
                   <tr>
@@ -228,7 +261,7 @@ export function UsersPage() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/30">
+                <tbody className={isPlaceholderData ? "divide-y divide-border/30 opacity-60" : "divide-y divide-border/30"}>
                   {users.map((u) => {
                     const busy = rowPending.has(u.id);
                     const isAdmin = u.role === "admin";
@@ -242,11 +275,7 @@ export function UsersPage() {
                       <tr key={u.id} className="transition-colors hover:bg-muted/30">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <Avatar
-                              name={userLabel(u)}
-                              seed={u.id}
-                              size="sm"
-                            />
+                            <Avatar name={userLabel(u)} seed={u.id} size="sm" />
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium text-foreground">
                                 {u.full_name || "—"}
@@ -276,56 +305,47 @@ export function UsersPage() {
                             </p>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
-                          {isAdmin ? (
-                            <Link
-                              to="/admin/admins"
-                              className="text-xs font-medium text-primary hover:underline"
-                            >
-                              Manage Admins
-                            </Link>
-                          ) : (
-                            <div className="flex items-center justify-end gap-1.5">
-                              {u.is_active && (
-                                <Tooltip content="Revoke sessions (force logout)" side="top">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    disabled={busy}
-                                    icon={<LogOut className="h-4 w-4" />}
-                                    onClick={() => setConfirm({ user: u, action: "revoke" })}
-                                    aria-label="Revoke sessions (force logout)"
-                                  >
-                                    <span className="sr-only">Revoke sessions</span>
-                                  </Button>
-                                </Tooltip>
-                              )}
-                              {u.is_active ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={busy}
-                                  loading={deactivate.isPending && deactivate.variables === u.id}
-                                  icon={<UserX className="h-4 w-4 text-destructive" />}
-                                  onClick={() => setConfirm({ user: u, action: "deactivate" })}
-                                  className="text-destructive hover:text-destructive/80"
-                                >
-                                  Deactivate
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={busy}
-                                  loading={reactivate.isPending && reactivate.variables === u.id}
-                                  icon={<UserCheck className="h-4 w-4" />}
-                                  onClick={() => reactivate.mutate(u.id)}
-                                >
-                                  Reactivate
-                                </Button>
-                              )}
-                            </div>
-                          )}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {isAdmin ? (
+                              <Link
+                                to="/admin/admins"
+                                className="text-xs font-medium text-primary hover:underline"
+                              >
+                                Manage admins
+                              </Link>
+                            ) : u.is_active ? (
+                              <ActionMenu
+                                label={`Actions for ${userLabel(u)}`}
+                                items={[
+                                  {
+                                    label: "Revoke sessions",
+                                    icon: <LogOut />,
+                                    disabled: busy,
+                                    onSelect: () => setConfirm({ user: u, action: "revoke" }),
+                                  },
+                                  {
+                                    label: "Deactivate account",
+                                    icon: <UserX />,
+                                    danger: true,
+                                    disabled: busy,
+                                    onSelect: () => setConfirm({ user: u, action: "deactivate" }),
+                                  },
+                                ]}
+                              />
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={busy}
+                                loading={reactivate.isPending && reactivate.variables === u.id}
+                                icon={<UserCheck className="h-4 w-4" />}
+                                onClick={() => reactivate.mutate(u.id)}
+                              >
+                                Reactivate
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -340,10 +360,12 @@ export function UsersPage() {
               <Pagination
                 currentPage={page}
                 totalPages={totalPages}
+                totalItems={total}
+                itemsLabel="users"
                 hasPrev={page > 1}
                 hasNext={page < totalPages && !isPlaceholderData}
-                onPrev={() => setPage((p) => Math.max(1, p - 1))}
-                onNext={() => setPage((p) => p + 1)}
+                onPrev={() => update({ page: page - 1 })}
+                onNext={() => update({ page: page + 1 })}
               />
             </div>
           )}

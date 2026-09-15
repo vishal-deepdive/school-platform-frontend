@@ -51,7 +51,7 @@ function SkeletonCardShell({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/60 bg-card p-4 sm:p-6",
+        "rounded-xl border border-border/60 bg-card p-4 shadow-card sm:p-6",
         className,
       )}
     >
@@ -104,7 +104,7 @@ export function TableSkeleton({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-border/60 bg-card",
+        "overflow-hidden rounded-xl border border-border/60 bg-card shadow-card",
         className,
       )}
       aria-hidden="true"

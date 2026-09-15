@@ -41,6 +41,11 @@ export default {
         },
         canvas: "oklch(var(--canvas) / <alpha-value>)",
         rail: "oklch(var(--rail) / <alpha-value>)",
+        "rail-end": "oklch(var(--rail-end) / <alpha-value>)",
+      },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        "card-hover": "var(--shadow-card-hover)",
       },
       borderRadius: {
         lg: "var(--radius)",
